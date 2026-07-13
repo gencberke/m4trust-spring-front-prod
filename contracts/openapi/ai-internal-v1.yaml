@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: M4Trust AI Internal Operations API
   version: 1.0.0
-  description: Operational metadata only. This API intentionally has no synchronous AI inference endpoint.
+  description: Operational metadata only. This API intentionally has no synchronous AI inference endpoint. Contract payload timestamps are UTC RFC 3339 strings ending in Z; selected transport metadata objects tolerate unknown optional properties within the same major version.
 paths:
   /health/live:
     get:
@@ -69,13 +69,13 @@ components:
       required: [status]
     Capabilities:
       type: object
-      additionalProperties: false
+      additionalProperties: true
       properties:
         capabilities:
           type: array
           items:
             type: object
-            additionalProperties: false
+            additionalProperties: true
             properties:
               jobType:
                 type: string
@@ -83,25 +83,22 @@ components:
               requestSchemaVersions:
                 type: array
                 items:
-                  type: string
-                  pattern: '^[0-9]+\\.[0-9]+\\.[0-9]+$'
+                  const: 1.0.0
               resultSchemaVersions:
                 type: array
                 items:
-                  type: string
-                  pattern: '^[0-9]+\\.[0-9]+\\.[0-9]+$'
+                  const: 1.0.0
             required: [jobType, requestSchemaVersions, resultSchemaVersions]
       required: [capabilities]
     ContractMetadata:
       type: object
-      additionalProperties: false
+      additionalProperties: true
       properties:
         name:
           type: string
           minLength: 1
         version:
-          type: string
-          pattern: '^[0-9]+\\.[0-9]+\\.[0-9]+$'
+          const: 1.0.0
         sha256:
           type: string
           pattern: '^[A-Fa-f0-9]{64}$'

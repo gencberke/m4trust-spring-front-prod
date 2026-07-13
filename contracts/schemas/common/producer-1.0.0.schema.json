@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "producer-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/common/producer/1.0.0",
   "title": "M4Trust Producer",
   "description": "Descriptive producer metadata. It is not a provider-native response object.",
   "type": "object",

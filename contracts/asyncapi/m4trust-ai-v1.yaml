@@ -5,7 +5,9 @@ info:
   description: |
     Versioned asynchronous contracts for M4Trust AI commands, canonical results,
     failures, and best-effort cancellation. The payload schemas are external
-    JSON Schema Draft 2020-12 files in this repository.
+    JSON Schema Draft 2020-12 files in this repository. Wire timestamps are
+    UTC RFC 3339 values ending in Z; selected transport objects tolerate
+    unknown optional properties within the same major version.
 defaultContentType: application/json
 channels:
   ai.document-extraction.requested.v1:

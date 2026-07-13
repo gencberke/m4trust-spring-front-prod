@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "warning-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/common/warning/1.0.0",
   "title": "M4Trust Warning",
   "description": "Non-fatal advisory information. Warning codes are intentionally open for forward compatibility; severity is a closed set without ERROR.",
   "type": "object",

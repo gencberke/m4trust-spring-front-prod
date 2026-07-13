@@ -13,7 +13,7 @@
   "idempotencyKey": "doc-full-2026-07-13-invalid-media",
   "producer": {"service": "m4trust-ai-worker", "version": "1.0.0"},
   "payload": {
-    "error": {"category": "INVALID_INPUT", "code": "UNSUPPORTED_MEDIA_TYPE", "message": "The referenced document media type is not supported.", "retryRecommended": false, "details": {"field": "input.mediaType", "reason": "unsupported media type"}},
+    "error": {"category": "NON_RETRYABLE_TECHNICAL", "code": "UNSUPPORTED_MEDIA_TYPE", "message": "The referenced document media type is not supported.", "retryRecommended": false, "details": {"field": "input.mediaType", "reason": "unsupported media type"}},
     "attempt": {"attemptNumber": 1, "maxAttempts": 1},
     "technicalMetadata": {"pipelineVersion": "doc-pipeline-1.0.0", "modelProvider": null, "modelFamily": null, "modelVersion": null, "promptVersion": null, "retrievalVersion": null, "parserVersion": "parser-1.0.0", "privacyVersion": "default-1", "durationMs": 12}
   }

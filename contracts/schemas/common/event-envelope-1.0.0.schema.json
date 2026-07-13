@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "event-envelope-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/common/event-envelope/1.0.0",
   "title": "M4Trust Shared Event Envelope",
   "description": "The common envelope for all M4Trust AI events. The payload is intentionally an object extension point and is constrained by every job-specific event schema.",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "eventId": {"type": "string", "format": "uuid"},
     "eventType": {
@@ -16,7 +16,7 @@
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
       "description": "Semantic version of the payload contract."
     },
-    "occurredAt": {"type": "string", "format": "date-time", "description": "RFC 3339 UTC timestamp."},
+    "occurredAt": {"$ref": "https://schemas.m4trust.internal/ai/common/utc-timestamp/1.0.0", "description": "RFC 3339 UTC timestamp with trailing Z."},
     "correlationId": {"type": "string", "format": "uuid"},
     "causationId": {"type": ["string", "null"], "format": "uuid"},
     "jobId": {"type": "string", "format": "uuid"},
@@ -25,7 +25,7 @@
     "transactionId": {"type": "string", "format": "uuid"},
     "subjectId": {"type": "string", "format": "uuid", "description": "Document or video identifier."},
     "idempotencyKey": {"type": "string", "minLength": 1},
-    "producer": {"$ref": "producer-1.0.0.schema.json"},
+    "producer": {"$ref": "https://schemas.m4trust.internal/ai/common/producer/1.0.0"},
     "payload": {
       "type": "object",
       "description": "Specialized and strictly constrained by the job-specific event schema."

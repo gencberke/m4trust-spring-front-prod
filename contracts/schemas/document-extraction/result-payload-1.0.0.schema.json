@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "result-payload-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/document-extraction/result-payload/1.0.0",
   "title": "M4Trust Canonical Document Extraction Result Payload",
   "description": "Canonical M4Trust output. It contains no model-native or provider-specific response shape.",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "$defs": {
     "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
     "structuredValue": {
@@ -66,13 +66,13 @@
       "properties": {"value": {"type": ["string", "null"]}, "masked": {"type": "boolean"}, "confidence": {"$ref": "#/$defs/confidence"}},
       "required": ["value", "masked", "confidence"]
     },
-    "sourceReferences": {"type": "array", "items": {"$ref": "../common/source-reference-1.0.0.schema.json"}},
-    "warning": {"$ref": "../common/warning-1.0.0.schema.json"}
+    "sourceReferences": {"type": "array", "items": {"$ref": "https://schemas.m4trust.internal/ai/common/source-reference/1.0.0"}},
+    "warning": {"$ref": "https://schemas.m4trust.internal/ai/common/warning/1.0.0"}
   },
   "properties": {
     "result": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "document": {
           "type": "object",
@@ -145,8 +145,8 @@
       },
       "required": ["document", "parties", "rules", "deliveryRequirements", "summary"]
     },
-    "technicalMetadata": {"$ref": "../common/technical-metadata-1.0.0.schema.json"},
-    "warnings": {"type": "array", "items": {"$ref": "../common/warning-1.0.0.schema.json"}}
+    "technicalMetadata": {"$ref": "https://schemas.m4trust.internal/ai/common/technical-metadata/1.0.0"},
+    "warnings": {"type": "array", "items": {"$ref": "https://schemas.m4trust.internal/ai/common/warning/1.0.0"}}
   },
   "required": ["result", "technicalMetadata", "warnings"]
 }

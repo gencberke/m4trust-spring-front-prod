@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "source-reference-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/common/source-reference/1.0.0",
   "title": "M4Trust Source Reference",
   "description": "A source location in a document or other evidence. Semantic checks such as endOffset > startOffset remain runtime validation.",
   "type": "object",

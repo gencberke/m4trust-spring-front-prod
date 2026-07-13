@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "download-reference-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/common/download-reference/1.0.0",
   "title": "M4Trust Short-Lived Download Reference",
   "description": "A short-lived URL used to fetch source media. Raw document or video bytes must never be placed in an event.",
   "type": "object",
@@ -12,8 +12,7 @@
       "description": "Short-lived object-storage URL. Credentials must not be embedded in examples or logged."
     },
     "expiresAt": {
-      "type": "string",
-      "format": "date-time",
+      "$ref": "https://schemas.m4trust.internal/ai/common/utc-timestamp/1.0.0",
       "description": "RFC 3339 UTC expiry timestamp."
     }
   },

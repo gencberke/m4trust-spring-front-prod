@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "result-payload-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/video-analysis/result-payload/1.0.0",
   "title": "M4Trust Canonical Video Analysis Result Payload",
   "description": "Canonical advisory video evidence output. It cannot approve delivery, release payment, or resolve disputes.",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "$defs": {
     "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
     "timeRange": {
@@ -68,8 +68,8 @@
       },
       "required": ["durationMs", "observations", "anomalies", "summary"]
     },
-    "technicalMetadata": {"$ref": "../common/technical-metadata-1.0.0.schema.json"},
-    "warnings": {"type": "array", "items": {"$ref": "../common/warning-1.0.0.schema.json"}}
+    "technicalMetadata": {"$ref": "https://schemas.m4trust.internal/ai/common/technical-metadata/1.0.0"},
+    "warnings": {"type": "array", "items": {"$ref": "https://schemas.m4trust.internal/ai/common/warning/1.0.0"}}
   },
   "required": ["result", "technicalMetadata", "warnings"]
 }

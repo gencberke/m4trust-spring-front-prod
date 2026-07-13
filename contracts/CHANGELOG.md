@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1 - 2026-07-13
+
+- Hardened same-major compatibility with explicit extensible transport boundaries and strict semantic objects.
+- Locked all concrete v1 event schemas to `schemaVersion` `1.0.0`.
+- Added the shared UTC `Z` timestamp schema and negative offset validation.
+- Bound error categories, codes, and retry flags into consistent closed combinations.
+- Replaced filename-only schema IDs with globally unique canonical IDs under `https://schemas.m4trust.internal/`.
+- Extended validation for duplicate IDs, expected-invalid cases, canonical references, and future optional fields.
+- Added GitHub Actions contract validation for relevant changes.
+
 ## 1.0.0 - 2026-07-13
 
 - Added the shared M4Trust event envelope with UUID identity, semantic schema versions, UTC timestamps, producer metadata, and constrained job types.

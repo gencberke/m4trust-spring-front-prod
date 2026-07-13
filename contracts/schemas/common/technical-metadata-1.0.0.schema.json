@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "technical-metadata-1.0.0.schema.json",
+  "$id": "https://schemas.m4trust.internal/ai/common/technical-metadata/1.0.0",
   "title": "M4Trust Technical Metadata",
   "description": "Descriptive processing metadata. Business decisions must not depend on these fields; provider values remain strings, not provider-native objects.",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "pipelineVersion": {"type": "string", "minLength": 1},
     "modelProvider": {"type": ["string", "null"], "minLength": 1},
