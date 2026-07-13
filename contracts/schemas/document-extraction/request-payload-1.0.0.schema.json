@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "request-payload-1.0.0.schema.json",
+  "title": "M4Trust Document Extraction Request Payload",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "documentId": {"type": "string", "format": "uuid"},
+        "fileName": {"type": "string", "minLength": 1},
+        "mediaType": {"type": "string", "minLength": 1},
+        "sizeBytes": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[A-Fa-f0-9]{64}$"},
+        "download": {"$ref": "../common/download-reference-1.0.0.schema.json"}
+      },
+      "required": ["documentId", "fileName", "mediaType", "sizeBytes", "sha256", "download"]
+    },
+    "processing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "languageHints": {"type": "array", "items": {"type": "string", "minLength": 2}, "maxItems": 10},
+        "documentCategory": {"const": "B2B_CONTRACT"},
+        "requestedOutputSchema": {"const": "m4trust.document-extraction-result"},
+        "requestedOutputSchemaVersion": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"},
+        "privacyProfile": {"const": "DEFAULT"},
+        "retrievalProfile": {"const": "M4TRUST_LEGAL_DEFAULT"}
+      },
+      "required": ["languageHints", "documentCategory", "requestedOutputSchema", "requestedOutputSchemaVersion", "privacyProfile", "retrievalProfile"]
+    },
+    "deadlineAt": {"type": "string", "format": "date-time", "description": "RFC 3339 UTC processing deadline."}
+  },
+  "required": ["input", "processing", "deadlineAt"]
+}

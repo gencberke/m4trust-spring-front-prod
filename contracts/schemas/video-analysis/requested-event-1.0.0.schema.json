@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "requested-event-1.0.0.schema.json",
+  "title": "M4Trust Video Analysis Requested Event",
+  "allOf": [
+    {"$ref": "../common/event-envelope-1.0.0.schema.json"},
+    {
+      "type": "object",
+      "properties": {
+        "eventType": {"const": "ai.job.requested.v1"},
+        "jobType": {"const": "VIDEO_ANALYSIS"},
+        "payload": {"$ref": "../video-analysis/request-payload-1.0.0.schema.json"}
+      },
+      "required": ["eventType", "jobType", "payload"]
+    }
+  ]
+}

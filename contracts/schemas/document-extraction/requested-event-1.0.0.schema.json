@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "requested-event-1.0.0.schema.json",
+  "title": "M4Trust Document Extraction Requested Event",
+  "allOf": [
+    {"$ref": "../common/event-envelope-1.0.0.schema.json"},
+    {
+      "type": "object",
+      "properties": {
+        "eventType": {"const": "ai.job.requested.v1"},
+        "jobType": {"const": "DOCUMENT_EXTRACTION"},
+        "payload": {"$ref": "../document-extraction/request-payload-1.0.0.schema.json"}
+      },
+      "required": ["eventType", "jobType", "payload"]
+    }
+  ]
+}

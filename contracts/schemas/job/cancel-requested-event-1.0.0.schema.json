@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cancel-requested-event-1.0.0.schema.json",
+  "title": "M4Trust Job Cancel Requested Event",
+  "description": "A best-effort cancellation request for either supported job type. No cancelled-result event is defined in v1.",
+  "allOf": [
+    {"$ref": "../common/event-envelope-1.0.0.schema.json"},
+    {
+      "type": "object",
+      "properties": {
+        "eventType": {"const": "ai.job.cancel.requested.v1"},
+        "jobType": {"enum": ["DOCUMENT_EXTRACTION", "VIDEO_ANALYSIS"]},
+        "payload": {"$ref": "../job/cancel-request-payload-1.0.0.schema.json"}
+      },
+      "required": ["eventType", "jobType", "payload"]
+    }
+  ]
+}

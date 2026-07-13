@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "failed-event-1.0.0.schema.json",
+  "title": "M4Trust Document Extraction Failed Event",
+  "allOf": [
+    {"$ref": "../common/event-envelope-1.0.0.schema.json"},
+    {
+      "type": "object",
+      "properties": {
+        "eventType": {"const": "ai.job.failed.v1"},
+        "jobType": {"const": "DOCUMENT_EXTRACTION"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "error": {"$ref": "../common/error-1.0.0.schema.json"},
+            "attempt": {"$ref": "../common/attempt-1.0.0.schema.json"},
+            "technicalMetadata": {"$ref": "../common/technical-metadata-1.0.0.schema.json"}
+          },
+          "required": ["error", "attempt", "technicalMetadata"]
+        }
+      },
+      "required": ["eventType", "jobType", "payload"]
+    }
+  ]
+}

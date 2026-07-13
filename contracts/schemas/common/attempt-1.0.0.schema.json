@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "attempt-1.0.0.schema.json",
+  "title": "M4Trust Processing Attempt",
+  "description": "At-least-once processing attempt metadata. The relation attemptNumber <= maxAttempts is a runtime semantic check.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "attemptNumber": {"type": "integer", "minimum": 1},
+    "maxAttempts": {"type": "integer", "minimum": 1}
+  },
+  "required": ["attemptNumber", "maxAttempts"]
+}

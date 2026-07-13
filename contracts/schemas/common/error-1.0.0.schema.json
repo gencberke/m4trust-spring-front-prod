@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "error-1.0.0.schema.json",
+  "title": "M4Trust Error",
+  "description": "Safe canonical failure information. Do not include raw stack traces, provider-native messages, secrets, or PII.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": ["RETRYABLE_TECHNICAL", "NON_RETRYABLE_TECHNICAL", "INVALID_INPUT"]
+    },
+    "code": {
+      "type": "string",
+      "enum": [
+        "MODEL_PROVIDER_TIMEOUT",
+        "MODEL_PROVIDER_UNAVAILABLE",
+        "OBJECT_STORAGE_TEMPORARILY_UNAVAILABLE",
+        "RETRIEVAL_SERVICE_UNAVAILABLE",
+        "INTERNAL_DEPENDENCY_TIMEOUT",
+        "UNSUPPORTED_MEDIA_TYPE",
+        "UNSUPPORTED_SCHEMA_VERSION",
+        "FILE_TOO_LARGE",
+        "ENCRYPTED_DOCUMENT_UNSUPPORTED",
+        "CORRUPTED_FILE",
+        "CONTENT_HASH_MISMATCH",
+        "MISSING_REQUIRED_FIELD",
+        "INVALID_DEADLINE",
+        "INVALID_DOWNLOAD_REFERENCE",
+        "INVALID_PROCESSING_PROFILE",
+        "INVALID_EXPECTED_OBJECT"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Safe canonical message suitable for logs and business-facing diagnostics."
+    },
+    "retryRecommended": {
+      "type": "boolean"
+    },
+    "details": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "field": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "dependency": {"type": "string", "minLength": 1},
+        "retryAfterMs": {"type": "integer", "minimum": 0},
+        "limit": {"type": "integer", "minimum": 0}
+      },
+      "description": "Optional bounded details. It is not an arbitrary object."
+    }
+  },
+  "required": ["category", "code", "message", "retryRecommended", "details"]
+}
