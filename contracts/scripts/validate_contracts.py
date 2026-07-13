@@ -262,8 +262,14 @@ def validate() -> int:
 
     completed = read_json(ROOT / "examples/document-extraction/success-result.json")
     future_optional = copy.deepcopy(completed)
-    future_optional["payload"]["result"]["futureOptionalMetadata"] = {"value": "ignored by older consumers"}
-    expect_valid("future optional result metadata", document_completed_path, future_optional, store, failures)
+    future_optional["payload"]["result"]["summary"]["futureOptionalMetadata"] = {"value": "ignored by older consumers"}
+    expect_valid("future optional document summary metadata", document_completed_path, future_optional, store, failures)
+
+    video_completed_path = ROOT / "schemas/video-analysis/completed-event-1.0.0.schema.json"
+    video_completed = read_json(ROOT / "examples/video-analysis/success-result.json")
+    video_future_optional = copy.deepcopy(video_completed)
+    video_future_optional["payload"]["result"]["summary"]["futureOptionalMetadata"] = {"value": "ignored by older consumers"}
+    expect_valid("future optional video summary metadata", video_completed_path, video_future_optional, store, failures)
 
     strict_value = copy.deepcopy(completed)
     strict_value["payload"]["result"]["rules"][0]["structuredValue"]["futureField"] = "must be rejected"

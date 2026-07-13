@@ -19,7 +19,7 @@ contracts/
   scripts/        Lightweight local validation tooling
 ```
 
-`requirements.txt` contains only the small `jsonschema` dependency needed by the validator. No Spring Boot, FastAPI, broker, registry, code-generation, Docker, Maven, Gradle, or npm runtime integration is part of this foundation.
+`requirements.txt` contains only the small `jsonschema` and `PyYAML` dependencies needed by the validator. No Spring Boot, FastAPI, broker, registry, code-generation, Docker, Maven, Gradle, or npm runtime integration is part of this foundation.
 
 ## Versioning rules
 

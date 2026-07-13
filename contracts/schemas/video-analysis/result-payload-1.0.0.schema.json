@@ -58,7 +58,7 @@
         },
         "summary": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "advisoryOutcome": {"type": "string", "enum": ["NO_ISSUE_DETECTED", "REVIEW_SUGGESTED", "INSUFFICIENT_EVIDENCE", "UNKNOWN"], "description": "Advisory only; it cannot approve delivery, release payment, or resolve disputes."},
             "reviewReasons": {"type": "array", "items": {"type": "string", "minLength": 1}}

@@ -135,7 +135,7 @@
         },
         "summary": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "requiresManualReview": {"type": "boolean", "description": "Advisory only; Spring remains the business authority and must make the final decision."},
             "reviewReasons": {"type": "array", "items": {"type": "string", "minLength": 1}}
