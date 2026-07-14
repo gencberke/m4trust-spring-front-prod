@@ -16,9 +16,10 @@ Planner:
 
 Implementer:
 1. Read this file.
-2. Read only the files and ADR sections referenced by the planner.
-3. Read the nearest module-level `AGENTS.md` when one exists.
-4. Inspect the current branch and nearby code before changing anything.
+2. Start with the files and ADR sections referenced by the planner.
+3. Expand to nearby code or additional documentation only when required to implement or validate the task correctly.
+4. Read the nearest module-level `AGENTS.md` when one exists.
+5. Inspect the current branch and nearby code before changing anything.
 
 ## Common rules
 
