@@ -15,12 +15,11 @@ Pre-implementation foundation is complete enough to begin coding through small v
 
 ## Current repository shape
 
-The repository currently contains architectural decisions and shared AI contracts. Application and runtime skeletons have not yet been established.
+The repository contains architectural decisions, shared AI contracts, and a first runnable Spring Core API skeleton under `services/core-api` (Java 21, Spring Boot; web + validation + actuator only; `/api/v1/meta`, Actuator health with liveness/readiness probes, Problem Details validation, multi-stage non-root Dockerfile). No business capability, database, security, or messaging yet.
 
 Not yet present as stable foundations:
 
 - React application skeleton
-- Spring Core API skeleton
 - FastAPI AI service skeleton
 - Mock AI Worker implementation
 - local Docker Compose runtime
@@ -44,7 +43,7 @@ None. Implementation details are expected to evolve during coding as long as acc
 
 ## Next likely capability
 
-Choose and implement the smallest runnable platform increment. The planner should inspect the latest repository state before deciding whether the first task starts with repository layout, Spring Core API, frontend, or local runtime orchestration.
+The Spring Core API skeleton is in place. The next runnable increment can extend Slice 0 (PostgreSQL/Flyway foundation with DB-backed readiness, correlation ID, public error format, local Docker Compose runtime, or the frontend skeleton) before starting the first business vertical slice (Identity and authentication). The planner should inspect the latest repository state before deciding.
 
 ## Update rule
 
