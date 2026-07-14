@@ -15,7 +15,7 @@ Pre-implementation foundation is complete enough to begin coding through small v
 
 ## Current repository shape
 
-The repository contains architectural decisions, shared AI contracts, and a first runnable Spring Core API skeleton under `services/core-api` (Java 21, Spring Boot; web + validation + actuator only; `/api/v1/meta`, Actuator health with liveness/readiness probes, Problem Details validation, multi-stage non-root Dockerfile). No business capability, database, security, or messaging yet.
+The repository contains architectural decisions, shared AI contracts, and a first runnable Spring Core API skeleton under `services/core-api` (Java 21, Spring Boot 4.1; web + validation + actuator only; `/api/v1/meta`, Actuator health with liveness/readiness probes, Problem Details validation with correlation ID propagation via `X-Correlation-ID`, multi-stage non-root Dockerfile). No business capability, database, security, or messaging yet.
 
 Not yet present as stable foundations:
 
