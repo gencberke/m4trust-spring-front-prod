@@ -3,6 +3,8 @@ package com.m4trust.coreapi.api;
 import java.net.URI;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -25,7 +27,8 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleValidation(
-            MethodArgumentNotValidException ex, WebRequest request) {
+            MethodArgumentNotValidException ex, WebRequest request,
+            HttpServletRequest httpRequest) {
         List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(this::toFieldValidationError)
                 .toList();
@@ -36,6 +39,7 @@ public class ApiExceptionHandler {
         problem.setTitle("Validation failed");
         problem.setInstance(URI.create(requestPath(request)));
         problem.setProperty("code", "VALIDATION_FAILED");
+        problem.setProperty("correlationId", correlationId(httpRequest));
         problem.setProperty("errors", errors);
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
@@ -45,13 +49,15 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ProblemDetail> handleMalformedRequest(
-            HttpMessageNotReadableException ex, WebRequest request) {
+            HttpMessageNotReadableException ex, WebRequest request,
+            HttpServletRequest httpRequest) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "The request body could not be parsed.");
         problem.setType(URI.create("https://problems.m4trust.internal/malformed-request"));
         problem.setTitle("Malformed request");
         problem.setInstance(URI.create(requestPath(request)));
         problem.setProperty("code", "MALFORMED_REQUEST");
+        problem.setProperty("correlationId", correlationId(httpRequest));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
@@ -69,5 +75,10 @@ public class ApiExceptionHandler {
     private String requestPath(WebRequest request) {
         String description = request.getDescription(false);
         return description.startsWith("uri=") ? description.substring(4) : description;
+    }
+
+    private String correlationId(HttpServletRequest request) {
+        Object attr = request.getAttribute(CorrelationIdFilter.ATTRIBUTE);
+        return attr != null ? attr.toString() : "";
     }
 }
