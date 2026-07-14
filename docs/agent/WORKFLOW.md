@@ -1,146 +1,92 @@
-# Planner–Reviewer and Implementer Workflow
+# Planner Agent Workflow
 
-This workflow keeps architectural context with one planner-reviewer while giving each implementer a small, focused task context.
+This file is written for the main planner-reviewer agent.
 
-## Recommended profiles
+## Profiles and language
 
-- Planner–reviewer: GPT-5.6 Sol, medium effort.
-- Implementer: GPT-5.6 Luna or Terra, medium effort.
+- Planner-reviewer: GPT-5.6 Sol, medium effort.
+- Implementer: GPT-5.6 Luna, high effort.
+- Speak with the user in Turkish.
+- Communicate with the implementer only in English.
 
-The planner selects the implementer profile based on task fit and observed results. Do not encode unsupported assumptions about a model name as architectural policy.
+## Manage the user conversation
 
-## Ownership model
+1. Understand the user's intent and inspect the latest repository state.
+2. Read `docs/agent/CURRENT.md` and use `architecture-decisions/ADR-INDEX.md` to select only relevant ADR context.
+3. Propose the next smallest useful, runnable task in Turkish.
+4. Explain the goal, important boundary, and expected result briefly; do not dump internal prompts or long plans.
+5. Spawn the implementer after the user approves the task, unless the user explicitly delegates that decision.
+6. Normally plan, delegate, and review; do not implement application code yourself unless the user asks.
 
-The planner-reviewer:
+## Use the implementer
 
-- understands the current repository and accepted ADR boundaries,
-- shapes the next smallest useful task,
-- selects only the required context references,
-- gives limited technical direction and important tradeoffs,
-- spawns one implementer on a feature branch,
-- reviews the actual branch and diff,
-- decides `ACCEPT`, `FIX`, or `REPLAN`.
+Spawn one GPT-5.6 Luna implementer with high effort. Give it a clean task context, not the full user conversation.
 
-The implementer:
-
-- receives a clean task context rather than the full user conversation,
-- reads only the referenced repository guidance and nearby code,
-- uses engineering judgment for implementation details,
-- avoids unrelated work,
-- validates the observable behavior,
-- returns a compact report in Turkish.
-
-## Context budget rules
-
-- Do not paste ADR contents into task prompts.
-- Reference `AGENTS.md`, the nearest module guide, relevant ADR headings, contracts, and nearby code.
-- Repeat a global rule only when it directly affects the task.
-- Give two to five high-value technical directions, not a class-by-class implementation recipe.
-- Keep exclusions only where scope confusion is likely.
-- The implementer report is an index to the work, not a substitute for reviewing the repository.
-- Correction prompts contain only the delta; do not resend the original task.
-
-## Implementer task prompt
-
-Write the prompt in English and require the implementer to respond in Turkish.
+The prompt should normally contain only:
 
 ```text
-You are implementing one focused task in the M4Trust repository. Respond in Turkish.
+You are implementing one focused task in the M4Trust repository. Communicate with me in English.
 
-## Goal
-<Describe the observable result in one to three sentences.>
+Goal:
+<observable result>
 
-## Read first
+Read:
 - `AGENTS.md`
-- `<nearest module AGENTS.md, when present>`
-- `<only relevant ADR headings, contract files, or nearby code>`
+- <only relevant repository files, ADR sections, contracts, or nearby code>
 
-Inspect the current branch and nearby implementation before changing code. Load unrelated ADRs only if you discover a genuine architectural conflict.
+Direction:
+- <two to five useful technical hints or tradeoffs>
 
-## Technical direction
-- <Two to five high-value design hints or tradeoffs>
-- <Prefer a framework-native or existing repository approach where relevant>
-- <Name an approach to avoid only when the risk is real>
+Boundaries:
+<compact in/out scope only where ambiguity is likely>
 
-Use your own engineering judgment for code structure and implementation details.
+Done when:
+- <three to six observable checks>
 
-## Scope
-In: <compact scope>
-Out: <only important exclusions>
-
-## Done when
-- <Three to six observable acceptance checks>
-- Keep automated tests minimal and focused on critical behavior.
-- Run the relevant build and runtime validation.
-
-## Delivery
+Delivery:
 Work on `<feature-branch>`. Do not merge into `main`.
-Return only the compact completion report below.
+Keep tests minimal, run the relevant validation, commit the work, and return the compact report below.
 ```
 
-The planner should normally keep this prompt compact. Add detail only when it prevents a likely wrong architectural or product decision.
+Guide important choices, but do not prescribe every class, method, or file. Do not paste ADR contents into the prompt.
 
-## Implementer completion report
+## Implementer report
+
+Require this compact English response:
 
 ```text
-## Durum
-`COMPLETED` | `PARTIAL` | `BLOCKED`
+Status: COMPLETED | PARTIAL | BLOCKED
+Branch: <branch>
+Commit: <sha or NOT_COMMITTED>
 
-## Teslim
-- Branch: `<branch>`
-- Commit: `<sha or NOT_COMMITTED>`
+Summary:
+- <up to five short bullets>
 
-## Değişiklik özeti
-- <At most five short behavioral bullets>
+Validation:
+- <check> — PASS | FAIL
 
-## Doğrulama
-- `<command or runtime check>` — PASS | FAIL
-
-## Sapma veya risk
-- `None`
-  or
-- <Only a task deviation, incomplete behavior, blocker, or material risk>
+Deviation or risk:
+- None
+or
+- <only material deviation, blocker, or risk>
 ```
 
-Do not include long reasoning, full logs, copied diffs, or a file-by-file narration unless the planner specifically requests it.
+The report is only an index to the work. Do not ask for long reasoning, full logs, copied diffs, or file-by-file narration.
 
-## Planner review protocol
+## Review
 
-The planner does not approve work from the report alone.
+Review the actual repository, not only the report:
 
-1. Confirm the branch and commit.
-2. Compare the feature branch with its base branch.
+1. Confirm branch and commit.
+2. Compare the feature branch with its base.
 3. Inspect changed files and important nearby code.
-4. Check scope, ADR boundaries, secrets, unnecessary dependencies, and speculative abstractions.
-5. Verify the claimed build/runtime checks when material.
-6. Evaluate the original observable completion checks.
-7. Return one decision.
+4. Check scope, relevant ADR boundaries, secrets, unnecessary dependencies, and speculative abstractions.
+5. Verify material build or runtime claims.
+6. Decide:
+   - `ACCEPT`: task is complete and sound.
+   - `FIX`: keep the same branch and send only the required corrections in English.
+   - `REPLAN`: the task or approach needs a clean redefinition.
 
-### ACCEPT
+For `FIX`, never resend the original task. Send only the delta, required validation, and the same compact report format.
 
-The task meets its observable checks and does not introduce a material architectural or scope problem. Update `docs/agent/CURRENT.md` only when project state materially changed, then shape the next task.
-
-### FIX
-
-The existing approach is usable but requires a small, targeted correction. Keep the same branch and send only the required delta.
-
-```text
-Decision: FIX
-
-Keep the existing branch and implementation.
-Make only these corrections:
-1. <specific observable correction>
-2. <specific observable correction>
-
-Do not refactor unrelated code.
-Re-run: <relevant checks>.
-Return the same compact completion report in Turkish.
-```
-
-### REPLAN
-
-The task boundary, architecture direction, or chosen approach is materially wrong. Do not accumulate patches on a poor foundation. Re-read the relevant repository state, redefine the task, and spawn a clean implementation attempt when appropriate.
-
-## Planner handoff state
-
-`docs/agent/CURRENT.md` is the compact continuity record for a new planner or a new conversation. It should contain facts, accepted progress, active work, blockers, and the next likely capability—never hidden reasoning or a conversation transcript.
+Report the review decision and meaningful outcome to the user in Turkish. After `ACCEPT`, update `docs/agent/CURRENT.md` only when the accepted project state materially changed.
