@@ -60,7 +60,13 @@ EXPECTED_CHANNELS = {
     "ai.video-analysis.completed.v1",
     "ai.video-analysis.failed.v1",
 }
-EXPECTED_OPENAPI_PATHS = {"/health/live", "/health/ready", "/internal/v1/capabilities", "/internal/v1/contracts"}
+EXPECTED_AI_INTERNAL_OPENAPI_PATHS = {
+    "/health/live",
+    "/health/ready",
+    "/internal/v1/capabilities",
+    "/internal/v1/contracts",
+}
+REQUIRED_CORE_API_SCHEMAS = {"ProblemDetail", "FieldError"}
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -152,14 +158,26 @@ def event_properties(schema: dict[str, Any]) -> dict[str, Any]:
 
 def validate_contract_documents(failures: list[str]) -> None:
     asyncapi_path = ROOT / "asyncapi/m4trust-ai-v1.yaml"
-    openapi_path = ROOT / "openapi/ai-internal-v1.yaml"
+    ai_openapi_path = ROOT / "openapi/ai-internal-v1.yaml"
+    core_openapi_path = ROOT / "openapi/core-api-v1.yaml"
     try:
         asyncapi = yaml.safe_load(asyncapi_path.read_text(encoding="utf-8"))
-        openapi = yaml.safe_load(openapi_path.read_text(encoding="utf-8"))
+        ai_openapi = yaml.safe_load(ai_openapi_path.read_text(encoding="utf-8"))
+        core_openapi = yaml.safe_load(core_openapi_path.read_text(encoding="utf-8"))
         if set(asyncapi.get("channels", {})) != EXPECTED_CHANNELS:
             failures.append("FAIL AsyncAPI channels: accepted routing-key set changed")
-        if set(openapi.get("paths", {})) != EXPECTED_OPENAPI_PATHS:
-            failures.append("FAIL OpenAPI paths: operational endpoint set changed")
+        if set(ai_openapi.get("paths", {})) != EXPECTED_AI_INTERNAL_OPENAPI_PATHS:
+            failures.append("FAIL AI internal OpenAPI paths: operational endpoint set changed")
+        if not str(core_openapi.get("openapi", "")).startswith("3.1."):
+            failures.append("FAIL Core API OpenAPI version: expected OpenAPI 3.1")
+        if core_openapi.get("paths") != {}:
+            failures.append("FAIL Core API OpenAPI paths: Slice 0 contract must have no endpoints")
+        core_schemas = set(core_openapi.get("components", {}).get("schemas", {}))
+        missing_core_schemas = REQUIRED_CORE_API_SCHEMAS - core_schemas
+        if missing_core_schemas:
+            failures.append(
+                "FAIL Core API OpenAPI schemas: missing " + ", ".join(sorted(missing_core_schemas))
+            )
         for message in asyncapi.get("components", {}).get("messages", {}).values():
             reference = message.get("payload", {}).get("$ref")
             if isinstance(reference, str) and reference.startswith("../"):
@@ -167,7 +185,7 @@ def validate_contract_documents(failures: list[str]) -> None:
                 if not target.exists():
                     failures.append(f"FAIL AsyncAPI reference {reference}: file does not exist")
         if not failures:
-            print("PASS AsyncAPI/OpenAPI YAML, paths, channels, and external references")
+            print("PASS AsyncAPI/OpenAPI YAML, paths, components, channels, and external references")
     except Exception as exc:  # noqa: BLE001 - this is a CLI validator
         failures.append(f"FAIL API contract documents: {exc}")
 
