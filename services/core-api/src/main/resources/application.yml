@@ -1,5 +1,13 @@
 server:
   port: ${SERVER_PORT:${PORT:8080}}
+  servlet:
+    session:
+      cookie:
+        name: ${SESSION_COOKIE_NAME:__Host-M4TRUST_SESSION}
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
+        path: /
 
 spring:
   application:
@@ -13,6 +21,13 @@ spring:
     locations: classpath:db/migration
     clean-disabled: true
     validate-on-migrate: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  session:
+    timeout: ${SESSION_IDLE_TIMEOUT:30m}
+    jdbc:
+      initialize-schema: never
 
 app:
   # Deploy-time environment label (e.g. local, staging, production).
@@ -20,6 +35,9 @@ app:
   environment: ${APP_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}
   # Release identity used as the stable structured-log version field.
   version: ${APP_VERSION:unknown}
+  security:
+    session:
+      absolute-timeout: ${SESSION_ABSOLUTE_TIMEOUT:8h}
 
 logging:
   structured:
