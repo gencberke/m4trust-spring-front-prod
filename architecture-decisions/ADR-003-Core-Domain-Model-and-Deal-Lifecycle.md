@@ -886,6 +886,11 @@ RatificationPackage aşağıdakilerin canonical snapshot’ını içerir:
 - Package schema version
 - Canonical content hash
 
+Not: "Tracking policy" kavramının sahibi, modülü ve veri yapısı henüz tanımlanmamıştır.
+Ratification slice'ına başlamadan önce ayrı bir tasarım dokümanı veya ADR ile
+kesinleştirilmelidir; bu tanım yapılmadan tracking policy alanı package snapshot'ına
+implemente edilmez.
+
 Package oluşturulduktan sonra immutable olur.
 
 Package üzerinde değişiklik yapılmaz.

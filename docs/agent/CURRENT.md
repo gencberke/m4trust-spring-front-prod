@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-14
+Last updated: 2026-07-15
 
 ## Phase
 
@@ -8,10 +8,12 @@ Pre-implementation foundation is complete enough to begin coding through small v
 
 ## Accepted foundations
 
-- ADR-001 through ADR-007 are accepted.
+- ADR-001 through ADR-007 are accepted; documentation drift between ADR-002 examples and the schemas was reconciled (contracts changelog 1.0.2; envelope `transactionId` documented as the Deal id).
 - The Spring–AI contract foundation exists under `contracts/`.
 - AI schemas, canonical fixtures, AsyncAPI/OpenAPI references, validation tooling, and contract CI are present.
-- The system direction is React + Spring Boot modular monolith + PostgreSQL + separate FastAPI AI API/workers + RabbitMQ + S3-compatible object storage.
+- `architecture-decisions/ADR-INDEX.md` is a layered router (cheat sheet, trigger dictionary, task recipes, escalation, glossary); `architecture-decisions/FORBIDDEN.md` consolidates all ADR prohibitions.
+- Slice plans 00–03 (platform foundation, authentication, organization/membership, deal creation/listing) exist under `docs/plan/planning/` and move to `docs/plan/ready/` after human approval.
+- The system direction is Vite/React/TypeScript + Spring Boot modular monolith + PostgreSQL + separate FastAPI AI API/workers + RabbitMQ + S3-compatible object storage.
 
 ## Current repository shape
 
@@ -30,12 +32,7 @@ Not yet present as stable foundations:
 
 ## Active work
 
-Agent workflow foundation:
-
-- root agent guidance,
-- ADR reading router,
-- compact planner–reviewer/implementer protocol,
-- compact continuity state.
+Slice plans 00–03 are drafted and await human review in `docs/plan/planning/`. The agent workflow foundation (root guidance, layered ADR router, FORBIDDEN list, planner–implementer protocol, this state file) is complete.
 
 ## Known blockers
 
@@ -43,7 +40,7 @@ None. Implementation details are expected to evolve during coding as long as acc
 
 ## Next likely capability
 
-The Spring Core API skeleton is in place. The next runnable increment can extend Slice 0 (PostgreSQL/Flyway foundation with DB-backed readiness, correlation ID, public error format, local Docker Compose runtime, or the frontend skeleton) before starting the first business vertical slice (Identity and authentication). The planner should inspect the latest repository state before deciding.
+The Spring Core API skeleton is in place. The next runnable increments complete Slice 0 per `docs/plan/planning/00-platform-foundation.md` (PostgreSQL/Flyway foundation, local Docker Compose runtime, frontend skeleton, `core-api-v1.yaml` skeleton) before the first business slice (`01-authentication`). The planner should inspect the latest repository state and the approved plan in `docs/plan/ready/` before deciding.
 
 ## Update rule
 

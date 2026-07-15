@@ -2,6 +2,8 @@
 
 This directory is the initial shared Spring–AI contract foundation for ADR-001 and ADR-002. It defines versioned JSON Schemas, canonical examples, the asynchronous topology, and operational internal API metadata. Spring is the business authority. FastAPI workers consume the request contracts and return canonical M4Trust results; they do not return model-native or provider-specific payloads.
 
+The envelope field `transactionId` identifies the owning `Deal` aggregate (ADR-003). The v1 name is retained for wire compatibility; renaming it to `dealId` is a v2 candidate, and Spring maps it at the integration boundary. Canonical `producer.service` values follow the ADR-007 service names (`m4trust-core-api`, `m4trust-ai-worker`).
+
 Raw document and video bytes are never carried in RabbitMQ messages. Requests contain a short-lived download reference with a URL and RFC 3339 UTC expiry. Delivery is at-least-once, so `jobId`, `eventId`, `correlationId`, `causationId`, and `idempotencyKey` are explicit and consumers must be idempotent.
 
 ## Ownership and review

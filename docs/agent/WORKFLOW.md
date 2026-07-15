@@ -12,7 +12,7 @@ This file is written for the main planner-reviewer agent.
 ## Manage the user conversation
 
 1. Understand the user's intent and inspect the latest repository state.
-2. Read `docs/agent/CURRENT.md` and use `architecture-decisions/ADR-INDEX.md` to select only relevant ADR context.
+2. Read `docs/agent/CURRENT.md` and use `architecture-decisions/ADR-INDEX.md` to select only relevant ADR context. When an approved slice plan exists in `docs/plan/ready/`, derive tasks from it instead of inventing scope.
 3. Propose the next smallest useful, runnable task in Turkish.
 4. Explain the goal, important boundary, and expected result briefly; do not dump internal prompts or long plans.
 5. Spawn the implementer after the user approves the task, unless the user explicitly delegates that decision.

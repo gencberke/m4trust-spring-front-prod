@@ -367,6 +367,11 @@ Minimum alanlar:
 }
 ```
 
+Not: Bu liste ilk taslaktır; kesinleşen envelope ADR-002 §6'da tanımlıdır. ADR-002'de
+`documentId` yerine genel amaçlı `subjectId` alanı kullanılmış, `jobType` ve `producer`
+alanları eklenmiştir. İki doküman arasında fark olduğunda ADR-002 ve `contracts/` altındaki
+şemalar geçerlidir.
+
 AI job request’lerinde ayrıca input hash bulunacaktır.
 
 AI sonuçlarında en az aşağıdaki teknik metadata bulunacaktır:
@@ -381,6 +386,9 @@ AI sonuçlarında en az aşağıdaki teknik metadata bulunacaktır:
 "warnings": []
 }
 ```
+
+Şema seviyesinde yalnız `pipelineVersion` ve `durationMs` zorunludur; model ve prompt
+alanları nullable/optional'dır (örneğin failure event'lerinde model hiç çalışmamış olabilir).
 
 Spring’in business davranışı modelFamily , modelVersion veya promptVersion değerlerine göre
 değişmeyecektir.

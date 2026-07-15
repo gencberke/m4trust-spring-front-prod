@@ -106,6 +106,11 @@ Progress event ilk sürümde bulunmayacaktır.
 
   ai.job.progressed.v1
 
+Not: Ortak envelope şemasındaki `eventType` alanı closed enum olduğundan, yeni bir event türü
+eklemek envelope şemasında minor version artışı gerektirir ve consumer'ların bilinmeyen event
+türlerini güvenle yok sayabilmesi (loglayıp atlaması) sağlanmalıdır. Bu ekleme "bedava" değildir;
+koordineli bir contract güncellemesidir.
+
 ## 5. RabbitMQ topolojisi
 
 ### 5.1 Exchange’ler
@@ -175,7 +180,7 @@ Bütün mesajlar aşağıdaki ortak yapıyı kullanacaktır:
 "subjectId": "0190f75b-f7dc-7000-8000-000000000006",
 "idempotencyKey": "ai-job:0190f75b-f7dc-7000-8000-000000000003",
 "producer": {
-"service": "core-api",
+"service": "m4trust-core-api",
 "version": "1.0.0"
 },
 "payload": {}
@@ -217,6 +222,16 @@ Bütün mesajlar aşağıdaki ortak yapıyı kullanacaktır:
 Bütün UUID değerleri string biçiminde taşınacaktır.
 
 Bütün zamanlar UTC olacaktır.
+
+Not — `transactionId` ve Deal terminolojisi: ADR-003 ana business aggregate adını `Deal` olarak
+belirlemiştir. Envelope'taki `transactionId` alanı semantik olarak ilgili Deal aggregate kimliğidir
+(`dealId`). Alan adı v1 contract uyumluluğu nedeniyle korunmaktadır; `dealId` olarak yeniden
+adlandırma bir v2 major version adayıdır. Spring tarafında bu eşleme integration boundary'de
+yapılır ve domain koduna `transactionId` adı sızdırılmaz.
+
+Not — `producer.service` kanonik değerleri ADR-007 servis adlarıyla aynıdır:
+`m4trust-core-api`, `m4trust-ai-worker`. Log ve trace korelasyonu için farklı kısaltmalar
+kullanılmaz.
 
 ## 7. Document extraction request contract
 jobType :
@@ -263,6 +278,10 @@ jobType :
 - Süresi dolmuş URL teknik olarak retryable kabul edilebilir.
 - requestedOutputSchemaVersion FastAPI tarafından desteklenmiyorsa job işlenmez.
 - FastAPI request’te belirtilmeyen ek business varsayımlar üretmez.
+- v1 şemasında `documentCategory`, `privacyProfile` ve `retrievalProfile` (video için
+  `analysisProfile`) tek değere kilitlidir (`const`). Yeni bir kategori veya profil eklemek
+  şema minor version artışı ve Spring–FastAPI koordineli rollout gerektirir; bu bilinçli bir
+  v1 sadeleştirmesidir.
 
 ## 8. Document extraction result contract
 Başarılı sonuç payload’ı:
@@ -309,8 +328,7 @@ Başarılı sonuç payload’ı:
 "description": "Invoice date plus 30 days",
 "structuredValue": {
 "type": "DURATION",
-"unit": "DAY",
-"value": 30
+"valueSeconds": 2592000
 },
 "confidence": 0.92,
 "sourceReferences": [
@@ -497,7 +515,9 @@ ai.job.failed.v1 payload’ı:
 "message": "AI provider did not respond before the configured timeout.",
 "retryRecommended": true,
 "details": {
-"stage": "STRUCTURED_EXTRACTION"
+"dependency": "model-provider",
+"reason": "timeout",
+"retryAfterMs": 5000
 }
 },
 "attempt": {
@@ -548,6 +568,8 @@ Invalid input:
 
 ### 12.3 Hata kuralları
 
+- error.details kapalı ve sınırlı bir objedir; yalnız `field`, `reason`, `dependency`,
+  `retryAfterMs` ve `limit` alanlarını kabul eder. Serbest key/value taşınmaz.
 - Error code’lar stable contract parçasıdır.
 - Raw stack trace broker mesajına yazılmaz.
 - Provider hata mesajı doğrudan taşınmaz.
@@ -565,13 +587,15 @@ Warning yapısı:
 "severity": "WARNING",
 "path": "$.result.document",
 "details": {
-"affectedPages": [
-3,
-
-]
+"field": "pageCount",
+"reason": "LOW_QUALITY_PAGES"
 }
 }
 ```
+
+`path` ve `details` alanları şemada zorunludur ancak null olabilir. `details` kapalı ve sınırlı
+bir objedir; yalnız `field`, `reason`, `expected` ve `observed` alanlarını kabul eder. Serbest
+key/value taşınmaz.
 
 Warning severity değerleri:
 
@@ -778,7 +802,7 @@ Cancel event:
 "subjectId": "0190f75b-f7dc-7000-8000-000000000006",
 "idempotencyKey": "cancel:0190f75b-f7dc-7000-8000-000000000003",
 "producer": {
-"service": "core-api",
+"service": "m4trust-core-api",
 "version": "1.0.0"
 },
 "payload": {
@@ -864,18 +888,17 @@ Aşağıdakileri kontrol edebilir:
 
 ### 21.4 Contracts endpoint
 
-Contract metadata ve checksum bilgisi döndürür:
+Contract metadata ve checksum bilgisi döndürür. Response, OpenAPI tanımıyla
+(`ai-internal-v1.yaml`) uyumlu olarak doğrudan bir array'dir:
 
 ```json
-{
-"contracts": [
+[
 {
 "name": "m4trust.document-extraction-request",
 "version": "1.0.0",
 "sha256": "..."
 }
 ]
-}
 ```
 
 Bu endpoint runtime contract discovery için değil, operasyonel doğrulama için kullanılır.
@@ -895,7 +918,8 @@ Aşağıdaki türde endpoint’ler oluşturulmayacaktır:
 AI processing broker üzerinden yürütülür.
 
 ## 22. Contract repository yapısı
-Ortak contract’lar monorepo içinde tutulacaktır:
+Ortak contract’lar monorepo içinde tutulacaktır. Şema dosya adları semantic version taşır ve
+job-specific event şemaları ortak envelope’a `allOf` ile bağlanır:
 
   contracts/
     asyncapi/
@@ -903,18 +927,33 @@ Ortak contract’lar monorepo içinde tutulacaktır:
 
     schemas/
       common/
-        event-envelope.schema.json
-        error.schema.json
-          warning.schema.json
-          source-reference.schema.json
+        event-envelope-1.0.0.schema.json
+        error-1.0.0.schema.json
+        warning-1.0.0.schema.json
+        source-reference-1.0.0.schema.json
+        download-reference-1.0.0.schema.json
+        producer-1.0.0.schema.json
+        attempt-1.0.0.schema.json
+        technical-metadata-1.0.0.schema.json
+        utc-timestamp-1.0.0.schema.json
 
-       document-extraction/
-         request-1.0.0.schema.json
-         result-1.0.0.schema.json
+      document-extraction/
+        request-payload-1.0.0.schema.json
+        result-payload-1.0.0.schema.json
+        requested-event-1.0.0.schema.json
+        completed-event-1.0.0.schema.json
+        failed-event-1.0.0.schema.json
 
-       video-analysis/
-         request-1.0.0.schema.json
-         result-1.0.0.schema.json
+      video-analysis/
+        request-payload-1.0.0.schema.json
+        result-payload-1.0.0.schema.json
+        requested-event-1.0.0.schema.json
+        completed-event-1.0.0.schema.json
+        failed-event-1.0.0.schema.json
+
+      job/
+        cancel-request-payload-1.0.0.schema.json
+        cancel-requested-event-1.0.0.schema.json
 
     examples/
       document-extraction/

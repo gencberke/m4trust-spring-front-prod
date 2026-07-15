@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 - 2026-07-15
+
+- Documented optional `service` and `serviceVersion` fields on the capabilities response (additive, already tolerated by `additionalProperties`).
+- Aligned canonical fixture `producer.service` values with the ADR-007 service names (`m4trust-core-api`).
+- Documented in the README that the envelope `transactionId` identifies the owning Deal aggregate (ADR-003) and that a `dealId` rename is a v2 candidate.
+- No schema shape, event name, or routing key changes; wire compatibility is unchanged.
+
 ## 1.0.1 - 2026-07-13
 
 - Hardened same-major compatibility with explicit extensible transport boundaries and strict semantic objects.

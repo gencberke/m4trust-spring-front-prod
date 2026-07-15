@@ -12,7 +12,8 @@ Use this file only as a routing entrypoint. Detailed architecture belongs in the
 Planner:
 1. Inspect the latest repository state.
 2. Read `docs/agent/WORKFLOW.md` and `docs/agent/CURRENT.md`.
-3. Use `architecture-decisions/ADR-INDEX.md` to load only the ADRs relevant to the current work.
+3. Check `docs/plan/ready/` for the approved slice plan; derive tasks from it when one exists.
+4. Use `architecture-decisions/ADR-INDEX.md` to load only the ADR sections relevant to the current work.
 
 Implementer:
 1. Read this file.
@@ -24,6 +25,7 @@ Implementer:
 ## Common rules
 
 - Accepted ADRs are authoritative when a conflict exists.
+- If a change hits an item in `architecture-decisions/FORBIDDEN.md`, stop and escalate; do not build a workaround.
 - Work on a feature branch unless the user explicitly requests otherwise.
 - Keep tasks focused; avoid unrelated refactors and speculative abstractions.
 - Keep automated tests minimal and validate the behavior relevant to the task.
