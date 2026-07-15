@@ -23,7 +23,7 @@ Bileşen rehberleri:
 - [Frontend](../frontend/README.md)
 - [Contract'lar](../contracts/README.md)
 - [Mock AI Worker yer tutucusu](../tools/mock-ai-worker/README.md)
-- [Onaylanmış Slice 0 planı](plan/ready/00-platform-foundation.md)
+- [Onaylanmış Slice 0 planı](plan/done/00-platform-foundation.md)
 
 ## Windows/PowerShell geliştirme sırası
 

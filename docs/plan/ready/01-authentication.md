@@ -1,6 +1,6 @@
 # Slice 1 — Authentication
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: ADR-004 §24 → Slice 1
 - Öncül: 00-platform-foundation
 - Ardıl: 02-organization-and-membership
