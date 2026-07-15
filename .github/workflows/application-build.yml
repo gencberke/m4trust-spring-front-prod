@@ -48,8 +48,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-      # TODO: Switch to npm ci immediately after package-lock.json is generated and committed.
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
       - name: Generate types, type-check, and build frontend
         run: npm run build

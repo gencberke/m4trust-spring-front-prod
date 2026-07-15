@@ -14,6 +14,10 @@ code. Browser requests remain relative:
 - `/api/*` proxies to the configured Core API during development.
 - `/actuator/*` proxies to the same target during development.
 
+The readiness screen and `/actuator` proxy are local-development verification
+aids only; they do not define the production edge. Production routing exposes
+the same-origin `/api/*` surface and must not make Actuator endpoints public.
+
 ## Commands
 
 ```powershell
