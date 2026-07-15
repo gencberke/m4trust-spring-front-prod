@@ -66,7 +66,60 @@ EXPECTED_AI_INTERNAL_OPENAPI_PATHS = {
     "/internal/v1/capabilities",
     "/internal/v1/contracts",
 }
-REQUIRED_CORE_API_SCHEMAS = {"ProblemDetail", "FieldError"}
+EXPECTED_CORE_API_OPERATIONS = {
+    ("/auth/register", "post"): {
+        "operationId": "register",
+        "responses": {"201", "400", "403", "409", "422"},
+        "security": [{"CsrfToken": []}],
+    },
+    ("/auth/login", "post"): {
+        "operationId": "login",
+        "responses": {"200", "400", "401", "403", "422"},
+        "security": [{"CsrfToken": []}],
+    },
+    ("/auth/logout", "post"): {
+        "operationId": "logout",
+        "responses": {"204", "401", "403"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/auth/me", "get"): {
+        "operationId": "getCurrentUser",
+        "responses": {"200", "401"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/security/csrf", "get"): {
+        "operationId": "getCsrfToken",
+        "responses": {"200"},
+        "security": [],
+    },
+}
+EXPECTED_CORE_REQUEST_SCHEMAS = {
+    ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
+    ("/auth/login", "post"): "#/components/schemas/LoginRequest",
+}
+EXPECTED_CORE_SUCCESS_SCHEMAS = {
+    ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
+    ("/auth/login", "post", "200"): "#/components/schemas/PublicUser",
+    ("/auth/me", "get", "200"): "#/components/schemas/PublicUser",
+    ("/security/csrf", "get", "200"): "#/components/schemas/CsrfToken",
+}
+EXPECTED_CORE_ERROR_RESPONSES = {
+    ("/auth/register", "post", "400"): "MalformedRequest",
+    ("/auth/register", "post", "403"): "CsrfRejected",
+    ("/auth/register", "post", "409"): "EmailAlreadyExists",
+    ("/auth/register", "post", "422"): "ValidationFailed",
+    ("/auth/login", "post", "400"): "MalformedRequest",
+    ("/auth/login", "post", "401"): "InvalidCredentials",
+    ("/auth/login", "post", "403"): "CsrfRejected",
+    ("/auth/login", "post", "422"): "ValidationFailed",
+    ("/auth/logout", "post", "401"): "SessionRequired",
+    ("/auth/logout", "post", "403"): "CsrfRejected",
+    ("/auth/me", "get", "401"): "SessionRequired",
+}
+REQUIRED_CORE_API_SCHEMAS = {
+    "RegisterRequest", "LoginRequest", "PublicUser", "CsrfToken",
+    "ProblemDetail", "FieldError",
+}
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -170,14 +223,68 @@ def validate_contract_documents(failures: list[str]) -> None:
             failures.append("FAIL AI internal OpenAPI paths: operational endpoint set changed")
         if not str(core_openapi.get("openapi", "")).startswith("3.1."):
             failures.append("FAIL Core API OpenAPI version: expected OpenAPI 3.1")
-        if core_openapi.get("paths") != {}:
-            failures.append("FAIL Core API OpenAPI paths: Slice 0 contract must have no endpoints")
-        core_schemas = set(core_openapi.get("components", {}).get("schemas", {}))
+        core_paths = core_openapi.get("paths", {})
+        expected_core_paths = {path for path, _ in EXPECTED_CORE_API_OPERATIONS}
+        if set(core_paths) != expected_core_paths:
+            failures.append("FAIL Core API OpenAPI paths: Slice 1 authentication endpoint set changed")
+        for (path, method), expected in EXPECTED_CORE_API_OPERATIONS.items():
+            operation = core_paths.get(path, {}).get(method)
+            if not isinstance(operation, dict):
+                failures.append(f"FAIL Core API operation: missing {method.upper()} {path}")
+                continue
+            if operation.get("operationId") != expected["operationId"]:
+                failures.append(f"FAIL Core API operationId: {method.upper()} {path}")
+            if set(operation.get("responses", {})) != expected["responses"]:
+                failures.append(f"FAIL Core API responses: {method.upper()} {path}")
+            if operation.get("security") != expected["security"]:
+                failures.append(f"FAIL Core API security: {method.upper()} {path}")
+
+        core_components = core_openapi.get("components", {})
+        core_schemas = set(core_components.get("schemas", {}))
         missing_core_schemas = REQUIRED_CORE_API_SCHEMAS - core_schemas
         if missing_core_schemas:
             failures.append(
                 "FAIL Core API OpenAPI schemas: missing " + ", ".join(sorted(missing_core_schemas))
             )
+        public_user = core_components.get("schemas", {}).get("PublicUser", {})
+        if (set(public_user.get("properties", {})) != {"id", "email", "displayName"}
+                or set(public_user.get("required", [])) != {"id", "email", "displayName"}
+                or public_user.get("additionalProperties") is not False):
+            failures.append("FAIL Core API PublicUser: field set must be exactly id, email, displayName")
+        register_request = core_components.get("schemas", {}).get("RegisterRequest", {})
+        if (set(register_request.get("required", [])) != {"email", "password", "displayName"}
+                or register_request.get("properties", {}).get("password", {}).get("minLength") != 15
+                or register_request.get("properties", {}).get("password", {}).get("maxLength") != 128
+                or register_request.get("properties", {}).get("password", {}).get("writeOnly") is not True):
+            failures.append("FAIL Core API RegisterRequest: required fields or password policy changed")
+
+        security_schemes = core_components.get("securitySchemes", {})
+        session_cookie = security_schemes.get("SessionCookie", {})
+        csrf_token = security_schemes.get("CsrfToken", {})
+        if (set(security_schemes) != {"SessionCookie", "CsrfToken"}
+                or (session_cookie.get("type"), session_cookie.get("in"), session_cookie.get("name"))
+                != ("apiKey", "cookie", "__Host-M4TRUST_SESSION")
+                or (csrf_token.get("type"), csrf_token.get("in"), csrf_token.get("name"))
+                != ("apiKey", "header", "X-CSRF-TOKEN")):
+            failures.append("FAIL Core API security schemes: session cookie or CSRF contract changed")
+
+        for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
+            actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})
+                    .get("content", {}).get("application/json", {}).get("schema", {}).get("$ref"))
+            if actual_ref != expected_ref:
+                failures.append(f"FAIL Core API request schema: {method.upper()} {path}")
+        for (path, method, status), expected_ref in EXPECTED_CORE_SUCCESS_SCHEMAS.items():
+            actual_ref = (core_paths.get(path, {}).get(method, {}).get("responses", {}).get(status, {})
+                    .get("content", {}).get("application/json", {}).get("schema", {}).get("$ref"))
+            if actual_ref != expected_ref:
+                failures.append(f"FAIL Core API success schema: {method.upper()} {path} {status}")
+        if "content" in core_paths.get("/auth/logout", {}).get("post", {}).get("responses", {}).get("204", {}):
+            failures.append("FAIL Core API logout: 204 response must not contain a body")
+        for (path, method, status), response_name in EXPECTED_CORE_ERROR_RESPONSES.items():
+            expected_ref = f"#/components/responses/{response_name}"
+            actual_ref = core_paths.get(path, {}).get(method, {}).get("responses", {}).get(status, {}).get("$ref")
+            if actual_ref != expected_ref:
+                failures.append(f"FAIL Core API error response: {method.upper()} {path} {status}")
         for message in asyncapi.get("components", {}).get("messages", {}).values():
             reference = message.get("payload", {}).get("$ref")
             if isinstance(reference, str) and reference.startswith("../"):

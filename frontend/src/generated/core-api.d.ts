@@ -3,10 +3,141 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+    "/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a user and create an authenticated session
+         * @description Creates the user and automatically establishes a server-side authenticated session. The browser receives the opaque session only as an HttpOnly cookie.
+         */
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Authenticate with email and password
+         * @description Authenticates without revealing whether an account exists and regenerates the server-side session identifier on success.
+         */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End the current authenticated session
+         * @description Invalidates the current server-side session and clears its cookie.
+         */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the authenticated public user
+         * @description Returns only the public user fields for the active server-side session.
+         */
+        get: operations["getCurrentUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/security/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the CSRF token for unsafe requests
+         * @description Returns the token and header name required for unsafe browser requests. The token is not an authentication credential or a session identifier.
+         */
+        get: operations["getCsrfToken"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        RegisterRequest: {
+            /**
+             * Format: email
+             * @description Email is trimmed and normalized case-insensitively for uniqueness.
+             */
+            email: string;
+            /** @description Plaintext password accepted only for this request and never returned or logged. */
+            password: string;
+            /** @description User-visible display name after trimming. */
+            displayName: string;
+        };
+        LoginRequest: {
+            /** Format: email */
+            email: string;
+            /** @description Plaintext credential accepted only for this request and never returned or logged. */
+            password: string;
+        };
+        PublicUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            displayName: string;
+        };
+        CsrfToken: {
+            /** @description CSRF token value; never log or treat as an authentication credential. */
+            token: string;
+            /** @constant */
+            headerName: "X-CSRF-TOKEN";
+        };
         /** @description RFC 9457 Problem Details with stable M4Trust error identity and correlation context. */
         ProblemDetail: {
             /**
@@ -45,11 +176,195 @@ export interface components {
             message: string;
         };
     };
-    responses: never;
+    responses: {
+        /** @description Request JSON cannot be parsed; Problem Details code is MALFORMED_REQUEST. */
+        MalformedRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description Request fields are invalid; Problem Details code is VALIDATION_FAILED. */
+        ValidationFailed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description Authentication failed without revealing whether the account exists; Problem Details code is AUTH_INVALID_CREDENTIALS. */
+        InvalidCredentials: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description Normalized email already exists; Problem Details code is AUTH_EMAIL_ALREADY_EXISTS. */
+        EmailAlreadyExists: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description No active authenticated session exists; Problem Details code is AUTH_SESSION_EXPIRED for missing, invalid, or expired sessions. */
+        SessionRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed; Problem Details code is CSRF_TOKEN_INVALID. */
+        CsrfRejected: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+    };
     parameters: never;
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description Server-managed HttpOnly session cookie. Browsers handle this header; client JavaScript must not read or log the opaque value. */
+        SessionCookie: string;
+        /** @description Prevents storage of security bootstrap responses. */
+        NoStore: "no-store";
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description User registered and authenticated session created. */
+            201: {
+                headers: {
+                    /** @description Same-origin current-user projection path. */
+                    Location?: "/api/v1/auth/me";
+                    "Set-Cookie": components["headers"]["SessionCookie"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUser"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            403: components["responses"]["CsrfRejected"];
+            409: components["responses"]["EmailAlreadyExists"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Authentication succeeded and the public current user is returned. */
+            200: {
+                headers: {
+                    "Set-Cookie": components["headers"]["SessionCookie"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUser"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["InvalidCredentials"];
+            403: components["responses"]["CsrfRejected"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session invalidated successfully; no response body is returned. */
+            204: {
+                headers: {
+                    "Set-Cookie": components["headers"]["SessionCookie"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["CsrfRejected"];
+        };
+    };
+    getCurrentUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active authenticated public user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUser"];
+                };
+            };
+            401: components["responses"]["SessionRequired"];
+        };
+    };
+    getCsrfToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current CSRF token and required request header name. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["NoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfToken"];
+                };
+            };
+        };
+    };
+}

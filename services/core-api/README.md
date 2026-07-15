@@ -7,9 +7,11 @@ foundations.
 
 ## Operational endpoints
 
-The reviewed `contracts/openapi/core-api-v1.yaml` contract intentionally has an
-empty `paths` object. The endpoints below are Spring Boot Actuator operational
-surfaces and are not part of that public contract:
+The production application still has no public endpoint. The reviewed
+`contracts/openapi/core-api-v1.yaml` now defines the planned Slice 1
+authentication surface before implementation; those operations are not yet
+available at runtime. The endpoints below are Spring Boot Actuator operational
+surfaces and are not part of the public contract:
 
 - `GET /actuator/health` — overall health.
 - `GET /actuator/health/liveness` — liveness probe.

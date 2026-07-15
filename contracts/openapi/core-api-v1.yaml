@@ -6,9 +6,278 @@ info:
 servers:
   - url: /api/v1
     description: Same-origin public API v1
-paths: {}
+tags:
+  - name: Authentication
+    description: Browser session registration, login, logout, and current-user operations.
+  - name: Security
+    description: Browser security bootstrap operations.
+paths:
+  /auth/register:
+    post:
+      operationId: register
+      tags: [Authentication]
+      summary: Register a user and create an authenticated session
+      description: >
+        Creates the user and automatically establishes a server-side authenticated
+        session. The browser receives the opaque session only as an HttpOnly cookie.
+      security:
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered and authenticated session created.
+          headers:
+            Location:
+              description: Same-origin current-user projection path.
+              schema:
+                type: string
+                format: uri-reference
+                const: /api/v1/auth/me
+            Set-Cookie:
+              $ref: '#/components/headers/SessionCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicUser'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '403':
+          $ref: '#/components/responses/CsrfRejected'
+        '409':
+          $ref: '#/components/responses/EmailAlreadyExists'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /auth/login:
+    post:
+      operationId: login
+      tags: [Authentication]
+      summary: Authenticate with email and password
+      description: >
+        Authenticates without revealing whether an account exists and regenerates
+        the server-side session identifier on success.
+      security:
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication succeeded and the public current user is returned.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SessionCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicUser'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '403':
+          $ref: '#/components/responses/CsrfRejected'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [Authentication]
+      summary: End the current authenticated session
+      description: Invalidates the current server-side session and clears its cookie.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      responses:
+        '204':
+          description: Session invalidated successfully; no response body is returned.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SessionCookie'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/CsrfRejected'
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [Authentication]
+      summary: Get the authenticated public user
+      description: Returns only the public user fields for the active server-side session.
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Active authenticated public user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicUser'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+  /security/csrf:
+    get:
+      operationId: getCsrfToken
+      tags: [Security]
+      summary: Get the CSRF token for unsafe requests
+      description: >
+        Returns the token and header name required for unsafe browser requests.
+        The token is not an authentication credential or a session identifier.
+      security: []
+      responses:
+        '200':
+          description: Current CSRF token and required request header name.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfToken'
 components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-M4TRUST_SESSION
+      description: >
+        Opaque server-side session cookie. Production uses this HttpOnly, Secure,
+        SameSite=Lax, Path=/ cookie without a Domain attribute. Local development
+        uses the documented non-Secure M4TRUST_SESSION variant. Client JavaScript
+        must never read, copy, or log the cookie.
+    CsrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+      description: >
+        CSRF token returned by GET /security/csrf and required on unsafe requests.
+        It is not an authentication credential or a session identifier.
+  headers:
+    SessionCookie:
+      description: >
+        Server-managed HttpOnly session cookie. Browsers handle this header; client
+        JavaScript must not read or log the opaque value.
+      schema:
+        type: string
+    NoStore:
+      description: Prevents storage of security bootstrap responses.
+      schema:
+        type: string
+        const: no-store
+  responses:
+    MalformedRequest:
+      description: Request JSON cannot be parsed; Problem Details code is MALFORMED_REQUEST.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    ValidationFailed:
+      description: Request fields are invalid; Problem Details code is VALIDATION_FAILED.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InvalidCredentials:
+      description: >
+        Authentication failed without revealing whether the account exists;
+        Problem Details code is AUTH_INVALID_CREDENTIALS.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    EmailAlreadyExists:
+      description: Normalized email already exists; Problem Details code is AUTH_EMAIL_ALREADY_EXISTS.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    SessionRequired:
+      description: >
+        No active authenticated session exists; Problem Details code is
+        AUTH_SESSION_EXPIRED for missing, invalid, or expired sessions.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    CsrfRejected:
+      description: CSRF validation failed; Problem Details code is CSRF_TOKEN_INVALID.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
   schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 320
+          description: Email is trimmed and normalized case-insensitively for uniqueness.
+        password:
+          type: string
+          minLength: 15
+          maxLength: 128
+          writeOnly: true
+          description: Plaintext password accepted only for this request and never returned or logged.
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: User-visible display name after trimming.
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 320
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+          description: Plaintext credential accepted only for this request and never returned or logged.
+    PublicUser:
+      type: object
+      additionalProperties: false
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+    CsrfToken:
+      type: object
+      additionalProperties: false
+      required: [token, headerName]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: CSRF token value; never log or treat as an authentication credential.
+        headerName:
+          type: string
+          const: X-CSRF-TOKEN
     ProblemDetail:
       type: object
       additionalProperties: false
