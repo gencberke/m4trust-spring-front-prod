@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 - 2026-07-15
+
+- Added the initial OpenAPI 3.1 design contract for the public Core API with same-origin server metadata and no Slice 0 endpoints.
+- Added reusable, closed `ProblemDetail` and `FieldError` component schemas for the public error contract.
+- Extended lightweight validation to lock the empty public path set and required error components while retaining AI-internal path checks.
+- Distinguished public Core API ownership from the AI-internal operational API in contract documentation.
+
 ## 1.0.2 - 2026-07-15
 
 - Documented optional `service` and `serviceVersion` fields on the capabilities response (additive, already tolerated by `additionalProperties`).

@@ -1,6 +1,6 @@
 # Slice 0 — Platform Foundation
 
-- Durum: planning
+- Durum: done
 - Slice sırası: ADR-004 §24 → Slice 0
 - Öncül: yok (ilk slice)
 - Ardıl: 01-authentication

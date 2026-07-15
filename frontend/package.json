@@ -1,0 +1,30 @@
+{
+  "name": "m4trust-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "npm run generate:api && tsc --noEmit",
+    "build": "npm run generate:api && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "generate:api": "openapi-typescript ../contracts/openapi/core-api-v1.yaml -o src/generated/core-api.d.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.3"
+  }
+}

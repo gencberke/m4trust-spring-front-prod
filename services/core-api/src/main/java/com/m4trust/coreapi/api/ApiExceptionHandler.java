@@ -5,25 +5,32 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.context.request.WebRequest;
 
 /**
  * Minimal RFC 9457 Problem Details error handling, per ADR-006 sections 13,
- * 16, 17 and 18. Intentionally covers only the two error cases exercised by
- * this skeleton (field validation and malformed JSON); it is not a general
- * error framework.
+ * 16, 17, 18 and 38. Covers field validation, malformed JSON, and a safe
+ * fallback for unexpected failures while leaving framework HTTP errors to
+ * Spring's normal resolvers.
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleValidation(
@@ -60,6 +67,34 @@ public class ApiExceptionHandler {
         problem.setProperty("correlationId", correlationId(httpRequest));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ProblemDetail> handleUnexpected(
+            Exception ex, WebRequest request,
+            HttpServletRequest httpRequest) throws Exception {
+        if (ex instanceof ErrorResponse
+                || AnnotatedElementUtils.findMergedAnnotation(
+                        ex.getClass(), ResponseStatus.class) != null) {
+            throw ex;
+        }
+
+        String path = requestPath(request);
+        String correlationId = correlationId(httpRequest);
+        LOGGER.error("Unexpected request failure [correlationId={}, path={}]",
+                correlationId, path, ex);
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR, "The request could not be completed.");
+        problem.setType(URI.create("https://problems.m4trust.internal/internal-error"));
+        problem.setTitle("Unexpected error");
+        problem.setInstance(URI.create(path));
+        problem.setProperty("code", "INTERNAL_ERROR");
+        problem.setProperty("correlationId", correlationId);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(problem);
     }

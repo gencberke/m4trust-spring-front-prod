@@ -4,14 +4,36 @@ server:
 spring:
   application:
     name: m4trust-core-api
+  datasource:
+    url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    clean-disabled: true
+    validate-on-migrate: true
 
 app:
   # Deploy-time environment label (e.g. local, staging, production).
   # Falls back to the active Spring profile, then to "local".
   environment: ${APP_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}
-  # Set by CI/CD at build or deploy time. Falls back to "unknown" so the
-  # /api/v1/meta endpoint never fails locally.
-  git-commit-sha: ${GIT_COMMIT_SHA:unknown}
+  # Release identity used as the stable structured-log version field.
+  version: ${APP_VERSION:unknown}
+
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      # Logstash already supplies level and message. MDC fields are included
+      # automatically; CorrelationIdFilter supplies the correlationId key.
+      rename:
+        "@timestamp": timestamp
+      add:
+        service: ${spring.application.name}
+        environment: ${app.environment}
+        version: ${app.version}
 
 management:
   endpoints:
@@ -20,10 +42,17 @@ management:
         include: health,info
   endpoint:
     health:
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
       probes:
         enabled: true
       show-details: when-authorized
   health:
+    db:
+      enabled: true
     livenessstate:
       enabled: true
     readinessstate:
