@@ -18,9 +18,6 @@ app:
   # Deploy-time environment label (e.g. local, staging, production).
   # Falls back to the active Spring profile, then to "local".
   environment: ${APP_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}
-  # Set by CI/CD at build or deploy time. Falls back to "unknown" so the
-  # /api/v1/meta endpoint never fails locally.
-  git-commit-sha: ${GIT_COMMIT_SHA:unknown}
   # Release identity used as the stable structured-log version field.
   version: ${APP_VERSION:unknown}
 
