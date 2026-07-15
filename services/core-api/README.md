@@ -1,20 +1,23 @@
 # M4Trust Core API
 
-Spring Boot platform foundation skeleton for the M4Trust Core API. This is a
-Slice 0 increment: it proves the public API, health, and validation
-conventions are wired correctly. It contains no business capability.
+Spring Boot platform foundation skeleton for the M4Trust Core API. Slice 0 has
+no public application endpoint or business capability; it establishes the
+operational health, Problem Details, correlation, migration, and module
+foundations.
 
-## Endpoints
+## Operational endpoints
 
-- `GET /api/v1/meta` — release identity (`buildVersion`, `gitCommitSha`,
-  `environment`, `buildTime`).
-- `POST /api/v1/echo` — validation demo. Body: `{"message": "..."}`.
-  Invalid input (blank `message`) returns `422` as
-  `application/problem+json` with an `errors` array. Malformed JSON returns
-  `400`.
+The reviewed `contracts/openapi/core-api-v1.yaml` contract intentionally has an
+empty `paths` object. The endpoints below are Spring Boot Actuator operational
+surfaces and are not part of that public contract:
+
 - `GET /actuator/health` — overall health.
 - `GET /actuator/health/liveness` — liveness probe.
 - `GET /actuator/health/readiness` — readiness probe.
+- `GET /actuator/info` — build information when available.
+
+Problem Details validation and correlation behavior are exercised through a
+test-only MVC probe that is never packaged as a production endpoint.
 
 ## Run locally
 
@@ -60,10 +63,8 @@ Non-secret configuration is environment-variable driven:
 
 - `SERVER_PORT` / `PORT` — runtime HTTP port (default `8080` locally).
 - `SPRING_PROFILES_ACTIVE` — active Spring profile.
-- `APP_ENVIRONMENT` — environment label reported by `/api/v1/meta`; falls
+- `APP_ENVIRONMENT` — environment label included in structured logs; falls
   back to the active Spring profile, then `"local"`.
-- `GIT_COMMIT_SHA` — commit SHA reported by `/api/v1/meta`, intended to be
-  set by CI/CD at build or deploy time; falls back to `"unknown"`.
 - `APP_VERSION` — release version included in structured logs; defaults to
   `"unknown"` when no runtime release identity is supplied.
 - `DATABASE_HOST` — PostgreSQL host.
