@@ -23,11 +23,11 @@ const STATUS_CONTENT: Record<ReadinessViewState, StatusContent> = {
 
 export function ReadinessStatus() {
   const readiness = useReadiness();
-  const state: ReadinessViewState = readiness.isFetching
+  const state: ReadinessViewState = readiness.isPending || readiness.isFetching
     ? "loading"
-    : readiness.isError
-      ? "error"
-      : "healthy";
+    : readiness.isSuccess
+      ? "healthy"
+      : "error";
   const content = STATUS_CONTENT[state];
 
   return (
