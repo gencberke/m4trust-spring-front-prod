@@ -82,8 +82,9 @@ Reset yalnız yerel geliştirme içindir; production ortamında destructive rese
 
 ## Mevcut doğrulama sınırı
 
-Bu belge yalnız yerleşimi ve planlanan çalışma sırasını kaydeder. Paket kurulumu,
-üretilmiş frontend tipleri, Spring/frontend build'leri, CI kapsamının
-genişletilmesi ve tam runtime/tarayıcı kabul akışı bir sonraki execution
-aşamasıdır. Bunlar tamamlanıp doğrulanmadan Slice 0 tamamlanmış veya kabul
-edilmiş sayılmaz.
+Bu belge yalnız yerleşimi ve planlanan çalışma sırasını kaydeder. Spring/frontend
+build CI workflow'u yapılandırılmıştır; ancak henüz çalıştırılmamış ve yeşil
+olduğu doğrulanmamıştır. Paket kurulumu, üretilmiş frontend tipleri,
+Spring/frontend build'leri ve tam runtime/tarayıcı kabul akışı bir sonraki
+execution aşamasıdır. Bunlar tamamlanıp doğrulanmadan Slice 0 tamamlanmış veya
+kabul edilmiş sayılmaz.

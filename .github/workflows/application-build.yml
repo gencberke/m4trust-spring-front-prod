@@ -1,0 +1,55 @@
+name: Application Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/core-api/**'
+      - 'frontend/**'
+      - 'contracts/openapi/core-api-v1.yaml'
+      - '.github/workflows/application-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/core-api/**'
+      - 'frontend/**'
+      - 'contracts/openapi/core-api-v1.yaml'
+      - '.github/workflows/application-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  core-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/core-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build and test Core API
+        run: ./mvnw --batch-mode --no-transfer-progress verify
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      # TODO: Switch to npm ci immediately after package-lock.json is generated and committed.
+      - name: Install frontend dependencies
+        run: npm install
+      - name: Generate types, type-check, and build frontend
+        run: npm run build
