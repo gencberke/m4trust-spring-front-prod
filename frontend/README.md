@@ -1,8 +1,19 @@
 # M4Trust frontend
 
-Vite + React + TypeScript foundation for the same-origin M4Trust web client.
-The root route renders the real Core API readiness state with React Router and
-TanStack Query; there is no mock or fallback response.
+Vite + React + TypeScript client for the same-origin M4Trust Core API. The
+authentication flow uses the real Spring session endpoints through React Router
+and TanStack Query; there is no mock user or browser-stored authentication state.
+
+## Authentication routes
+
+- `/register` creates an account and enters the protected application.
+- `/login` restores access to an existing account.
+- `/app` is protected by the verified `GET /api/v1/auth/me` result.
+- `/` redirects from the verified current-user result.
+
+Every register, login, and logout request first fetches a fresh CSRF token from
+`GET /api/v1/security/csrf`. Requests use same-origin credentials; client code
+never reads the HttpOnly session cookie or stores credentials in web storage.
 
 ## Local configuration
 
@@ -14,14 +25,15 @@ code. Browser requests remain relative:
 - `/api/*` proxies to the configured Core API during development.
 - `/actuator/*` proxies to the same target during development.
 
-The readiness screen and `/actuator` proxy are local-development verification
-aids only; they do not define the production edge. Production routing exposes
-the same-origin `/api/*` surface and must not make Actuator endpoints public.
+The readiness screen is available only at `/status` in a Vite development build,
+and the `/actuator` proxy exists only on the development server. Production
+routing neither renders this screen nor depends on Actuator. The production edge
+must expose the same-origin `/api/*` surface without public Actuator endpoints.
 
 ## Commands
 
 ```powershell
-npm install
+npm ci
 npm run generate:api
 npm run dev
 npm run typecheck
