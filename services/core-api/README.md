@@ -64,6 +64,8 @@ Non-secret configuration is environment-variable driven:
   back to the active Spring profile, then `"local"`.
 - `GIT_COMMIT_SHA` — commit SHA reported by `/api/v1/meta`, intended to be
   set by CI/CD at build or deploy time; falls back to `"unknown"`.
+- `APP_VERSION` — release version included in structured logs; defaults to
+  `"unknown"` when no runtime release identity is supplied.
 - `DATABASE_HOST` — PostgreSQL host.
 - `DATABASE_PORT` — PostgreSQL port.
 - `DATABASE_NAME` — PostgreSQL database name.
@@ -83,6 +85,31 @@ against PostgreSQL during local startup. Migration files use
 `V<version>__<description>.sql` names, for example `V1__baseline.sql`.
 Migrations are forward-only: once applied, a file is immutable and every
 change is a new versioned migration. Seed data never belongs in this chain.
+
+## Module boundaries
+
+The modular-monolith foundation currently contains only two module skeletons:
+
+- `sharedkernel` — genuinely shared, stable primitives; never generic helpers
+  or module-specific business rules.
+- `integration` — external adapters and reliable-delivery plumbing; never
+  business decisions.
+
+Future business modules are created only by the slice that needs them. A
+small ArchUnit test slices production code by top-level package and rejects
+cyclic dependencies. ArchUnit is test-only and framework-neutral, which keeps
+the check maintainable without forbidding ADR-approved collaboration through
+ports, stable IDs, domain events, or read-only projections. More specific
+rules require an accepted module contract rather than being guessed upfront.
+
+## Structured logging
+
+Spring Boot's built-in Logstash formatter writes JSON to the console. Each
+record has `timestamp`, `level`, `service`, `environment`, `version`, and
+`message`. During request handling, `CorrelationIdFilter` puts
+`correlationId` in the MDC and Boot adds it to the same JSON record. No file
+appender is configured. Credentials, tokens, raw business content, and
+unnecessary personal data must never be logged.
 
 ## Readiness note
 
