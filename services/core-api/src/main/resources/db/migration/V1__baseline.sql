@@ -1,0 +1,2 @@
+-- Establishes the forward-only Flyway migration chain.
+-- Intentionally contains no business schema or seed data.
