@@ -13,5 +13,14 @@ record CreateDealRequest(
 
     CreateDealRequest {
         title = title == null ? null : title.trim();
+        description = normalizeDescription(description);
+    }
+
+    // Blank descriptions collapse to null so "no description" has one wire
+    // and storage representation (ADR-006 §32).
+    static String normalizeDescription(String description) {
+        return description == null || description.isBlank()
+                ? null
+                : description;
     }
 }

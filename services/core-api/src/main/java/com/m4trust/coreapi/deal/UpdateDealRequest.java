@@ -35,7 +35,7 @@ final class UpdateDealRequest {
     }
 
     public void setDescription(String description) {
-        this.description = description;
+        this.description = CreateDealRequest.normalizeDescription(description);
         descriptionPresent = true;
     }
 
