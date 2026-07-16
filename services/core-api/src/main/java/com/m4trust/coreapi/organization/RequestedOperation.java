@@ -2,5 +2,10 @@ package com.m4trust.coreapi.organization;
 
 public enum RequestedOperation {
     LEGAL_ENTITY_DETAIL_READ,
-    LEGAL_ENTITY_MEMBERS_READ
+    LEGAL_ENTITY_MEMBERS_READ,
+    DEAL_CREATE,
+    DEAL_LIST_READ,
+    DEAL_DETAIL_READ,
+    DEAL_UPDATE,
+    DEAL_CANCEL
 }

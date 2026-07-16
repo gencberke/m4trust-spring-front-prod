@@ -27,6 +27,10 @@ enum DealStatus {
         return this == DRAFT || this == ACTIVE;
     }
 
+    boolean allowsCancellation() {
+        return this == DRAFT || this == ACTIVE;
+    }
+
     void requireBasicFieldEditingAllowed() {
         if (!allowsBasicFieldEditing()) {
             throw new DealStateConflictException(
