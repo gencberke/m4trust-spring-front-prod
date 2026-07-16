@@ -511,8 +511,8 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
-        /** @description Deal does not exist or is hidden because the active legal entity is not a participant; both cases use the same Problem Details code DEAL_NOT_FOUND. */
-        DealNotFoundOrHidden: {
+        /** @description The syntactically valid active legal entity does not exist or is hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), or the Deal does not exist or is hidden because the authorized active legal entity is not a participant (DEAL_NOT_FOUND). Both cases preserve non-disclosure at their respective authorization boundary. */
+        DealOrLegalEntityNotFoundOrHidden: {
             headers: {
                 [name: string]: unknown;
             };
@@ -520,7 +520,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
-        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), or the required active legal entity context is missing, malformed, or not authorized (LEGAL_ENTITY_ACCESS_DENIED). */
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), or the required active legal entity context header is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED). A syntactically valid but nonexistent or hidden legal entity returns 404 LEGAL_ENTITY_NOT_FOUND instead. */
         DealScopedMutationForbidden: {
             headers: {
                 [name: string]: unknown;
@@ -842,6 +842,7 @@ export interface operations {
             400: components["responses"]["MalformedRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["LegalEntityNotFoundOrHidden"];
             422: components["responses"]["ValidationFailed"];
         };
     };
@@ -875,6 +876,7 @@ export interface operations {
             400: components["responses"]["MalformedRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["DealScopedMutationForbidden"];
+            404: components["responses"]["LegalEntityNotFoundOrHidden"];
             422: components["responses"]["ValidationFailed"];
         };
     };
@@ -905,7 +907,7 @@ export interface operations {
             400: components["responses"]["MalformedRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["LegalEntityAccessDenied"];
-            404: components["responses"]["DealNotFoundOrHidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
         };
     };
     updateDeal: {
@@ -939,7 +941,7 @@ export interface operations {
             400: components["responses"]["MalformedRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["DealScopedMutationForbidden"];
-            404: components["responses"]["DealNotFoundOrHidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
             409: components["responses"]["DealUpdateConflict"];
             422: components["responses"]["ValidationFailed"];
         };
@@ -971,7 +973,7 @@ export interface operations {
             400: components["responses"]["MalformedRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["DealScopedMutationForbidden"];
-            404: components["responses"]["DealNotFoundOrHidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
             409: components["responses"]["DealStateConflict"];
         };
     };

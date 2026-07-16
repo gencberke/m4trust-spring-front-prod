@@ -310,6 +310,8 @@ paths:
           $ref: '#/components/responses/SessionRequired'
         '403':
           $ref: '#/components/responses/DealScopedMutationForbidden'
+        '404':
+          $ref: '#/components/responses/LegalEntityNotFoundOrHidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
     get:
@@ -341,6 +343,8 @@ paths:
           $ref: '#/components/responses/SessionRequired'
         '403':
           $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/LegalEntityNotFoundOrHidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
   /deals/{dealId}:
@@ -371,7 +375,7 @@ paths:
         '403':
           $ref: '#/components/responses/LegalEntityAccessDenied'
         '404':
-          $ref: '#/components/responses/DealNotFoundOrHidden'
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
     patch:
       operationId: updateDeal
       tags: [Deals]
@@ -407,7 +411,7 @@ paths:
         '403':
           $ref: '#/components/responses/DealScopedMutationForbidden'
         '404':
-          $ref: '#/components/responses/DealNotFoundOrHidden'
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
         '409':
           $ref: '#/components/responses/DealUpdateConflict'
         '422':
@@ -442,7 +446,7 @@ paths:
         '403':
           $ref: '#/components/responses/DealScopedMutationForbidden'
         '404':
-          $ref: '#/components/responses/DealNotFoundOrHidden'
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
         '409':
           $ref: '#/components/responses/DealStateConflict'
 components:
@@ -605,10 +609,13 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
-    DealNotFoundOrHidden:
+    DealOrLegalEntityNotFoundOrHidden:
       description: >
-        Deal does not exist or is hidden because the active legal entity is not a
-        participant; both cases use the same Problem Details code DEAL_NOT_FOUND.
+        The syntactically valid active legal entity does not exist or is hidden
+        because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), or
+        the Deal does not exist or is hidden because the authorized active legal
+        entity is not a participant (DEAL_NOT_FOUND). Both cases preserve
+        non-disclosure at their respective authorization boundary.
       content:
         application/problem+json:
           schema:
@@ -616,8 +623,9 @@ components:
     DealScopedMutationForbidden:
       description: >
         CSRF validation failed (CSRF_TOKEN_INVALID), or the required active legal
-        entity context is missing, malformed, or not authorized
-        (LEGAL_ENTITY_ACCESS_DENIED).
+        entity context header is missing or malformed
+        (LEGAL_ENTITY_ACCESS_DENIED). A syntactically valid but nonexistent or hidden
+        legal entity returns 404 LEGAL_ENTITY_NOT_FOUND instead.
       content:
         application/problem+json:
           schema:

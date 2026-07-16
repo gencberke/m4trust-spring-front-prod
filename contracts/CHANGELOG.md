@@ -4,7 +4,7 @@
 
 - Added the Slice 3 legal-entity-scoped Deal create, paginated list, detail, editable-basic-field update, and cancel public API design.
 - Frozen the complete `DealStatus` and `DealLifecycleProjection` enum sets, separate summary/detail projections, required-nullable detail descriptions, optimistic `version`, and UTC timestamps.
-- Added explicit `expectedVersion` update conflicts (`DEAL_STALE_VERSION`), invalid-state conflicts (`DEAL_STATE_CONFLICT`), participant-hidden 404 behavior (`DEAL_NOT_FOUND`), and backend-derived `canUpdate`/`canCancel` availability.
+- Added explicit `expectedVersion` update conflicts (`DEAL_STALE_VERSION`), invalid-state conflicts (`DEAL_STATE_CONFLICT`), backend-derived `canUpdate`/`canCancel` availability, and the centralized context-resolution split between hidden legal entities (`LEGAL_ENTITY_NOT_FOUND`) and hidden/non-participant Deals (`DEAL_NOT_FOUND`).
 - Fixed Deal pagination defaults and bounds, the optional status filter, and the single allowlisted `createdAt`/`title` sort contract.
 - Added the Slice 2 legal entity creation, membership listing, detail, and member-list public API design.
 - Kept register/login responses on the existing `PublicUser` wire format and added the required non-null `memberships` bootstrap array only to `/auth/me`.
