@@ -1,6 +1,9 @@
 # Slice 1 — Authentication
 
-- Durum: ready
+- Durum: done
+- Tamamlanma tarihi: 2026-07-16
+- Kabul kanıtı: §7 tarayıcı akışı ve hassas log spot check'i kullanıcı tarafından gerçek frontend → Spring → PostgreSQL zincirinde başarıyla tamamlandı.
+- Kapsam sapması: Login throttling planlandığı gibi kod kapsamı dışında bırakıldı ve GitHub issue #7 ile public launch öncesi takip altına alındı; başka sapma yok.
 - Slice sırası: ADR-004 §24 → Slice 1
 - Öncül: 00-platform-foundation
 - Ardıl: 02-organization-and-membership
@@ -102,16 +105,17 @@ Controller'ın service çağırdığını doğrulayan yüzeysel testler yazılma
 ## 10. Ertelenen güvenlik işleri (deferred — sessizce unutulmayacak)
 
 - **Login throttling (ADR-005 §16):** 5 başarısız/15 dk politikası bu slice'ta implemente edilmez. Public production launch ÖNCESİNDE ayrı bir güvenlik işi olarak ele alınmalıdır. Bu maddeyi taşıyan bir takip kaydı (issue/plan) açılmadan slice done sayılmaz — kod değil, kayıt zorunlu.
+- Takip kaydı: [GitHub issue #7 — Security: implement login throttling before public launch](https://github.com/gencberke/m4trust-spring-front-prod/issues/7)
 - Email verification + password reset: ADR-005 §14 gereği public launch öncesi kesinleştirilecek.
 
 ## 11. Done tanımı
 
-- [ ] OpenAPI yüzeyi implementasyondan önce `core-api-v1.yaml`'a eklendi
-- [ ] Register/login/logout/me/csrf gerçek Spring + PostgreSQL üzerinde çalışıyor
-- [ ] Session cookie ayarları profil bazlı doğru (local/prod ayrımı)
-- [ ] Session fixation regeneration doğrulandı; absolute timeout server-side uygulanıyor
-- [ ] Frontend gerçek API'ye bağlı; loading/error/empty durumları var
-- [ ] §7'deki tarayıcı akışı baştan sona manuel çalıştırıldı
-- [ ] §8'deki invariant testleri geçiyor
-- [ ] Login throttling için takip kaydı açıldı (§10)
-- [ ] Parola/session ID/CSRF token hiçbir logda görünmüyor (spot check)
+- [x] OpenAPI yüzeyi implementasyondan önce `core-api-v1.yaml`'a eklendi
+- [x] Register/login/logout/me/csrf gerçek Spring + PostgreSQL üzerinde çalışıyor
+- [x] Session cookie ayarları profil bazlı doğru (local/prod ayrımı)
+- [x] Session fixation regeneration doğrulandı; absolute timeout server-side uygulanıyor
+- [x] Frontend gerçek API'ye bağlı; loading/error/empty durumları var
+- [x] §7'deki tarayıcı akışı baştan sona manuel çalıştırıldı
+- [x] §8'deki invariant testleri geçiyor
+- [x] Login throttling için takip kaydı açıldı (§10)
+- [x] Parola/session ID/CSRF token hiçbir logda görünmüyor (spot check)

@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router";
 
 import { App } from "./App";
 import { queryClient } from "./app/queryClient";
+import { AuthSessionExpiryHandler } from "./features/auth/AuthSessionExpiryHandler";
 import "./styles.css";
 
 const rootElement = document.getElementById("root");
@@ -17,6 +18,7 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <AuthSessionExpiryHandler />
         <App />
       </BrowserRouter>
     </QueryClientProvider>

@@ -14,6 +14,9 @@ and TanStack Query; there is no mock user or browser-stored authentication state
 Every register, login, and logout request first fetches a fresh CSRF token from
 `GET /api/v1/security/csrf`. Requests use same-origin credentials; client code
 never reads the HttpOnly session cookie or stores credentials in web storage.
+The shared API error path publishes `AUTH_SESSION_EXPIRED` once, and the router
+boundary clears the verified current-user query before redirecting to `/login`.
+Invalid-credential responses do not trigger this global session-expiry path.
 
 ## Local configuration
 

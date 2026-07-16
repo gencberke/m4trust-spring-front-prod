@@ -9,6 +9,8 @@ type CsrfToken = components["schemas"]["CsrfToken"];
 
 const API_ROOT = "/api/v1";
 
+export const AUTH_SESSION_EXPIRED_EVENT = "m4trust:auth-session-expired";
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -44,6 +46,14 @@ async function readProblem(response: Response): Promise<ProblemDetail | undefine
   return isProblemDetail(payload) ? payload : undefined;
 }
 
+async function apiError(response: Response): Promise<ApiError> {
+  const error = new ApiError(response.status, await readProblem(response));
+  if (error.code === "AUTH_SESSION_EXPIRED") {
+    window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
+  }
+  return error;
+}
+
 async function requestJson<T>(
   path: string,
   init: RequestInit = {},
@@ -58,7 +68,7 @@ async function requestJson<T>(
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status, await readProblem(response));
+    throw await apiError(response);
   }
 
   return (await response.json()) as T;
@@ -94,7 +104,7 @@ async function postWithFreshCsrf(
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status, await readProblem(response));
+    throw await apiError(response);
   }
 
   if (response.status === 204) {
