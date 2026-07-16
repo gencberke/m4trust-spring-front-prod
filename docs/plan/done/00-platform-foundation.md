@@ -116,11 +116,11 @@ CI: mevcut contract validation workflow'una ek olarak Spring build ve frontend p
 
 ## 10. Done tanımı
 
-- [ ] Monorepo dizin yapısı kuruldu ve `docs/` altında kısaca belgelendi
-- [ ] Tek komutla local altyapı ayağa kalkıyor; reset/seed scriptleri çalışıyor
-- [ ] Spring başlıyor, Flyway çalışıyor, health endpoint'leri doğru davranıyor
-- [ ] Problem Details + correlation ID altyapısı çalışıyor ve testli
-- [ ] Frontend gerçek Spring'e proxy üzerinden bağlanıyor; health durumu ve hata durumu ekranda
-- [ ] `core-api-v1.yaml` iskeleti commit'lendi; tip üretim boru hattı çalışıyor
-- [ ] CI: contract validation + Spring build + frontend build yeşil
-- [ ] Kabul akışı (§7) temiz ortamda baştan sona çalıştırıldı
+- [x] Monorepo dizin yapısı kuruldu ve `docs/` altında kısaca belgelendi
+- [x] Tek komutla local altyapı ayağa kalkıyor; reset/seed scriptleri çalışıyor
+- [x] Spring başlıyor, Flyway çalışıyor, health endpoint'leri doğru davranıyor
+- [x] Problem Details + correlation ID altyapısı çalışıyor ve testli
+- [x] Frontend gerçek Spring'e proxy üzerinden bağlanıyor; health durumu ve hata durumu ekranda
+- [x] `core-api-v1.yaml` iskeleti commit'lendi; tip üretim boru hattı çalışıyor
+- [x] CI: contract validation + Spring build + frontend build yeşil
+- [x] Kabul akışı (§7) temiz ortamda baştan sona çalıştırıldı
