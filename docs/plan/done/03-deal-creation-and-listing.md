@@ -1,10 +1,10 @@
 # Slice 3 — Deal Creation ve Listing
 
-- Durum: implementasyon tamamlandı; insan tarayıcı kabulü bekleniyor
+- Durum: tamamlandı ve kabul edildi
+- Tamamlanma tarihi: 2026-07-16
 - Implementasyon dalı: `codex/slice3-deal-creation-listing`
-- Kabul durumu: Otomatik doğrulamalar başarılıdır; §7 gerçek tarayıcı akışı
-  kullanıcı tarafından tamamlanıp raporlanana kadar plan `ready/` altında kalır
-  ve Slice 3 kabul edilmiş sayılmaz.
+- Kabul durumu: Otomatik doğrulamalar ve §7 gerçek tarayıcı akışı başarıyla
+  tamamlandı; plan `done/` altındadır.
 - Slice sırası: ADR-004 §24 → Slice 3
 - Öncül: 02-organization-and-membership
 - Ardıl: Slice 4 (Deal Parties and Participants — bu planda kapsam dışı)
@@ -124,12 +124,22 @@ ADR-004 §7 listesinden bu slice'a düşenler:
 - [x] OpenAPI yüzeyi implementasyondan önce tasarlandı; liste DTO'su ADR-006 §9 formatında
 - [x] Deal create/list/detail/update/cancel gerçek Spring + PostgreSQL üzerinde çalışıyor
 - [x] State machine geçiş kuralları domain'de tek yerde; yasak geçişler 409 üretiyor
-- [ ] Optimistic locking uçtan uca çalışıyor; stale version akışı TARAYICIDA test edildi
-- [ ] Participant tabanlı erişim izolasyonu iki-browser testiyle doğrulandı
+- [x] Optimistic locking uçtan uca çalışıyor; stale version akışı TARAYICIDA test edildi
+- [x] Participant tabanlı erişim izolasyonu iki-browser testiyle doğrulandı
 - [x] Audit kayıtları aynı transaction'da; rollback testi geçiyor
 - [x] Lifecycle projection merkezi algoritma iskeleti kuruldu; frontend lifecycle hesaplamıyor
 - [x] §8 invariant testleri geçiyor; aşırı test yazılmadı
 - [x] Frontend loading/error/empty durumları ve action-availability tabanlı buton görünürlüğü çalışıyor
 
-Kalan iki checkbox insan gözlemi gerektirir. Kullanıcı §7 akışının sonucunu
-başarılı/başarısız olarak bildirmeden plan `done/` altına taşınmaz.
+### İnsan kabul kanıtı
+
+Kullanıcı 2026-07-16 tarihinde §7 akışının tamamını gerçek tarayıcıda başarıyla
+tamamladığını bildirdi. Create/list/detail, title update ve artan version,
+iki-tab stale-version recovery, cancel ve geçersiz mutation conflict'leri,
+iki-profile participant non-disclosure, status filtreleri, boş sonuç,
+sıralama ve pagination kontrollerinde sorun görülmedi.
+
+Aynı browser profilinde kullanıcı değiştirildiğinde legal entity seçiminin
+kaybolmuş görünmesi ayrı ve Slice 3 kabulünü engellemeyen takip işi olarak
+[GitHub issue #10](https://github.com/gencberke/m4trust-spring-front-prod/issues/10)
+altında kayıtlıdır.
