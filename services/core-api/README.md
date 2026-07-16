@@ -1,25 +1,31 @@
 # M4Trust Core API
 
-Spring Boot platform foundation skeleton for the M4Trust Core API. Slice 0 has
-no public application endpoint or business capability; it establishes the
-operational health, Problem Details, correlation, migration, and module
-foundations.
+Spring Boot modular-monolith Core API for M4Trust. Slice 1 adds PostgreSQL-backed
+identity accounts and server-side session authentication to the Slice 0
+operational, Problem Details, correlation, migration, and module foundations.
 
 ## Operational endpoints
 
-The production application still has no public endpoint. The reviewed
-`contracts/openapi/core-api-v1.yaml` now defines the planned Slice 1
-authentication surface before implementation; those operations are not yet
-available at runtime. The endpoints below are Spring Boot Actuator operational
-surfaces and are not part of the public contract:
+The reviewed `contracts/openapi/core-api-v1.yaml` defines these runtime
+authentication operations:
+
+- `GET /api/v1/auth/csrf` — issue/read the CSRF token and header name.
+- `POST /api/v1/auth/register` — create an account and authenticated session.
+- `POST /api/v1/auth/login` — authenticate and rotate the session identifier.
+- `POST /api/v1/auth/logout` — invalidate the server-side session.
+- `GET /api/v1/auth/me` — return the current account's safe public fields.
+
+The three state-changing authentication operations require the CSRF token from
+`GET /api/v1/auth/csrf` in the response's declared header. Actuator endpoints
+remain operational surfaces outside the public contract:
 
 - `GET /actuator/health` — overall health.
 - `GET /actuator/health/liveness` — liveness probe.
 - `GET /actuator/health/readiness` — readiness probe.
 - `GET /actuator/info` — build information when available.
 
-Problem Details validation and correlation behavior are exercised through a
-test-only MVC probe that is never packaged as a production endpoint.
+Errors use RFC 9457 Problem Details with stable machine-readable codes and a
+request correlation ID.
 
 ## Run locally
 
@@ -75,6 +81,14 @@ Non-secret configuration is environment-variable driven:
 - `DATABASE_USER` — PostgreSQL user.
 - `DATABASE_PASSWORD` — PostgreSQL password; supply it through environment
   secret management and never commit it.
+- `SESSION_IDLE_TIMEOUT` — inactivity timeout for server-side sessions
+  (default `30m`).
+- `SESSION_ABSOLUTE_TIMEOUT` — maximum session lifetime regardless of activity
+  (default `8h`).
+- `SESSION_COOKIE_NAME` — session cookie name (default
+  `__Host-M4TRUST_SESSION`; local profile default `M4TRUST_SESSION`).
+- `SESSION_COOKIE_SECURE` — require HTTPS transport for the session cookie
+  (default `true`; local profile default `false`).
 
 All five database variables are required outside the explicit `local` Spring
 profile, so a deployment with missing database configuration fails during
@@ -84,26 +98,43 @@ startup. The `local` profile defaults to `127.0.0.1:5432`, database and user
 ## Database migrations
 
 Flyway runs the versioned migrations in `src/main/resources/db/migration`
-against PostgreSQL during local startup. Migration files use
-`V<version>__<description>.sql` names, for example `V1__baseline.sql`.
-Migrations are forward-only: once applied, a file is immutable and every
-change is a new versioned migration. Seed data never belongs in this chain.
+against PostgreSQL during startup. `V2__identity_user.sql` owns the normalized,
+uniquely indexed identity account table and `V3__spring_session_jdbc.sql` owns
+the Spring Session JDBC tables and indexes. Spring Session runtime schema
+initialization is disabled so Flyway remains the only schema owner. Migration
+files use `V<version>__<description>.sql` names, are forward-only, and are never
+edited after application. Seed data never belongs in this chain.
 
 ## Module boundaries
 
-The modular-monolith foundation currently contains only two module skeletons:
+The modular monolith currently contains these explicit boundaries:
+
+- `identity` — account registration, credential verification, and the safe
+  public user projection; password hashes remain internal to this module.
 
 - `sharedkernel` — genuinely shared, stable primitives; never generic helpers
   or module-specific business rules.
 - `integration` — external adapters and reliable-delivery plumbing; never
   business decisions.
 
-Future business modules are created only by the slice that needs them. A
-small ArchUnit test slices production code by top-level package and rejects
-cyclic dependencies. ArchUnit is test-only and framework-neutral, which keeps
-the check maintainable without forbidding ADR-approved collaboration through
-ports, stable IDs, domain events, or read-only projections. More specific
-rules require an accepted module contract rather than being guessed upfront.
+Future business modules are created only by the slice that needs them. A small
+ArchUnit test slices production code by top-level package and rejects cyclic
+dependencies. ArchUnit is test-only and framework-neutral, which keeps the
+check maintainable without forbidding ADR-approved collaboration through
+ports, stable IDs, domain events, or read-only projections. More specific rules
+require an accepted module contract rather than being guessed upfront.
+
+## Authentication validation
+
+Authentication integration tests run against a real disposable PostgreSQL
+instance through Testcontainers. They prove email normalization and uniqueness,
+Argon2id password storage, safe response projection, session rotation and
+invalidation, CSRF enforcement, cookie policy, generic credential failures,
+and the absolute session deadline. Docker must be available to run `mvn verify`.
+
+Login throttling is explicitly deferred from Slice 1 and remains a required
+follow-up before public launch; generic failures prevent account enumeration but
+do not replace rate limiting.
 
 ## Structured logging
 

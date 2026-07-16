@@ -100,7 +100,13 @@ public class ApiExceptionHandler {
     }
 
     private FieldValidationError toFieldValidationError(FieldError fieldError) {
-        String code = fieldError.getCode() != null ? fieldError.getCode() : "INVALID";
+        String code = switch (fieldError.getCode() == null
+                ? "" : fieldError.getCode()) {
+            case "NotBlank", "NotNull" -> "REQUIRED";
+            case "Email", "Pattern" -> "INVALID_FORMAT";
+            case "Size" -> "INVALID_LENGTH";
+            default -> "INVALID";
+        };
         String message = fieldError.getDefaultMessage() != null
                 ? fieldError.getDefaultMessage()
                 : "Field is invalid.";

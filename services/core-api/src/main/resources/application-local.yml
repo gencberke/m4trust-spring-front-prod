@@ -3,3 +3,10 @@ spring:
     url: jdbc:postgresql://${DATABASE_HOST:127.0.0.1}:${DATABASE_PORT:5432}/${DATABASE_NAME:m4trust_local}
     username: ${DATABASE_USER:m4trust_local}
     password: ${DATABASE_PASSWORD:m4trust_local_password}
+
+server:
+  servlet:
+    session:
+      cookie:
+        name: ${SESSION_COOKIE_NAME:M4TRUST_SESSION}
+        secure: ${SESSION_COOKIE_SECURE:false}
