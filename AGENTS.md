@@ -13,7 +13,8 @@ Planner:
 1. Inspect the latest repository state.
 2. Read `docs/agent/WORKFLOW.md` and `docs/agent/CURRENT.md`.
 3. Check `docs/plan/ready/` for the approved slice plan; derive tasks from it when one exists.
-4. Use `architecture-decisions/ADR-INDEX.md` to load only the ADR sections relevant to the current work.
+4. Use `architecture-decisions/ADR-INDEX.md` to load only the ADR sections relevant to the current work. 
+5. When using subagents don't make pooling continuously wait for response before wasting any tokens
 
 Implementer:
 1. Read this file.
@@ -21,6 +22,7 @@ Implementer:
 3. Expand to nearby code or additional documentation only when required to implement or validate the task correctly.
 4. Read the nearest module-level `AGENTS.md` when one exists.
 5. Inspect the current branch and nearby code before changing anything.
+6. Use frontend-skill if available for new frontend implementations
 
 ## Common rules
 
