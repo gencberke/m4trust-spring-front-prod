@@ -32,6 +32,7 @@ import {
 } from "../features/deals/dealQueries";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
 import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
+import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
   dateStyle: "long",
@@ -154,6 +155,10 @@ export function DealDetailPage() {
     selectedMembership,
     selectionNotice,
     clearInvalidSelection,
+    membershipsPending,
+    membershipsError,
+    membershipsFetching,
+    refetchMemberships,
   } = useOutletContext<AuthenticatedWorkspaceContext>();
   const queryClient = useQueryClient();
   const [updateNotice, setUpdateNotice] = useState<string>();
@@ -208,6 +213,25 @@ export function DealDetailPage() {
       }
     },
   });
+
+  if (membershipsPending) {
+    return (
+      <DealMembershipBootstrapState
+        isFetching={membershipsFetching}
+        onRetry={refetchMemberships}
+      />
+    );
+  }
+
+  if (membershipsError) {
+    return (
+      <DealMembershipBootstrapState
+        error={membershipsError}
+        isFetching={membershipsFetching}
+        onRetry={refetchMemberships}
+      />
+    );
+  }
 
   if (!selectedLegalEntityId || !selectedMembership) {
     return (

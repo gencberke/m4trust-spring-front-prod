@@ -25,6 +25,7 @@ import {
 } from "../features/deals/dealQueries";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
 import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
+import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS: DealStatus[] = [
@@ -152,6 +153,10 @@ export function DealListPage() {
     selectedMembership,
     selectionNotice,
     clearInvalidSelection,
+    membershipsPending,
+    membershipsError,
+    membershipsFetching,
+    refetchMemberships,
   } = useOutletContext<AuthenticatedWorkspaceContext>();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<DealStatus | undefined>();
@@ -201,6 +206,25 @@ export function DealListPage() {
     setSort(value);
     setPage(0);
     setCreationNotice(undefined);
+  }
+
+  if (membershipsPending) {
+    return (
+      <DealMembershipBootstrapState
+        isFetching={membershipsFetching}
+        onRetry={refetchMemberships}
+      />
+    );
+  }
+
+  if (membershipsError) {
+    return (
+      <DealMembershipBootstrapState
+        error={membershipsError}
+        isFetching={membershipsFetching}
+        onRetry={refetchMemberships}
+      />
+    );
   }
 
   if (!selectedLegalEntityId || !selectedMembership) {
