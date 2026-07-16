@@ -11,6 +11,8 @@ tags:
     description: Browser session registration, login, logout, and current-user operations.
   - name: Security
     description: Browser security bootstrap operations.
+  - name: Legal Entities
+    description: Legal entity creation, membership bootstrap, and organization-scoped reads.
 paths:
   /auth/register:
     post:
@@ -109,17 +111,20 @@ paths:
     get:
       operationId: getCurrentUser
       tags: [Authentication]
-      summary: Get the authenticated public user
-      description: Returns only the public user fields for the active server-side session.
+      summary: Get the authenticated current-user bootstrap projection
+      description: >
+        Returns public user fields plus the user's legal entity memberships. The
+        memberships array is always present and may be empty. Active legal entity
+        selection is client state and is not stored as authoritative server session state.
       security:
         - SessionCookie: []
       responses:
         '200':
-          description: Active authenticated public user.
+          description: Active authenticated user and membership bootstrap projection.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PublicUser'
+                $ref: '#/components/schemas/CurrentUser'
         '401':
           $ref: '#/components/responses/SessionRequired'
   /security/csrf:
@@ -141,6 +146,128 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CsrfToken'
+  /legal-entities:
+    post:
+      operationId: createLegalEntity
+      tags: [Legal Entities]
+      summary: Create a legal entity
+      description: >
+        Creates a legal entity in the authenticated user's tenant and creates an
+        ADMIN membership for the authenticated user in the same operation. This
+        bootstrap operation does not use X-M4Trust-Legal-Entity-Id because no active
+        legal entity is required before creation.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLegalEntityRequest'
+      responses:
+        '201':
+          description: Legal entity created and creator assigned the ADMIN role.
+          headers:
+            Location:
+              description: Same-origin path of the created legal entity.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalEntity'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/CsrfRejected'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    get:
+      operationId: listLegalEntityMemberships
+      tags: [Legal Entities]
+      summary: List the authenticated user's legal entity memberships
+      description: >
+        Returns only legal entities in which the authenticated user has a membership.
+        This intentionally small bootstrap list is unpaginated but uses a stable public
+        list DTO. It does not require X-M4Trust-Legal-Entity-Id.
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: The user's legal entity memberships; items is empty when none exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalEntityMembershipList'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+  /legal-entities/{legalEntityId}:
+    get:
+      operationId: getLegalEntity
+      tags: [Legal Entities]
+      summary: Get a legal entity detail
+      description: >
+        Organization-scoped read. The legal entity context header must identify the
+        same legal entity as the path and is verified against the authenticated user's
+        memberships. A missing, malformed, or mismatched context header returns 403.
+        A nonexistent legal entity and an entity hidden from a non-member both return
+        the same 404 response so existence is not disclosed.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/LegalEntityId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Legal entity visible to the authenticated member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalEntity'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/LegalEntityNotFoundOrHidden'
+  /legal-entities/{legalEntityId}/members:
+    get:
+      operationId: listLegalEntityMembers
+      tags: [Legal Entities]
+      summary: List members of a legal entity
+      description: >
+        Organization-scoped read. The legal entity context header must identify the
+        same legal entity as the path and is verified against the authenticated user's
+        memberships. A missing, malformed, or mismatched context header returns 403.
+        A nonexistent legal entity and an entity hidden from a non-member both return
+        the same 404 response so existence and membership data are not disclosed.
+        The Slice 2 member list is unpaginated and uses a stable public list DTO.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/LegalEntityId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Legal entity members; items is never null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalEntityMemberList'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/LegalEntityNotFoundOrHidden'
 components:
   securitySchemes:
     SessionCookie:
@@ -171,6 +298,27 @@ components:
       schema:
         type: string
         const: no-store
+  parameters:
+    LegalEntityId:
+      name: legalEntityId
+      in: path
+      required: true
+      description: Public UUID of the requested legal entity.
+      schema:
+        type: string
+        format: uuid
+    LegalEntityContext:
+      name: X-M4Trust-Legal-Entity-Id
+      in: header
+      required: true
+      description: >
+        Client-selected legal entity context. This header is neither an authentication
+        credential nor proof of authorization. It must be a UUID equal to the
+        legalEntityId path parameter and is verified server-side against membership.
+        Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED.
+      schema:
+        type: string
+        format: uuid
   responses:
     MalformedRequest:
       description: Request JSON cannot be parsed; Problem Details code is MALFORMED_REQUEST.
@@ -208,6 +356,22 @@ components:
             $ref: '#/components/schemas/ProblemDetail'
     CsrfRejected:
       description: CSRF validation failed; Problem Details code is CSRF_TOKEN_INVALID.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    LegalEntityAccessDenied:
+      description: >
+        Required legal entity context is missing, malformed, or does not match the
+        requested organization scope; Problem Details code is LEGAL_ENTITY_ACCESS_DENIED.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    LegalEntityNotFoundOrHidden:
+      description: >
+        Legal entity does not exist or is hidden because the authenticated user is not
+        a member; both cases use the same Problem Details code LEGAL_ENTITY_NOT_FOUND.
       content:
         application/problem+json:
           schema:
@@ -254,6 +418,8 @@ components:
     PublicUser:
       type: object
       additionalProperties: false
+      description: >
+        Authentication success projection retained for register and login wire compatibility.
       required: [id, email, displayName]
       properties:
         id:
@@ -266,6 +432,122 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      description: >
+        Current-user bootstrap projection. It does not contain an authoritative selected
+        legal entity; clients select one locally and send it on scoped requests.
+      required: [id, email, displayName, memberships]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        memberships:
+          type: array
+          description: Legal entity memberships available to the current user; never null.
+          items:
+            $ref: '#/components/schemas/LegalEntityMembership'
+    CreateLegalEntityRequest:
+      type: object
+      additionalProperties: false
+      required: [legalName, registrationNumber]
+      properties:
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Required legal name; must be non-blank after trimming and is stored trimmed.
+        registrationNumber:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: >
+            Required organization registration identifier; must be non-blank after
+            trimming and is stored trimmed. No global uniqueness, country, or tax
+            semantics are implied by this field.
+    LegalEntity:
+      type: object
+      additionalProperties: false
+      required: [id, legalName, registrationNumber]
+      properties:
+        id:
+          type: string
+          format: uuid
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        registrationNumber:
+          type: string
+          minLength: 1
+          maxLength: 100
+    LegalEntityRole:
+      type: string
+      description: Closed minimum Slice 2 membership role set.
+      enum: [ADMIN, MEMBER]
+    LegalEntityMembership:
+      type: object
+      additionalProperties: false
+      required: [legalEntityId, legalName, registrationNumber, role]
+      properties:
+        legalEntityId:
+          type: string
+          format: uuid
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        registrationNumber:
+          type: string
+          minLength: 1
+          maxLength: 100
+        role:
+          $ref: '#/components/schemas/LegalEntityRole'
+    LegalEntityMembershipList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Memberships visible to the authenticated user; never null.
+          items:
+            $ref: '#/components/schemas/LegalEntityMembership'
+    LegalEntityMember:
+      type: object
+      additionalProperties: false
+      required: [userId, email, displayName, role]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        role:
+          $ref: '#/components/schemas/LegalEntityRole'
+    LegalEntityMemberList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Legal entity members; never null.
+          items:
+            $ref: '#/components/schemas/LegalEntityMember'
     CsrfToken:
       type: object
       additionalProperties: false

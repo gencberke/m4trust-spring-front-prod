@@ -72,8 +72,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get the authenticated public user
-         * @description Returns only the public user fields for the active server-side session.
+         * Get the authenticated current-user bootstrap projection
+         * @description Returns public user fields plus the user's legal entity memberships. The memberships array is always present and may be empty. Active legal entity selection is client state and is not stored as authoritative server session state.
          */
         get: operations["getCurrentUser"];
         put?: never;
@@ -104,6 +104,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/legal-entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the authenticated user's legal entity memberships
+         * @description Returns only legal entities in which the authenticated user has a membership. This intentionally small bootstrap list is unpaginated but uses a stable public list DTO. It does not require X-M4Trust-Legal-Entity-Id.
+         */
+        get: operations["listLegalEntityMemberships"];
+        put?: never;
+        /**
+         * Create a legal entity
+         * @description Creates a legal entity in the authenticated user's tenant and creates an ADMIN membership for the authenticated user in the same operation. This bootstrap operation does not use X-M4Trust-Legal-Entity-Id because no active legal entity is required before creation.
+         */
+        post: operations["createLegalEntity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/legal-entities/{legalEntityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a legal entity detail
+         * @description Organization-scoped read. The legal entity context header must identify the same legal entity as the path and is verified against the authenticated user's memberships. A missing, malformed, or mismatched context header returns 403. A nonexistent legal entity and an entity hidden from a non-member both return the same 404 response so existence is not disclosed.
+         */
+        get: operations["getLegalEntity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/legal-entities/{legalEntityId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List members of a legal entity
+         * @description Organization-scoped read. The legal entity context header must identify the same legal entity as the path and is verified against the authenticated user's memberships. A missing, malformed, or mismatched context header returns 403. A nonexistent legal entity and an entity hidden from a non-member both return the same 404 response so existence and membership data are not disclosed. The Slice 2 member list is unpaginated and uses a stable public list DTO.
+         */
+        get: operations["listLegalEntityMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -125,12 +189,63 @@ export interface components {
             /** @description Plaintext credential accepted only for this request and never returned or logged. */
             password: string;
         };
+        /** @description Authentication success projection retained for register and login wire compatibility. */
         PublicUser: {
             /** Format: uuid */
             id: string;
             /** Format: email */
             email: string;
             displayName: string;
+        };
+        /** @description Current-user bootstrap projection. It does not contain an authoritative selected legal entity; clients select one locally and send it on scoped requests. */
+        CurrentUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            displayName: string;
+            /** @description Legal entity memberships available to the current user; never null. */
+            memberships: components["schemas"]["LegalEntityMembership"][];
+        };
+        CreateLegalEntityRequest: {
+            /** @description Required legal name; must be non-blank after trimming and is stored trimmed. */
+            legalName: string;
+            /** @description Required organization registration identifier; must be non-blank after trimming and is stored trimmed. No global uniqueness, country, or tax semantics are implied by this field. */
+            registrationNumber: string;
+        };
+        LegalEntity: {
+            /** Format: uuid */
+            id: string;
+            legalName: string;
+            registrationNumber: string;
+        };
+        /**
+         * @description Closed minimum Slice 2 membership role set.
+         * @enum {string}
+         */
+        LegalEntityRole: "ADMIN" | "MEMBER";
+        LegalEntityMembership: {
+            /** Format: uuid */
+            legalEntityId: string;
+            legalName: string;
+            registrationNumber: string;
+            role: components["schemas"]["LegalEntityRole"];
+        };
+        LegalEntityMembershipList: {
+            /** @description Memberships visible to the authenticated user; never null. */
+            items: components["schemas"]["LegalEntityMembership"][];
+        };
+        LegalEntityMember: {
+            /** Format: uuid */
+            userId: string;
+            /** Format: email */
+            email: string;
+            displayName: string;
+            role: components["schemas"]["LegalEntityRole"];
+        };
+        LegalEntityMemberList: {
+            /** @description Legal entity members; never null. */
+            items: components["schemas"]["LegalEntityMember"][];
         };
         CsrfToken: {
             /** @description CSRF token value; never log or treat as an authentication credential. */
@@ -231,8 +346,31 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description Required legal entity context is missing, malformed, or does not match the requested organization scope; Problem Details code is LEGAL_ENTITY_ACCESS_DENIED. */
+        LegalEntityAccessDenied: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description Legal entity does not exist or is hidden because the authenticated user is not a member; both cases use the same Problem Details code LEGAL_ENTITY_NOT_FOUND. */
+        LegalEntityNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
     };
-    parameters: never;
+    parameters: {
+        /** @description Public UUID of the requested legal entity. */
+        LegalEntityId: string;
+        /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It must be a UUID equal to the legalEntityId path parameter and is verified server-side against membership. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+        LegalEntityContext: string;
+    };
     requestBodies: never;
     headers: {
         /** @description Server-managed HttpOnly session cookie. Browsers handle this header; client JavaScript must not read or log the opaque value. */
@@ -334,13 +472,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Active authenticated public user. */
+            /** @description Active authenticated user and membership bootstrap projection. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PublicUser"];
+                    "application/json": components["schemas"]["CurrentUser"];
                 };
             };
             401: components["responses"]["SessionRequired"];
@@ -365,6 +503,117 @@ export interface operations {
                     "application/json": components["schemas"]["CsrfToken"];
                 };
             };
+        };
+    };
+    listLegalEntityMemberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The user's legal entity memberships; items is empty when none exist. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalEntityMembershipList"];
+                };
+            };
+            401: components["responses"]["SessionRequired"];
+        };
+    };
+    createLegalEntity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLegalEntityRequest"];
+            };
+        };
+        responses: {
+            /** @description Legal entity created and creator assigned the ADMIN role. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the created legal entity. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalEntity"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["CsrfRejected"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getLegalEntity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It must be a UUID equal to the legalEntityId path parameter and is verified server-side against membership. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested legal entity. */
+                legalEntityId: components["parameters"]["LegalEntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Legal entity visible to the authenticated member. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalEntity"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["LegalEntityNotFoundOrHidden"];
+        };
+    };
+    listLegalEntityMembers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It must be a UUID equal to the legalEntityId path parameter and is verified server-side against membership. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested legal entity. */
+                legalEntityId: components["parameters"]["LegalEntityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Legal entity members; items is never null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalEntityMemberList"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["LegalEntityNotFoundOrHidden"];
         };
     };
 }

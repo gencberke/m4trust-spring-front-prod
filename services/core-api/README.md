@@ -1,23 +1,35 @@
 # M4Trust Core API
 
-Spring Boot modular-monolith Core API for M4Trust. Slice 1 adds PostgreSQL-backed
-identity accounts and server-side session authentication to the Slice 0
-operational, Problem Details, correlation, migration, and module foundations.
+Spring Boot modular-monolith Core API for M4Trust. The implemented foundation
+includes PostgreSQL-backed identity and server-side session authentication,
+tenant provisioning, legal entities, memberships, append-only business audit,
+and reusable application-layer legal-entity authorization.
 
 ## Operational endpoints
 
 The reviewed `contracts/openapi/core-api-v1.yaml` defines these runtime
-authentication operations:
+authentication and organization operations:
 
 - `GET /api/v1/security/csrf` — issue/read the CSRF token and header name.
 - `POST /api/v1/auth/register` — create an account and authenticated session.
 - `POST /api/v1/auth/login` — authenticate and rotate the session identifier.
 - `POST /api/v1/auth/logout` — invalidate the server-side session.
-- `GET /api/v1/auth/me` — return the current account's safe public fields.
+- `GET /api/v1/auth/me` — return safe public account fields and a required,
+  non-null legal-entity membership array.
+- `POST /api/v1/legal-entities` — create a legal entity and atomically assign
+  the creator an `ADMIN` membership.
+- `GET /api/v1/legal-entities` — list only the authenticated user's
+  memberships.
+- `GET /api/v1/legal-entities/{legalEntityId}` — return member-visible detail.
+- `GET /api/v1/legal-entities/{legalEntityId}/members` — return the
+  member-visible identity projection and role list.
 
-The three state-changing authentication operations require the CSRF token from
-`GET /api/v1/security/csrf` in the response's declared header. Actuator endpoints
-remain operational surfaces outside the public contract:
+All state-changing operations require the CSRF token from
+`GET /api/v1/security/csrf` in the response's declared header. The two scoped
+legal-entity reads also require `X-M4Trust-Legal-Entity-Id` to match the path;
+the application layer verifies membership on every request and stores no active
+selection in the session. Actuator endpoints remain operational surfaces
+outside the public contract:
 
 - `GET /actuator/health` — overall health.
 - `GET /actuator/health/liveness` — liveness probe.
@@ -99,8 +111,10 @@ startup. The `local` profile defaults to `127.0.0.1:5432`, database and user
 
 Flyway runs the versioned migrations in `src/main/resources/db/migration`
 against PostgreSQL during startup. `V2__identity_user.sql` owns the normalized,
-uniquely indexed identity account table and `V3__spring_session_jdbc.sql` owns
-the Spring Session JDBC tables and indexes. Spring Session runtime schema
+uniquely indexed identity account table, `V3__spring_session_jdbc.sql` owns the
+Spring Session JDBC tables and indexes, and
+`V4__organization_and_audit_foundation.sql` owns tenants, legal entities,
+memberships, and append-only audit storage. Spring Session runtime schema
 initialization is disabled so Flyway remains the only schema owner. Migration
 files use `V<version>__<description>.sql` names, are forward-only, and are never
 edited after application. Seed data never belongs in this chain.
@@ -111,6 +125,10 @@ The modular monolith currently contains these explicit boundaries:
 
 - `identity` — account registration, credential verification, and the safe
   public user projection; password hashes remain internal to this module.
+- `organization` — tenants, legal entities, memberships, and the reusable
+  `OperationContext` authorization boundary.
+- `audit` — append-only business audit persistence through a narrow port that
+  joins the caller's business transaction.
 
 - `sharedkernel` — genuinely shared, stable primitives; never generic helpers
   or module-specific business rules.
@@ -135,6 +153,14 @@ and the absolute session deadline. Docker must be available to run `mvn verify`.
 Login throttling is explicitly deferred from Slice 1 and remains a required
 follow-up before public launch; generic failures prevent account enumeration but
 do not replace rate limiting.
+
+## Organization validation
+
+Organization integration tests also use real PostgreSQL. They prove creator
+`ADMIN` assignment, the two audit appends and rollback atomicity, stable list
+and detail projections, non-null `/auth/me` memberships, centralized header
+validation, and 404 non-disclosure for nonexistent or hidden legal entities.
+The browser end-to-end flow remains a separate acceptance step.
 
 ## Structured logging
 

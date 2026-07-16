@@ -1,9 +1,9 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import type { PublicUser } from "./authApi";
+import type { CurrentUser } from "./authApi";
 
 interface AuthQueryStateProps {
-  query: UseQueryResult<PublicUser | null>;
+  query: UseQueryResult<CurrentUser | null>;
 }
 
 export function AuthQueryState({ query }: AuthQueryStateProps) {

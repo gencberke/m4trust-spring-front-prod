@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 
 import { login, type LoginRequest } from "../features/auth/authApi";
 import { getAuthErrorMessage, getFieldErrors } from "../features/auth/authErrors";
-import { CURRENT_USER_QUERY_KEY } from "../features/auth/useCurrentUser";
+import { refreshCurrentUserAfterAuthentication } from "../features/auth/useCurrentUser";
 
 function getRouteNotice(state: unknown): string | undefined {
   if (typeof state !== "object" || state === null || !("reason" in state)) {
@@ -27,9 +27,11 @@ export function LoginPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: login,
-    onSuccess: (user) => {
-      queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
+    mutationFn: async (request: LoginRequest) => {
+      await login(request);
+      return refreshCurrentUserAfterAuthentication(queryClient);
+    },
+    onSuccess: () => {
       navigate("/app", { replace: true });
     },
   });

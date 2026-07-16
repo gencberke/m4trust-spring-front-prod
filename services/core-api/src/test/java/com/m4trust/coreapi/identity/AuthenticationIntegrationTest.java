@@ -58,11 +58,20 @@ class AuthenticationIntegrationTest {
     void cleanDatabase() {
         jdbcTemplate.update("DELETE FROM spring_session_attributes");
         jdbcTemplate.update("DELETE FROM spring_session");
-        jdbcTemplate.update("DELETE FROM identity_user");
+        jdbcTemplate.execute("""
+                TRUNCATE TABLE
+                    audit_record,
+                    legal_entity_membership,
+                    legal_entity,
+                    tenant_user,
+                    tenant,
+                    identity_user
+                """);
     }
 
     @Test
-    void registrationStoresArgon2idHashAndMeExposesOnlyPublicFields() throws Exception {
+    void registrationStoresArgon2idHashProvisionsTenantAndMeExposesOnlyPublicFields()
+            throws Exception {
         CsrfSession anonymous = csrf(null);
 
         MvcResult registration = register(anonymous, "  User@Example.COM  ",
@@ -80,13 +89,31 @@ class AuthenticationIntegrationTest {
         assertTrue(storedHash.startsWith("$argon2id$"));
         assertNotEquals(VALID_PASSWORD, storedHash);
 
+        UUID userId = UUID.fromString(JsonPath.read(
+                registration.getResponse().getContentAsString(), "$.id"));
+        UUID tenantId = jdbcTemplate.queryForObject("""
+                SELECT tenant_id
+                FROM tenant_user
+                WHERE user_id = ?
+                """, UUID.class, userId);
+        assertNotNull(tenantId);
+        assertNotEquals(userId, tenantId);
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tenant_user WHERE user_id = ?",
+                Integer.class, userId));
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM tenant",
+                Integer.class));
+
         Cookie authenticated = requiredCookie(registration);
         mockMvc.perform(get("/api/v1/auth/me").cookie(authenticated))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(3)))
+                .andExpect(jsonPath("$.*", hasSize(4)))
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.email").value("user@example.com"))
                 .andExpect(jsonPath("$.displayName").value("Example User"))
+                .andExpect(jsonPath("$.memberships").isArray())
+                .andExpect(jsonPath("$.memberships", hasSize(0)))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.sessionId").doesNotExist());

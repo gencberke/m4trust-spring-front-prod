@@ -92,16 +92,41 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200"},
         "security": [],
     },
+    ("/legal-entities", "post"): {
+        "operationId": "createLegalEntity",
+        "responses": {"201", "400", "401", "403", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/legal-entities", "get"): {
+        "operationId": "listLegalEntityMemberships",
+        "responses": {"200", "401"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/legal-entities/{legalEntityId}", "get"): {
+        "operationId": "getLegalEntity",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/legal-entities/{legalEntityId}/members", "get"): {
+        "operationId": "listLegalEntityMembers",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
 }
 EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
     ("/auth/login", "post"): "#/components/schemas/LoginRequest",
+    ("/legal-entities", "post"): "#/components/schemas/CreateLegalEntityRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
     ("/auth/login", "post", "200"): "#/components/schemas/PublicUser",
-    ("/auth/me", "get", "200"): "#/components/schemas/PublicUser",
+    ("/auth/me", "get", "200"): "#/components/schemas/CurrentUser",
     ("/security/csrf", "get", "200"): "#/components/schemas/CsrfToken",
+    ("/legal-entities", "post", "201"): "#/components/schemas/LegalEntity",
+    ("/legal-entities", "get", "200"): "#/components/schemas/LegalEntityMembershipList",
+    ("/legal-entities/{legalEntityId}", "get", "200"): "#/components/schemas/LegalEntity",
+    ("/legal-entities/{legalEntityId}/members", "get", "200"): "#/components/schemas/LegalEntityMemberList",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -115,10 +140,25 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/logout", "post", "401"): "SessionRequired",
     ("/auth/logout", "post", "403"): "CsrfRejected",
     ("/auth/me", "get", "401"): "SessionRequired",
+    ("/legal-entities", "post", "400"): "MalformedRequest",
+    ("/legal-entities", "post", "401"): "SessionRequired",
+    ("/legal-entities", "post", "403"): "CsrfRejected",
+    ("/legal-entities", "post", "422"): "ValidationFailed",
+    ("/legal-entities", "get", "401"): "SessionRequired",
+    ("/legal-entities/{legalEntityId}", "get", "400"): "MalformedRequest",
+    ("/legal-entities/{legalEntityId}", "get", "401"): "SessionRequired",
+    ("/legal-entities/{legalEntityId}", "get", "403"): "LegalEntityAccessDenied",
+    ("/legal-entities/{legalEntityId}", "get", "404"): "LegalEntityNotFoundOrHidden",
+    ("/legal-entities/{legalEntityId}/members", "get", "400"): "MalformedRequest",
+    ("/legal-entities/{legalEntityId}/members", "get", "401"): "SessionRequired",
+    ("/legal-entities/{legalEntityId}/members", "get", "403"): "LegalEntityAccessDenied",
+    ("/legal-entities/{legalEntityId}/members", "get", "404"): "LegalEntityNotFoundOrHidden",
 }
 REQUIRED_CORE_API_SCHEMAS = {
-    "RegisterRequest", "LoginRequest", "PublicUser", "CsrfToken",
-    "ProblemDetail", "FieldError",
+    "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
+    "CreateLegalEntityRequest", "LegalEntity", "LegalEntityRole",
+    "LegalEntityMembership", "LegalEntityMembershipList",
+    "LegalEntityMember", "LegalEntityMemberList", "ProblemDetail", "FieldError",
 }
 
 
@@ -226,7 +266,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         core_paths = core_openapi.get("paths", {})
         expected_core_paths = {path for path, _ in EXPECTED_CORE_API_OPERATIONS}
         if set(core_paths) != expected_core_paths:
-            failures.append("FAIL Core API OpenAPI paths: Slice 1 authentication endpoint set changed")
+            failures.append("FAIL Core API OpenAPI paths: accepted Slice 1 and Slice 2 endpoint set changed")
         for (path, method), expected in EXPECTED_CORE_API_OPERATIONS.items():
             operation = core_paths.get(path, {}).get(method)
             if not isinstance(operation, dict):
@@ -251,12 +291,46 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or set(public_user.get("required", [])) != {"id", "email", "displayName"}
                 or public_user.get("additionalProperties") is not False):
             failures.append("FAIL Core API PublicUser: field set must be exactly id, email, displayName")
+        current_user = core_components.get("schemas", {}).get("CurrentUser", {})
+        current_user_memberships = current_user.get("properties", {}).get("memberships", {})
+        if (set(current_user.get("properties", {})) != {"id", "email", "displayName", "memberships"}
+                or set(current_user.get("required", [])) != {"id", "email", "displayName", "memberships"}
+                or current_user.get("additionalProperties") is not False
+                or current_user_memberships.get("type") != "array"
+                or current_user_memberships.get("items", {}).get("$ref")
+                != "#/components/schemas/LegalEntityMembership"):
+            failures.append("FAIL Core API CurrentUser: required non-null memberships bootstrap changed")
         register_request = core_components.get("schemas", {}).get("RegisterRequest", {})
         if (set(register_request.get("required", [])) != {"email", "password", "displayName"}
                 or register_request.get("properties", {}).get("password", {}).get("minLength") != 15
                 or register_request.get("properties", {}).get("password", {}).get("maxLength") != 128
                 or register_request.get("properties", {}).get("password", {}).get("writeOnly") is not True):
             failures.append("FAIL Core API RegisterRequest: required fields or password policy changed")
+        create_legal_entity = core_components.get("schemas", {}).get("CreateLegalEntityRequest", {})
+        create_properties = create_legal_entity.get("properties", {})
+        if (set(create_legal_entity.get("required", [])) != {"legalName", "registrationNumber"}
+                or set(create_properties) != {"legalName", "registrationNumber"}
+                or create_legal_entity.get("additionalProperties") is not False
+                or (create_properties.get("legalName", {}).get("minLength"),
+                    create_properties.get("legalName", {}).get("maxLength")) != (1, 200)
+                or (create_properties.get("registrationNumber", {}).get("minLength"),
+                    create_properties.get("registrationNumber", {}).get("maxLength")) != (1, 100)):
+            failures.append("FAIL Core API CreateLegalEntityRequest: minimum bounded field set changed")
+        legal_entity_role = core_components.get("schemas", {}).get("LegalEntityRole", {})
+        if legal_entity_role.get("type") != "string" or legal_entity_role.get("enum") != ["ADMIN", "MEMBER"]:
+            failures.append("FAIL Core API LegalEntityRole: role set must be exactly ADMIN and MEMBER")
+        for list_schema_name, item_schema_name in (
+                ("LegalEntityMembershipList", "LegalEntityMembership"),
+                ("LegalEntityMemberList", "LegalEntityMember")):
+            list_schema = core_components.get("schemas", {}).get(list_schema_name, {})
+            items_property = list_schema.get("properties", {}).get("items", {})
+            if (set(list_schema.get("required", [])) != {"items"}
+                    or set(list_schema.get("properties", {})) != {"items"}
+                    or list_schema.get("additionalProperties") is not False
+                    or items_property.get("type") != "array"
+                    or items_property.get("items", {}).get("$ref")
+                    != f"#/components/schemas/{item_schema_name}"):
+                failures.append(f"FAIL Core API {list_schema_name}: stable non-null items DTO changed")
 
         security_schemes = core_components.get("securitySchemes", {})
         session_cookie = security_schemes.get("SessionCookie", {})
@@ -267,6 +341,31 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or (csrf_token.get("type"), csrf_token.get("in"), csrf_token.get("name"))
                 != ("apiKey", "header", "X-CSRF-TOKEN")):
             failures.append("FAIL Core API security schemes: session cookie or CSRF contract changed")
+        core_parameters = core_components.get("parameters", {})
+        legal_entity_context = core_parameters.get("LegalEntityContext", {})
+        if (legal_entity_context.get("name") != "X-M4Trust-Legal-Entity-Id"
+                or legal_entity_context.get("in") != "header"
+                or legal_entity_context.get("required") is not True
+                or legal_entity_context.get("schema", {}).get("format") != "uuid"):
+            failures.append("FAIL Core API LegalEntityContext: required UUID header contract changed")
+        for scoped_path in (
+                "/legal-entities/{legalEntityId}",
+                "/legal-entities/{legalEntityId}/members"):
+            parameter_refs = {
+                parameter.get("$ref")
+                for parameter in core_paths.get(scoped_path, {}).get("get", {}).get("parameters", [])
+                if isinstance(parameter, dict)
+            }
+            if parameter_refs != {
+                    "#/components/parameters/LegalEntityId",
+                    "#/components/parameters/LegalEntityContext"}:
+                failures.append(f"FAIL Core API legal entity scope parameters: GET {scoped_path}")
+        for unscoped_method in ("get", "post"):
+            if core_paths.get("/legal-entities", {}).get(unscoped_method, {}).get("parameters"):
+                failures.append(
+                    f"FAIL Core API legal entity bootstrap: {unscoped_method.upper()} /legal-entities "
+                    "must not require active legal entity context"
+                )
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})
