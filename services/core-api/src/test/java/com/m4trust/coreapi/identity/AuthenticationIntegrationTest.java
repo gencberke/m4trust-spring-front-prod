@@ -108,10 +108,12 @@ class AuthenticationIntegrationTest {
         Cookie authenticated = requiredCookie(registration);
         mockMvc.perform(get("/api/v1/auth/me").cookie(authenticated))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(3)))
+                .andExpect(jsonPath("$.*", hasSize(4)))
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.email").value("user@example.com"))
                 .andExpect(jsonPath("$.displayName").value("Example User"))
+                .andExpect(jsonPath("$.memberships").isArray())
+                .andExpect(jsonPath("$.memberships", hasSize(0)))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.sessionId").doesNotExist());

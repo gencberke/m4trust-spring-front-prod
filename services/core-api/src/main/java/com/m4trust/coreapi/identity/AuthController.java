@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.m4trust.coreapi.identity.security.AuthenticatedSessionManager;
 import com.m4trust.coreapi.identity.security.IdentityPrincipal;
+import com.m4trust.coreapi.organization.CurrentMembershipQueryPort;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -29,15 +30,18 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final AuthenticatedSessionManager sessionManager;
     private final IdentityService identityService;
+    private final CurrentMembershipQueryPort membershipQuery;
     private final SecurityContextLogoutHandler logoutHandler =
             new SecurityContextLogoutHandler();
 
     public AuthController(AuthenticationManager authenticationManager,
             AuthenticatedSessionManager sessionManager,
-            IdentityService identityService) {
+            IdentityService identityService,
+            CurrentMembershipQueryPort membershipQuery) {
         this.authenticationManager = authenticationManager;
         this.sessionManager = sessionManager;
         this.identityService = identityService;
+        this.membershipQuery = membershipQuery;
     }
 
     @PostMapping("/register")
@@ -74,7 +78,11 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public PublicUser me(@AuthenticationPrincipal IdentityPrincipal principal) {
-        return principal.toPublicUser();
+    public CurrentUser me(@AuthenticationPrincipal IdentityPrincipal principal) {
+        return new CurrentUser(
+                principal.id(),
+                principal.email(),
+                principal.displayName(),
+                membershipQuery.findMemberships(principal.id()));
     }
 }

@@ -100,9 +100,9 @@ Sabitlenen public contract kararları:
 
 - [x] OpenAPI yüzeyi implementasyondan önce tasarlandı
 - [x] Tenant otomatik oluşturma register akışına eklendi; Slice 1 kabul akışı hâlâ geçiyor
-- [ ] Entity oluşturma/listeleme/üye listesi gerçek çalışıyor
-- [ ] `OperationContext` + header doğrulama mekanizması kuruldu ve TEK noktadan geçiyor
-- [ ] Audit kayıtları business mutation ile aynı transaction'da yazılıyor
+- [x] Entity oluşturma/listeleme/üye listesi gerçek çalışıyor
+- [x] `OperationContext` + header doğrulama mekanizması kuruldu ve TEK noktadan geçiyor
+- [x] Audit kayıtları business mutation ile aynı transaction'da yazılıyor
 - [ ] İki-browser izolasyon testi (§7 adım 5–6) manuel çalıştırıldı
-- [ ] §8 invariant testleri geçiyor
+- [x] §8 invariant testleri geçiyor
 - [ ] Frontend'de loading/error/empty durumları ve entity switcher çalışıyor
