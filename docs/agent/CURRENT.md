@@ -4,9 +4,13 @@ Last updated: 2026-07-16
 
 ## Phase
 
-Slice 0 and Slice 1 are done. Slice 1 passed the real browser acceptance flow
-and sensitive-log spot check on `codex/slice1-completion-fixes`; the accepted
-completion commit remains to be merged into `main`.
+Slice 0 platform foundation and Slice 1 authentication are merged into `main`
+and accepted under `docs/plan/done/`.
+
+Slice 2 organization and membership contract, backend, and frontend
+implementation is complete on `codex/slice2-organization-membership`. Human
+two-browser end-to-end acceptance is still pending, so Slice 2 remains
+`ready` rather than accepted.
 
 ## Accepted foundations
 
@@ -22,41 +26,47 @@ completion commit remains to be merged into `main`.
 ## Current repository shape
 
 - `services/core-api`: Java 21 / Spring Boot 4.1 with PostgreSQL JDBC, Flyway,
-  Problem Details, correlation IDs, structured logging, readiness/liveness,
-  module-cycle protection, and a non-root container image.
-- `identity`: register/login/logout/me/CSRF endpoints, Argon2id credentials,
-  normalized unique email, PostgreSQL-backed Spring Session, profile-specific
-  secure cookies, CSRF enforcement, session fixation protection, and idle plus
-  absolute session timeouts.
-- `frontend`: generated OpenAPI types, TanStack Query-backed auth state,
-  register/login screens, protected routing, session restore, centralized
-  session-expiry handling, and logout against the real Core API.
+  identity/session authentication, tenant provisioning, legal entities,
+  memberships, append-only audit, centralized legal-entity authorization,
+  Problem Details, structured logging, health probes, and module-cycle checks.
+- `frontend`: generated OpenAPI types, TanStack Query-backed authentication and
+  organization state, protected routing, legal-entity create/list/switch/detail
+  and member views, versioned per-tab selection, centralized scoped request
+  headers, session-expiry handling, and logout against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
   with health checks, persistent volumes, and PowerShell reset/seed entrypoints.
-- Application and contract CI have completed successfully for the Slice 1
-  implementation commits.
+- `contracts/`: the reviewed Slice 2 public OpenAPI surface and existing
+  Spring–AI contract foundations.
+
+## Validation state
+
+- Contract validation passes for the committed Slice 2 OpenAPI.
+- Core API `mvn verify` passes with 21 tests against Testcontainers PostgreSQL.
+- Frontend `npm run typecheck` and production `npm run build` pass.
+- Human two-browser isolation and browser acceptance remain pending.
 
 ## Not yet stable or accepted
 
-- Slice 2 organization/membership plan approval and implementation
+- Slice 2 until the manual two-browser acceptance flow passes
 - FastAPI AI service skeleton and Mock AI Worker implementation
 - Railway service configuration
 
 ## Active work
 
-`codex/slice1-completion-fixes` contains the accepted centralized frontend
-`AUTH_SESSION_EXPIRED` handling, the deferred login-throttling follow-up in
-GitHub issue #7, and the reconciled Slice 1 completion documentation.
+`codex/slice2-organization-membership` contains the complete Slice 2 contract,
+persistence, Core API, frontend workspace, and handoff documentation. The plan
+remains at `docs/plan/ready/02-organization-and-membership.md`.
 
 ## Known blockers
 
-No architectural blocker.
+No architectural or implementation blocker. Slice 2 awaits human browser
+acceptance only.
 
 ## Next likely capability
 
-Merge the accepted Slice 1 completion branch into `main`. Slice 2 remains in
-`planning/` until human approval; do not begin implementation before that plan
-moves to `ready/`.
+Run the documented Slice 2 two-profile browser acceptance flow. If it passes,
+record the evidence, move Plan 02 to `done/`, and merge the accepted feature
+branch before planning Slice 3.
 
 ## Update rule
 

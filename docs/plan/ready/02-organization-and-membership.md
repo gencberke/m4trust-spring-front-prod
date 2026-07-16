@@ -77,13 +77,16 @@ Sabitlenen public contract kararları:
 
 ## 7. Kabul testi (tarayıcı akışı)
 
+Copy-paste komutları ve beklenen Problem Details kodlarını içeren ayrıntılı
+uygulama rehberi: [Slice 2 manuel kabul testi](../../DEVELOPMENT.md#slice-2-manuel-kabul-testi).
+
 1. Kullanıcı kayıt olur (tenant otomatik oluşur — kullanıcıya görünmez)
 2. Hiç entity'si yokken boş state görür ve oluşturma akışına yönlenir
 3. Legal entity oluşturur → listede görür → otomatik admin üyesi olduğunu üye listesinde görür
 4. Aktif entity'yi seçer; sayfa yenilemede seçim korunur
 5. İkinci browser profilinde ikinci kullanıcı kayıt olur, kendi entity'sini oluşturur
-6. İkinci kullanıcı birinci kullanıcının entity ID'siyle (elle URL/istek) erişmeyi dener → 404/403 alır, hiçbir veri sızmaz
-7. Header'sız veya geçersiz header'lı organization-scoped istek 403 döner (dev araçlarıyla doğrulanabilir)
+6. İkinci kullanıcı birinci kullanıcının entity ID'siyle güvenli GET isteği yapar → 404 `LEGAL_ENTITY_NOT_FOUND` alır, hiçbir veri sızmaz
+7. Header'sız veya geçersiz header'lı organization-scoped istek 403 `LEGAL_ENTITY_ACCESS_DENIED` döner (dev araçlarıyla doğrulanabilir)
 
 ## 8. Minimum invariant testleri
 
@@ -106,3 +109,7 @@ Sabitlenen public contract kararları:
 - [ ] İki-browser izolasyon testi (§7 adım 5–6) manuel çalıştırıldı
 - [x] §8 invariant testleri geçiyor
 - [x] Frontend'de loading/error/empty durumları ve entity switcher implemente edildi; typecheck/build geçiyor (manuel tarayıcı kabulü kullanıcıda)
+
+Kalan kabul kapısı yalnızca §7'deki insan tarafından çalıştırılan iki-browser
+izolasyon akışıdır. Bu kanıt tamamlanmadan durum `ready` kalır ve plan `done/`
+altına taşınmaz.
