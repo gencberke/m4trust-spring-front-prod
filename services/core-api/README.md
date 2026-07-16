@@ -9,14 +9,14 @@ operational, Problem Details, correlation, migration, and module foundations.
 The reviewed `contracts/openapi/core-api-v1.yaml` defines these runtime
 authentication operations:
 
-- `GET /api/v1/auth/csrf` — issue/read the CSRF token and header name.
+- `GET /api/v1/security/csrf` — issue/read the CSRF token and header name.
 - `POST /api/v1/auth/register` — create an account and authenticated session.
 - `POST /api/v1/auth/login` — authenticate and rotate the session identifier.
 - `POST /api/v1/auth/logout` — invalidate the server-side session.
 - `GET /api/v1/auth/me` — return the current account's safe public fields.
 
 The three state-changing authentication operations require the CSRF token from
-`GET /api/v1/auth/csrf` in the response's declared header. Actuator endpoints
+`GET /api/v1/security/csrf` in the response's declared header. Actuator endpoints
 remain operational surfaces outside the public contract:
 
 - `GET /actuator/health` — overall health.

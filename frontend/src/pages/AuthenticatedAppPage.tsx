@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useOutletContext } from "react-router";
 
-import { ApiError, logout, type PublicUser } from "../features/auth/authApi";
+import { logout, type PublicUser } from "../features/auth/authApi";
 import { getAuthErrorMessage } from "../features/auth/authErrors";
 import { CURRENT_USER_QUERY_KEY } from "../features/auth/useCurrentUser";
 
@@ -10,20 +10,15 @@ export function AuthenticatedAppPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  async function clearVerifiedSession(reason: "logged-out" | "session-expired") {
+  async function clearVerifiedSession() {
     await queryClient.cancelQueries({ queryKey: CURRENT_USER_QUERY_KEY });
     queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
-    navigate("/login", { replace: true, state: { reason } });
+    navigate("/login", { replace: true, state: { reason: "logged-out" } });
   }
 
   const mutation = useMutation({
     mutationFn: logout,
-    onSuccess: () => clearVerifiedSession("logged-out"),
-    onError: (error) => {
-      if (error instanceof ApiError && error.code === "AUTH_SESSION_EXPIRED") {
-        return clearVerifiedSession("session-expired");
-      }
-    },
+    onSuccess: clearVerifiedSession,
   });
 
   return (
@@ -61,7 +56,7 @@ export function AuthenticatedAppPage() {
             </button>
           </section>
 
-          {mutation.isError && !(mutation.error instanceof ApiError && mutation.error.code === "AUTH_SESSION_EXPIRED") ? (
+          {mutation.isError ? (
             <p className="form-alert workspace-alert" role="alert">
               {getAuthErrorMessage(mutation.error, "logout")}
             </p>

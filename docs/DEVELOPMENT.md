@@ -23,7 +23,8 @@ Bileşen rehberleri:
 - [Frontend](../frontend/README.md)
 - [Contract'lar](../contracts/README.md)
 - [Mock AI Worker yer tutucusu](../tools/mock-ai-worker/README.md)
-- [Onaylanmış Slice 0 planı](plan/done/00-platform-foundation.md)
+- [Tamamlanmış Slice 0 planı](plan/done/00-platform-foundation.md)
+- [Kabul turu bekleyen Slice 1 planı](plan/ready/01-authentication.md)
 
 ## Windows/PowerShell geliştirme sırası
 
@@ -80,11 +81,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev-seed.ps1
 Reset yalnız yerel geliştirme içindir; production ortamında destructive reset
 çalıştırılmaz. Seed verileri production migration zincirine eklenmez.
 
-## Mevcut doğrulama sınırı
+## Mevcut doğrulama durumu
 
-Bu belge yalnız yerleşimi ve planlanan çalışma sırasını kaydeder. Spring/frontend
-build CI workflow'u yapılandırılmıştır; ancak henüz çalıştırılmamış ve yeşil
-olduğu doğrulanmamıştır. Paket kurulumu, üretilmiş frontend tipleri,
-Spring/frontend build'leri ve tam runtime/tarayıcı kabul akışı bir sonraki
-execution aşamasıdır. Bunlar tamamlanıp doğrulanmadan Slice 0 tamamlanmış veya
-kabul edilmiş sayılmaz.
+Slice 0 kabul edilmiş ve planı `done/` altına taşınmıştır. Slice 1'in OpenAPI,
+Spring/PostgreSQL ve frontend implementasyonu `main` dalına birleştirilmiştir.
+GitHub Actions üzerinde contract validation, Core API `mvn verify` ve frontend
+`npm ci` + production build adımları başarıyla tamamlanmıştır.
+
+Slice 1 henüz Done değildir. `docs/plan/ready/01-authentication.md` §7'deki tam
+runtime/tarayıcı kabul akışı ile parola, session ID ve CSRF token log spot check'i
+tamamlanmalıdır. Bu kabul turu gerçek frontend → Spring → PostgreSQL zincirinde
+yapılmalı; yalnız backend veya build sonucu yeterli kabul edilmemelidir.
