@@ -9,7 +9,11 @@ and accepted under `docs/plan/done/`.
 
 Slice 2 organization and membership is accepted under `docs/plan/done/`.
 Contract, backend, frontend, and the real two-browser end-to-end isolation flow
-passed on `codex/slice2-organization-membership`.
+passed; the accepted branch is merged into `main`.
+
+Slice 3 Deal creation and listing is accepted under `docs/plan/done/`.
+Contract, backend, frontend, automated validation, and the real browser
+stale-version and two-profile participant-isolation flows passed.
 
 ## Accepted foundations
 
@@ -17,6 +21,7 @@ passed on `codex/slice2-organization-membership`.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
 - Slice 2 organization and membership is accepted under `docs/plan/done/`.
+- Slice 3 Deal creation and listing is accepted under `docs/plan/done/`.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
 - The system direction remains Vite/React/TypeScript + Spring Boot modular
@@ -27,23 +32,26 @@ passed on `codex/slice2-organization-membership`.
 
 - `services/core-api`: Java 21 / Spring Boot 4.1 with PostgreSQL JDBC, Flyway,
   identity/session authentication, tenant provisioning, legal entities,
-  memberships, append-only audit, centralized legal-entity authorization,
+  memberships, Deals, participant-scoped access, state/optimistic-lock
+  enforcement, append-only audit, centralized legal-entity authorization,
   Problem Details, structured logging, health probes, and module-cycle checks.
 - `frontend`: generated OpenAPI types, TanStack Query-backed authentication and
   organization state, protected routing, legal-entity create/list/switch/detail
-  and member views, versioned per-tab selection, centralized scoped request
-  headers, session-expiry handling, and logout against the real Core API.
+  and member views, Deal create/list/detail/update/cancel views, filtering,
+  sorting and pagination, stale-version recovery, versioned per-tab selection,
+  centralized scoped request headers, session-expiry handling, and logout
+  against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
   with health checks, persistent volumes, and PowerShell reset/seed entrypoints.
-- `contracts/`: the reviewed Slice 2 public OpenAPI surface and existing
+- `contracts/`: the reviewed Slice 3 public OpenAPI surface and existing
   Spring–AI contract foundations.
 
 ## Validation state
 
-- Contract validation passes for the committed Slice 2 OpenAPI.
-- Core API `mvn verify` passes with 21 tests against Testcontainers PostgreSQL.
+- Contract validation passes for the committed Slice 3 OpenAPI.
+- Core API `mvn verify` passes with 32 tests against Testcontainers PostgreSQL.
 - Frontend `npm run typecheck` and production `npm run build` pass.
-- Human two-browser isolation and browser acceptance passed.
+- Slice 3 human browser acceptance passed on 2026-07-16.
 
 ## Not yet stable or accepted
 
@@ -52,19 +60,18 @@ passed on `codex/slice2-organization-membership`.
 
 ## Active work
 
-`codex/slice2-organization-membership` contains the complete Slice 2 contract,
-persistence, Core API, frontend workspace, acceptance evidence, and completion
-documentation. The accepted plan is at
-`docs/plan/done/02-organization-and-membership.md`.
+`codex/slice3-deal-creation-listing` contains the complete Slice 3 contract,
+Flyway V5 persistence, Core API and frontend Deal workspace. The accepted plan
+is archived at `docs/plan/done/03-deal-creation-and-listing.md`; the branch is
+ready for merge.
 
 ## Known blockers
 
-No architectural or implementation blocker.
+No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Merge the accepted Slice 2 feature branch into `main`, then review and approve
-the Slice 3 deal-creation plan before implementation.
+Merge the accepted Slice 3 branch, then review and approve the next slice plan.
 
 ## Update rule
 

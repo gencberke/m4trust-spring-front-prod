@@ -112,11 +112,38 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404"},
         "security": [{"SessionCookie": []}],
     },
+    ("/deals", "post"): {
+        "operationId": "createDeal",
+        "responses": {"201", "400", "401", "403", "404", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals", "get"): {
+        "operationId": "listDeals",
+        "responses": {"200", "400", "401", "403", "404", "422"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}", "get"): {
+        "operationId": "getDeal",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}", "patch"): {
+        "operationId": "updateDeal",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/cancel", "post"): {
+        "operationId": "cancelDeal",
+        "responses": {"200", "400", "401", "403", "404", "409"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
 }
 EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
     ("/auth/login", "post"): "#/components/schemas/LoginRequest",
     ("/legal-entities", "post"): "#/components/schemas/CreateLegalEntityRequest",
+    ("/deals", "post"): "#/components/schemas/CreateDealRequest",
+    ("/deals/{dealId}", "patch"): "#/components/schemas/UpdateDealRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
@@ -127,6 +154,11 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/legal-entities", "get", "200"): "#/components/schemas/LegalEntityMembershipList",
     ("/legal-entities/{legalEntityId}", "get", "200"): "#/components/schemas/LegalEntity",
     ("/legal-entities/{legalEntityId}/members", "get", "200"): "#/components/schemas/LegalEntityMemberList",
+    ("/deals", "post", "201"): "#/components/schemas/DealDetail",
+    ("/deals", "get", "200"): "#/components/schemas/DealPage",
+    ("/deals/{dealId}", "get", "200"): "#/components/schemas/DealDetail",
+    ("/deals/{dealId}", "patch", "200"): "#/components/schemas/DealDetail",
+    ("/deals/{dealId}/cancel", "post", "200"): "#/components/schemas/DealDetail",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -153,12 +185,40 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/legal-entities/{legalEntityId}/members", "get", "401"): "SessionRequired",
     ("/legal-entities/{legalEntityId}/members", "get", "403"): "LegalEntityAccessDenied",
     ("/legal-entities/{legalEntityId}/members", "get", "404"): "LegalEntityNotFoundOrHidden",
+    ("/deals", "post", "400"): "MalformedRequest",
+    ("/deals", "post", "401"): "SessionRequired",
+    ("/deals", "post", "403"): "DealScopedMutationForbidden",
+    ("/deals", "post", "404"): "LegalEntityNotFoundOrHidden",
+    ("/deals", "post", "422"): "ValidationFailed",
+    ("/deals", "get", "400"): "MalformedRequest",
+    ("/deals", "get", "401"): "SessionRequired",
+    ("/deals", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals", "get", "404"): "LegalEntityNotFoundOrHidden",
+    ("/deals", "get", "422"): "ValidationFailed",
+    ("/deals/{dealId}", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}", "patch", "400"): "MalformedRequest",
+    ("/deals/{dealId}", "patch", "401"): "SessionRequired",
+    ("/deals/{dealId}", "patch", "403"): "DealScopedMutationForbidden",
+    ("/deals/{dealId}", "patch", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}", "patch", "409"): "DealUpdateConflict",
+    ("/deals/{dealId}", "patch", "422"): "ValidationFailed",
+    ("/deals/{dealId}/cancel", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/cancel", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/cancel", "post", "403"): "DealScopedMutationForbidden",
+    ("/deals/{dealId}/cancel", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/cancel", "post", "409"): "DealStateConflict",
 }
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
     "CreateLegalEntityRequest", "LegalEntity", "LegalEntityRole",
     "LegalEntityMembership", "LegalEntityMembershipList",
-    "LegalEntityMember", "LegalEntityMemberList", "ProblemDetail", "FieldError",
+    "LegalEntityMember", "LegalEntityMemberList",
+    "CreateDealRequest", "UpdateDealRequest", "DealStatus",
+    "DealLifecycleProjection", "DealAvailableActions", "DealSummary",
+    "DealDetail", "DealPage", "UtcTimestamp", "ProblemDetail", "FieldError",
 }
 
 
@@ -266,7 +326,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         core_paths = core_openapi.get("paths", {})
         expected_core_paths = {path for path, _ in EXPECTED_CORE_API_OPERATIONS}
         if set(core_paths) != expected_core_paths:
-            failures.append("FAIL Core API OpenAPI paths: accepted Slice 1 and Slice 2 endpoint set changed")
+            failures.append("FAIL Core API OpenAPI paths: accepted Slice 1 through Slice 3 endpoint set changed")
         for (path, method), expected in EXPECTED_CORE_API_OPERATIONS.items():
             operation = core_paths.get(path, {}).get(method)
             if not isinstance(operation, dict):
@@ -332,6 +392,79 @@ def validate_contract_documents(failures: list[str]) -> None:
                     != f"#/components/schemas/{item_schema_name}"):
                 failures.append(f"FAIL Core API {list_schema_name}: stable non-null items DTO changed")
 
+        create_deal = core_components.get("schemas", {}).get("CreateDealRequest", {})
+        create_deal_properties = create_deal.get("properties", {})
+        create_description = create_deal_properties.get("description", {})
+        if (set(create_deal.get("required", [])) != {"title"}
+                or set(create_deal_properties) != {"title", "description"}
+                or create_deal.get("additionalProperties") is not False
+                or (create_deal_properties.get("title", {}).get("minLength"),
+                    create_deal_properties.get("title", {}).get("maxLength")) != (1, 200)
+                or create_description.get("type") != ["string", "null"]
+                or create_description.get("maxLength") != 4000):
+            failures.append("FAIL Core API CreateDealRequest: frozen title and optional nullable description changed")
+        update_deal = core_components.get("schemas", {}).get("UpdateDealRequest", {})
+        update_deal_properties = update_deal.get("properties", {})
+        if (set(update_deal.get("required", [])) != {"title", "description", "expectedVersion"}
+                or set(update_deal_properties) != {"title", "description", "expectedVersion"}
+                or update_deal.get("additionalProperties") is not False
+                or (update_deal_properties.get("title", {}).get("minLength"),
+                    update_deal_properties.get("title", {}).get("maxLength")) != (1, 200)
+                or update_deal_properties.get("description", {}).get("type") != ["string", "null"]
+                or update_deal_properties.get("description", {}).get("maxLength") != 4000
+                or update_deal_properties.get("expectedVersion", {}).get("minimum") != 0):
+            failures.append("FAIL Core API UpdateDealRequest: replacement fields or expectedVersion changed")
+        deal_status = core_components.get("schemas", {}).get("DealStatus", {})
+        if deal_status.get("enum") != ["DRAFT", "ACTIVE", "CANCELLED", "COMPLETED", "ARCHIVED"]:
+            failures.append("FAIL Core API DealStatus: ADR lifecycle state set changed")
+        lifecycle = core_components.get("schemas", {}).get("DealLifecycleProjection", {})
+        if lifecycle.get("enum") != [
+                "DRAFT", "CONTRACT_ANALYSIS", "MANUAL_REVIEW", "RATIFICATION",
+                "FUNDING", "FULFILLMENT", "SETTLEMENT", "DISPUTE",
+                "COMPLETED", "CANCELLED", "ARCHIVED"]:
+            failures.append("FAIL Core API DealLifecycleProjection: ADR projection set changed")
+        actions = core_components.get("schemas", {}).get("DealAvailableActions", {})
+        if (set(actions.get("required", [])) != {"canUpdate", "canCancel"}
+                or set(actions.get("properties", {})) != {"canUpdate", "canCancel"}
+                or actions.get("additionalProperties") is not False
+                or any(
+                    actions.get("properties", {}).get(name, {}).get("type") != "boolean"
+                    for name in ("canUpdate", "canCancel")
+                )):
+            failures.append("FAIL Core API DealAvailableActions: backend-derived action set changed")
+        summary = core_components.get("schemas", {}).get("DealSummary", {})
+        detail = core_components.get("schemas", {}).get("DealDetail", {})
+        common_deal_fields = {
+            "id", "reference", "title", "status", "lifecycle", "version",
+            "createdAt", "updatedAt", "availableActions",
+        }
+        if (set(summary.get("required", [])) != common_deal_fields
+                or set(summary.get("properties", {})) != common_deal_fields
+                or summary.get("additionalProperties") is not False):
+            failures.append("FAIL Core API DealSummary: frozen summary projection changed")
+        detail_fields = common_deal_fields | {"description"}
+        detail_description = detail.get("properties", {}).get("description", {})
+        if (set(detail.get("required", [])) != detail_fields
+                or set(detail.get("properties", {})) != detail_fields
+                or detail.get("additionalProperties") is not False
+                or detail_description.get("type") != ["string", "null"]
+                or detail_description.get("maxLength") != 4000):
+            failures.append("FAIL Core API DealDetail: required nullable description projection changed")
+        deal_page = core_components.get("schemas", {}).get("DealPage", {})
+        deal_page_fields = {"items", "page", "size", "totalElements", "totalPages"}
+        page_items = deal_page.get("properties", {}).get("items", {})
+        if (set(deal_page.get("required", [])) != deal_page_fields
+                or set(deal_page.get("properties", {})) != deal_page_fields
+                or deal_page.get("additionalProperties") is not False
+                or page_items.get("type") != "array"
+                or page_items.get("items", {}).get("$ref") != "#/components/schemas/DealSummary"):
+            failures.append("FAIL Core API DealPage: stable paginated list DTO changed")
+        utc_timestamp = core_components.get("schemas", {}).get("UtcTimestamp", {})
+        if (utc_timestamp.get("type") != "string"
+                or utc_timestamp.get("format") != "date-time"
+                or not str(utc_timestamp.get("pattern", "")).endswith("Z$")):
+            failures.append("FAIL Core API UtcTimestamp: RFC 3339 UTC Z contract changed")
+
         security_schemes = core_components.get("securitySchemes", {})
         session_cookie = security_schemes.get("SessionCookie", {})
         csrf_token = security_schemes.get("CsrfToken", {})
@@ -366,6 +499,55 @@ def validate_contract_documents(failures: list[str]) -> None:
                     f"FAIL Core API legal entity bootstrap: {unscoped_method.upper()} /legal-entities "
                     "must not require active legal entity context"
                 )
+        expected_deal_parameter_refs = {
+            ("/deals", "post"): {"#/components/parameters/LegalEntityContext"},
+            ("/deals", "get"): {
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/DealStatusFilter",
+                "#/components/parameters/Page",
+                "#/components/parameters/PageSize",
+                "#/components/parameters/DealSort",
+            },
+            ("/deals/{dealId}", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}", "patch"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/cancel", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+        }
+        for (path, method), expected_refs in expected_deal_parameter_refs.items():
+            parameter_refs = {
+                parameter.get("$ref")
+                for parameter in core_paths.get(path, {}).get(method, {}).get("parameters", [])
+                if isinstance(parameter, dict)
+            }
+            if parameter_refs != expected_refs:
+                failures.append(f"FAIL Core API Deal scope/query parameters: {method.upper()} {path}")
+        deal_sort = core_parameters.get("DealSort", {}).get("schema", {})
+        if (deal_sort.get("default") != "createdAt,desc"
+                or deal_sort.get("enum")
+                != ["createdAt,asc", "createdAt,desc", "title,asc", "title,desc"]):
+            failures.append("FAIL Core API DealSort: single allowlisted sort contract changed")
+        page_parameter = core_parameters.get("Page", {}).get("schema", {})
+        page_size_parameter = core_parameters.get("PageSize", {}).get("schema", {})
+        if (page_parameter.get("default"), page_parameter.get("minimum")) != (0, 0):
+            failures.append("FAIL Core API Page: zero-based default changed")
+        if ((page_size_parameter.get("default"), page_size_parameter.get("minimum"),
+                page_size_parameter.get("maximum")) != (20, 1, 100)):
+            failures.append("FAIL Core API PageSize: default or bounds changed")
+        cancel_operation = core_paths.get("/deals/{dealId}/cancel", {}).get("post", {})
+        if "requestBody" in cancel_operation:
+            failures.append("FAIL Core API cancel Deal: business action must remain bodyless")
+        deal_location = (core_paths.get("/deals", {}).get("post", {}).get("responses", {})
+                .get("201", {}).get("headers", {}).get("Location", {}))
+        if deal_location.get("schema", {}).get("format") != "uri-reference":
+            failures.append("FAIL Core API create Deal: 201 Location header is required")
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})

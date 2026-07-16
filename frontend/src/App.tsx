@@ -5,7 +5,10 @@ import {
   HomeRedirect,
   ProtectedRoute,
 } from "./features/auth/AuthRouteGuards";
+import { DealDetailPage } from "./pages/DealDetailPage";
+import { DealListPage } from "./pages/DealListPage";
 import { AuthenticatedAppPage } from "./pages/AuthenticatedAppPage";
+import { AuthenticatedLayout } from "./pages/AuthenticatedLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { PlatformStatusPage } from "./pages/PlatformStatusPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -19,7 +22,11 @@ export function App() {
         <Route path="/register" element={<RegisterPage />} />
       </Route>
       <Route element={<ProtectedRoute />}>
-        <Route path="/app" element={<AuthenticatedAppPage />} />
+        <Route path="/app" element={<AuthenticatedLayout />}>
+          <Route index element={<AuthenticatedAppPage />} />
+          <Route path="deals" element={<DealListPage />} />
+          <Route path="deals/:dealId" element={<DealDetailPage />} />
+        </Route>
       </Route>
       {import.meta.env.DEV ? (
         <Route path="/status" element={<PlatformStatusPage />} />

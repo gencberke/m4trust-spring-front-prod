@@ -17,6 +17,7 @@ export function AuthSessionExpiryHandler() {
     function handleSessionExpiry() {
       clearSelectedLegalEntityId();
       queryClient.removeQueries({ queryKey: ["organization"] });
+      queryClient.removeQueries({ queryKey: ["deals"] });
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
 
       if (!ANONYMOUS_ROUTES.has(location.pathname)) {

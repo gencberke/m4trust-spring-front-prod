@@ -1,14 +1,14 @@
-package com.m4trust.coreapi.organization;
+package com.m4trust.coreapi.deal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
-import com.m4trust.coreapi.identity.IdentityService;
-import com.m4trust.coreapi.identity.PublicUser;
+import com.m4trust.coreapi.organization.OperationContext;
+import com.m4trust.coreapi.organization.RequestedOperation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,11 +28,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("local")
 @Testcontainers
-@Import(LegalEntityAuditAtomicityIntegrationTest.FailingAuditConfiguration.class)
-class LegalEntityAuditAtomicityIntegrationTest {
-
-    private static final String VALID_PASSWORD =
-            "a long memorable passphrase";
+@Import(DealAuditAtomicityIntegrationTest.FailingAuditConfiguration.class)
+class DealAuditAtomicityIntegrationTest {
 
     @Container
     @ServiceConnection
@@ -40,19 +37,18 @@ class LegalEntityAuditAtomicityIntegrationTest {
             new PostgreSQLContainer<>("postgres:17.5-alpine");
 
     @Autowired
-    private IdentityService identityService;
-
-    @Autowired
-    private LegalEntityService legalEntityService;
+    private DealService service;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
-    private AtomicInteger auditInvocationCount;
+    private AtomicBoolean failAudit;
+
+    private OperationContext context;
 
     @BeforeEach
-    void cleanDatabase() {
+    void setUp() {
         jdbcTemplate.update("DELETE FROM spring_session_attributes");
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
@@ -66,25 +62,41 @@ class LegalEntityAuditAtomicityIntegrationTest {
                     tenant,
                     identity_user
                 """);
-        auditInvocationCount.set(0);
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID legalEntityId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO identity_user (
+                    id, email, password_hash, display_name, enabled
+                )
+                VALUES (?, ?, 'test-hash', 'Atomic User', true)
+                """, userId, "atomic-deal@example.com");
+        jdbcTemplate.update("INSERT INTO tenant (id) VALUES (?)", tenantId);
+        jdbcTemplate.update("""
+                INSERT INTO tenant_user (user_id, tenant_id)
+                VALUES (?, ?)
+                """, userId, tenantId);
+        jdbcTemplate.update("""
+                INSERT INTO legal_entity (
+                    id, tenant_id, legal_name, registration_number
+                )
+                VALUES (?, ?, 'Atomic Entity', 'ATOMIC-DEAL-1')
+                """, legalEntityId, tenantId);
+        context = new OperationContext(userId, tenantId, legalEntityId,
+                RequestedOperation.DEAL_CREATE);
+        failAudit.set(true);
     }
 
     @Test
-    void secondAuditFailureRollsBackEntityMembershipAndFirstAudit() {
-        PublicUser user = identityService.register(
-                "atomicity@example.com",
-                VALID_PASSWORD,
-                "Atomicity User");
-
+    void auditFailureRollsBackDealAndInitialParticipant() {
         assertThrows(IllegalStateException.class,
-                () -> legalEntityService.create(
-                        user.id(),
-                        new CreateLegalEntityRequest(
-                                "Atomic Entity", "ATOMIC-1"),
+                () -> service.create(
+                        context,
+                        new CreateDealRequest("Atomic Deal", null),
                         UUID.randomUUID()));
 
-        assertEquals(0, count("legal_entity"));
-        assertEquals(0, count("legal_entity_membership"));
+        assertEquals(0, count("deal"));
+        assertEquals(0, count("deal_participant"));
         assertEquals(0, count("audit_record"));
     }
 
@@ -97,20 +109,19 @@ class LegalEntityAuditAtomicityIntegrationTest {
     static class FailingAuditConfiguration {
 
         @Bean
-        AtomicInteger auditInvocationCount() {
-            return new AtomicInteger();
+        AtomicBoolean failAudit() {
+            return new AtomicBoolean();
         }
 
         @Bean
         @Primary
-        AuditAppendPort failingSecondAuditAppender(
-                @Qualifier("jdbcAuditAppender")
-                AuditAppendPort delegate,
-                AtomicInteger invocationCount) {
+        AuditAppendPort failingAuditAppender(
+                @Qualifier("jdbcAuditAppender") AuditAppendPort delegate,
+                AtomicBoolean failAudit) {
             return record -> {
-                if (invocationCount.incrementAndGet() == 2) {
+                if (failAudit.get()) {
                     throw new IllegalStateException(
-                            "test second audit append failure");
+                            "test audit append failure");
                 }
                 delegate.append(record);
             };

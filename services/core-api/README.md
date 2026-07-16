@@ -3,7 +3,8 @@
 Spring Boot modular-monolith Core API for M4Trust. The implemented foundation
 includes PostgreSQL-backed identity and server-side session authentication,
 tenant provisioning, legal entities, memberships, append-only business audit,
-and reusable application-layer legal-entity authorization.
+reusable application-layer legal-entity authorization, and the participant-
+scoped Deal aggregate with optimistic concurrency and lifecycle projections.
 
 ## Operational endpoints
 
@@ -23,13 +24,25 @@ authentication and organization operations:
 - `GET /api/v1/legal-entities/{legalEntityId}` — return member-visible detail.
 - `GET /api/v1/legal-entities/{legalEntityId}/members` — return the
   member-visible identity projection and role list.
+- `POST /api/v1/deals` — create a `DRAFT` Deal for the active legal entity,
+  add it as the initial participant, and append `DEAL_CREATED` atomically.
+- `GET /api/v1/deals` — list only participant-visible Deals with stable
+  pagination, optional status filtering, and allowlisted sorting.
+- `GET /api/v1/deals/{dealId}` — return participant-visible detail with the
+  backend-derived lifecycle and available actions.
+- `PATCH /api/v1/deals/{dealId}` — replace editable basic fields using the
+  required `expectedVersion`; stale writes and invalid states return distinct
+  stable conflict codes.
+- `POST /api/v1/deals/{dealId}/cancel` — apply the aggregate cancellation rule
+  and return the current detail projection.
 
 All state-changing operations require the CSRF token from
 `GET /api/v1/security/csrf` in the response's declared header. The two scoped
-legal-entity reads also require `X-M4Trust-Legal-Entity-Id` to match the path;
-the application layer verifies membership on every request and stores no active
-selection in the session. Actuator endpoints remain operational surfaces
-outside the public contract:
+legal-entity reads also require `X-M4Trust-Legal-Entity-Id` to match the path.
+Every Deal operation requires the same header; the application layer first
+verifies legal-entity membership and then enforces Deal participation. Active
+selection is never stored in the session. Actuator endpoints remain operational
+surfaces outside the public contract:
 
 - `GET /actuator/health` — overall health.
 - `GET /actuator/health/liveness` — liveness probe.
@@ -114,10 +127,13 @@ against PostgreSQL during startup. `V2__identity_user.sql` owns the normalized,
 uniquely indexed identity account table, `V3__spring_session_jdbc.sql` owns the
 Spring Session JDBC tables and indexes, and
 `V4__organization_and_audit_foundation.sql` owns tenants, legal entities,
-memberships, and append-only audit storage. Spring Session runtime schema
-initialization is disabled so Flyway remains the only schema owner. Migration
-files use `V<version>__<description>.sql` names, are forward-only, and are never
-edited after application. Seed data never belongs in this chain.
+memberships, and append-only audit storage.
+`V5__deal_foundation.sql` owns Deal state, the generated human-readable
+reference sequence, optimistic-lock version, and participant access relation.
+Spring Session runtime schema initialization is disabled so Flyway remains the
+only schema owner. Migration files use `V<version>__<description>.sql` names,
+are forward-only, and are never edited after application. Seed data never
+belongs in this chain.
 
 ## Module boundaries
 
@@ -129,6 +145,9 @@ The modular monolith currently contains these explicit boundaries:
   `OperationContext` authorization boundary.
 - `audit` — append-only business audit persistence through a narrow port that
   joins the caller's business transaction.
+- `deal` — the Deal aggregate, centralized lifecycle behavior, participant-
+  scoped JDBC persistence, public projections, and create/update/cancel
+  application transactions.
 
 - `sharedkernel` — genuinely shared, stable primitives; never generic helpers
   or module-specific business rules.
@@ -161,6 +180,16 @@ Organization integration tests also use real PostgreSQL. They prove creator
 and detail projections, non-null `/auth/me` memberships, centralized header
 validation, and 404 non-disclosure for nonexistent or hidden legal entities.
 The browser end-to-end flow remains a separate acceptance step.
+
+## Deal validation
+
+Deal integration tests use MockMvc with disposable PostgreSQL. They prove the
+frozen create/list/detail/update/cancel JSON surface, deterministic pagination,
+status filtering, explicit-null description replacement, version increments,
+stale and state conflict codes, participant non-disclosure, legal-entity
+context error semantics, non-null empty lists, all mutation audit actions, and
+rollback when the mandatory audit append fails. The separate browser flow
+remains the Slice 3 end-to-end acceptance step.
 
 ## Structured logging
 
