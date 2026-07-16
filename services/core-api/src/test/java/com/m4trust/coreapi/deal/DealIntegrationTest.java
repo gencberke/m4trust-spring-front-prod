@@ -300,6 +300,25 @@ class DealIntegrationTest {
     @Test
     void semanticQueryAndRequiredNullableFieldsReturnStableValidationErrors()
             throws Exception {
+        String maxTitle = "X".repeat(200);
+        MvcResult normalized = createDeal("  " + maxTitle + "  ");
+        assertEquals(maxTitle, JsonPath.read(
+                normalized.getResponse().getContentAsString(), "$.title"));
+
+        mockMvc.perform(post("/api/v1/deals")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "   "
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("title"));
+
         mockMvc.perform(get("/api/v1/deals")
                         .with(user(owner.userId().toString()))
                         .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())

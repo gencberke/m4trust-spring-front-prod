@@ -10,4 +10,8 @@ record CreateDealRequest(
         @Size(max = 4000,
                 message = "Description must not exceed 4000 characters.")
         String description) {
+
+    CreateDealRequest {
+        title = title == null ? null : title.trim();
+    }
 }

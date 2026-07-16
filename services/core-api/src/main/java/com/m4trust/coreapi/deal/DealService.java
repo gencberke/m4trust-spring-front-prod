@@ -40,7 +40,7 @@ class DealService {
                 UUID.randomUUID(),
                 context.tenantId(),
                 repository.nextReference(),
-                request.title().trim(),
+                request.title(),
                 request.description(),
                 context.activeLegalEntityId(),
                 context.authenticatedUserId(),
@@ -92,7 +92,7 @@ class DealService {
         Deal deal = loadVisible(context, dealId);
         long currentVersion = deal.version();
         Instant now = clock.instant();
-        deal.updateBasicFields(request.title().trim(), request.description(),
+        deal.updateBasicFields(request.title(), request.description(),
                 request.expectedVersion(), now);
         boolean updated = repository.updateBasicFields(
                 context.tenantId(),
