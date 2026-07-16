@@ -33,8 +33,10 @@ The selected legal-entity UUID is the only organization value stored by the
 browser. It uses the versioned `m4trust:selected-legal-entity-id:v1`
 `sessionStorage` key, preserving refreshes while allowing separate tabs to keep
 different active contexts. Storage access is guarded because browser storage
-may be unavailable. User data, membership objects, credentials, and session
-cookies are never stored there.
+may be unavailable; the current tab keeps working from a validated in-memory
+selection, while refresh persistence is naturally unavailable in that case.
+User data, membership objects, credentials, and session cookies are never
+stored there.
 
 The shared API layer automatically adds the selected UUID as
 `X-M4Trust-Legal-Entity-Id`. This value is client context rather than proof of
