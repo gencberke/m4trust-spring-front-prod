@@ -105,4 +105,4 @@ Sabitlenen public contract kararları:
 - [x] Audit kayıtları business mutation ile aynı transaction'da yazılıyor
 - [ ] İki-browser izolasyon testi (§7 adım 5–6) manuel çalıştırıldı
 - [x] §8 invariant testleri geçiyor
-- [ ] Frontend'de loading/error/empty durumları ve entity switcher çalışıyor
+- [x] Frontend'de loading/error/empty durumları ve entity switcher implemente edildi; typecheck/build geçiyor (manuel tarayıcı kabulü kullanıcıda)

@@ -4,15 +4,17 @@ import { Link, useNavigate } from "react-router";
 
 import { register, type RegisterRequest } from "../features/auth/authApi";
 import { getAuthErrorMessage, getFieldErrors } from "../features/auth/authErrors";
-import { CURRENT_USER_QUERY_KEY } from "../features/auth/useCurrentUser";
+import { refreshCurrentUserAfterAuthentication } from "../features/auth/useCurrentUser";
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: register,
-    onSuccess: (user) => {
-      queryClient.setQueryData(CURRENT_USER_QUERY_KEY, user);
+    mutationFn: async (request: RegisterRequest) => {
+      await register(request);
+      return refreshCurrentUserAfterAuthentication(queryClient);
+    },
+    onSuccess: () => {
       navigate("/app", { replace: true });
     },
   });

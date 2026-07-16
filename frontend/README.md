@@ -8,7 +8,8 @@ and TanStack Query; there is no mock user or browser-stored authentication state
 
 - `/register` creates an account and enters the protected application.
 - `/login` restores access to an existing account.
-- `/app` is protected by the verified `GET /api/v1/auth/me` result.
+- `/app` is protected by the verified `GET /api/v1/auth/me` result and renders
+  the real legal-entity workspace.
 - `/` redirects from the verified current-user result.
 
 Every register, login, and logout request first fetches a fresh CSRF token from
@@ -17,6 +18,30 @@ never reads the HttpOnly session cookie or stores credentials in web storage.
 The shared API error path publishes `AUTH_SESSION_EXPIRED` once, and the router
 boundary clears the verified current-user query before redirecting to `/login`.
 Invalid-credential responses do not trigger this global session-expiry path.
+Register and login success responses remain the narrower `PublicUser` contract;
+the client always re-fetches `/auth/me` before entering the protected workspace
+so membership bootstrap state is never synthesized from an incomplete response.
+
+## Legal entity workspace
+
+The `/app` workspace lists the authenticated user's legal-entity memberships,
+supports legal-entity creation, and shows the selected entity detail and member
+list. Creating an entity refreshes both current-user and membership queries,
+then selects the created entity so the resulting ADMIN membership is visible.
+
+The selected legal-entity UUID is the only organization value stored by the
+browser. It uses the versioned `m4trust:selected-legal-entity-id:v1`
+`sessionStorage` key, preserving refreshes while allowing separate tabs to keep
+different active contexts. Storage access is guarded because browser storage
+may be unavailable. User data, membership objects, credentials, and session
+cookies are never stored there.
+
+The shared API layer automatically adds the selected UUID as
+`X-M4Trust-Legal-Entity-Id`. This value is client context rather than proof of
+authorization; the Core API validates membership for every scoped request. A
+`LEGAL_ENTITY_ACCESS_DENIED` or `LEGAL_ENTITY_NOT_FOUND` scoped response clears
+the stale selection and asks the user to choose again. Logout and centralized
+session expiry also clear the selection.
 
 ## Local configuration
 
