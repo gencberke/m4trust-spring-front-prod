@@ -99,7 +99,7 @@ Sabitlenen public contract kararları:
 ## 10. Done tanımı
 
 - [x] OpenAPI yüzeyi implementasyondan önce tasarlandı
-- [ ] Tenant otomatik oluşturma register akışına eklendi; Slice 1 kabul akışı hâlâ geçiyor
+- [x] Tenant otomatik oluşturma register akışına eklendi; Slice 1 kabul akışı hâlâ geçiyor
 - [ ] Entity oluşturma/listeleme/üye listesi gerçek çalışıyor
 - [ ] `OperationContext` + header doğrulama mekanizması kuruldu ve TEK noktadan geçiyor
 - [ ] Audit kayıtları business mutation ile aynı transaction'da yazılıyor

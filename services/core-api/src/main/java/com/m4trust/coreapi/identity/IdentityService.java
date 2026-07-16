@@ -4,6 +4,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
+import com.m4trust.coreapi.organization.TenantProvisioningPort;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,10 +23,13 @@ public class IdentityService {
     private final String dummyPasswordHash;
     private final IdentityRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final TenantProvisioningPort tenantProvisioning;
 
-    IdentityService(IdentityRepository repository, PasswordEncoder passwordEncoder) {
+    IdentityService(IdentityRepository repository, PasswordEncoder passwordEncoder,
+            TenantProvisioningPort tenantProvisioning) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.tenantProvisioning = tenantProvisioning;
         this.dummyPasswordHash = passwordEncoder.encode("dummy-password-never-used");
     }
 
@@ -42,6 +46,7 @@ public class IdentityService {
         } catch (DuplicateKeyException exception) {
             throw new DuplicateEmailException();
         }
+        tenantProvisioning.provisionForNewUser(account.id());
         return toPublicUser(account);
     }
 
