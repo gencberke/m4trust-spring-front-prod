@@ -1,6 +1,10 @@
 # Slice 3 — Deal Creation ve Listing
 
-- Durum: ready
+- Durum: implementasyon tamamlandı; insan tarayıcı kabulü bekleniyor
+- Implementasyon dalı: `codex/slice3-deal-creation-listing`
+- Kabul durumu: Otomatik doğrulamalar başarılıdır; §7 gerçek tarayıcı akışı
+  kullanıcı tarafından tamamlanıp raporlanana kadar plan `ready/` altında kalır
+  ve Slice 3 kabul edilmiş sayılmaz.
 - Slice sırası: ADR-004 §24 → Slice 3
 - Öncül: 02-organization-and-membership
 - Ardıl: Slice 4 (Deal Parties and Participants — bu planda kapsam dışı)
@@ -70,6 +74,9 @@ Response'larda `version` (optimistic lock token) ve `lifecycle` (projection) ala
 
 ## 7. Kabul testi (tarayıcı akışı)
 
+Ayrıntılı, copy-paste komutları ve beklenen Problem Details kodlarını içeren
+rehber: [Slice 3 manuel kabul testi](../../DEVELOPMENT.md#slice-3-manuel-kabul-testi).
+
 1. Kullanıcı A aktif entity'siyle deal oluşturur → listede görür → detayını açar
 2. Title günceller → değişiklik ve artan version görünür
 3. İki tab'da aynı deal açılır; birinde güncelleme yapılır, diğerindeki eski formla güncelleme denenir → 409 stale version akışı tarayıcıda gözlenir
@@ -96,12 +103,33 @@ ADR-004 §7 listesinden bu slice'a düşenler:
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI yüzeyi implementasyondan önce tasarlandı; liste DTO'su ADR-006 §9 formatında
-- [ ] Deal create/list/detail/update/cancel gerçek Spring + PostgreSQL üzerinde çalışıyor
-- [ ] State machine geçiş kuralları domain'de tek yerde; yasak geçişler 409 üretiyor
+### Implementasyon ve otomatik doğrulama kanıtı
+
+- Public Deal contract'ı uygulamadan önce `8abb370` commit'inde sabitlendi;
+  contract validator 21 schema ve Slice 3 fixture/error kontrolleriyle geçiyor.
+- Flyway `V5__deal_foundation.sql`, `deal` ve `deal_participant` tablolarını,
+  insan-okur `DL-0000000001` biçimli reference üretimini ve gerekli indeks/FK
+  sınırlarını kuruyor.
+- Core API `mvn verify`, Testcontainers PostgreSQL üzerinde 32 testle geçiyor;
+  state, stale version, participant non-disclosure ve audit rollback
+  invariant'ları bu suite içindedir.
+- Frontend `npm run typecheck` ve production `npm run build` geçiyor; Deal
+  create/list/detail/update/cancel, filtre/sıralama/pagination ve
+  `availableActions` tabanlı kontroller gerçek API'ye bağlıdır.
+- Mevcut Core API persistence standardıyla uyumlu olarak JPA eklenmedi. JDBC
+  mutation'larındaki atomik `WHERE version = ?` ve state/participant
+  predicate'leri optimistic-lock davranışını sağlar; etkilenen satır sayısı
+  üzerinden stale/state conflict ayrımı application katmanında yapılır.
+
+- [x] OpenAPI yüzeyi implementasyondan önce tasarlandı; liste DTO'su ADR-006 §9 formatında
+- [x] Deal create/list/detail/update/cancel gerçek Spring + PostgreSQL üzerinde çalışıyor
+- [x] State machine geçiş kuralları domain'de tek yerde; yasak geçişler 409 üretiyor
 - [ ] Optimistic locking uçtan uca çalışıyor; stale version akışı TARAYICIDA test edildi
 - [ ] Participant tabanlı erişim izolasyonu iki-browser testiyle doğrulandı
-- [ ] Audit kayıtları aynı transaction'da; rollback testi geçiyor
-- [ ] Lifecycle projection merkezi algoritma iskeleti kuruldu; frontend lifecycle hesaplamıyor
-- [ ] §8 invariant testleri geçiyor; aşırı test yazılmadı
-- [ ] Frontend loading/error/empty durumları ve action-availability tabanlı buton görünürlüğü çalışıyor
+- [x] Audit kayıtları aynı transaction'da; rollback testi geçiyor
+- [x] Lifecycle projection merkezi algoritma iskeleti kuruldu; frontend lifecycle hesaplamıyor
+- [x] §8 invariant testleri geçiyor; aşırı test yazılmadı
+- [x] Frontend loading/error/empty durumları ve action-availability tabanlı buton görünürlüğü çalışıyor
+
+Kalan iki checkbox insan gözlemi gerektirir. Kullanıcı §7 akışının sonucunu
+başarılı/başarısız olarak bildirmeden plan `done/` altına taşınmaz.
