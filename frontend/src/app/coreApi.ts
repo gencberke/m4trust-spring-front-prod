@@ -56,11 +56,11 @@ function buildHeaders(initHeaders?: HeadersInit): Headers {
   const headers = new Headers(initHeaders);
   headers.set("Accept", "application/json, application/problem+json");
 
-  const selectedLegalEntityId = readSelectedLegalEntityId();
-  if (selectedLegalEntityId) {
-    headers.set("X-M4Trust-Legal-Entity-Id", selectedLegalEntityId);
-  } else {
-    headers.delete("X-M4Trust-Legal-Entity-Id");
+  if (!headers.has("X-M4Trust-Legal-Entity-Id")) {
+    const selectedLegalEntityId = readSelectedLegalEntityId();
+    if (selectedLegalEntityId) {
+      headers.set("X-M4Trust-Legal-Entity-Id", selectedLegalEntityId);
+    }
   }
 
   return headers;
@@ -98,12 +98,14 @@ async function fetchCsrfToken(signal?: AbortSignal): Promise<CsrfToken> {
 async function postWithFreshCsrf(
   path: string,
   body?: unknown,
+  initHeaders?: HeadersInit,
 ): Promise<Response> {
   // This dependency is intentional: session rotation invalidates earlier CSRF tokens.
   const csrf = await fetchCsrfToken();
-  const headers = buildHeaders(
-    body === undefined ? undefined : { "Content-Type": "application/json" },
-  );
+  const headers = buildHeaders(initHeaders);
+  if (body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
   headers.set(csrf.headerName, csrf.token);
 
   return request(path, {
@@ -116,11 +118,38 @@ async function postWithFreshCsrf(
 export async function postJsonWithFreshCsrf<T>(
   path: string,
   body: unknown,
+  headers?: HeadersInit,
 ): Promise<T> {
-  const response = await postWithFreshCsrf(path, body);
+  const response = await postWithFreshCsrf(path, body, headers);
   return (await response.json()) as T;
 }
 
 export async function postNoContentWithFreshCsrf(path: string): Promise<void> {
   await postWithFreshCsrf(path);
+}
+
+export async function postJsonWithoutBodyWithFreshCsrf<T>(
+  path: string,
+  headers?: HeadersInit,
+): Promise<T> {
+  const response = await postWithFreshCsrf(path, undefined, headers);
+  return (await response.json()) as T;
+}
+
+export async function patchJsonWithFreshCsrf<T>(
+  path: string,
+  body: unknown,
+  initHeaders?: HeadersInit,
+): Promise<T> {
+  const csrf = await fetchCsrfToken();
+  const headers = buildHeaders(initHeaders);
+  headers.set("Content-Type", "application/json");
+  headers.set(csrf.headerName, csrf.token);
+
+  const response = await request(path, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+  });
+  return (await response.json()) as T;
 }

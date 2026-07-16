@@ -10,6 +10,8 @@ and TanStack Query; there is no mock user or browser-stored authentication state
 - `/login` restores access to an existing account.
 - `/app` is protected by the verified `GET /api/v1/auth/me` result and renders
   the real legal-entity workspace.
+- `/app/deals` lists and creates Deals for the active legal entity.
+- `/app/deals/:dealId` renders Deal detail, edit, and cancel flows.
 - `/` redirects from the verified current-user result.
 
 Every register, login, and logout request first fetches a fresh CSRF token from
@@ -43,7 +45,32 @@ The shared API layer automatically adds the selected UUID as
 authorization; the Core API validates membership for every scoped request. A
 `LEGAL_ENTITY_ACCESS_DENIED` or `LEGAL_ENTITY_NOT_FOUND` scoped response clears
 the stale selection and asks the user to choose again. Logout and centralized
-session expiry also clear the selection.
+session expiry also clear the selection. The authenticated layout keeps the
+switcher, account controls, and Organization/Deals navigation stable across all
+protected nested routes.
+
+## Deal workspace
+
+Deal list and detail queries are keyed by the active legal-entity UUID. List
+keys also contain the exact status filter, page, page size, and allowlisted sort,
+so a tab or entity switch cannot reuse another scoped result. With no active
+legal entity, the Deal routes show an actionable selection state and issue no
+Deal request.
+
+The list supports exact status filtering, `createdAt`/`title` sorting, stable
+page controls, first-use and filtered empty states, and creation through the
+real Spring API. Successful creation returns the view to the newest unfiltered
+page and invalidates the active entity's Deal list so the new record is visible.
+Detail lifecycle and available actions are rendered exactly as returned by the
+backend; the client does not derive them from status combinations.
+
+Deal updates retain the loaded server `version` and send it as
+`expectedVersion`. An empty edit description is sent as explicit `null`. On
+`DEAL_STALE_VERSION`, attempted form values remain visible and no automatic
+overwrite or resubmission occurs. The user must choose “Güncel veriyi yükle”;
+only then is detail refetched and the form reset from the newer projection.
+`DEAL_NOT_FOUND` uses a non-disclosure state without clearing a valid active
+entity, while invalid legal-entity context still clears the stale selection.
 
 ## Local configuration
 

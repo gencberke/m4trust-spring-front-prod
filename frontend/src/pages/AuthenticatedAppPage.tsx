@@ -9,10 +9,8 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { useNavigate, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router";
 
-import { logout, type CurrentUser } from "../features/auth/authApi";
-import { getAuthErrorMessage } from "../features/auth/authErrors";
 import { CURRENT_USER_QUERY_KEY } from "../features/auth/useCurrentUser";
 import {
   getLegalEntityFieldErrors,
@@ -31,52 +29,12 @@ import {
 import {
   LEGAL_ENTITY_MEMBERSHIPS_QUERY_KEY,
   legalEntityDetailQueryOptions,
-  legalEntityMembershipsQueryOptions,
   legalEntityMembersQueryOptions,
 } from "../features/organization/organizationQueries";
-import {
-  clearSelectedLegalEntityId,
-  readSelectedLegalEntityId,
-  saveSelectedLegalEntityId,
-} from "../features/organization/legalEntitySelection";
+import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
 
 function roleLabel(role: LegalEntityMembership["role"]): string {
   return role === "ADMIN" ? "Yönetici" : "Üye";
-}
-
-interface EntitySwitcherProps {
-  memberships: LegalEntityMembership[];
-  selectedLegalEntityId: string | undefined;
-  disabled: boolean;
-  onChange: (legalEntityId: string | undefined) => void;
-}
-
-function EntitySwitcher({
-  memberships,
-  selectedLegalEntityId,
-  disabled,
-  onChange,
-}: EntitySwitcherProps) {
-  return (
-    <label className="entity-switcher">
-      <span>Aktif legal entity</span>
-      <select
-        value={selectedLegalEntityId ?? ""}
-        onChange={(event) => onChange(event.target.value || undefined)}
-        disabled={disabled}
-      >
-        <option value="">Seçim yapın</option>
-        {memberships.map((membership) => (
-          <option
-            key={membership.legalEntityId}
-            value={membership.legalEntityId}
-          >
-            {membership.legalName}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
 }
 
 interface MembershipListProps {
@@ -330,71 +288,26 @@ function SelectedEntityPanel({
 }
 
 export function AuthenticatedAppPage() {
-  const user = useOutletContext<CurrentUser>();
-  const navigate = useNavigate();
+  const workspace = useOutletContext<AuthenticatedWorkspaceContext>();
+  const clearInvalidSelection = workspace.clearInvalidSelection;
   const queryClient = useQueryClient();
-  const [selectedLegalEntityId, setSelectedLegalEntityId] = useState<
-    string | undefined
-  >(readSelectedLegalEntityId);
-  const [selectionNotice, setSelectionNotice] = useState<string>();
   const [creationNotice, setCreationNotice] = useState<string>();
-
-  const membershipsQuery = useQuery(legalEntityMembershipsQueryOptions());
-  const memberships = membershipsQuery.data?.items ?? [];
-  const selectedMembership = memberships.find(
-    (membership) => membership.legalEntityId === selectedLegalEntityId,
-  );
   const detailQuery = useQuery(
-    legalEntityDetailQueryOptions(selectedMembership?.legalEntityId),
+    legalEntityDetailQueryOptions(workspace.selectedMembership?.legalEntityId),
   );
   const membersQuery = useQuery(
-    legalEntityMembersQueryOptions(selectedMembership?.legalEntityId),
+    legalEntityMembersQueryOptions(workspace.selectedMembership?.legalEntityId),
   );
   const invalidScopedSelection =
     isInvalidLegalEntitySelection(detailQuery.error) ||
     isInvalidLegalEntitySelection(membersQuery.error);
-  const missingSelectedMembership =
-    membershipsQuery.isSuccess &&
-    Boolean(selectedLegalEntityId) &&
-    !selectedMembership;
 
   useEffect(() => {
-    if (!invalidScopedSelection && !missingSelectedMembership) {
+    if (!invalidScopedSelection) {
       return;
     }
-
-    clearSelectedLegalEntityId();
-    setSelectedLegalEntityId(undefined);
-    setSelectionNotice(
-      invalidScopedSelection
-        ? "Seçili legal entity bulunamadı veya erişiminiz kaldırıldı. Lütfen yeniden seçim yapın."
-        : "Önceki legal entity seçiminiz artık üyelikleriniz arasında değil ve temizlendi.",
-    );
-  }, [invalidScopedSelection, missingSelectedMembership]);
-
-  function selectLegalEntity(legalEntityId: string | undefined) {
-    setCreationNotice(undefined);
-    setSelectionNotice(undefined);
-    setSelectedLegalEntityId(legalEntityId);
-    if (legalEntityId) {
-      saveSelectedLegalEntityId(legalEntityId);
-    } else {
-      clearSelectedLegalEntityId();
-    }
-  }
-
-  async function clearVerifiedSession() {
-    clearSelectedLegalEntityId();
-    await queryClient.cancelQueries();
-    queryClient.removeQueries({ queryKey: ["organization"] });
-    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
-    navigate("/login", { replace: true, state: { reason: "logged-out" } });
-  }
-
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: clearVerifiedSession,
-  });
+    clearInvalidSelection();
+  }, [clearInvalidSelection, invalidScopedSelection]);
 
   const createMutation = useMutation({
     mutationFn: createLegalEntity,
@@ -410,8 +323,7 @@ export function AuthenticatedAppPage() {
           queryKey: CURRENT_USER_QUERY_KEY,
         }),
       ]);
-      saveSelectedLegalEntityId(createdEntity.id);
-      setSelectedLegalEntityId(createdEntity.id);
+      workspace.selectLegalEntity(createdEntity.id);
     },
   });
 
@@ -426,134 +338,100 @@ export function AuthenticatedAppPage() {
   }
 
   return (
-    <div className="app-shell authenticated-shell">
-      <header className="site-header authenticated-header workspace-header">
-        <span className="brand" aria-label="M4Trust">
-          M4Trust
-        </span>
-        <EntitySwitcher
-          memberships={memberships}
-          selectedLegalEntityId={selectedLegalEntityId}
-          disabled={membershipsQuery.isPending || memberships.length === 0}
-          onChange={selectLegalEntity}
-        />
-        <div className="account-actions">
-          <div className="account-summary" aria-label="Aktif hesap">
-            <span>{user.displayName}</span>
-            <span>{user.email}</span>
-          </div>
-          <button
-            className="text-button"
-            type="button"
-            onClick={() => logoutMutation.mutate()}
-            disabled={logoutMutation.isPending}
-          >
-            {logoutMutation.isPending ? "Çıkılıyor…" : "Çıkış"}
-          </button>
-        </div>
-      </header>
-
-      <main className="workspace-main organization-workspace">
-        <div className="workspace-column">
-          <span className="section-kicker">Organizasyon çalışma alanı</span>
-          <h1>Legal entity bağlamınızı yönetin.</h1>
-          <p className="workspace-lead">
-            Üyesi olduğunuz legal entity’leri görüntüleyin, aktif bağlamı seçin
-            ve üyeleri sunucu doğrulamasıyla inceleyin.
-          </p>
-
-          {selectionNotice ? (
-            <p className="form-notice workspace-notice" role="status">
-              {selectionNotice}
-            </p>
-          ) : null}
-          {creationNotice ? (
-            <p className="success-notice workspace-notice" role="status">
-              {creationNotice}
-            </p>
-          ) : null}
-          {logoutMutation.isError ? (
-            <p className="form-alert workspace-alert" role="alert">
-              {getAuthErrorMessage(logoutMutation.error, "logout")}
-            </p>
-          ) : null}
-
-          {membershipsQuery.isPending ? (
-            <section className="workspace-panel workspace-state" role="status">
-              <span className="loading-line" aria-hidden="true" />
-              <h2>Legal entity’ler yükleniyor</h2>
-              <p>Üyelikleriniz güvenli çalışma alanı için hazırlanıyor.</p>
-            </section>
-          ) : null}
-
-          {membershipsQuery.isError ? (
-            <section className="workspace-panel workspace-state" role="alert">
-              <h2>Legal entity’ler alınamadı</h2>
-              <p>{getOrganizationErrorMessage(membershipsQuery.error)}</p>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => void membershipsQuery.refetch()}
-                disabled={membershipsQuery.isFetching}
-              >
-                {membershipsQuery.isFetching ? "Yeniden deneniyor…" : "Yeniden dene"}
-              </button>
-            </section>
-          ) : null}
-
-          {membershipsQuery.isSuccess && memberships.length === 0 ? (
-            <section className="workspace-panel empty-entity-state">
-              <span className="section-kicker">İlk adım</span>
-              <h2>Henüz bir legal entity’niz yok.</h2>
-              <p>
-                Çalışma alanını kullanmak için ilk legal entity’nizi oluşturun.
-                Oluşturan hesap otomatik olarak yönetici üye olur.
-              </p>
-              <a className="primary-link-button" href="#create-legal-entity">
-                Legal entity oluştur
-              </a>
-            </section>
-          ) : null}
-
-          {membershipsQuery.isSuccess && memberships.length > 0 ? (
-            <div className="workspace-grid">
-              <MembershipList
-                memberships={memberships}
-                selectedLegalEntityId={selectedLegalEntityId}
-                onSelect={selectLegalEntity}
-              />
-              {selectedMembership ? (
-                <SelectedEntityPanel
-                  selectedMembership={selectedMembership}
-                  detailQuery={detailQuery}
-                  membersQuery={membersQuery}
-                />
-              ) : (
-                <section className="workspace-panel workspace-state">
-                  <h2>Aktif legal entity seçin</h2>
-                  <p>
-                    Detayları ve üye listesini görüntülemek için listeden veya
-                    üst menüden bir legal entity seçin.
-                  </p>
-                </section>
-              )}
-            </div>
-          ) : null}
-
-          <CreateEntityForm
-            isPending={createMutation.isPending}
-            error={createMutation.error}
-            onSubmit={submitCreateEntity}
-          />
-        </div>
-      </main>
-
-      <footer className="site-footer">
-        <p>
-          Aktif legal entity seçimi yalnızca istemci bağlamıdır; tüm yetki Core
-          API tarafından doğrulanır.
+    <main className="workspace-main organization-workspace">
+      <div className="workspace-column">
+        <span className="section-kicker">Organizasyon çalışma alanı</span>
+        <h1>Legal entity bağlamınızı yönetin.</h1>
+        <p className="workspace-lead">
+          Üyesi olduğunuz legal entity’leri görüntüleyin, aktif bağlamı seçin
+          ve üyeleri sunucu doğrulamasıyla inceleyin.
         </p>
-      </footer>
-    </div>
+
+        {workspace.selectionNotice ? (
+          <p className="form-notice workspace-notice" role="status">
+            {workspace.selectionNotice}
+          </p>
+        ) : null}
+        {creationNotice ? (
+          <p className="success-notice workspace-notice" role="status">
+            {creationNotice}
+          </p>
+        ) : null}
+
+        {workspace.membershipsPending ? (
+          <section className="workspace-panel workspace-state" role="status">
+            <span className="loading-line" aria-hidden="true" />
+            <h2>Legal entity’ler yükleniyor</h2>
+            <p>Üyelikleriniz güvenli çalışma alanı için hazırlanıyor.</p>
+          </section>
+        ) : null}
+
+        {workspace.membershipsError ? (
+          <section className="workspace-panel workspace-state" role="alert">
+            <h2>Legal entity’ler alınamadı</h2>
+            <p>{getOrganizationErrorMessage(workspace.membershipsError)}</p>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={workspace.refetchMemberships}
+              disabled={workspace.membershipsFetching}
+            >
+              {workspace.membershipsFetching
+                ? "Yeniden deneniyor…"
+                : "Yeniden dene"}
+            </button>
+          </section>
+        ) : null}
+
+        {!workspace.membershipsPending &&
+        !workspace.membershipsError &&
+        workspace.memberships.length === 0 ? (
+          <section className="workspace-panel empty-entity-state">
+            <span className="section-kicker">İlk adım</span>
+            <h2>Henüz bir legal entity’niz yok.</h2>
+            <p>
+              Çalışma alanını kullanmak için ilk legal entity’nizi oluşturun.
+              Oluşturan hesap otomatik olarak yönetici üye olur.
+            </p>
+            <a className="primary-link-button" href="#create-legal-entity">
+              Legal entity oluştur
+            </a>
+          </section>
+        ) : null}
+
+        {!workspace.membershipsPending &&
+        !workspace.membershipsError &&
+        workspace.memberships.length > 0 ? (
+          <div className="workspace-grid">
+            <MembershipList
+              memberships={workspace.memberships}
+              selectedLegalEntityId={workspace.selectedLegalEntityId}
+              onSelect={workspace.selectLegalEntity}
+            />
+            {workspace.selectedMembership ? (
+              <SelectedEntityPanel
+                selectedMembership={workspace.selectedMembership}
+                detailQuery={detailQuery}
+                membersQuery={membersQuery}
+              />
+            ) : (
+              <section className="workspace-panel workspace-state">
+                <h2>Aktif legal entity seçin</h2>
+                <p>
+                  Detayları ve üye listesini görüntülemek için listeden veya üst
+                  menüden bir legal entity seçin.
+                </p>
+              </section>
+            )}
+          </div>
+        ) : null}
+
+        <CreateEntityForm
+          isPending={createMutation.isPending}
+          error={createMutation.error}
+          onSubmit={submitCreateEntity}
+        />
+      </div>
+    </main>
   );
 }
