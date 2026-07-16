@@ -89,6 +89,6 @@ JSON Schema validates shape and local constraints. Runtime semantic validation i
 
 ## OpenAPI documents
 
-`openapi/core-api-v1.yaml` is the reviewed OpenAPI 3.1 design contract for the same-origin public Spring API consumed by the frontend. It contains the reusable Problem Details foundation and the five Slice 1 authentication operations designed before implementation. Management endpoints are not part of this public contract.
+`openapi/core-api-v1.yaml` is the reviewed OpenAPI 3.1 design contract for the same-origin public Spring API consumed by the frontend. It contains the reusable Problem Details foundation, the Slice 1 authentication operations, and the Slice 2 legal entity and membership surface designed before implementation. Management endpoints are not part of this public contract.
 
 `openapi/ai-internal-v1.yaml` is separate and exposes only AI-service liveness, readiness, capabilities, and contract metadata. It intentionally has no synchronous inference endpoint. `asyncapi/m4trust-ai-v1.yaml` documents the topic exchanges `m4trust.ai.commands`, `m4trust.ai.events`, and `m4trust.ai.dead-letter`; the agreed queues and routing keys are recorded in both AsyncAPI bindings and the `x-m4trust-topology` summary.

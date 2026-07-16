@@ -1,6 +1,6 @@
 # Slice 2 — Tenant, Legal Entity ve Membership
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: ADR-004 §24 → Slice 2
 - Öncül: 01-authentication
 - Ardıl: 03-deal-creation-and-listing
@@ -44,9 +44,16 @@ Kapsam dışı:
 - `GET /api/v1/legal-entities` — kullanıcının üye olduğu entity'ler (küçük liste; pagination bu endpoint'te zorunlu değilse ADR-006 liste DTO'su yine kullanılır)
 - `GET /api/v1/legal-entities/{legalEntityId}` — detay; üye olmayan için 404 (varlık sızdırılmaz, ADR-006 §20)
 - `GET /api/v1/legal-entities/{legalEntityId}/members` — üye listesi
-- `auth/me` genişletmesi VEYA ayrı bir bootstrap endpoint'i: kullanıcının üyelikleri + varsa seçili bağlam bilgisi — planner OpenAPI tasarımında karar verir (öneri: `me` response'una `memberships` eklemek; additive değişiklik)
+- `GET /api/v1/auth/me` — mevcut `id/email/displayName` alanlarını koruyan ve required, non-null `memberships` listesi ekleyen bootstrap projection; register/login response'ları mevcut `PublicUser` wire formatını korur
 
-Alan beklentileri: legal entity en az legalName + registrationNumber benzeri tanımlayıcı alanlar taşır; kesin alan seti OpenAPI tasarımında netleşir. Hangi alanların zorunlu olduğu business gereksinimiyle sınırlı tutulur (aşırı form alanı eklenmez).
+Sabitlenen public contract kararları:
+
+- Minimum rol seti kapalı enum olarak `ADMIN` + `MEMBER`'dır.
+- Create request yalnız required `legalName` (trim sonrası 1–200) ve required `registrationNumber` (trim sonrası 1–100) alır. Registration number için global uniqueness, ülke veya vergi semantiği varsayılmaz.
+- `GET /legal-entities` yalnız authenticated kullanıcının membership listesidir; `POST /legal-entities` ile birlikte aktif entity header'ı gerektirmez.
+- Aktif entity seçimi authoritative server state değildir; client seçimi scoped isteklerde `X-M4Trust-Legal-Entity-Id` olarak gönderilir.
+- Detail ve member-list okumalarında header path'teki entity ile eşleşir ve membership server-side doğrulanır. Eksik/geçersiz/eşleşmeyen header 403 `LEGAL_ENTITY_ACCESS_DENIED`; bulunmayan veya kullanıcıdan gizlenen entity aynı 404 `LEGAL_ENTITY_NOT_FOUND` response'unu üretir.
+- Liste endpoint'leri Slice 2'de pagination olmadan stabil `items` DTO'ları döndürür; collection alanları hiçbir zaman null olmaz.
 
 ## 5. Backend yönlendirmesi
 
@@ -87,13 +94,11 @@ Alan beklentileri: legal entity en az legalName + registrationNumber benzeri tan
 
 ## 9. Açık sorular / karar noktaları
 
-- Başlangıç rol seti: ADMIN/MEMBER ikilisi yeterli mi? (öneri: evet; permission matrisi ihtiyaç doğunca ayrı karar)
-- Üyelik bilgisinin `auth/me` içinde mi ayrı endpoint'te mi döneceği (öneri: `me` içinde; planner OpenAPI tasarımında kesinleştirir)
-- Legal entity alan seti (hangi tanımlayıcı alanlar zorunlu — business girdisi gerekiyor)
+- Phase 1 public API tasarımında açık karar kalmadı. Rol seti, bootstrap projection, minimum create alanları, header kapsamı ve non-disclosure davranışı §4'te sabitlendi.
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI yüzeyi implementasyondan önce tasarlandı
+- [x] OpenAPI yüzeyi implementasyondan önce tasarlandı
 - [ ] Tenant otomatik oluşturma register akışına eklendi; Slice 1 kabul akışı hâlâ geçiyor
 - [ ] Entity oluşturma/listeleme/üye listesi gerçek çalışıyor
 - [ ] `OperationContext` + header doğrulama mekanizması kuruldu ve TEK noktadan geçiyor

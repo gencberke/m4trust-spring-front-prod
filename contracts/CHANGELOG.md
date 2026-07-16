@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added the Slice 2 legal entity creation, membership listing, detail, and member-list public API design.
+- Kept register/login responses on the existing `PublicUser` wire format and added the required non-null `memberships` bootstrap array only to `/auth/me`.
+- Frozen legal entity roles to `ADMIN` and `MEMBER`, and the minimum create fields to bounded trimmed `legalName` and `registrationNumber` strings.
+- Documented the `X-M4Trust-Legal-Entity-Id` context header, server-side membership verification, stable list DTOs, and 401/403/404/422 Problem Details behavior.
+
 ## 1.1.0 - 2026-07-15
 
 - Added the initial OpenAPI 3.1 design contract for the public Core API with same-origin server metadata and no Slice 0 endpoints.
