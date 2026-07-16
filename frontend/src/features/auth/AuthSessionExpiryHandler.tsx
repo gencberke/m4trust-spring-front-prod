@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router";
 
 import { AUTH_SESSION_EXPIRED_EVENT } from "./authApi";
 import { CURRENT_USER_QUERY_KEY } from "./useCurrentUser";
-import { clearSelectedLegalEntityId } from "../organization/legalEntitySelection";
+import { clearActiveSelectionUser } from "../organization/legalEntitySelection";
 
 const ANONYMOUS_ROUTES = new Set(["/login", "/register"]);
 
@@ -15,7 +15,7 @@ export function AuthSessionExpiryHandler() {
 
   useEffect(() => {
     function handleSessionExpiry() {
-      clearSelectedLegalEntityId();
+      clearActiveSelectionUser();
       queryClient.removeQueries({ queryKey: ["organization"] });
       queryClient.removeQueries({ queryKey: ["deals"] });
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);

@@ -13,6 +13,7 @@ import { CURRENT_USER_QUERY_KEY } from "../features/auth/useCurrentUser";
 import type { LegalEntityMembership } from "../features/organization/organizationApi";
 import { legalEntityMembershipsQueryOptions } from "../features/organization/organizationQueries";
 import {
+  clearActiveSelectionUser,
   clearSelectedLegalEntityId,
   readSelectedLegalEntityId,
   saveSelectedLegalEntityId,
@@ -115,7 +116,7 @@ export function AuthenticatedLayout() {
   }
 
   async function clearVerifiedSession() {
-    clearSelectedLegalEntityId();
+    clearActiveSelectionUser();
     await queryClient.cancelQueries();
     queryClient.removeQueries({ queryKey: ["organization"] });
     queryClient.removeQueries({ queryKey: ["deals"] });

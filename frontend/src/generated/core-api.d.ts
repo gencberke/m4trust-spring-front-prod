@@ -318,13 +318,13 @@ export interface components {
         CreateDealRequest: {
             /** @description Required title; must be non-blank after trimming and is stored trimmed. */
             title: string;
-            /** @description Optional Deal description; when supplied it may explicitly be null. */
+            /** @description Optional Deal description; when supplied it may explicitly be null. Blank or whitespace-only values are normalized to null. */
             description?: string | null;
         };
         UpdateDealRequest: {
             /** @description Required title; must be non-blank after trimming and is stored trimmed. */
             title: string;
-            /** @description Required replacement value; null explicitly clears the description. */
+            /** @description Required replacement value; null explicitly clears the description. Blank or whitespace-only values are normalized to null. */
             description: string | null;
             /**
              * Format: int64
