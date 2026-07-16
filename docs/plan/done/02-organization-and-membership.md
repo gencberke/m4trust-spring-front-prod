@@ -1,6 +1,10 @@
 # Slice 2 — Tenant, Legal Entity ve Membership
 
-- Durum: ready
+- Durum: done
+- Tamamlanma tarihi: 2026-07-16
+- Kabul kanıtı: İki ayrı browser profiliyle §7 akışı; create/list/switch,
+  refresh persistence, creator `ADMIN` üyeliği, cross-user 404 non-disclosure
+  ve eksik/geçersiz header 403 kontrolleri başarıyla tamamlandı.
 - Slice sırası: ADR-004 §24 → Slice 2
 - Öncül: 01-authentication
 - Ardıl: 03-deal-creation-and-listing
@@ -106,10 +110,10 @@ uygulama rehberi: [Slice 2 manuel kabul testi](../../DEVELOPMENT.md#slice-2-manu
 - [x] Entity oluşturma/listeleme/üye listesi gerçek çalışıyor
 - [x] `OperationContext` + header doğrulama mekanizması kuruldu ve TEK noktadan geçiyor
 - [x] Audit kayıtları business mutation ile aynı transaction'da yazılıyor
-- [ ] İki-browser izolasyon testi (§7 adım 5–6) manuel çalıştırıldı
+- [x] İki-browser izolasyon testi (§7 adım 5–6) manuel çalıştırıldı
 - [x] §8 invariant testleri geçiyor
-- [x] Frontend'de loading/error/empty durumları ve entity switcher implemente edildi; typecheck/build geçiyor (manuel tarayıcı kabulü kullanıcıda)
+- [x] Frontend'de loading/error/empty durumları ve entity switcher çalışıyor; typecheck/build ve manuel tarayıcı kabulü geçti
 
-Kalan kabul kapısı yalnızca §7'deki insan tarafından çalıştırılan iki-browser
-izolasyon akışıdır. Bu kanıt tamamlanmadan durum `ready` kalır ve plan `done/`
-altına taşınmaz.
+§7'deki insan tarafından çalıştırılan iki-browser izolasyon akışı başarıyla
+tamamlandı. Slice 2'nin contract, backend, frontend, invariant ve gerçek
+tarayıcı kabul kapıları sağlandı.

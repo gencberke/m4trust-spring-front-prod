@@ -25,7 +25,7 @@ Bileşen rehberleri:
 - [Mock AI Worker yer tutucusu](../tools/mock-ai-worker/README.md)
 - [Tamamlanmış Slice 0 planı](plan/done/00-platform-foundation.md)
 - [Tamamlanmış Slice 1 planı](plan/done/01-authentication.md)
-- [Kabul bekleyen Slice 2 planı](plan/ready/02-organization-and-membership.md)
+- [Tamamlanmış Slice 2 planı](plan/done/02-organization-and-membership.md)
 
 ## Windows/PowerShell geliştirme sırası
 
@@ -95,8 +95,10 @@ Slice 2'nin public contract, Core API ve frontend implementasyonu
 `codex/slice2-organization-membership` dalında tamamlanmıştır. Contract
 validation, Testcontainers PostgreSQL kullanan Core API `mvn verify` içindeki 21
 test, frontend `npm run typecheck` ve production `npm run build` başarılıdır.
-Slice 2 henüz kabul edilmemiştir; aşağıdaki iki-profile gerçek tarayıcı akışı
-insan tarafından tamamlanıp kanıtı plana işlenmelidir.
+Aşağıdaki iki-profile gerçek tarayıcı akışı da insan tarafından başarıyla
+tamamlanmış, kabul kanıtı
+`docs/plan/done/02-organization-and-membership.md` içine işlenmiştir. Slice 2
+kabul edilmiş durumdadır.
 
 ## Slice 2 manuel kabul testi
 
@@ -258,7 +260,7 @@ seçili UUID'yi otomatik gönderir.
 - Merkezi session-expiry akışı da aynı seçimi temizleyip korumalı sayfalardan
   `/login` sayfasına yönlendirir.
 
-Tüm adımlar geçerse
-`docs/plan/ready/02-organization-and-membership.md` içindeki iki-browser kabul
-checkbox'ı kanıt notuyla işaretlenebilir. Bundan önce plan `done/` altına
-taşınmaz ve Slice 2 kabul edilmiş sayılmaz.
+Bu akış 2026-07-16 tarihinde başarıyla tamamlanmıştır. Sonuç
+`docs/plan/done/02-organization-and-membership.md` içindeki kabul kanıtı ve
+işaretli Done checklist'iyle kayıtlıdır; bölüm regresyon kabul turunda yeniden
+kullanılabilir.

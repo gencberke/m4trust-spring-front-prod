@@ -7,16 +7,16 @@ Last updated: 2026-07-16
 Slice 0 platform foundation and Slice 1 authentication are merged into `main`
 and accepted under `docs/plan/done/`.
 
-Slice 2 organization and membership contract, backend, and frontend
-implementation is complete on `codex/slice2-organization-membership`. Human
-two-browser end-to-end acceptance is still pending, so Slice 2 remains
-`ready` rather than accepted.
+Slice 2 organization and membership is accepted under `docs/plan/done/`.
+Contract, backend, frontend, and the real two-browser end-to-end isolation flow
+passed on `codex/slice2-organization-membership`.
 
 ## Accepted foundations
 
 - ADR-001 through ADR-007 are accepted and remain authoritative.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
+- Slice 2 organization and membership is accepted under `docs/plan/done/`.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
 - The system direction remains Vite/React/TypeScript + Spring Boot modular
@@ -43,30 +43,28 @@ two-browser end-to-end acceptance is still pending, so Slice 2 remains
 - Contract validation passes for the committed Slice 2 OpenAPI.
 - Core API `mvn verify` passes with 21 tests against Testcontainers PostgreSQL.
 - Frontend `npm run typecheck` and production `npm run build` pass.
-- Human two-browser isolation and browser acceptance remain pending.
+- Human two-browser isolation and browser acceptance passed.
 
 ## Not yet stable or accepted
 
-- Slice 2 until the manual two-browser acceptance flow passes
 - FastAPI AI service skeleton and Mock AI Worker implementation
 - Railway service configuration
 
 ## Active work
 
 `codex/slice2-organization-membership` contains the complete Slice 2 contract,
-persistence, Core API, frontend workspace, and handoff documentation. The plan
-remains at `docs/plan/ready/02-organization-and-membership.md`.
+persistence, Core API, frontend workspace, acceptance evidence, and completion
+documentation. The accepted plan is at
+`docs/plan/done/02-organization-and-membership.md`.
 
 ## Known blockers
 
-No architectural or implementation blocker. Slice 2 awaits human browser
-acceptance only.
+No architectural or implementation blocker.
 
 ## Next likely capability
 
-Run the documented Slice 2 two-profile browser acceptance flow. If it passes,
-record the evidence, move Plan 02 to `done/`, and merge the accepted feature
-branch before planning Slice 3.
+Merge the accepted Slice 2 feature branch into `main`, then review and approve
+the Slice 3 deal-creation plan before implementation.
 
 ## Update rule
 
