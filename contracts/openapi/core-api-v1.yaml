@@ -13,6 +13,8 @@ tags:
     description: Browser security bootstrap operations.
   - name: Legal Entities
     description: Legal entity creation, membership bootstrap, and organization-scoped reads.
+  - name: Deals
+    description: Legal-entity-scoped Deal creation, discovery, editing, and lifecycle actions.
 paths:
   /auth/register:
     post:
@@ -268,6 +270,181 @@ paths:
           $ref: '#/components/responses/LegalEntityAccessDenied'
         '404':
           $ref: '#/components/responses/LegalEntityNotFoundOrHidden'
+  /deals:
+    post:
+      operationId: createDeal
+      tags: [Deals]
+      summary: Create a Deal in DRAFT status
+      description: >
+        Creates a Deal for the active legal entity, which becomes the initial
+        participant. The title is trimmed and must remain non-blank. The optional
+        description is stored as null when omitted. No idempotency key is used in
+        this slice.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/LegalEntityContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDealRequest'
+      responses:
+        '201':
+          description: Deal created in DRAFT status.
+          headers:
+            Location:
+              description: Same-origin path of the created Deal.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDetail'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealScopedMutationForbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    get:
+      operationId: listDeals
+      tags: [Deals]
+      summary: List Deals visible to the active legal entity
+      description: >
+        Returns only Deals in which the active legal entity is a participant. Results
+        use stable page metadata. The default sort is createdAt,desc; the backend may
+        add a stable identifier tie-breaker without exposing persistence field names.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/DealStatusFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/DealSort'
+      responses:
+        '200':
+          description: Page of Deals visible to the active legal entity; items is never null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealPage'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deals/{dealId}:
+    get:
+      operationId: getDeal
+      tags: [Deals]
+      summary: Get a Deal detail
+      description: >
+        Returns the Deal only when the active legal entity is a participant.
+        A nonexistent Deal and a Deal hidden from a non-participant both return
+        DEAL_NOT_FOUND so existence is not disclosed.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Deal detail visible to the active legal entity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDetail'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/DealNotFoundOrHidden'
+    patch:
+      operationId: updateDeal
+      tags: [Deals]
+      summary: Replace the editable basic fields of a Deal
+      description: >
+        Replaces the complete editable basic-field set. Both title and description
+        are required in the request; description may explicitly be null. A stale
+        expectedVersion returns DEAL_STALE_VERSION. A Deal whose lifecycle state
+        does not permit editing returns DEAL_STATE_CONFLICT.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDealRequest'
+      responses:
+        '200':
+          description: Deal basic fields updated and the current projection returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDetail'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealScopedMutationForbidden'
+        '404':
+          $ref: '#/components/responses/DealNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealUpdateConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deals/{dealId}/cancel:
+    post:
+      operationId: cancelDeal
+      tags: [Deals]
+      summary: Cancel a Deal
+      description: >
+        Performs the explicit Deal cancellation business action. The request has no
+        body. Invalid state transitions return DEAL_STATE_CONFLICT. Authorization and
+        action availability are re-evaluated by the backend even when canCancel was
+        previously true.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Deal cancelled and its current detail projection returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDetail'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealScopedMutationForbidden'
+        '404':
+          $ref: '#/components/responses/DealNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealStateConflict'
 components:
   securitySchemes:
     SessionCookie:
@@ -313,12 +490,64 @@ components:
       required: true
       description: >
         Client-selected legal entity context. This header is neither an authentication
-        credential nor proof of authorization. It must be a UUID equal to the
-        legalEntityId path parameter and is verified server-side against membership.
-        Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED.
+        credential nor proof of authorization. It is verified server-side against
+        membership and, for Deal operations, participation. On a legal entity detail
+        path it must equal the legalEntityId path parameter. Missing, malformed, or
+        mismatched values produce LEGAL_ENTITY_ACCESS_DENIED.
       schema:
         type: string
         format: uuid
+    DealId:
+      name: dealId
+      in: path
+      required: true
+      description: Public UUID of the requested Deal.
+      schema:
+        type: string
+        format: uuid
+    DealStatusFilter:
+      name: status
+      in: query
+      required: false
+      description: Optional exact Deal status filter.
+      schema:
+        $ref: '#/components/schemas/DealStatus'
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Zero-based page index.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    PageSize:
+      name: size
+      in: query
+      required: false
+      description: Requested number of items per page.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 20
+    DealSort:
+      name: sort
+      in: query
+      required: false
+      description: >
+        Single allowlisted Deal sort. The public value is not a persistence property
+        name. Defaults to newest creation time first.
+      schema:
+        type: string
+        default: createdAt,desc
+        enum:
+          - createdAt,asc
+          - createdAt,desc
+          - title,asc
+          - title,desc
   responses:
     MalformedRequest:
       description: Request JSON cannot be parsed; Problem Details code is MALFORMED_REQUEST.
@@ -372,6 +601,39 @@ components:
       description: >
         Legal entity does not exist or is hidden because the authenticated user is not
         a member; both cases use the same Problem Details code LEGAL_ENTITY_NOT_FOUND.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealNotFoundOrHidden:
+      description: >
+        Deal does not exist or is hidden because the active legal entity is not a
+        participant; both cases use the same Problem Details code DEAL_NOT_FOUND.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealScopedMutationForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), or the required active legal
+        entity context is missing, malformed, or not authorized
+        (LEGAL_ENTITY_ACCESS_DENIED).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealUpdateConflict:
+      description: >
+        The Deal was modified after expectedVersion (DEAL_STALE_VERSION), or its
+        current lifecycle state does not permit editing (DEAL_STATE_CONFLICT).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealStateConflict:
+      description: >
+        The requested Deal action is invalid in the current lifecycle state;
+        Problem Details code is DEAL_STATE_CONFLICT.
       content:
         application/problem+json:
           schema:
@@ -548,6 +810,190 @@ components:
           description: Legal entity members; never null.
           items:
             $ref: '#/components/schemas/LegalEntityMember'
+    CreateDealRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Required title; must be non-blank after trimming and is stored trimmed.
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Optional Deal description; when supplied it may explicitly be null.
+    UpdateDealRequest:
+      type: object
+      additionalProperties: false
+      required: [title, description, expectedVersion]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Required title; must be non-blank after trimming and is stored trimmed.
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Required replacement value; null explicitly clears the description.
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current aggregate version observed by the client.
+    DealStatus:
+      type: string
+      description: Closed authoritative Deal container status set.
+      enum: [DRAFT, ACTIVE, CANCELLED, COMPLETED, ARCHIVED]
+    DealLifecycleProjection:
+      type: string
+      description: >
+        Backend-derived display lifecycle. It is not mutable authoritative state and
+        clients must not derive it from status combinations.
+      enum:
+        - DRAFT
+        - CONTRACT_ANALYSIS
+        - MANUAL_REVIEW
+        - RATIFICATION
+        - FUNDING
+        - FULFILLMENT
+        - SETTLEMENT
+        - DISPUTE
+        - COMPLETED
+        - CANCELLED
+        - ARCHIVED
+    DealAvailableActions:
+      type: object
+      additionalProperties: false
+      description: >
+        Backend-derived action availability for the current user and active legal
+        entity. Clients use this projection for presentation but the backend always
+        re-authorizes mutations.
+      required: [canUpdate, canCancel]
+      properties:
+        canUpdate:
+          type: boolean
+        canCancel:
+          type: boolean
+    UtcTimestamp:
+      type: string
+      format: date-time
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$'
+      description: RFC 3339 timestamp normalized to UTC with a trailing uppercase Z.
+    DealSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - reference
+        - title
+        - status
+        - lifecycle
+        - version
+        - createdAt
+        - updatedAt
+        - availableActions
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Backend-generated human-readable Deal reference.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/DealStatus'
+        lifecycle:
+          $ref: '#/components/schemas/DealLifecycleProjection'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DealAvailableActions'
+    DealDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - reference
+        - title
+        - description
+        - status
+        - lifecycle
+        - version
+        - createdAt
+        - updatedAt
+        - availableActions
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Backend-generated human-readable Deal reference.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Always present; null means that no Deal description is currently set.
+        status:
+          $ref: '#/components/schemas/DealStatus'
+        lifecycle:
+          $ref: '#/components/schemas/DealLifecycleProjection'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DealAvailableActions'
+    DealPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          description: Deal summaries visible to the active legal entity; never null.
+          items:
+            $ref: '#/components/schemas/DealSummary'
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        size:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int32
+          minimum: 0
     CsrfToken:
       type: object
       additionalProperties: false

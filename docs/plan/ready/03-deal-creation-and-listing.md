@@ -1,6 +1,6 @@
 # Slice 3 — Deal Creation ve Listing
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: ADR-004 §24 → Slice 3
 - Öncül: 02-organization-and-membership
 - Ardıl: Slice 4 (Deal Parties and Participants — bu planda kapsam dışı)

@@ -168,6 +168,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Deals visible to the active legal entity
+         * @description Returns only Deals in which the active legal entity is a participant. Results use stable page metadata. The default sort is createdAt,desc; the backend may add a stable identifier tie-breaker without exposing persistence field names.
+         */
+        get: operations["listDeals"];
+        put?: never;
+        /**
+         * Create a Deal in DRAFT status
+         * @description Creates a Deal for the active legal entity, which becomes the initial participant. The title is trimmed and must remain non-blank. The optional description is stored as null when omitted. No idempotency key is used in this slice.
+         */
+        post: operations["createDeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a Deal detail
+         * @description Returns the Deal only when the active legal entity is a participant. A nonexistent Deal and a Deal hidden from a non-participant both return DEAL_NOT_FOUND so existence is not disclosed.
+         */
+        get: operations["getDeal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Replace the editable basic fields of a Deal
+         * @description Replaces the complete editable basic-field set. Both title and description are required in the request; description may explicitly be null. A stale expectedVersion returns DEAL_STALE_VERSION. A Deal whose lifecycle state does not permit editing returns DEAL_STATE_CONFLICT.
+         */
+        patch: operations["updateDeal"];
+        trace?: never;
+    };
+    "/deals/{dealId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a Deal
+         * @description Performs the explicit Deal cancellation business action. The request has no body. Invalid state transitions return DEAL_STATE_CONFLICT. Authorization and action availability are re-evaluated by the backend even when canCancel was previously true.
+         */
+        post: operations["cancelDeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -246,6 +314,85 @@ export interface components {
         LegalEntityMemberList: {
             /** @description Legal entity members; never null. */
             items: components["schemas"]["LegalEntityMember"][];
+        };
+        CreateDealRequest: {
+            /** @description Required title; must be non-blank after trimming and is stored trimmed. */
+            title: string;
+            /** @description Optional Deal description; when supplied it may explicitly be null. */
+            description?: string | null;
+        };
+        UpdateDealRequest: {
+            /** @description Required title; must be non-blank after trimming and is stored trimmed. */
+            title: string;
+            /** @description Required replacement value; null explicitly clears the description. */
+            description: string | null;
+            /**
+             * Format: int64
+             * @description Current aggregate version observed by the client.
+             */
+            expectedVersion: number;
+        };
+        /**
+         * @description Closed authoritative Deal container status set.
+         * @enum {string}
+         */
+        DealStatus: "DRAFT" | "ACTIVE" | "CANCELLED" | "COMPLETED" | "ARCHIVED";
+        /**
+         * @description Backend-derived display lifecycle. It is not mutable authoritative state and clients must not derive it from status combinations.
+         * @enum {string}
+         */
+        DealLifecycleProjection: "DRAFT" | "CONTRACT_ANALYSIS" | "MANUAL_REVIEW" | "RATIFICATION" | "FUNDING" | "FULFILLMENT" | "SETTLEMENT" | "DISPUTE" | "COMPLETED" | "CANCELLED" | "ARCHIVED";
+        /** @description Backend-derived action availability for the current user and active legal entity. Clients use this projection for presentation but the backend always re-authorizes mutations. */
+        DealAvailableActions: {
+            canUpdate: boolean;
+            canCancel: boolean;
+        };
+        /**
+         * Format: date-time
+         * @description RFC 3339 timestamp normalized to UTC with a trailing uppercase Z.
+         */
+        UtcTimestamp: string;
+        DealSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @description Backend-generated human-readable Deal reference. */
+            reference: string;
+            title: string;
+            status: components["schemas"]["DealStatus"];
+            lifecycle: components["schemas"]["DealLifecycleProjection"];
+            /** Format: int64 */
+            version: number;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+            availableActions: components["schemas"]["DealAvailableActions"];
+        };
+        DealDetail: {
+            /** Format: uuid */
+            id: string;
+            /** @description Backend-generated human-readable Deal reference. */
+            reference: string;
+            title: string;
+            /** @description Always present; null means that no Deal description is currently set. */
+            description: string | null;
+            status: components["schemas"]["DealStatus"];
+            lifecycle: components["schemas"]["DealLifecycleProjection"];
+            /** Format: int64 */
+            version: number;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+            availableActions: components["schemas"]["DealAvailableActions"];
+        };
+        DealPage: {
+            /** @description Deal summaries visible to the active legal entity; never null. */
+            items: components["schemas"]["DealSummary"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
         };
         CsrfToken: {
             /** @description CSRF token value; never log or treat as an authentication credential. */
@@ -364,12 +511,58 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description Deal does not exist or is hidden because the active legal entity is not a participant; both cases use the same Problem Details code DEAL_NOT_FOUND. */
+        DealNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), or the required active legal entity context is missing, malformed, or not authorized (LEGAL_ENTITY_ACCESS_DENIED). */
+        DealScopedMutationForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The Deal was modified after expectedVersion (DEAL_STALE_VERSION), or its current lifecycle state does not permit editing (DEAL_STATE_CONFLICT). */
+        DealUpdateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The requested Deal action is invalid in the current lifecycle state; Problem Details code is DEAL_STATE_CONFLICT. */
+        DealStateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
     };
     parameters: {
         /** @description Public UUID of the requested legal entity. */
         LegalEntityId: string;
-        /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It must be a UUID equal to the legalEntityId path parameter and is verified server-side against membership. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+        /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
         LegalEntityContext: string;
+        /** @description Public UUID of the requested Deal. */
+        DealId: string;
+        /** @description Optional exact Deal status filter. */
+        DealStatusFilter: components["schemas"]["DealStatus"];
+        /** @description Zero-based page index. */
+        Page: number;
+        /** @description Requested number of items per page. */
+        PageSize: number;
+        /** @description Single allowlisted Deal sort. The public value is not a persistence property name. Defaults to newest creation time first. */
+        DealSort: "createdAt,asc" | "createdAt,desc" | "title,asc" | "title,desc";
     };
     requestBodies: never;
     headers: {
@@ -560,7 +753,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It must be a UUID equal to the legalEntityId path parameter and is verified server-side against membership. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
                 "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
             };
             path: {
@@ -590,7 +783,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It must be a UUID equal to the legalEntityId path parameter and is verified server-side against membership. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
                 "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
             };
             path: {
@@ -614,6 +807,172 @@ export interface operations {
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["LegalEntityAccessDenied"];
             404: components["responses"]["LegalEntityNotFoundOrHidden"];
+        };
+    };
+    listDeals: {
+        parameters: {
+            query?: {
+                /** @description Optional exact Deal status filter. */
+                status?: components["parameters"]["DealStatusFilter"];
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Requested number of items per page. */
+                size?: components["parameters"]["PageSize"];
+                /** @description Single allowlisted Deal sort. The public value is not a persistence property name. Defaults to newest creation time first. */
+                sort?: components["parameters"]["DealSort"];
+            };
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Page of Deals visible to the active legal entity; items is never null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealPage"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createDeal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDealRequest"];
+            };
+        };
+        responses: {
+            /** @description Deal created in DRAFT status. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the created Deal. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealScopedMutationForbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getDeal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deal detail visible to the active legal entity. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealNotFoundOrHidden"];
+        };
+    };
+    updateDeal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDealRequest"];
+            };
+        };
+        responses: {
+            /** @description Deal basic fields updated and the current projection returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealScopedMutationForbidden"];
+            404: components["responses"]["DealNotFoundOrHidden"];
+            409: components["responses"]["DealUpdateConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    cancelDeal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deal cancelled and its current detail projection returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealScopedMutationForbidden"];
+            404: components["responses"]["DealNotFoundOrHidden"];
+            409: components["responses"]["DealStateConflict"];
         };
     };
 }
