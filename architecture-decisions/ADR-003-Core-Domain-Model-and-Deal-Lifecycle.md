@@ -527,12 +527,10 @@ Ratified package doğrudan değiştirilemez.
 
 Ratified içerikte değişiklik yapılması gerektiğinde:
 
-- `1.`
-- `2.`
-- `3.`
-- `4.`
-
-Yeni rule-set version oluşturulur. Yeni ratification package oluşturulur. Eski package superseded olarak işaretlenir. Yeni ratification süreci başlatılır.
+1. Yeni rule-set version oluşturulur.
+2. Yeni ratification package oluşturulur.
+3. Eski package superseded olarak işaretlenir.
+4. Yeni ratification süreci başlatılır.
 
 ## 12. FundingStatus
 
@@ -708,49 +706,17 @@ Projection’ın kendi başına business mutation yetkisi yoktur.
 
 Örnek öncelik:
 
-**1.**
-
-ARCHIVED
-
-**2.**
-
-CANCELLED
-
-**3.**
-
-Aktif dispute varsa DISPUTE
-
-**4.**
-
-Settlement tamamlandıysa COMPLETED
-
-**5.**
-
-Settlement aktifse SETTLEMENT
-
-**6.**
-
-Fulfillment aktifse FULFILLMENT
-
-**7.**
-
-Funding tamamlanmadıysa FUNDING
-
-**8.**
-
-Ratification tamamlanmadıysa RATIFICATION
-
-**9.**
-
-Manual review gerekiyorsa MANUAL_REVIEW
-
-**10.**
-
-Analysis tamamlanmadıysa CONTRACT_ANALYSIS
-
-**11.**
-
-Aksi hâlde DRAFT
+1. ARCHIVED
+2. CANCELLED
+3. Aktif dispute varsa DISPUTE
+4. Settlement tamamlandıysa COMPLETED
+5. Settlement aktifse SETTLEMENT
+6. Fulfillment aktifse FULFILLMENT
+7. Funding tamamlanmadıysa FUNDING
+8. Ratification tamamlanmadıysa RATIFICATION
+9. Manual review gerekiyorsa MANUAL_REVIEW
+10. Analysis tamamlanmadıysa CONTRACT_ANALYSIS
+11. Aksi hâlde DRAFT
 
 Exact projection algoritması application kodunda merkezi olarak tutulacaktır.
 
