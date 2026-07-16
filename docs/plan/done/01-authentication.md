@@ -1,6 +1,9 @@
 # Slice 1 — Authentication
 
-- Durum: ready
+- Durum: done
+- Tamamlanma tarihi: 2026-07-16
+- Kabul kanıtı: §7 tarayıcı akışı ve hassas log spot check'i kullanıcı tarafından gerçek frontend → Spring → PostgreSQL zincirinde başarıyla tamamlandı.
+- Kapsam sapması: Login throttling planlandığı gibi kod kapsamı dışında bırakıldı ve GitHub issue #7 ile public launch öncesi takip altına alındı; başka sapma yok.
 - Slice sırası: ADR-004 §24 → Slice 1
 - Öncül: 00-platform-foundation
 - Ardıl: 02-organization-and-membership
@@ -112,7 +115,7 @@ Controller'ın service çağırdığını doğrulayan yüzeysel testler yazılma
 - [x] Session cookie ayarları profil bazlı doğru (local/prod ayrımı)
 - [x] Session fixation regeneration doğrulandı; absolute timeout server-side uygulanıyor
 - [x] Frontend gerçek API'ye bağlı; loading/error/empty durumları var
-- [ ] §7'deki tarayıcı akışı baştan sona manuel çalıştırıldı
+- [x] §7'deki tarayıcı akışı baştan sona manuel çalıştırıldı
 - [x] §8'deki invariant testleri geçiyor
 - [x] Login throttling için takip kaydı açıldı (§10)
-- [ ] Parola/session ID/CSRF token hiçbir logda görünmüyor (spot check)
+- [x] Parola/session ID/CSRF token hiçbir logda görünmüyor (spot check)

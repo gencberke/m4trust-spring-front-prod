@@ -4,14 +4,15 @@ Last updated: 2026-07-16
 
 ## Phase
 
-Slice 0 is done. Slice 1 authentication implementation is merged into `main`;
-completion fixes are on `codex/slice1-completion-fixes`, and the real browser
-acceptance pass remains before Slice 1 can be marked done.
+Slice 0 and Slice 1 are done. Slice 1 passed the real browser acceptance flow
+and sensitive-log spot check on `codex/slice1-completion-fixes`; the accepted
+completion commit remains to be merged into `main`.
 
 ## Accepted foundations
 
 - ADR-001 through ADR-007 are accepted and remain authoritative.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
+- Slice 1 authentication is accepted under `docs/plan/done/`.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
 - The system direction remains Vite/React/TypeScript + Spring Boot modular
@@ -37,28 +38,25 @@ acceptance pass remains before Slice 1 can be marked done.
 
 ## Not yet stable or accepted
 
-- Slice 1 real browser acceptance and sensitive-log spot check
 - Slice 2 organization/membership plan approval and implementation
 - FastAPI AI service skeleton and Mock AI Worker implementation
 - Railway service configuration
 
 ## Active work
 
-`codex/slice1-completion-fixes` centralizes frontend
-`AUTH_SESSION_EXPIRED` handling, records the deferred login-throttling follow-up
-in GitHub issue #7, and reconciles Slice 1 documentation. Browser acceptance is
-intentionally left to the user.
+`codex/slice1-completion-fixes` contains the accepted centralized frontend
+`AUTH_SESSION_EXPIRED` handling, the deferred login-throttling follow-up in
+GitHub issue #7, and the reconciled Slice 1 completion documentation.
 
 ## Known blockers
 
-No architectural blocker. Docker Engine was unavailable in the current local
-session, so the remaining full runtime/browser acceptance could not be run here.
+No architectural blocker.
 
 ## Next likely capability
 
-Run `docs/plan/ready/01-authentication.md` §7 end to end, complete the sensitive
-log spot check, then move the plan to `done/` and record Slice 1 as accepted.
-Slice 2 remains in `planning/` until human approval.
+Merge the accepted Slice 1 completion branch into `main`. Slice 2 remains in
+`planning/` until human approval; do not begin implementation before that plan
+moves to `ready/`.
 
 ## Update rule
 
