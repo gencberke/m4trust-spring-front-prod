@@ -36,6 +36,10 @@ DRAFT aşamasında initiator legal entity:
 - Deal'i ratification'a hazırlanacak hale getirebilir,
 - DRAFT Deal'i geri çekerek CANCELLED yapabilir.
 
+İlk rol modelinde initiator legal entity'nin `ADMIN` ve `MEMBER` kullanıcıları bu
+DRAFT koordinasyon işlemlerini yapabilir. Bu yetki şirketi bağlayan ratification
+veya ACTIVE cancellation onayı anlamına gelmez.
+
 Diğer participant'lar başlangıçta read/list yetkisine sahiptir. Participant
 ilişkisi tek başına update, cancel, invite, party assignment veya activation
 yetkisi vermez.
