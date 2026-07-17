@@ -29,6 +29,11 @@ Deal'in ACTIVE olması kabul edilmiş sayılmaz.
 
 ### 2.2 Initiator taslak koordinatörüdür
 
+Deal, oluşturma anındaki aktif legal entity'yi immutable
+`initiatorLegalEntityId` olarak taşır. Initiator; hosting tenant, creator user,
+en eski participant veya başka dolaylı veriden çıkarılmaz. Oluşturma sırasında
+initiator participant kaydıyla aynı transaction'da yazılır.
+
 DRAFT aşamasında initiator legal entity:
 
 - temel Deal alanlarını ve taraf taslağını yönetebilir,
@@ -54,16 +59,29 @@ yetkisi vermez.
 
 gerçekleşir.
 
+Her gerekli legal entity package başına en fazla bir etkili onay sağlar; aynı
+entity'deki birden fazla ADMIN onay sayısını artırmaz.
+
 İkinci gerekli taraf onayıyla package'ın `RATIFIED` olması ve Deal'in `ACTIVE`
 olması aynı business transaction içinde tamamlanır. Initiator buyer veya seller
 değilse bu onayların yerine geçemez.
 
-### 2.4 Değişiklik yeni ratification gerektirir
+### 2.4 Değişiklik ve ratification'dan vazgeçme
 
 Ratification package immutable'dır. Buyer/seller, accepted rule-set, current
 contractual document veya package içeriğindeki başka bir contractual bilgi
 değişirse yeni package version oluşturulur; eski onaylar yeni sürümde geçerli
 sayılmaz.
+
+Package henüz RATIFIED değilken buyer veya seller'ın yetkili ADMIN'i package'ı
+reddedebilir. Package `REJECTED` olur; mevcut approval kayıtları audit geçmişi
+olarak korunur ve devam etmek için yeni package gerekir. RATIFIED olduktan sonra
+tek taraflı approval geri çekme yoktur; cancellation/dispute akışı kullanılır.
+
+Initiator bir DRAFT Deal'i geri çektiğinde current READY/PENDING package aynı
+transaction'da SUPERSEDED olur. Son gerekli approval ile DRAFT withdrawal yarışı
+serialize edilir: approval önce tamamlanırsa Deal ACTIVE olur ve doğrudan cancel
+reddedilir; withdrawal önce tamamlanırsa sonraki approval reddedilir.
 
 ### 2.5 ACTIVE Deal tek taraflı doğrudan iptal edilemez
 
@@ -90,11 +108,12 @@ olarak genişletilebilir.
 
 ## 3. Slice etkisi
 
-- Slice 4 cross-tenant görünürlük ve invitation akışını kurar; ticari rıza üretmez.
+- Slice 4, immutable initiator referansını ve cross-tenant invitation/visibility
+  zeminini kurar; invitation acceptance ticari rıza üretmez.
 - Slice 5 buyer/seller ataması ve ratification readiness'i kurar; kullanıcıya
   doğrudan activate action'ı sunmaz.
-- Ratification slice'ı package onaylarını ve `RATIFIED → Deal ACTIVE` atomik
-  bağını uygular.
+- Ratification slice'ı package approval/rejection işlemlerini ve
+  `RATIFIED → Deal ACTIVE` atomik bağını uygular.
 - ACTIVE cancellation workflow casework/dispute veya ayrı cancellation slice'ında
   uygulanır.
 
@@ -103,15 +122,18 @@ ACTIVE üretimi açılmadan önce bu davranışlar bu ADR'ye hizalanmalıdır.
 
 ## 4. Yasaklanan yaklaşımlar
 
+- Initiator legal entity'yi hosting tenant, creator user veya participant sırasından çıkarmak
 - Davet kabulünü buyer/seller veya contract onayı saymak
 - Participant görünürlüğünü bütün Deal mutation'ları için yetki saymak
 - Initiator'a tek başına `DRAFT → ACTIVE` yetkisi vermek
 - Farklı ratification package sürümlerindeki onayları birleştirmek
+- Aynı legal entity'nin birden fazla ADMIN onayını birden fazla taraf onayı saymak
 - Buyer ve seller rızası veya casework kararı olmadan ACTIVE Deal'i cancel etmek
 - `MEMBER` rolünü şirketi bağlayan ratification/cancellation onayı için yeterli saymak
 
 ## 5. Sonuçlar
 
+- Initiator kimliği kalıcı ve denetlenebilir bir business alanıdır.
 - Initiator taslağı hızlı biçimde yönetebilir; taraflar yalnız immutable aynı
   içeriğe onay verdiklerinde ticari commitment oluşur.
 - ACTIVE sonrası tek taraflı kötüye kullanım engellenir.
