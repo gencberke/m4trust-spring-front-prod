@@ -118,7 +118,10 @@ olarak genişletilebilir.
   uygulanır.
 
 Mevcut kodda ACTIVE basic edit/cancel izinleri bulunabilir; kullanıcı akışında
-ACTIVE üretimi açılmadan önce bu davranışlar bu ADR'ye hizalanmalıdır.
+ACTIVE üretimi açılmadan önce bu davranışlar bu ADR'ye hizalanmalıdır. Bu
+hizalamanın sahibi ratification slice'ıdır: `DRAFT → ACTIVE` bağını uygulayan
+slice, ACTIVE edit/cancel izinlerinin bu ADR'ye çekilmesini kendi Done tanımına
+açık madde olarak alır; hizalama yapılmadan ACTIVE üretimi açılamaz.
 
 ## 4. Yasaklanan yaklaşımlar
 

@@ -440,8 +440,12 @@ Aşağıdaki geçişler yasaktır:
 ARCHIVED → herhangi bir mutable durum
 
 ACTIVE, bütün alt süreçlerin tamamlandığı anlamına gelmez. Deal üzerinde aktif business süreç
-
 bulunduğunu belirtir.
+
+Not: Bu bölüm yalnız izinli geçişleri tanımlar. `DRAFT → ACTIVE` ve
+`ACTIVE → CANCELLED` geçişlerinin tetikleyici ve rıza kuralları ADR-009'da
+kesinleştirilmiştir (ACTIVE yalnız karşılıklı ratification ile oluşur; ACTIVE
+iptali tek taraflı yapılamaz). Çelişki halinde ADR-009 geçerlidir.
 
 ## 10. AnalysisStatus
 

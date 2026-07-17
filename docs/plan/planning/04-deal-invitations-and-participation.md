@@ -67,19 +67,22 @@ Sabit davranışlar:
 
 Tek plan korunur; deployment üç uyumlu aşamaya ayrılır:
 
-1. **Expand release:** participant `legal_entity_tenant_id` ve Deal
-   `initiator_legal_entity_id` nullable eklenir. Mevcut Deal'lerde initiator,
-   bugünkü tek participant'tan deterministik backfill edilir. Yeni FK/index'ler
-   eklenir ve uygulama yeni kayıtları dual-write eder. Eski image bu şemayla çalışır.
+1. **Expand release:** participant `legal_entity_tenant_id` nullable eklenir,
+   mevcut satırlar bugünkü `tenant_id` değerinden backfill edilir, yeni
+   FK/index'ler eklenir ve uygulama yeni kayıtları dual-write eder. Eski image
+   bu şemayla çalışır.
 2. **Switch release:** visibility participant legal entity + kendi tenant'ı
    eksenine, mutation authorization ise explicit initiator alanına geçer;
-   invitation capability açılır. Ardından yeni kolonlar `NOT NULL` olur ve eski
+   invitation capability açılır. Ardından yeni kolon `NOT NULL` olur ve eski
    participant entity FK kaldırılır. Rollback hedefi expand image'ıdır.
 3. **Cleanup release:** yalnız doğrulanmış gereksiz constraint/index temizliği.
 
-`initiator_legal_entity_id`, hosting tenant içindeki legal entity'ye FK ile bağlı,
-immutable bir Deal alanıdır. Creator user, hosting tenant veya participant sırası
-üzerinden sonradan çıkarılmaz.
+`initiator_legal_entity_id` için ŞEMA İŞİ YOKTUR: kolon Slice 3'ten beri
+(`V5__deal_foundation.sql`) NOT NULL ve hosting-tenant FK'sıyla mevcuttur;
+oluşturma, participant kaydıyla aynı transaction'da zaten yazmaktadır. Bu
+slice'ın initiator işi yalnız MUTATION AUTHORIZATION kontrollerinin bu explicit
+alandan okunmasıdır. Alan immutable'dır; creator user, hosting tenant veya
+participant sırası üzerinden sonradan çıkarılmaz (ADR-009 §2.2).
 
 Switch ve contract adımları expand compatibility release'i production/staging'de
 kanıtlanmadan aynı rollout'a sıkıştırılmaz.
@@ -131,7 +134,7 @@ kanıtlanmadan aynı rollout'a sıkıştırılmaz.
 ## 8. Minimum invariant testleri
 
 - Cross-tenant participant visibility + nonparticipant 404
-- Explicit initiator backfill ve non-initiator Deal/invitation mutation reddi
+- Non-initiator Deal/invitation mutation reddi (yetki explicit initiator alanından)
 - Accept/revoke concurrency ve terminal transition
 - Duplicate PENDING + aynı/farklı idempotency request davranışı
 - Expand dual-write ve switch query uyumluluğu
@@ -148,7 +151,7 @@ Bunların dışında geniş unit-test matrisi kurulmaz.
 ## 10. Done tanımı
 
 - [ ] OpenAPI invitation/participant yüzeyi önce tasarlandı
-- [ ] Expand release initiator/participant backfill ve rollback uyumluluğuyla kanıtlandı
+- [ ] Expand release participant tenant backfill'i ve rollback uyumluluğuyla kanıtlandı
 - [ ] Switch release cross-tenant visibility ve explicit initiator authorization ile çalışıyor
 - [ ] Invitation state machine ve idempotency çalışıyor
 - [ ] Yetki visibility'den bağımsız ve backend'de doğrulanıyor
