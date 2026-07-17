@@ -82,7 +82,7 @@ class DealRepositoryIntegrationTest {
                 UUID.randomUUID(), "Initial Deal", Instant.parse(
                         "2026-07-16T10:00:00Z"));
 
-        repository.insert(deal);
+        repository.insert(deal, tenantId);
 
         assertTrue(repository.findVisibleById(
                 tenantId, participantEntityId, deal.id()).isPresent());
@@ -92,12 +92,12 @@ class DealRepositoryIntegrationTest {
                 tenantId, participantEntityId, null));
         assertEquals(0, repository.countVisible(
                 tenantId, otherEntityId, null));
-        assertEquals(1, jdbcTemplate.queryForObject("""
-                SELECT count(*)
+        assertEquals(tenantId, jdbcTemplate.queryForObject("""
+                SELECT legal_entity_tenant_id
                 FROM deal_participant
                 WHERE deal_id = ?
                   AND legal_entity_id = ?
-                """, Integer.class, deal.id(), participantEntityId));
+                """, UUID.class, deal.id(), participantEntityId));
     }
 
     @Test
@@ -109,8 +109,8 @@ class DealRepositoryIntegrationTest {
         DealRecord highId = newDeal(
                 UUID.fromString("00000000-0000-0000-0000-000000000002"),
                 "Same", sameCreationTime);
-        repository.insert(lowId);
-        repository.insert(highId);
+        repository.insert(lowId, tenantId);
+        repository.insert(highId, tenantId);
         assertTrue(lowId.reference().matches("DL-[0-9]{10}"));
         assertFalse(lowId.reference().equals(highId.reference()));
 
@@ -144,7 +144,7 @@ class DealRepositoryIntegrationTest {
         DealRecord deal = newDeal(
                 UUID.randomUUID(), "Original", Instant.parse(
                         "2026-07-16T10:00:00Z"));
-        repository.insert(deal);
+        repository.insert(deal, tenantId);
 
         assertTrue(repository.updateBasicFields(
                 tenantId,

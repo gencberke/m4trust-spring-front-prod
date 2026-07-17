@@ -45,7 +45,7 @@ class DealService {
                 context.activeLegalEntityId(),
                 context.authenticatedUserId(),
                 now);
-        repository.insert(deal.toRecord());
+        repository.insert(deal.toRecord(), context.tenantId());
         appendAudit(context, deal.id(), DEAL_CREATED, correlationId, now);
         return toDetail(deal);
     }
