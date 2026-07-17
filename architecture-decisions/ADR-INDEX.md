@@ -45,10 +45,12 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Tenant vs LegalEntity | tenant teknik sınır; legal entity business actor | ADR-003 §5 |
 | Deal visibility | Yalnız participant ilişkisi; `deal.tenant_id` erişim filtresi değil | ADR-008 §2.4 |
 | Participant tenant'ı | Entity'nin kendi tenant'ı `legal_entity_tenant_id` ile tutulur | ADR-008 §2.3 |
+| Initiator kimliği | Deal'de immutable `initiatorLegalEntityId`; dolaylı veriden çıkarılmaz | ADR-009 §2.2 |
 | Visibility vs mutation | Participant olmak read visibility verir; mutation yetkisi ayrıca operation bazlıdır | ADR-009 §2.2 |
 | Davet kabulü | Participation'dır; buyer/seller veya contractual consent değildir | ADR-009 §2.1 |
 | DRAFT yönetimi | Initiator taslak koordinatörüdür; diğer participant başlangıçta read/list | ADR-009 §2.2 |
 | Deal activation | Buyer ve seller aynı immutable package'ı onaylayıp package RATIFIED olduğunda atomik | ADR-009 §2.3 |
+| Package rejection | RATIFIED öncesi taraf ADMIN'i reject eder; yeni package gerekir | ADR-009 §2.4 |
 | ACTIVE cancel | Tek taraflı doğrudan cancel yok; mutual buyer+seller veya casework kararı | ADR-009 §2.5 |
 | Yüksek riskli onay | İlk rol modelinde ratification/cancellation approval yalnız `ADMIN` | ADR-009 §2.6 |
 | Ratified değişiklik | Package mutation yok; yeni version + yeni ratification | ADR-003 §11, §20; ADR-009 §2.4 |
@@ -96,8 +98,9 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 
 | Anahtar kelime | Git | Not |
 | --- | --- | --- |
+| initiator | ADR-009 §2.2 | Immutable Deal alanı; creator/tenant/participant sırasından çıkarılmaz |
 | activate / ACTIVE | ADR-003 §9; ADR-009 §2.3 | Initiator action'ı değil; ratification sonucu |
-| cancel (Deal) | ADR-003 §9; ADR-009 §2.2, §2.5 | DRAFT withdrawal ile ACTIVE cancellation ayrıdır |
+| cancel (Deal) | ADR-003 §9; ADR-009 §2.2, §2.4–2.5 | DRAFT withdrawal ile ACTIVE cancellation ayrıdır |
 | invitation | ADR-008 §2.7; ADR-009 §2.1–2.2 | Kabul ticari rıza değildir |
 | participant / cross-tenant | ADR-008; ADR-009 §2.2 | Visibility ≠ mutation authority |
 | buyer / seller | ADR-003 §7, §20; ADR-009 §2.3 | Aynı package sürümünün gerekli tarafları |
@@ -167,7 +170,7 @@ Implementasyondan önce dur ve planner/insana çık:
 | Terim | Anlamı / tuzak |
 | --- | --- |
 | participant | Deal görünürlüğü ilişkisi; genel mutation rolü değil |
-| initiator | DRAFT koordinatörü; diğer taraf adına consent vermez |
+| initiator | Deal'de explicit immutable legal entity; DRAFT koordinatörü |
 | invitation acceptance | Participation kabulü; contract approval değil |
 | ACTIVE | Required parties aynı current package'ı ratify etmiş aktif business ilişki |
 | ratification package | Tarafların onayladığı immutable canonical snapshot |
@@ -190,7 +193,7 @@ Implementasyondan önce dur ve planner/insana çık:
 | ADR-006 | Public API, errors, concurrency ve idempotency |
 | ADR-007 | Deployment, migration, secrets, health ve rollback |
 | ADR-008 | Cross-tenant participant tenant/visibility modeli |
-| ADR-009 | Deal commitment, mutual ratification ve ACTIVE cancellation consent |
+| ADR-009 | Deal initiator, commitment, mutual ratification ve ACTIVE cancellation consent |
 
 ## Reading rules
 
