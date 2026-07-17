@@ -1,177 +1,126 @@
-# Slice 5 — Deal Parties (Buyer/Seller) ve Activation
+# Slice 5 — Deal Parties (Buyer/Seller) ve Activation Readiness
 
 - Durum: planning
-- Slice sırası: ADR-004 §24 → Slice 4'ün ikinci yarısı (yol haritasında 05)
+- Slice sırası: ADR-004 §24 → Deal parties capability
 - Öncül: 04-deal-invitations-and-participation
-- Ardıl: 06-document-upload (bağımsız); ileride ratification bu slice'ın
-  taraf modeline dayanır
+- Ardıl: 06-document-upload; ratification bu slice'ın taraf modeline dayanır
 
 ## 1. Amaç ve kullanıcı sonucu
 
-Kullanıcı A gerçek tarayıcıda: deal'inin participant'ları arasından buyer ve
-seller atar → aynı entity'yi iki tarafa atamaya çalışınca engellenir → taraflar
-tamamken deal'i açık bir aksiyonla ACTIVE durumuna geçirir → kullanıcı B kendi
-ekranında entity'sinin rolünü (örn. SELLER) ve deal'in ACTIVE durumunu görür.
+Initiator, Deal participant'ları arasından buyer ve seller atar. Aynı entity'nin
+iki role atanması engellenir. Diğer participant kendi rolünü görür.
 
-Bu slice, ratification/funding'e giden zincirin ilk halkası olan **taraf
-modelini** ve DRAFT→ACTIVE geçişinin gerçek tetikleyicisini kurar
-(Slice 3'te geçiş domain'de tanımlıydı ama kullanıcıya kapalıydı).
+Bu slice Deal'i ACTIVE yapmaz. Taraf modeli ratification'a hazırlanır; ticari
+commitment ancak buyer ve seller aynı immutable package sürümünü onayladığında
+oluşur (ADR-009).
 
 ## 2. Kapsam / kapsam dışı
 
 Kapsam:
 
-- `deal` tablosuna buyer/seller referansları (Slice 3 planındaki "nullable
-  şimdi ekle" önerisi uygulanmamıştı — migration bu slice'ta gelir)
-- Taraf atama ve kaldırma (deal DRAFT'tayken)
-- "Aynı legal entity hem buyer hem seller olamaz" invariant'ı (ADR-003 §7.1;
-  ADR-004 §7 açık test adayı) — domain + DB seviyesinde
-- `POST /deals/{dealId}/activate` business action'ı ve precondition'ları
-- `availableActions` projection'ının genişlemesi (atama/activate
-  görünürlüğü backend'den)
-- Lifecycle projection'ın ACTIVE deal için anlamlı değer üretmesi
-- Frontend: taraf atama UI'ı, rol rozetleri, activate aksiyonu
+- Buyer ve seller atama/kaldırma (yalnız DRAFT)
+- Yalnız participant entity'lerin taraf olabilmesi
+- Buyer ≠ seller invariant'ı
+- Actor-aware party management availability
+- Taraf rollerinin participant/detail projection'ında gösterilmesi
+- Audit'in aynı transaction'da yazılması
 
 Kapsam dışı:
 
-- Ratification, çift taraflı onay mekanizması (taraflar activate'i
-  "onaylamaz" — o ratification'ın işi, Slice 10)
-- Doküman/AI önkoşulları (activate bu slice'ta doküman gerektirmez;
-  gereklilik zinciri ilerleyen slice'larda sıkılaşabilir — nota bakınız)
-- Participant çıkarma/ayrılma akışları
-- ACTIVE→COMPLETED geçişinin tetikleyicisi (settlement zinciri, Slice 15)
+- Doğrudan `DRAFT → ACTIVE` action'ı
+- RatificationPackage ve taraf onayları
+- ACTIVE cancellation workflow
+- Participant çıkarma/ayrılma
+- ACTIVE durumda party değiştirme
 
 ## 3. Okunacak ADR bölümleri
 
-- ADR-003 §7–7.1 (Deal aggregate alanları ve invariant'lar), §9 (DealStatus
-  geçişleri), §16 (lifecycle projection önceliği), §25 (concurrency)
-- ADR-008 §2.3–2.4 (taraf entity'leri farklı tenant'ta olabilir — FK ve sorgu
-  tasarımını etkiler)
-- ADR-006 §4 (action endpoint), §18–19 (422/409 ayrımı), §21–23
-  (expectedVersion), §41 (availableActions)
-- ADR-004 §7 (bu slice'ın invariant'ları listede açıkça var), §22–23
+- ADR-003 §7–9, §11, §20, §25
+- ADR-008 §2.3–2.4
+- ADR-009 tamamı
+- ADR-005 §20–21
+- ADR-006 §18–23, §33
 
 ## 4. Public API yüzeyi
 
-Yüzey implementasyondan ÖNCE `core-api-v1.yaml`'a tasarlanır. Taslak:
+Implementasyondan önce OpenAPI tasarlanır:
 
-- Taraf atama: tek bir "parties" güncelleme endpoint'i (örn.
-  `PUT /api/v1/deals/{dealId}/parties` — buyer + seller birlikte, atomik) veya
-  rol bazlı action'lar; **öneri: tek atomik parties endpoint'i** — iki rolün
-  tutarlılık invariant'ı tek istekte doğrulanır. Kesin biçim OpenAPI fazında.
-  `expectedVersion` zorunlu; stale → 409 `DEAL_STALE_VERSION`.
-- `POST /api/v1/deals/{dealId}/cancel` mevcut; yanına
-  `POST /api/v1/deals/{dealId}/activate` — body'siz action; geçersiz
-  durumdan/eksik taraflarla → 409 `DEAL_STATE_CONFLICT`.
-- `DealDetail` genişler: buyer/seller alanları (atanmamışken null — ADR-006
-  §32 null semantiği), participant başına rol bilgisi, genişleyen
-  `availableActions`. Additive değişiklik kuralları (ADR-006 §47) korunur.
+- Buyer ve seller'ı birlikte güncelleyen atomik parties endpoint'i
+- Request'te zorunlu `expectedVersion`
+- Deal detail içinde buyer/seller ve participant role projection'ı
+- Actor-aware party management action availability
 
-Sabitlenen contract kararları:
+Sabit davranışlar:
 
-- buyer = seller gönderimi → 422 `VALIDATION_FAILED` (istek semantik olarak
-  geçersiz — ADR-006 §18'deki "buyer ve seller aynı legal entity" örneği
-  birebir budur)
-- Participant olmayan entity'yi taraf atama → 422 (alan geçersiz); deal
-  durumu atamaya izin vermiyorsa → 409
-- Activate precondition ihlali (taraflar eksik) → 409 `DEAL_STATE_CONFLICT`
-  (mevcut state ile çatışma)
+- Buyer = seller → 422 `VALIDATION_FAILED`
+- Participant olmayan entity → 422
+- DRAFT dışında party değişikliği → 409 `DEAL_STATE_CONFLICT`
+- Stale version → 409 `DEAL_STALE_VERSION`
+- Bu slice'ta activate endpoint'i yoktur.
 
 ## 5. Backend yönlendirmesi
 
-- **Migration:** `deal` tablosuna nullable `buyer_legal_entity_id` ve
-  `seller_legal_entity_id`. FK tasarımı ADR-008 sonrası dünyaya uyar: taraf
-  entity'si deal'in tenant'ında olmayabilir — `deal_participant`taki çifte
-  tenant modeli izlenir (öneri: taraf, participant satırına referansla
-  bağlanır ya da entity FK'sı kendi tenant çiftiyle kurulur; planner
-  gerekçelendirir). `buyer_legal_entity_id <> seller_legal_entity_id` CHECK
-  constraint'i (ikisi de non-null iken) + domain invariant'ı birlikte.
-- **Karar (bağlayıcı):** yalnız mevcut participant entity'ler taraf
-  atanabilir. Atama ve activate yetkisi bu slice'ta **initiator**
-  entity'sindedir; diğer participant'lar okur. (Çift taraflı iş onayı
-  ratification'ın işidir; burada taklit edilmez.) Yetki kontrolü
-  `OperationContext` + application katmanında — yeni `RequestedOperation`
-  değerleri.
-- Atama/aktivasyon `Deal` aggregate davranış metotlarıyla yürür (Slice 3
-  deseni); status setter'ı yok. Activate `DealStatus.activate()` geçişini
-  kullanır (Slice 3'te tanımlı, tetikleyicisi yoktu).
-- **Lifecycle projection (karar gerekli):** mevcut
-  `DealLifecycleProjectionCalculator` DRAFT ve ACTIVE'i DRAFT'a indirger.
-  Bu slice'ta ACTIVE deal'in projection'ı netleşir — öneri: ADR-003 §16
-  öncelik listesine göre analysis henüz istenmemişken ACTIVE deal
-  `CONTRACT_ANALYSIS` aşamasında gösterilir (sözleşme analizi beklenen ilk
-  business adımdır). Planner ADR-003 §16 ile gerekçelendirir; frontend
-  hesaplamaz (ADR-003 §29). Calculator imzası gelecekteki status girdilerine
-  açık kalır (Slice 3'teki tasarım notu).
-- **Update/cancel yetkisi (not, karar):** çok-participant dünyada mevcut
-  "her participant update/cancel edebilir" davranışı bu slice'ta KORUNUR;
-  daraltma ihtiyacı ratification planında yeniden değerlendirilir. Bu bilinçli
-  bir erteleme olarak plana yazılır — sessiz varsayım değildir.
-- Audit: taraf atama ve activate ayrı audit action'larıyla aynı
-  transaction'da.
+- Deal party referansları nullable başlar.
+- DB, buyer/seller değerinin aynı Deal'in participant satırına bağlı olduğunu
+  composite referential integrity ile garanti eder; yalnız legal entity FK'sı
+  yeterli değildir.
+- Buyer ≠ seller hem domain hem DB seviyesinde korunur.
+- Party assignment yalnız initiator legal entity adına çalışan kullanıcıya açıktır.
+  Diğer participant'lar read/list ile sınırlıdır.
+- `ADMIN`/`MEMBER` ayrımı bu mutation için mevcut organization operation policy'si
+  üzerinden merkezi biçimde uygulanır; controller'a kopya kontrol eklenmez.
+- Party update optimistic concurrency kullanır ve audit aynı transaction'da yazılır.
+- Basic Deal update ve DRAFT cancel çok-participant dünyada initiator ile
+  sınırlandırılır. Participant görünürlüğü mutation yetkisi değildir.
+- Deal DRAFT kalır. `DRAFT → ACTIVE`, ratification slice'ında ikinci gerekli
+  taraf onayıyla package `RATIFIED` olurken atomik yapılır.
+- ACTIVE olduktan sonra party veya contractual alan değişikliği mevcut package'ı
+  mutation ile değiştiremez; yeni package/version süreci gerekir.
 
 ## 6. Frontend yönlendirmesi
 
-- Deal detayında "Taraflar" bölümü: participant listesinden buyer/seller
-  seçimi (yalnız initiator'da düzenlenebilir — görünürlük
-  `availableActions`'tan), atanmış rollerin rozetleri, activate butonu.
-- Activate onay diyaloğu; başarı sonrası ACTIVE durum ve yeni lifecycle
-  ekranda görünür.
-- buyer=seller denemesi 422 field error'larıyla formda gösterilir; eksik
-  taraflarla activate denemesi 409 mesajıyla.
-- İki-browser: B, rolünün atandığını ve deal'in ACTIVE olduğunu kendi
-  ekranında görür (yenileme/refetch yeterli).
-- Tipler committed OpenAPI'den; hata dallanması `code` ile.
+- Deal detail'de participant'lardan buyer/seller seçimi ve rol rozetleri bulunur.
+- Düzenleme yalnız backend'in action projection'ı izin veriyorsa gösterilir.
+- `Activate` butonu bu slice'ta eklenmez.
+- Taraflar tamamlandığında kullanıcıya yalnız “ratification için taraflar hazır”
+  bilgisi verilebilir; ACTIVE veya onaylanmış gibi gösterilmez.
+- 422 field hataları ve stale-version yenileme akışı mevcut desenle ele alınır.
 
-## 7. Kabul testi (tarayıcı akışı)
+## 7. Kabul testi
 
-1. A, Slice 4 akışıyla Beta'yı participant yapmış durumda; taraflar bölümünde
-   Alpha=BUYER, Beta=SELLER atar → kaydeder → rozetler görünür
-2. A, aynı entity'yi iki role atamayı dener → form hatası (422), kayıt olmaz
-3. B kendi ekranında Beta'nın SELLER olduğunu görür
-4. A activate eder → durum ACTIVE, lifecycle projection yeni aşamayı gösterir
-5. Taraflar atanmadan önce ikinci bir deal'de activate denenir → 409, anlamlı
-   mesaj
-6. B (initiator olmayan) taraf atamayı/activate'i göremez veya denerse
-   reddedilir (availableActions + backend yeniden doğrulama)
-7. CANCELLED bir deal'de taraf atama/activate kapalıdır; zorlanırsa 409
-8. İki tab'da eş zamanlı taraf ataması → stale version akışı çalışır
+1. A, Alpha=BUYER ve Beta=SELLER atar; iki browser da rolleri görür.
+2. Aynı entity iki role seçildiğinde kayıt oluşmaz.
+3. Participant olmayan entity atanamaz.
+4. B tarafları değiştiremez; butonu görmez ve zorlanan istek reddedilir.
+5. CANCELLED Deal'de party mutation reddedilir.
+6. Taraflar tamamlansa da Deal DRAFT kalır ve activate action görünmez.
+7. İki tab'daki eşzamanlı party update stale-version akışını üretir.
 
 ## 8. Minimum invariant testleri
 
-ADR-004 §7 listesinden bu slice'a düşenler:
+- Buyer ≠ seller (domain + DB)
+- Participant olmayan entity party olamaz
+- Non-initiator party/basic-update/cancel mutation reddi
+- Stale parties update ve başarılı version artışı
+- Taraflar tam olduğunda Deal'in kendiliğinden ACTIVE olmaması
 
-- Aynı legal entity hem buyer hem seller olamaz (domain + DB constraint)
-- Participant olmayan entity taraf atanamaz
-- Activate precondition'ları: taraflar eksikken/terminal durumda reddedilir;
-  DRAFT + taraflar tamken geçer
-- Atama stale `expectedVersion` → 409; başarılı atama version'ı artırır
-- Initiator olmayan participant'ın atama/activate mutation'ı reddedilir
-- Lifecycle calculator: ACTIVE deal için kararlaştırılan projection değeri
+Aşırı state/HTTP kombinasyonu testi yazılmaz.
 
 ## 9. Açık sorular / karar noktaları
 
-- Taraf atama endpoint biçimi: tek atomik `parties` güncellemesi (öneri) vs
-  rol bazlı iki action — OpenAPI fazında kesinleşir
-- Initiator'ın kendisi taraf olmayabilir mi? (öneri: olabilir — initiator
-  yalnız aracıysa buyer/seller iki farklı davetli olabilir; invariant yalnız
-  buyer≠seller'dır)
-- ACTIVE deal'de taraf DEĞİŞTİRME serbest mi? (öneri: hayır — taraf değişimi
-  DRAFT'a özgü; ACTIVE'de değişiklik ihtiyacı ratification/versiyonlama
-  dünyasının işi. Planner onayıyla kesinleşir)
-- Lifecycle projection değeri (§5'teki öneri) planner tarafından ADR-003 §16
-  ile teyit edilir
+- Initiator'ın buyer/seller dışında aracı kalabilmesi kabul edilmiştir.
+- Ratification'ı şirket adına yalnız `ADMIN` onaylar (ADR-009); daha ayrıntılı
+  imza yetkisi ratification planında additive permission olarak değerlendirilebilir.
+- ACTIVE cancellation request aggregate/API biçimi bu slice'ın konusu değildir.
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI yüzeyi implementasyondan önce tasarlandı (parties, activate,
-      genişleyen DealDetail/availableActions)
-- [ ] Migration uygulandı; buyer≠seller DB + domain seviyesinde engelli
-- [ ] Taraf atama ve activate gerçek Spring + PostgreSQL üzerinde çalışıyor;
-      yetki initiator'da, backend yeniden doğruluyor
-- [ ] Lifecycle projection ACTIVE için kararlaştırılan değeri üretiyor;
-      frontend hesaplamıyor
-- [ ] §8 invariant testleri geçiyor; audit aynı transaction'da
-- [ ] §7 iki-browser akışı gerçek tarayıcıda baştan sona çalıştırıldı
-- [ ] Slice 3–4 kabul akışları regresyonsuz
-- [ ] Contract validator + `mvn verify` + frontend typecheck/build yeşil
+- [ ] OpenAPI parties yüzeyi implementasyondan önce tasarlandı
+- [ ] Party migration ve composite participant bütünlüğü uygulandı
+- [ ] Buyer/seller assignment DRAFT'ta initiator tarafından çalışıyor
+- [ ] Deal activation bu slice'ta açılmadı
+- [ ] Actor-aware action projection frontend tarafından kullanılıyor
+- [ ] §8 minimum testleri geçiyor ve audit aynı transaction'da
+- [ ] §7 iki-browser kabul akışı tamamlandı
+- [ ] Önceki slice kabul akışları regresyonsuz
+- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
