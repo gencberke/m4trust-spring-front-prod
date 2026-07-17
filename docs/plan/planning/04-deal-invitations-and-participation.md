@@ -19,6 +19,7 @@ consent anlamına gelmez (ADR-009).
 Kapsam:
 
 - ADR-008 cross-tenant participant modeli
+- Deal üzerinde immutable initiator legal entity referansı
 - DealInvitation: PENDING → ACCEPTED / REJECTED / REVOKED
 - E-posta bazlı incoming invitations
 - Invitation create için reusable HTTP idempotency
@@ -66,12 +67,19 @@ Sabit davranışlar:
 
 Tek plan korunur; deployment üç uyumlu aşamaya ayrılır:
 
-1. **Expand release:** `legal_entity_tenant_id` nullable eklenir, backfill ve yeni
-   FK/index uygulanır, uygulama dual-write yapar. Eski image bu şemayla çalışır.
+1. **Expand release:** participant `legal_entity_tenant_id` ve Deal
+   `initiator_legal_entity_id` nullable eklenir. Mevcut Deal'lerde initiator,
+   bugünkü tek participant'tan deterministik backfill edilir. Yeni FK/index'ler
+   eklenir ve uygulama yeni kayıtları dual-write eder. Eski image bu şemayla çalışır.
 2. **Switch release:** visibility participant legal entity + kendi tenant'ı
-   eksenine geçer; invitation capability açılır. Ardından kolon `NOT NULL` olur
-   ve eski entity FK kaldırılır. Rollback hedefi expand image'ıdır.
+   eksenine, mutation authorization ise explicit initiator alanına geçer;
+   invitation capability açılır. Ardından yeni kolonlar `NOT NULL` olur ve eski
+   participant entity FK kaldırılır. Rollback hedefi expand image'ıdır.
 3. **Cleanup release:** yalnız doğrulanmış gereksiz constraint/index temizliği.
+
+`initiator_legal_entity_id`, hosting tenant içindeki legal entity'ye FK ile bağlı,
+immutable bir Deal alanıdır. Creator user, hosting tenant veya participant sırası
+üzerinden sonradan çıkarılmaz.
 
 Switch ve contract adımları expand compatibility release'i production/staging'de
 kanıtlanmadan aynı rollout'a sıkıştırılmaz.
@@ -80,7 +88,8 @@ kanıtlanmadan aynı rollout'a sıkıştırılmaz.
 
 - Visibility yalnız participant ilişkisine dayanır.
 - Initiator temel Deal mutation'larını ve invitation create/revoke işlemlerini
-  yönetir.
+  yönetir; ilk rol modelinde initiator entity'nin `ADMIN` ve `MEMBER` kullanıcıları
+  DRAFT koordinasyonu yapabilir.
 - Diğer participant'lar başlangıçta read/list yetkisine sahiptir.
 - Accept/reject yalnız davetin normalize e-postasına bağlı authenticated kullanıcıya
   aittir.
@@ -122,10 +131,10 @@ kanıtlanmadan aynı rollout'a sıkıştırılmaz.
 ## 8. Minimum invariant testleri
 
 - Cross-tenant participant visibility + nonparticipant 404
-- Non-initiator Deal/invitation mutation reddi
+- Explicit initiator backfill ve non-initiator Deal/invitation mutation reddi
 - Accept/revoke concurrency ve terminal transition
 - Duplicate PENDING + aynı/farklı idempotency request davranışı
-- Expand backfill, dual-write ve switch query uyumluluğu
+- Expand dual-write ve switch query uyumluluğu
 
 Bunların dışında geniş unit-test matrisi kurulmaz.
 
@@ -139,8 +148,8 @@ Bunların dışında geniş unit-test matrisi kurulmaz.
 ## 10. Done tanımı
 
 - [ ] OpenAPI invitation/participant yüzeyi önce tasarlandı
-- [ ] Expand release deploy ve rollback uyumluluğu kanıtlandı
-- [ ] Switch release cross-tenant visibility ile çalışıyor
+- [ ] Expand release initiator/participant backfill ve rollback uyumluluğuyla kanıtlandı
+- [ ] Switch release cross-tenant visibility ve explicit initiator authorization ile çalışıyor
 - [ ] Invitation state machine ve idempotency çalışıyor
 - [ ] Yetki visibility'den bağımsız ve backend'de doğrulanıyor
 - [ ] §8 minimum testleri geçiyor
