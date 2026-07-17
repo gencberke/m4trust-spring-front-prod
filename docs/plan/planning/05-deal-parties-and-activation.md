@@ -65,8 +65,9 @@ Sabit davranışlar:
   composite referential integrity ile garanti eder; yalnız legal entity FK'sı
   yeterli değildir.
 - Buyer ≠ seller hem domain hem DB seviyesinde korunur.
-- Party assignment yalnız initiator legal entity adına çalışan kullanıcıya açıktır.
-  Diğer participant'lar read/list ile sınırlıdır.
+- Party assignment yalnız Deal'in immutable `initiatorLegalEntityId` değeri adına
+  çalışan kullanıcıya açıktır; initiator dolaylı veriden çıkarılmaz. Diğer
+  participant'lar read/list ile sınırlıdır.
 - İlk rol modelinde initiator entity'nin `ADMIN` ve `MEMBER` kullanıcıları DRAFT
   koordinasyonu yapabilir. Ratification ve ACTIVE cancellation onayı yalnız
   `ADMIN` içindir (ADR-009).
@@ -119,7 +120,7 @@ Aşırı state/HTTP kombinasyonu testi yazılmaz.
 
 - [ ] OpenAPI parties yüzeyi implementasyondan önce tasarlandı
 - [ ] Party migration ve composite participant bütünlüğü uygulandı
-- [ ] Buyer/seller assignment DRAFT'ta initiator tarafından çalışıyor
+- [ ] Buyer/seller assignment DRAFT'ta explicit initiator authorization ile çalışıyor
 - [ ] Deal activation bu slice'ta açılmadı
 - [ ] Actor-aware action projection frontend tarafından kullanılıyor
 - [ ] §8 minimum testleri geçiyor ve audit aynı transaction'da
