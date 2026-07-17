@@ -61,6 +61,10 @@ Railway deployment topolojisini, ortamları, container sınırlarını, migratio
 
 Deal katılımının tenant sınırları arasındaki semantiğini tanımlar: participant satırının entity'nin kendi tenant'ını taşıması, görünürlüğün yalnız participant ilişkisine dayanması, audit'in actor tenant'ında yazılması ve Slice 4 expand–contract migration sırası.
 
+### ADR-009 — Deal Commitment and Cancellation Consent
+
+Davet kabulü ile ticari rızayı ayırır; initiator'ın taslak koordinatörü olduğunu, ACTIVE geçişinin buyer ve seller'ın aynı immutable package sürümünü onaylamasına bağlı olduğunu ve ACTIVE Deal'in tek taraflı iptal edilemeyeceğini tanımlar.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:
