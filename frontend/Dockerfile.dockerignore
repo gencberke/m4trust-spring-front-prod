@@ -1,0 +1,11 @@
+**
+!frontend/
+!frontend/**
+!contracts/
+!contracts/openapi/
+!contracts/openapi/core-api-v1.yaml
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*

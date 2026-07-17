@@ -105,3 +105,18 @@ edited manually or replaced with parallel handwritten models.
 
 The readiness payload is an Actuator operational model outside the public
 OpenAPI contract, so its small local type lives with the readiness feature.
+
+## Production web-edge image
+
+Build the Caddy image from the repository root so the frontend build can read
+the committed Core API OpenAPI document:
+
+```bash
+docker build -f frontend/Dockerfile -t m4trust-web-edge:<commit-sha> .
+```
+
+At runtime, `CORE_API_ORIGIN` must point to the Core API's private HTTP origin
+and `PORT` supplies the listener port. Caddy serves `/healthz`, immutable static
+assets, and SPA deep-link fallback. Only `/api/*` is reverse-proxied;
+`/actuator/*` is explicitly answered with `404` and is never part of the public
+edge surface.

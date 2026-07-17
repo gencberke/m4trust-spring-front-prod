@@ -1,0 +1,50 @@
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	@health path /healthz
+	handle @health {
+		respond "ok" 200
+	}
+
+	# Actuator is a private Core API operational surface. Keep this matcher
+	# before the SPA fallback so neither the proxy nor index.html exposes it.
+	@actuator path /actuator /actuator/*
+	handle @actuator {
+		respond 404
+	}
+
+	@api path /api /api/*
+	handle @api {
+		request_body {
+			max_size 20MB
+		}
+
+		reverse_proxy {$CORE_API_ORIGIN} {
+			# Railway terminates TLS before Caddy. Preserve its public request
+			# identity explicitly for Spring's framework forwarded-header mode.
+			header_up Host {http.request.host}
+			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -90,6 +90,18 @@ docker run --rm -p 8080:8080 -e SERVER_PORT=8080 \
 The container runs as a non-root user and reads its runtime port from the
 `SERVER_PORT` environment variable — no port is hard-coded in the image.
 
+The same immutable image exposes two explicit process modes:
+
+```bash
+m4trust-core-api run
+m4trust-core-api migrate
+```
+
+`run` starts the web process with the configured Flyway policy. `migrate`
+starts a minimal non-web Spring context, forces Flyway on, applies the migration
+chain once, closes the context, and exits. It returns zero only when startup and
+migration succeed; an uncaught failure produces a non-zero process exit.
+
 ## Configuration
 
 Non-secret configuration is environment-variable driven:
@@ -100,6 +112,10 @@ Non-secret configuration is environment-variable driven:
   back to the active Spring profile, then `"local"`.
 - `APP_VERSION` — release version included in structured logs; defaults to
   `"unknown"` when no runtime release identity is supplied.
+- `GIT_COMMIT_SHA` — full immutable source revision included in structured logs
+  and `/actuator/info`.
+- `BUILD_TIME` — RFC 3339 build timestamp included in structured logs and
+  `/actuator/info`.
 - `DATABASE_HOST` — PostgreSQL host.
 - `DATABASE_PORT` — PostgreSQL port.
 - `DATABASE_NAME` — PostgreSQL database name.
@@ -122,8 +138,10 @@ startup. The `local` profile defaults to `127.0.0.1:5432`, database and user
 
 ## Database migrations
 
-Flyway runs the versioned migrations in `src/main/resources/db/migration`
-against PostgreSQL during startup. `V2__identity_user.sql` owns the normalized,
+Flyway runs the versioned migrations in `src/main/resources/db/migration`.
+Local development enables startup migration; deployed runtime defaults keep it
+off and invoke `m4trust-core-api migrate` as the single pre-deploy owner.
+`V2__identity_user.sql` owns the normalized,
 uniquely indexed identity account table, `V3__spring_session_jdbc.sql` owns the
 Spring Session JDBC tables and indexes, and
 `V4__organization_and_audit_foundation.sql` owns tenants, legal entities,
@@ -194,8 +212,9 @@ remains the Slice 3 end-to-end acceptance step.
 ## Structured logging
 
 Spring Boot's built-in Logstash formatter writes JSON to the console. Each
-record has `timestamp`, `level`, `service`, `environment`, `version`, and
-`message`. During request handling, `CorrelationIdFilter` puts
+record has `timestamp`, `level`, `service`, `environment`, `version`,
+`gitCommitSha`, `buildTime`, and `message`. During request handling,
+`CorrelationIdFilter` puts
 `correlationId` in the MDC and Boot adds it to the same JSON record. No file
 appender is configured. Credentials, tokens, raw business content, and
 unnecessary personal data must never be logged.

@@ -1,5 +1,8 @@
 server:
   port: ${SERVER_PORT:${PORT:8080}}
+  # Staging enables framework processing explicitly in application-staging.yml.
+  # The base stays conservative so local/direct traffic cannot spoof proxy data.
+  forward-headers-strategy: none
   servlet:
     session:
       cookie:
@@ -17,7 +20,10 @@ spring:
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}
   flyway:
-    enabled: true
+    # Normal deployed replicas never own schema rollout. Local development
+    # opts in via application-local.yml; deployments use the image's one-shot
+    # `m4trust-core-api migrate` command before starting the web process.
+    enabled: false
     locations: classpath:db/migration
     clean-disabled: true
     validate-on-migrate: true
@@ -35,6 +41,8 @@ app:
   environment: ${APP_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}
   # Release identity used as the stable structured-log version field.
   version: ${APP_VERSION:unknown}
+  git-commit-sha: ${GIT_COMMIT_SHA:unknown}
+  build-time: ${BUILD_TIME:unknown}
   security:
     session:
       absolute-timeout: ${SESSION_ABSOLUTE_TIMEOUT:8h}
@@ -52,6 +60,8 @@ logging:
         service: ${spring.application.name}
         environment: ${app.environment}
         version: ${app.version}
+        gitCommitSha: ${app.git-commit-sha}
+        buildTime: ${app.build-time}
 
 management:
   endpoints:
@@ -79,9 +89,14 @@ management:
     build:
       enabled: true
     env:
-      enabled: false
+      # The env contributor exposes only the controlled `info.*` namespace,
+      # not arbitrary environment variables or secrets.
+      enabled: true
 
 info:
   app:
     name: ${spring.application.name}
     environment: ${app.environment}
+    version: ${app.version}
+    gitCommitSha: ${app.git-commit-sha}
+    buildTime: ${app.build-time}

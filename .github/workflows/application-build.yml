@@ -52,3 +52,69 @@ jobs:
         run: npm ci
       - name: Generate types, type-check, and build frontend
         run: npm run build
+
+  container-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Resolve immutable image identity
+        run: |
+          echo "BUILD_TIME=$(git show -s --format='%cI' "${GITHUB_SHA}")" >> "${GITHUB_ENV}"
+      - name: Build Core API image
+        run: |
+          docker build \
+            --build-arg APP_VERSION="${GITHUB_SHA}" \
+            --build-arg GIT_COMMIT_SHA="${GITHUB_SHA}" \
+            --build-arg APP_ENVIRONMENT=ci \
+            --build-arg BUILD_TIME="${BUILD_TIME}" \
+            --tag "m4trust-core-api:${GITHUB_SHA}" \
+            services/core-api
+      - name: Build web-edge image from repository root
+        run: |
+          docker build \
+            --file frontend/Dockerfile \
+            --build-arg APP_VERSION="${GITHUB_SHA}" \
+            --build-arg GIT_COMMIT_SHA="${GITHUB_SHA}" \
+            --build-arg APP_ENVIRONMENT=ci \
+            --build-arg BUILD_TIME="${BUILD_TIME}" \
+            --tag "m4trust-web-edge:${GITHUB_SHA}" \
+            .
+      - name: Validate image identity and migration command
+        run: |
+          test "$(docker image inspect "m4trust-core-api:${GITHUB_SHA}" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "${GITHUB_SHA}"
+          test "$(docker image inspect "m4trust-web-edge:${GITHUB_SHA}" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "${GITHUB_SHA}"
+          test "$(docker image inspect "m4trust-core-api:${GITHUB_SHA}" --format '{{ .Config.User }}')" = "m4trust"
+          test "$(docker image inspect "m4trust-web-edge:${GITHUB_SHA}" --format '{{ .Config.User }}')" = "caddy-runtime"
+          docker run --rm --entrypoint /bin/sh "m4trust-core-api:${GITHUB_SHA}" -c 'command -v m4trust-core-api'
+          docker run --rm \
+            --env CORE_API_ORIGIN=http://core-api.internal:8080 \
+            --entrypoint caddy \
+            "m4trust-web-edge:${GITHUB_SHA}" \
+            validate --config /etc/caddy/Caddyfile
+      - name: Smoke test web-edge routing
+        run: |
+          mkdir -p /tmp/m4trust-core-api-stub/api
+          printf 'proxied' > /tmp/m4trust-core-api-stub/api/probe
+          python3 -m http.server 19090 --directory /tmp/m4trust-core-api-stub &
+          stub_pid=$!
+          edge_id=$(docker run --detach --rm \
+            --publish 18080:8080 \
+            --add-host host.docker.internal:host-gateway \
+            --env CORE_API_ORIGIN=http://host.docker.internal:19090 \
+            "m4trust-web-edge:${GITHUB_SHA}")
+          cleanup() {
+            docker stop "${edge_id}" >/dev/null 2>&1 || true
+            kill "${stub_pid}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null
+          test "$(curl --fail --silent http://127.0.0.1:18080/api/probe)" = "proxied"
+          curl --fail --silent http://127.0.0.1:18080/app/deals/example | grep -q '<div id="root"></div>'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/actuator/info)" = "404"

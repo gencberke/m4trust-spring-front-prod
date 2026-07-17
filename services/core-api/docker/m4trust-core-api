@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+command_name="${1:-run}"
+
+case "${command_name}" in
+  run)
+    shift || true
+    exec java -jar /app/app.jar "$@"
+    ;;
+  migrate)
+    shift || true
+    exec java \
+      -Dloader.main=com.m4trust.coreapi.deployment.DatabaseMigrationApplication \
+      -cp /app/app.jar \
+      org.springframework.boot.loader.launch.PropertiesLauncher \
+      "$@"
+    ;;
+  *)
+    exec "$@"
+    ;;
+esac
