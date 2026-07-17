@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Aligned the video-analysis `result` object with the documented extensible transport-boundary policy (`additionalProperties: true`; symmetric with document-extraction) and added the corresponding future-optional result-metadata validator check.
+- Corrected the service name in the ADR-002 §21.3 capabilities example to the canonical `m4trust-ai-service` (documentation only; no wire change).
 - Added the Slice 3 legal-entity-scoped Deal create, paginated list, detail, editable-basic-field update, and cancel public API design.
 - Frozen the complete `DealStatus` and `DealLifecycleProjection` enum sets, separate summary/detail projections, required-nullable detail descriptions, optimistic `version`, and UTC timestamps.
 - Added explicit `expectedVersion` update conflicts (`DEAL_STALE_VERSION`), invalid-state conflicts (`DEAL_STATE_CONFLICT`), backend-derived `canUpdate`/`canCancel` availability, and the centralized context-resolution split between hidden legal entities (`LEGAL_ENTITY_NOT_FOUND`) and hidden/non-participant Deals (`DEAL_NOT_FOUND`).

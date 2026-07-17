@@ -677,6 +677,10 @@ def validate() -> int:
     video_future_optional["payload"]["result"]["summary"]["futureOptionalMetadata"] = {"value": "ignored by older consumers"}
     expect_valid("future optional video summary metadata", video_completed_path, video_future_optional, store, failures)
 
+    video_result_future_optional = copy.deepcopy(video_completed)
+    video_result_future_optional["payload"]["result"]["futureOptionalResultMetadata"] = {"value": "ignored by older consumers"}
+    expect_valid("future optional video result metadata", video_completed_path, video_result_future_optional, store, failures)
+
     strict_value = copy.deepcopy(completed)
     strict_value["payload"]["result"]["rules"][0]["structuredValue"]["futureField"] = "must be rejected"
     expect_invalid("unknown property in closed structured-value variant", document_completed_path, strict_value, store, failures)

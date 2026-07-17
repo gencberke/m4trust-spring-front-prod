@@ -113,12 +113,27 @@ class DealService {
     DealDetail cancel(OperationContext context, UUID dealId,
             UUID correlationId) {
         requireOperation(context, RequestedOperation.DEAL_CANCEL);
+        Instant now = clock.instant();
         Deal deal = loadVisible(context, dealId);
+        if (!tryPersistCancel(context, deal, now)) {
+            // Cancel carries no expectedVersion, so a plain concurrent version
+            // bump must not fail it: retry once against the latest state.
+            deal = loadVisible(context, dealId);
+            if (!tryPersistCancel(context, deal, now)) {
+                throw new DealStateConflictException(
+                        "Deal changed while cancellation was attempted");
+            }
+        }
+        appendAudit(context, deal.id(), DEAL_CANCELLED, correlationId, now);
+        return toDetail(deal);
+    }
+
+    private boolean tryPersistCancel(
+            OperationContext context, Deal deal, Instant now) {
         long currentVersion = deal.version();
         DealStatus previousStatus = deal.status();
-        Instant now = clock.instant();
         deal.cancel(now);
-        boolean updated = repository.updateStatus(
+        return repository.updateStatus(
                 context.tenantId(),
                 context.activeLegalEntityId(),
                 deal.id(),
@@ -126,14 +141,6 @@ class DealService {
                 deal.status(),
                 currentVersion,
                 deal.updatedAt());
-        if (!updated) {
-            Deal latest = loadVisible(context, dealId);
-            latest.cancel(now);
-            throw new DealStateConflictException(
-                    "Deal changed while cancellation was attempted");
-        }
-        appendAudit(context, deal.id(), DEAL_CANCELLED, correlationId, now);
-        return toDetail(deal);
     }
 
     private Deal loadVisible(OperationContext context, UUID dealId) {

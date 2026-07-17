@@ -831,7 +831,9 @@ components:
         description:
           type: [string, 'null']
           maxLength: 4000
-          description: Optional Deal description; when supplied it may explicitly be null.
+          description: >-
+            Optional Deal description; when supplied it may explicitly be null.
+            Blank or whitespace-only values are normalized to null.
     UpdateDealRequest:
       type: object
       additionalProperties: false
@@ -845,7 +847,9 @@ components:
         description:
           type: [string, 'null']
           maxLength: 4000
-          description: Required replacement value; null explicitly clears the description.
+          description: >-
+            Required replacement value; null explicitly clears the description.
+            Blank or whitespace-only values are normalized to null.
         expectedVersion:
           type: integer
           format: int64

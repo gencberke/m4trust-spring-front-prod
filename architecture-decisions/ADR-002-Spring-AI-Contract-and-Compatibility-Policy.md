@@ -860,7 +860,7 @@ Aşağıdakileri kontrol edebilir:
 
 ```json
 {
-"service": "ai-service",
+"service": "m4trust-ai-service",
 "serviceVersion": "1.4.0",
 "capabilities": [
 {
