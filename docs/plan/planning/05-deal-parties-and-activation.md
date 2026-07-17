@@ -67,8 +67,10 @@ Sabit davranışlar:
 - Buyer ≠ seller hem domain hem DB seviyesinde korunur.
 - Party assignment yalnız initiator legal entity adına çalışan kullanıcıya açıktır.
   Diğer participant'lar read/list ile sınırlıdır.
-- `ADMIN`/`MEMBER` ayrımı bu mutation için mevcut organization operation policy'si
-  üzerinden merkezi biçimde uygulanır; controller'a kopya kontrol eklenmez.
+- İlk rol modelinde initiator entity'nin `ADMIN` ve `MEMBER` kullanıcıları DRAFT
+  koordinasyonu yapabilir. Ratification ve ACTIVE cancellation onayı yalnız
+  `ADMIN` içindir (ADR-009).
+- Yetki merkezi operation policy'sinde uygulanır; controller'a kopya kontrol eklenmez.
 - Party update optimistic concurrency kullanır ve audit aynı transaction'da yazılır.
 - Basic Deal update ve DRAFT cancel çok-participant dünyada initiator ile
   sınırlandırılır. Participant görünürlüğü mutation yetkisi değildir.
