@@ -1,6 +1,6 @@
 # FORBIDDEN — Konsolide Yasak Listesi
 
-7 ADR'ye dağılmış yasakların tek noktadan görünümü. **Türetilmiş bir dokümandır: bu liste ile bir ADR çelişirse ADR kazanır.** ADR'yi değiştiren her PR bu dosyayı da günceller.
+9 ADR'ye dağılmış yasakların tek noktadan görünümü. **Türetilmiş bir dokümandır: bu liste ile bir ADR çelişirse ADR kazanır.** ADR'yi değiştiren her PR bu dosyayı da günceller.
 
 Bir görev bu listedeki bir maddeye takılıyorsa workaround üretme: ihtiyaç gerçekse bu bir ADR değişikliği talebidir ([ADR-INDEX.md](ADR-INDEX.md) Katman 3).
 
@@ -43,13 +43,18 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | External çağrı (broker, storage, provider, email) boyunca DB transaction açık tutmak | ADR-003 §24, §31 |
 | Sessiz last-write-wins (optimistic lock conflict'i yutmak) | ADR-003 §25 |
 | Full event sourcing ile başlamak | ADR-003 §26, §31 |
-| Ratified package'ı mutation ile güncellemek (yeni version yerine) | ADR-003 §20, §31 |
+| Ratified package'ı mutation ile güncellemek (yeni version yerine) | ADR-003 §20, §31; ADR-009 §2.4 |
 | Kabul edilmiş extraction/rule-set geçmişini silmek veya değiştirmek | ADR-003 §19 |
 | Provider timeout'u otomatik payment failure kabul etmek | ADR-003 §21, §31 |
 | Query edilen temel domain alanlarını (money, status, party, authorization) JSONB'ye gömmek | ADR-003 §27 |
 | Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5; ADR-008 §2.4 |
 | `deal.tenant_id` (veya çağıranın tenant'ı) eşleşmesini Deal görünürlük/erişim koşulu olarak kullanmak | ADR-008 §2.2, §4 |
 | Participant satırını entity'nin kendi tenant bağı olmadan yazmak; cross-tenant katılımı kullanıcıyı deal tenant'ına üye yaparak sağlamak | ADR-008 §2.3, §4 |
+| Participant görünürlüğünü update/cancel/invite/party/activation yetkisi saymak | ADR-009 §2.2, §4 |
+| Davet kabulünü buyer/seller rolü veya contractual consent saymak | ADR-009 §2.1, §4 |
+| Buyer ve seller aynı immutable ratification package sürümünü onaylamadan Deal'i ACTIVE yapmak | ADR-009 §2.3, §4 |
+| Buyer ve seller karşılıklı onayı veya casework/dispute kararı olmadan ACTIVE Deal'i cancel etmek | ADR-009 §2.5, §4 |
+| `MEMBER` rolüne şirketi bağlayan ratification veya mutual cancellation onayı vermek | ADR-009 §2.6, §4 |
 
 ## 3. Public API
 
