@@ -1,6 +1,6 @@
 # Slice 5 — Deal Parties (Buyer/Seller) ve Activation Readiness
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: ADR-004 §24 → Deal parties capability
 - Öncül: 04-deal-invitations-and-participation
 - Ardıl: 06-document-upload; ratification bu slice'ın taraf modeline dayanır

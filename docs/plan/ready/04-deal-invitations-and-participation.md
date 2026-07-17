@@ -1,6 +1,6 @@
 # Slice 4 — Deal Invitations ve Cross-Entity Participation
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: ADR-004 §24 → Slice 4 (bölünmüş yol haritası)
 - Öncül: 03-deal-creation-and-listing, 03.9-hardening-and-decisions
 - Ardıl: 05-deal-parties-and-activation

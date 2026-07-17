@@ -1,6 +1,6 @@
 # Slice 6 — Document Upload
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: yol haritası 06
 - Öncül: Deal creation; sırada Slice 4–5'ten sonra
 - Ardıl: AI Document Extraction

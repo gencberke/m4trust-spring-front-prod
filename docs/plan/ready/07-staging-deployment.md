@@ -1,6 +1,6 @@
 # Slice 7 — Staging Deployment (Railway)
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: operasyonel slice; 04–06 local geliştirmesiyle paralel yürüyebilir
 - Öncül: ADR-007; kabul edilmiş uygulama slice'ları
 - Ardıl: production kurulumu ve AI servislerinin staging'e eklenmesi
