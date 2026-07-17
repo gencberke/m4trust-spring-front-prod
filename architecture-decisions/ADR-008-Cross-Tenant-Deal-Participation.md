@@ -126,7 +126,8 @@ olmalıdır.
 Olumlu:
 
 - ADR-003 §5'in cross-tenant Deal vaadi implementasyonla bağdaşır hale gelir.
-- Yetki modeli tek eksene iner: participant ilişkisi (zaten ADR-003 §5'in ruhu).
+- Deal görünürlüğü participant ilişkisi eksenine iner; mutation authority ADR-009'a
+  göre ayrıca operation bazlı değerlendirilir.
 - Audit FK bütünlüğü ve mevcut Slice 1–3 davranışları korunur.
 - Slice 4 migration'ı net, üç adımlı ve geri alınabilir bir yola oturur.
 
