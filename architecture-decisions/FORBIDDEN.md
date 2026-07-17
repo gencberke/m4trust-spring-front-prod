@@ -47,7 +47,9 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Kabul edilmiş extraction/rule-set geçmişini silmek veya değiştirmek | ADR-003 §19 |
 | Provider timeout'u otomatik payment failure kabul etmek | ADR-003 §21, §31 |
 | Query edilen temel domain alanlarını (money, status, party, authorization) JSONB'ye gömmek | ADR-003 §27 |
-| Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5 |
+| Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5; ADR-008 §2.4 |
+| `deal.tenant_id` (veya çağıranın tenant'ı) eşleşmesini Deal görünürlük/erişim koşulu olarak kullanmak | ADR-008 §2.2, §4 |
+| Participant satırını entity'nin kendi tenant bağı olmadan yazmak; cross-tenant katılımı kullanıcıyı deal tenant'ına üye yaparak sağlamak | ADR-008 §2.3, §4 |
 
 ## 3. Public API
 

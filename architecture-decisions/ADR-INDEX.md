@@ -58,6 +58,8 @@ En sık gereken mikro-kararlar. Kaynak sütunundaki bölüm, kararın bağlayıc
 | Modüller arası erişim | port / ID / domain event / projection; repository ve JPA entity paylaşımı yasak | ADR-003 §23 |
 | Lifecycle gösterimi | `DealLifecycleProjection` Spring'de merkezi hesaplanır; frontend hesaplamaz | ADR-003 §16, §29 |
 | Yetki bağlamı | `authenticatedUserId + tenantId + activeLegalEntityId + dealId + operation`; application katmanında | ADR-003 §28 |
+| Deal görünürlüğü | yalnız participant ilişkisi; `deal.tenant_id` erişim filtresi DEĞİL | ADR-008 §2.4 |
+| Participant tenant'ı | participant satırı entity'nin KENDİ tenant'ını taşır (`legal_entity_tenant_id`) | ADR-008 §2.3 |
 
 ### Spring ↔ FastAPI (AI)
 
@@ -159,7 +161,8 @@ Görev metninde geçen kelimeden ilgili bölüme git. Çift anlamlı terimlerde 
 | settlement | ADR-003 §14 | ESKALASYON: bkz. Katman 3 |
 | slice / kabul testi | ADR-004 §3, §8–9, §22–23 | |
 | soft delete | ADR-003 §7.2 | yasak; açık domain durumları |
-| tenant | ADR-003 §5 | ≠ legal entity; tenantId filtresi tek başına yetki değil |
+| tenant | ADR-003 §5; ADR-008 | ≠ legal entity; tenantId filtresi tek başına yetki değil |
+| cross-tenant / participant | ADR-008 | görünürlük yalnız participant ilişkisi; migration sırası §3 |
 | test / coverage | ADR-004 §6–7 | minimum test; coverage hedefi yasak |
 | timeout (session) | ADR-005 §6 | |
 | timeout (AI job) | ADR-002 §19 | business timeout Spring'in |
@@ -236,6 +239,7 @@ Aşağıdakilerden biri tetikleniyorsa **implementasyona başlamadan dur** ve pl
 | ADR-005 | Authentication ve güvenlik: opaque session, cookie, CSRF, parola, authorization bağlamı |
 | ADR-006 | Public API standartları: adlandırma, Problem Details, pagination, concurrency, format kuralları, OpenAPI |
 | ADR-007 | Deployment: Railway topolojisi, ortamlar, config/secret, Flyway, health, log, backup, rollback |
+| ADR-008 | Cross-tenant Deal katılımı: participant tenant semantiği, görünürlük ekseni, audit tenant ataması, Slice 4 migration sırası |
 
 ## Reading rules
 

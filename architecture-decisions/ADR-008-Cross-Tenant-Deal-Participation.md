@@ -1,7 +1,7 @@
 # ADR-008: Cross-Tenant Deal Participation
 
-- Durum: Proposed
-- Tarih: 16 Temmuz 2026
+- Durum: Accepted
+- Tarih: 16 Temmuz 2026 (kabul: 17 Temmuz 2026)
 - Karar sahipleri: M4Trust mimari ekibi
 - Kapsam: Deal katılımının tenant sınırları arasındaki semantiği; `deal_participant` veri modeli, Deal görünürlük sorguları, `OperationContext` ve audit tenant ataması
 - Bağlı kararlar:
@@ -137,9 +137,8 @@ Maliyet:
 - "Hosting tenant" kavramının operasyonel anlamı (raporlama, retention) ileride
   ayrıca netleştirilebilir.
 
-## 6. Kabul koşulu
+## 6. Kabul
 
-Bu ADR insan onayıyla `Accepted` olur. Kabulüyle birlikte ADR-INDEX.md (kapsam
-tablosu + ilgili trigger satırları) ve gerekiyorsa FORBIDDEN.md (§4 madde 4
-"yalnız tenantId ile erişim" satırının bu ADR'yi de kaynak göstermesi)
-güncellenir. Slice 4 planı bu ADR `Accepted` olmadan `ready/` durumuna alınmaz.
+17 Temmuz 2026'da insan onayıyla `Accepted` durumuna alındı. ADR-INDEX.md ve
+FORBIDDEN.md aynı değişiklik setinde güncellenmiştir. Slice 4 planı bu karar
+üzerine kurulur; §3'teki migration sırası Slice 4'te uygulanır.

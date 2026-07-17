@@ -57,6 +57,10 @@ Spring public API adlandırma, response, RFC 9457 Problem Details, pagination, f
 
 Railway deployment topolojisini, ortamları, container sınırlarını, migration, secret, logging, health, backup ve rollback yaklaşımını tanımlar.
 
+### ADR-008 — Cross-Tenant Deal Participation
+
+Deal katılımının tenant sınırları arasındaki semantiğini tanımlar: participant satırının entity'nin kendi tenant'ını taşıması, görünürlüğün yalnız participant ilişkisine dayanması, audit'in actor tenant'ında yazılması ve Slice 4 expand–contract migration sırası.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:
