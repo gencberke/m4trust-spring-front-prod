@@ -50,9 +50,11 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5; ADR-008 §2.4 |
 | `deal.tenant_id` (veya çağıranın tenant'ı) eşleşmesini Deal görünürlük/erişim koşulu olarak kullanmak | ADR-008 §2.2, §4 |
 | Participant satırını entity'nin kendi tenant bağı olmadan yazmak; cross-tenant katılımı kullanıcıyı deal tenant'ına üye yaparak sağlamak | ADR-008 §2.3, §4 |
+| Initiator legal entity'yi hosting tenant, creator user veya participant sırasından çıkarmak | ADR-009 §2.2, §4 |
 | Participant görünürlüğünü update/cancel/invite/party/activation yetkisi saymak | ADR-009 §2.2, §4 |
 | Davet kabulünü buyer/seller rolü veya contractual consent saymak | ADR-009 §2.1, §4 |
 | Buyer ve seller aynı immutable ratification package sürümünü onaylamadan Deal'i ACTIVE yapmak | ADR-009 §2.3, §4 |
+| Aynı legal entity'deki birden fazla ADMIN onayını birden fazla taraf onayı saymak | ADR-009 §2.3, §4 |
 | Buyer ve seller karşılıklı onayı veya casework/dispute kararı olmadan ACTIVE Deal'i cancel etmek | ADR-009 §2.5, §4 |
 | `MEMBER` rolüne şirketi bağlayan ratification veya mutual cancellation onayı vermek | ADR-009 §2.6, §4 |
 
