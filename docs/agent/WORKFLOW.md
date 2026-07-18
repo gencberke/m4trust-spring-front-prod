@@ -5,7 +5,7 @@ This file is written for the main planner-reviewer agent.
 ## Profiles and language
 
 - Planner-reviewer: GPT-5.6 Sol or Opus 4.8.
-- Implementer: GPT-5.6 Luna or Sonnet 5, high effort.
+- Implementer: GPT-5.6 Luna or Sonnet 5, medium effort.
 - Speak with the user in Turkish.
 - Communicate with the implementer only in English.
 
@@ -20,7 +20,7 @@ This file is written for the main planner-reviewer agent.
 
 ## Use the implementer
 
-Spawn one GPT-5.6 Luna or Sonnet 5 implementer with high effort. Give it a clean task context, not the full user conversation.
+Spawn one GPT-5.6 Luna or Sonnet 5 implementer with medium effort. Give it a clean task context, not the full user conversation.
 
 The prompt should normally contain only:
 
