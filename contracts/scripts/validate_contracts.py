@@ -581,8 +581,20 @@ def validate_contract_documents(failures: list[str]) -> None:
             failures.append("FAIL Core API DealInvitationAvailableActions: actor-aware action set changed")
         invitation = core_components.get("schemas", {}).get("DealInvitation", {})
         incoming_invitation = core_components.get("schemas", {}).get("IncomingDealInvitation", {})
+        invitation_deal = core_components.get("schemas", {}).get("DealInvitationDeal", {})
+        invitation_deal_fields = {"id", "reference", "title", "initiatorLegalName"}
         invitation_fields = {"id", "dealId", "recipientEmail", "status", "version", "createdAt", "updatedAt", "availableActions"}
         incoming_fields = {"id", "deal", "status", "version", "createdAt", "updatedAt", "availableActions"}
+        if (set(invitation_deal.get("required", [])) != invitation_deal_fields
+                or set(invitation_deal.get("properties", {})) != invitation_deal_fields
+                or invitation_deal.get("additionalProperties") is not False
+                or invitation_deal.get("properties", {}).get("initiatorLegalName", {}).get("type") != "string"
+                or (invitation_deal.get("properties", {}).get("initiatorLegalName", {}).get("minLength"),
+                    invitation_deal.get("properties", {}).get("initiatorLegalName", {}).get("maxLength")) != (1, 200)
+                or set(incoming_invitation.get("properties", {}).get("deal", {})) != {"$ref"}
+                or incoming_invitation.get("properties", {}).get("deal", {}).get("$ref")
+                != "#/components/schemas/DealInvitationDeal"):
+            failures.append("FAIL Core API DealInvitationDeal: bounded recipient preview changed")
         if (set(invitation.get("required", [])) != invitation_fields
                 or set(invitation.get("properties", {})) != invitation_fields
                 or invitation.get("additionalProperties") is not False

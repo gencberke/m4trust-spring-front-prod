@@ -1248,8 +1248,11 @@ components:
     DealInvitationDeal:
       type: object
       additionalProperties: false
-      description: Minimum Deal context disclosed to the invitation recipient.
-      required: [id, reference, title]
+      description: >
+        Minimum Deal context disclosed to the invitation recipient. The preview
+        discloses no Deal fields beyond this Deal id, reference, title, and the
+        inviting entity's official legal name.
+      required: [id, reference, title, initiatorLegalName]
       properties:
         id:
           type: string
@@ -1262,6 +1265,11 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+        initiatorLegalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Official legal name of the legal entity that invited the recipient.
     DealInvitation:
       type: object
       additionalProperties: false

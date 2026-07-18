@@ -6,8 +6,9 @@
   user-scoped incoming/accept/reject, UUID Idempotency-Key create semantics, expectedVersion
   terminal actions, and non-disclosing invitation errors.
 - Added actor-aware Deal and invitation action projections, participant-only Deal detail
-  projection, and separate initiator/recipient invitation DTOs so pending recipient email
-  is never disclosed to ordinary participants.
+  projection, and separate initiator/recipient invitation DTOs: the recipient preview is
+  limited to Deal id/reference/title and the inviting entity's official legal name, while
+  pending recipient email is never disclosed to ordinary participants.
 - Extended exact OpenAPI validation for all Slice 4 invitation paths, security/context
   boundaries, request and response schemas, stable error components, idempotency header,
   participant semantics, and recipient-email disclosure boundary.
