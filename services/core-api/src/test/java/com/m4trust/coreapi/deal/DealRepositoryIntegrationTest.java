@@ -2,6 +2,8 @@ package com.m4trust.coreapi.deal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -196,6 +199,60 @@ class DealRepositoryIntegrationTest {
                 Instant.parse("2026-07-16T10:05:00Z")));
     }
 
+    @Test
+    void partyConstraintsRequireParticipantsOfTheSameDealAndRepositoryMapsAssignments() {
+        Instant createdAt = Instant.parse("2026-07-16T10:00:00Z");
+        DealRecord targetDeal = newDeal(UUID.randomUUID(), "Target", createdAt);
+        DealRecord otherDeal = newDeal(UUID.randomUUID(), "Other", createdAt);
+        repository.insert(targetDeal, tenantId);
+        repository.insert(otherDeal, tenantId);
+        jdbcTemplate.update("""
+                INSERT INTO deal_participant (
+                    deal_id, tenant_id, legal_entity_id,
+                    legal_entity_tenant_id, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """, otherDeal.id(), tenantId, otherEntityId, tenantId,
+                java.sql.Timestamp.from(createdAt));
+
+        DealRecord unassigned = repository.findVisibleById(
+                tenantId, participantEntityId, targetDeal.id()).orElseThrow();
+        assertNull(unassigned.buyerLegalEntityId());
+        assertNull(unassigned.sellerLegalEntityId());
+
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update("""
+                        UPDATE deal
+                        SET buyer_legal_entity_id = ?, seller_legal_entity_id = ?
+                        WHERE id = ?
+                        """, participantEntityId, participantEntityId,
+                        targetDeal.id()));
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update("""
+                        UPDATE deal
+                        SET buyer_legal_entity_id = ?
+                        WHERE id = ?
+                        """, otherEntityId, targetDeal.id()));
+
+        jdbcTemplate.update("""
+                INSERT INTO deal_participant (
+                    deal_id, tenant_id, legal_entity_id,
+                    legal_entity_tenant_id, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """, targetDeal.id(), tenantId, otherEntityId, tenantId,
+                java.sql.Timestamp.from(createdAt));
+        jdbcTemplate.update("""
+                UPDATE deal
+                SET buyer_legal_entity_id = ?, seller_legal_entity_id = ?
+                WHERE id = ?
+                """, participantEntityId, otherEntityId, targetDeal.id());
+
+        DealRecord assigned = repository.findVisibleById(
+                tenantId, participantEntityId, targetDeal.id()).orElseThrow();
+        assertEquals(participantEntityId, assigned.buyerLegalEntityId());
+        assertEquals(otherEntityId, assigned.sellerLegalEntityId());
+        assertEquals(assigned, Deal.rehydrate(assigned).toRecord());
+    }
+
     private DealRecord newDeal(UUID dealId, String title, Instant createdAt) {
         return new DealRecord(
                 dealId,
@@ -204,6 +261,8 @@ class DealRepositoryIntegrationTest {
                 title,
                 null,
                 DealStatus.DRAFT,
+                null,
+                null,
                 participantEntityId,
                 userId,
                 createdAt,
