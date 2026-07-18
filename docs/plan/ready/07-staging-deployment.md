@@ -1,9 +1,16 @@
 # Slice 7 — Staging Deployment (Railway)
 
-- Durum: ready
+- Durum: ready (kısmen uygulandı — bkz. erteleme notu)
 - Slice sırası: operasyonel slice; 04–06 local geliştirmesiyle paralel yürüyebilir
 - Öncül: ADR-007; kabul edilmiş uygulama slice'ları
 - Ardıl: production kurulumu ve AI servislerinin staging'e eklenmesi
+- **Erteleme notu (2026-07-18, insan kararı):** config-as-code kısmı (Dockerfile'lar,
+  Caddyfile, railway.json, one-shot migrate komutu, CI image smoke) PR #13 ile
+  merge edildi. Railway kurulumu ve buna bağlı tüm kabul maddeleri (§7 browser
+  smoke, migration failure gate, rollback provası, `docker run <image> migrate`
+  launcher smoke'u, X-Forwarded-Proto zincir doğrulaması) bilinçli olarak
+  ertelendi ve [issue #15](https://github.com/gencberke/m4trust-spring-front-prod/issues/15)
+  ile takip edilir. Plan, kurulum yapılıp kabul koşulana kadar `ready/`de kalır.
 
 ## 1. Amaç ve kullanıcı sonucu
 

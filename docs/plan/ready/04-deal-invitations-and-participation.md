@@ -1,9 +1,17 @@
 # Slice 4 — Deal Invitations ve Cross-Entity Participation
 
-- Durum: ready
+- Durum: ready (adım 1/3 uygulandı — bkz. ilerleme notu)
 - Slice sırası: ADR-004 §24 → Slice 4 (bölünmüş yol haritası)
 - Öncül: 03-deal-creation-and-listing, 03.9-hardening-and-decisions
 - Ardıl: 05-deal-parties-and-activation
+- **İlerleme ve erteleme notu (2026-07-18):** rollout adım 1 (expand release —
+  V6 participant tenant kolonu + backfill + dual-write + uyumluluk testi) PR #14
+  ile merge edildi. Switch release'in staging rollout/rollback kanıtı, Railway
+  ertelemesi (issue #15) nedeniyle **ertelenmiş kapı** statüsündedir ve
+  [issue #16](https://github.com/gencberke/m4trust-spring-front-prod/issues/16)
+  ile takip edilir; lokal geliştirme (switch + invitation + frontend + iki-browser
+  kabul) bloklanmaz. Switch (V7) implementer'ı için kritik gereksinim issue
+  #16'da: NOT NULL'dan önce NULL satırlar yeniden backfill edilmek zorundadır.
 
 ## 1. Amaç ve kullanıcı sonucu
 
