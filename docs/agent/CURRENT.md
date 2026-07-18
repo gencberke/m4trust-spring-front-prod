@@ -23,7 +23,7 @@ two-browser acceptance flow passed.
 Slice 5 Deal parties and activation readiness is accepted under
 `docs/plan/done/`. Buyer/seller assignment, participant-only validation,
 explicit initiator authorization, backend-derived party action availability,
-optimistic stale-version recovery, and the real two-tab acceptance flow passed.
+optimistic stale-version recovery, and the real two-browser acceptance flow passed.
 Deal remains DRAFT in this slice; no activation endpoint or action exists.
 
 ## Accepted foundations
@@ -71,7 +71,7 @@ Deal remains DRAFT in this slice; no activation endpoint or action exists.
 - Contract validation passes for the committed Slice 5 OpenAPI.
 - Core API `mvn verify` passes against Testcontainers PostgreSQL.
 - Frontend `npm run typecheck` and production `npm run build` pass.
-- Slice 4 invitation/participation regression and Slice 5 real two-tab
+- Slice 4 invitation/participation regression and Slice 5 real two-browser
   acceptance passed on 2026-07-18.
 
 ## Not yet stable or accepted

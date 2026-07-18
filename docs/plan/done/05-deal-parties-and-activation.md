@@ -3,7 +3,7 @@
 - Durum: done
 - Slice sırası: ADR-004 §24 → Deal parties capability
 - **Tamamlanma notu (2026-07-18):** Gerçek local Spring + PostgreSQL + Vite
-  ortamında iki bağımsız tab bağlamıyla kabul tamamlandı. Alpha=BUYER ve
+  ortamında iki bağımsız browser bağlamıyla kabul tamamlandı. Alpha=BUYER ve
   Beta=SELLER görünürlüğü, eşit/nonparticipant taraf redleri, non-initiator UI
   ve zorlanmış istek reddi, CANCELLED mutation reddi, DRAFT/no-activate sınırı
   ve stale-version recovery kanıtlandı. Slice 4 invitation/participation akışı
@@ -104,7 +104,7 @@ Sabit davranışlar:
 4. B tarafları değiştiremez; butonu görmez ve zorlanan istek reddedilir.
 5. CANCELLED Deal'de party mutation reddedilir.
 6. Taraflar tamamlansa da Deal DRAFT kalır ve activate action görünmez.
-7. İki tab'daki eşzamanlı party update stale-version akışını üretir.
+7. İki browser'daki eşzamanlı party update stale-version akışını üretir.
 
 ## 8. Minimum invariant testleri
 
