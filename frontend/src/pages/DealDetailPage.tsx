@@ -32,6 +32,7 @@ import {
   dealDetailQueryKey,
   dealDetailQueryOptions,
 } from "../features/deals/dealQueries";
+import { DealDocumentManagement } from "../features/documents/DealDocumentManagement";
 import { DealInvitationManagement } from "../features/invitations/DealInvitationManagement";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
 import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
@@ -664,6 +665,11 @@ export function DealDetailPage() {
             ) : null}
           </aside>
         </div>
+
+        <DealDocumentManagement
+          deal={deal}
+          legalEntityId={selectedLegalEntityId}
+        />
 
         <DealInvitationManagement
           deal={deal}
