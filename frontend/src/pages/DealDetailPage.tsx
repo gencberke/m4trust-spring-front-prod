@@ -17,7 +17,9 @@ import {
 import {
   cancelDeal,
   updateDeal,
+  updateDealParties,
   type DealDetail,
+  type UpdateDealPartiesRequest,
   type UpdateDealRequest,
 } from "../features/deals/dealApi";
 import {
@@ -149,6 +151,115 @@ function EditDealForm({
   );
 }
 
+interface DealPartiesFormProps {
+  deal: DealDetail;
+  isPending: boolean;
+  error: unknown;
+  isReloading: boolean;
+  onReload: () => void;
+  onSubmit: (request: UpdateDealPartiesRequest) => void;
+}
+
+function DealPartiesForm({
+  deal,
+  isPending,
+  error,
+  isReloading,
+  onReload,
+  onSubmit,
+}: DealPartiesFormProps) {
+  const [buyerLegalEntityId, setBuyerLegalEntityId] = useState(
+    deal.buyer?.legalEntityId ?? "",
+  );
+  const [sellerLegalEntityId, setSellerLegalEntityId] = useState(
+    deal.seller?.legalEntityId ?? "",
+  );
+  const serverErrors = getDealFieldErrors(error);
+  const stale = isDealStaleVersion(error);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSubmit({
+      buyerLegalEntityId: buyerLegalEntityId || null,
+      sellerLegalEntityId: sellerLegalEntityId || null,
+      expectedVersion: deal.version,
+    });
+  }
+
+  return (
+    <form className="auth-form deal-form party-management-form" onSubmit={handleSubmit}>
+      {error ? (
+        <div className="form-alert" role="alert">
+          <p>{getDealErrorMessage(error)}</p>
+          {stale ? (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={onReload}
+              disabled={isReloading}
+            >
+              {isReloading ? "Güncel veri yükleniyor…" : "Güncel veriyi yükle"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="party-management-fields">
+        <div className="field-group">
+          <label htmlFor="deal-buyer">Alıcı</label>
+          <select
+            id="deal-buyer"
+            value={buyerLegalEntityId}
+            onChange={(event) => setBuyerLegalEntityId(event.target.value)}
+            aria-invalid={Boolean(serverErrors.buyerLegalEntityId)}
+            aria-describedby={
+              serverErrors.buyerLegalEntityId ? "deal-buyer-error" : undefined
+            }
+          >
+            <option value="">Atanmamış</option>
+            {deal.participants.map((participant) => (
+              <option key={participant.legalEntityId} value={participant.legalEntityId}>
+                {participant.legalName}
+              </option>
+            ))}
+          </select>
+          {serverErrors.buyerLegalEntityId ? (
+            <span className="field-error" id="deal-buyer-error">
+              {serverErrors.buyerLegalEntityId}
+            </span>
+          ) : null}
+        </div>
+        <div className="field-group">
+          <label htmlFor="deal-seller">Satıcı</label>
+          <select
+            id="deal-seller"
+            value={sellerLegalEntityId}
+            onChange={(event) => setSellerLegalEntityId(event.target.value)}
+            aria-invalid={Boolean(serverErrors.sellerLegalEntityId)}
+            aria-describedby={
+              serverErrors.sellerLegalEntityId ? "deal-seller-error" : undefined
+            }
+          >
+            <option value="">Atanmamış</option>
+            {deal.participants.map((participant) => (
+              <option key={participant.legalEntityId} value={participant.legalEntityId}>
+                {participant.legalName}
+              </option>
+            ))}
+          </select>
+          {serverErrors.sellerLegalEntityId ? (
+            <span className="field-error" id="deal-seller-error">
+              {serverErrors.sellerLegalEntityId}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <button className="primary-button" type="submit" disabled={isPending}>
+        {isPending ? "Taraflar kaydediliyor…" : "Tarafları kaydet"}
+      </button>
+    </form>
+  );
+}
+
 export function DealDetailPage() {
   const { dealId } = useParams();
   const {
@@ -184,6 +295,26 @@ export function DealDetailPage() {
         updated,
       );
       setUpdateNotice(`Değişiklikler sürüm ${updated.version} olarak kaydedildi.`);
+      await queryClient.invalidateQueries({
+        queryKey: ["deals", selectedLegalEntityId, "list"],
+      });
+    },
+    onError: (error) => {
+      if (isInvalidLegalEntitySelection(error)) {
+        clearInvalidSelection();
+      }
+    },
+  });
+
+  const partiesMutation = useMutation({
+    mutationFn: (request: UpdateDealPartiesRequest) =>
+      updateDealParties(selectedLegalEntityId!, dealId!, request),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(
+        dealDetailQueryKey(selectedLegalEntityId!, updated.id),
+        updated,
+      );
+      setUpdateNotice(`Taraflar sürüm ${updated.version} olarak kaydedildi.`);
       await queryClient.invalidateQueries({
         queryKey: ["deals", selectedLegalEntityId, "list"],
       });
@@ -385,11 +516,64 @@ export function DealDetailPage() {
           <ul className="participant-list">
             {deal.participants.map((participant) => (
               <li key={participant.legalEntityId}>
-                <strong>{participant.legalName}</strong>
-                <span>Katılım: {formatDate(participant.joinedAt)}</span>
+                <div>
+                  <strong>{participant.legalName}</strong>
+                  <span>Katılım: {formatDate(participant.joinedAt)}</span>
+                </div>
+                {participant.partyRoles.length ? (
+                  <div
+                    className="party-role-badges"
+                    aria-label={`${participant.legalName} taraf rolleri`}
+                  >
+                    {participant.partyRoles.map((role) => (
+                      <span className="role-badge" key={role}>{role}</span>
+                    ))}
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="workspace-panel deal-parties-panel">
+          <div className="panel-heading">
+            <span className="section-kicker">Taraflar</span>
+            <h2>Alıcı ve satıcı atamaları</h2>
+            <p>Taraf rolleri onay veya Deal aktivasyonu anlamına gelmez.</p>
+          </div>
+          <dl className="party-assignment-list">
+            <div>
+              <dt>Alıcı</dt>
+              <dd>{deal.buyer?.legalName ?? "Atanmamış"}</dd>
+            </div>
+            <div>
+              <dt>Satıcı</dt>
+              <dd>{deal.seller?.legalName ?? "Atanmamış"}</dd>
+            </div>
+          </dl>
+          {deal.buyer && deal.seller ? (
+            <p className="party-readiness-notice" role="status">
+              Taraflar ratification için hazır.
+            </p>
+          ) : null}
+          {deal.availableActions.canManageParties ? (
+            <DealPartiesForm
+              key={`${deal.id}:${deal.version}`}
+              deal={deal}
+              error={partiesMutation.error}
+              isPending={partiesMutation.isPending}
+              isReloading={detailQuery.isFetching}
+              onReload={() => {
+                partiesMutation.reset();
+                setUpdateNotice(undefined);
+                void detailQuery.refetch();
+              }}
+              onSubmit={(request) => {
+                setUpdateNotice(undefined);
+                partiesMutation.mutate(request);
+              }}
+            />
+          ) : null}
         </section>
 
         <div className="deal-detail-layout">

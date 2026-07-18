@@ -1185,6 +1185,7 @@ a:hover {
 }
 
 .deal-participants-panel,
+.deal-parties-panel,
 .invitation-management-panel {
   margin-top: 24px;
 }
@@ -1209,13 +1210,77 @@ a:hover {
   border-bottom: 1px solid var(--color-rule);
 }
 
-.participant-list li > span,
+.participant-list li > div > span,
 .invitation-list li > div > span,
 .invitation-list-heading > span {
   display: block;
   margin-top: 5px;
   color: var(--color-copy);
   font-size: 0.82rem;
+}
+
+.party-role-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+}
+
+.party-assignment-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 24px 0 0;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-rule);
+}
+
+.party-assignment-list > div {
+  min-width: 0;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.party-assignment-list dt {
+  color: var(--color-copy);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.party-assignment-list dd {
+  margin: 8px 0 0;
+  color: var(--color-ink);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.party-readiness-notice {
+  margin: 18px 0 0;
+  color: var(--color-accent-dark);
+  font-weight: 750;
+}
+
+.party-management-form {
+  margin-top: 28px;
+}
+
+.party-management-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.party-management-fields select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #aeb8c6;
+  border-radius: 5px;
+  background: #ffffff;
+  color: var(--color-ink);
 }
 
 .invitation-form {
@@ -1655,7 +1720,9 @@ a:hover {
   }
 
   .deal-filters,
-  .deal-facts {
+  .deal-facts,
+  .party-assignment-list,
+  .party-management-fields {
     grid-template-columns: 1fr;
   }
 
@@ -1667,6 +1734,10 @@ a:hover {
   .deal-list-meta,
   .deal-status-stack {
     justify-items: start;
+  }
+
+  .party-role-badges {
+    justify-content: start;
   }
 
   .pagination {

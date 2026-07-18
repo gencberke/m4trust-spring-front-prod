@@ -236,6 +236,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/parties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Atomically replace the buyer and seller assignments of a Deal
+         * @description Atomically replaces the complete buyer/seller assignment set of a DRAFT Deal. buyerLegalEntityId and sellerLegalEntityId are both required: a null value explicitly clears that role, so neither role can be retained by omission. Each non-null entity must be a current Deal participant and the two non-null values must differ. Only the immutable Deal initiator acting through its active legal entity may perform this DRAFT coordination action; visible participants have no mutation authority. The backend re-authorizes this operation even when canManageParties was previously true. This action neither records contractual consent nor activates the Deal.
+         */
+        patch: operations["updateDealParties"];
+        trace?: never;
+    };
     "/deals/{dealId}/invitations": {
         parameters: {
             query?: never;
@@ -436,6 +456,24 @@ export interface components {
              */
             expectedVersion: number;
         };
+        /** @description Complete atomic replacement of both Deal party assignments. Both role fields are required even to clear a role: null explicitly clears that role. The backend rejects equal non-null values and any non-null entity that is not a current Deal participant with 422 VALIDATION_FAILED. */
+        UpdateDealPartiesRequest: {
+            /**
+             * Format: uuid
+             * @description Buyer participant legal entity id; null explicitly clears the buyer assignment.
+             */
+            buyerLegalEntityId: string | null;
+            /**
+             * Format: uuid
+             * @description Seller participant legal entity id; null explicitly clears the seller assignment.
+             */
+            sellerLegalEntityId: string | null;
+            /**
+             * Format: int64
+             * @description Current Deal aggregate version observed by the client.
+             */
+            expectedVersion: number;
+        };
         CreateDealInvitationRequest: {
             /**
              * Format: email
@@ -549,6 +587,8 @@ export interface components {
             canCancel: boolean;
             /** @description True only when the active legal entity is authorized as the DRAFT Deal initiator to create invitations. */
             canCreateInvitation: boolean;
+            /** @description Backend-derived party-management availability for the current user and active legal entity. True only for the authorized DRAFT Deal initiator; it does not represent consent authority or Deal activation eligibility. */
+            canManageParties: boolean;
         };
         /**
          * Format: date-time
@@ -569,12 +609,25 @@ export interface components {
             updatedAt: components["schemas"]["UtcTimestamp"];
             availableActions: components["schemas"]["DealAvailableActions"];
         };
-        /** @description Deal visibility participant projection. Participation conveys no buyer/seller role, contractual consent, or lifecycle authority. */
+        /** @description Deal visibility participant projection. partyRoles describes the current buyer/seller assignment only; participation and a party role convey no contractual consent or lifecycle authority. */
         DealParticipant: {
             /** Format: uuid */
             legalEntityId: string;
             legalName: string;
             joinedAt: components["schemas"]["UtcTimestamp"];
+            /** @description Current Deal party roles for this participant; [] when unassigned and exactly one of BUYER or SELLER when assigned. A participant cannot hold both roles. */
+            partyRoles: components["schemas"]["DealPartyRole"][];
+        };
+        /**
+         * @description Closed current Deal party role set; it does not express contractual consent.
+         * @enum {string}
+         */
+        DealPartyRole: "BUYER" | "SELLER";
+        /** @description Current buyer or seller assignment in a Deal detail projection. Its presence identifies a role assignment only; it does not indicate ratification, contractual consent, or activation. */
+        DealParty: {
+            /** Format: uuid */
+            legalEntityId: string;
+            legalName: string;
         };
         DealDetail: {
             /** Format: uuid */
@@ -591,6 +644,10 @@ export interface components {
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
             availableActions: components["schemas"]["DealAvailableActions"];
+            /** @description Current buyer assignment when present; null means no buyer is assigned. This field describes assignment only, not contractual consent or Deal activation. */
+            buyer: components["schemas"]["DealParty"] | null;
+            /** @description Current seller assignment when present; null means no seller is assigned. This field describes assignment only, not contractual consent or Deal activation. */
+            seller: components["schemas"]["DealParty"] | null;
             /** @description Legal entities with visibility participation in this Deal; never null. Pending invitation recipient email is never included. */
             participants: components["schemas"]["DealParticipant"][];
         };
@@ -743,6 +800,15 @@ export interface components {
         };
         /** @description The Deal was modified after expectedVersion (DEAL_STALE_VERSION), or its current lifecycle state does not permit editing (DEAL_STATE_CONFLICT). */
         DealUpdateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The Deal was modified after expectedVersion (DEAL_STALE_VERSION), or it is no longer DRAFT and therefore does not permit party changes (DEAL_STATE_CONFLICT). */
+        DealPartiesConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1263,6 +1329,42 @@ export interface operations {
             403: components["responses"]["DealScopedMutationForbidden"];
             404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
             409: components["responses"]["DealStateConflict"];
+        };
+    };
+    updateDealParties: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDealPartiesRequest"];
+            };
+        };
+        responses: {
+            /** @description Deal parties replaced atomically and the current detail projection returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealScopedMutationForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["DealPartiesConflict"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     listDealInvitations: {
