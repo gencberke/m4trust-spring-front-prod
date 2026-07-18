@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.organization.OperationContext;
+import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.RequestedOperation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +22,15 @@ class DealService {
     private static final String DEAL_CANCELLED = "DEAL_CANCELLED";
 
     private final DealRepository repository;
+    private final InvitationLegalEntityQueryPort legalEntityQueries;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
-    DealService(DealRepository repository, AuditAppendPort auditAppender,
-            Clock clock) {
+    DealService(DealRepository repository,
+            InvitationLegalEntityQueryPort legalEntityQueries,
+            AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
+        this.legalEntityQueries = legalEntityQueries;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -47,7 +51,7 @@ class DealService {
                 now);
         repository.insert(deal.toRecord(), context.tenantId());
         appendAudit(context, deal.id(), DEAL_CREATED, correlationId, now);
-        return toDetail(deal);
+        return toDetail(deal, context);
     }
 
     @Transactional(readOnly = true)
@@ -62,7 +66,7 @@ class DealService {
                         query.offset())
                 .stream()
                 .map(Deal::rehydrate)
-                .map(this::toSummary)
+                .map(deal -> toSummary(deal, context))
                 .toList();
         long totalElements = repository.countVisible(
                 context.tenantId(), context.activeLegalEntityId(),
@@ -77,7 +81,7 @@ class DealService {
     @Transactional(readOnly = true)
     DealDetail get(OperationContext context, UUID dealId) {
         requireOperation(context, RequestedOperation.DEAL_DETAIL_READ);
-        return toDetail(loadVisible(context, dealId));
+        return toDetail(loadVisible(context, dealId), context);
     }
 
     @Transactional
@@ -90,6 +94,7 @@ class DealService {
                     "Description must be provided, and may be null.");
         }
         Deal deal = loadVisible(context, dealId);
+        requireInitiator(context, deal);
         long currentVersion = deal.version();
         Instant now = clock.instant();
         deal.updateBasicFields(request.title(), request.description(),
@@ -106,7 +111,7 @@ class DealService {
             classifyFailedUpdate(context, dealId, request.expectedVersion());
         }
         appendAudit(context, deal.id(), DEAL_UPDATED, correlationId, now);
-        return toDetail(deal);
+        return toDetail(deal, context);
     }
 
     @Transactional
@@ -115,17 +120,19 @@ class DealService {
         requireOperation(context, RequestedOperation.DEAL_CANCEL);
         Instant now = clock.instant();
         Deal deal = loadVisible(context, dealId);
+        requireInitiator(context, deal);
         if (!tryPersistCancel(context, deal, now)) {
             // Cancel carries no expectedVersion, so a plain concurrent version
             // bump must not fail it: retry once against the latest state.
             deal = loadVisible(context, dealId);
+            requireInitiator(context, deal);
             if (!tryPersistCancel(context, deal, now)) {
                 throw new DealStateConflictException(
                         "Deal changed while cancellation was attempted");
             }
         }
         appendAudit(context, deal.id(), DEAL_CANCELLED, correlationId, now);
-        return toDetail(deal);
+        return toDetail(deal, context);
     }
 
     private boolean tryPersistCancel(
@@ -155,6 +162,7 @@ class DealService {
     private void classifyFailedUpdate(OperationContext context, UUID dealId,
             long expectedVersion) {
         Deal latest = loadVisible(context, dealId);
+        requireInitiator(context, latest);
         latest.status().requireBasicFieldEditingAllowed();
         if (latest.version() != expectedVersion) {
             throw new DealStaleVersionException();
@@ -178,7 +186,7 @@ class DealService {
                 occurredAt));
     }
 
-    private DealDetail toDetail(Deal deal) {
+    private DealDetail toDetail(Deal deal, OperationContext context) {
         return new DealDetail(
                 deal.id(),
                 deal.reference(),
@@ -189,10 +197,10 @@ class DealService {
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actions(deal.status()));
+                actions(deal, context), participants(deal.id()));
     }
 
-    private DealSummary toSummary(Deal deal) {
+    private DealSummary toSummary(Deal deal, OperationContext context) {
         return new DealSummary(
                 deal.id(),
                 deal.reference(),
@@ -202,13 +210,39 @@ class DealService {
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actions(deal.status()));
+                actions(deal, context));
     }
 
-    private DealAvailableActions actions(DealStatus status) {
+    private DealAvailableActions actions(Deal deal, OperationContext context) {
+        boolean isInitiator = deal.isInitiatedBy(context.activeLegalEntityId());
         return new DealAvailableActions(
-                status.allowsBasicFieldEditing(),
-                status.allowsCancellation());
+                isInitiator && deal.status().allowsBasicFieldEditing(),
+                isInitiator && deal.status().allowsCancellation(),
+                isInitiator && deal.status() == DealStatus.DRAFT);
+    }
+
+    private List<DealParticipant> participants(UUID dealId) {
+        List<DealRepository.ParticipantRecord> participantRecords =
+                repository.findParticipants(dealId);
+        java.util.Map<UUID, String> names = legalEntityQueries.findLegalNames(
+                participantRecords.stream()
+                        .map(DealRepository.ParticipantRecord::legalEntityId)
+                        .collect(java.util.stream.Collectors.toSet()));
+        return participantRecords.stream().map(participant -> {
+            String legalName = names.get(participant.legalEntityId());
+            if (legalName == null) {
+                throw new IllegalStateException(
+                        "Participant legal entity projection is unavailable");
+            }
+            return new DealParticipant(participant.legalEntityId(), legalName,
+                    participant.createdAt());
+        }).toList();
+    }
+
+    private void requireInitiator(OperationContext context, Deal deal) {
+        if (!deal.isInitiatedBy(context.activeLegalEntityId())) {
+            throw new DealMutationForbiddenException();
+        }
     }
 
     private void requireOperation(

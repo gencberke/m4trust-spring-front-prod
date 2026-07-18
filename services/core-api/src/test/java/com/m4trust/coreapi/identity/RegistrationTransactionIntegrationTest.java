@@ -45,6 +45,8 @@ class RegistrationTransactionIntegrationTest {
     void cleanDatabase() {
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    http_idempotency_record,
+                    deal_invitation,
                     deal_participant,
                     deal,
                     audit_record,

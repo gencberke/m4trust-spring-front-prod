@@ -13,7 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-class LegalEntityService implements CurrentMembershipQueryPort {
+class LegalEntityService implements CurrentMembershipQueryPort,
+        InvitationLegalEntityQueryPort {
 
     private static final String LEGAL_ENTITY_SUBJECT = "LEGAL_ENTITY";
     private static final String MEMBERSHIP_SUBJECT = "LEGAL_ENTITY_MEMBERSHIP";
@@ -80,6 +81,25 @@ class LegalEntityService implements CurrentMembershipQueryPort {
     public List<LegalEntityMembership> findMemberships(
             UUID authenticatedUserId) {
         return List.copyOf(repository.findMemberships(authenticatedUserId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<InvitationLegalEntityMembership>
+            findCurrentMembership(UUID userId, UUID legalEntityId) {
+        return repository.findCurrentMembership(userId, legalEntityId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<UUID> findTenantIdForUser(UUID userId) {
+        return repository.findTenantIdForUser(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, String> findLegalNames(java.util.Set<UUID> legalEntityIds) {
+        return repository.findLegalNames(legalEntityIds);
     }
 
     @Transactional(readOnly = true)

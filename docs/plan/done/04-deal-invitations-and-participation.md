@@ -1,17 +1,15 @@
 # Slice 4 — Deal Invitations ve Cross-Entity Participation
 
-- Durum: ready (adım 1/3 uygulandı — bkz. ilerleme notu)
+- Durum: done
 - Slice sırası: ADR-004 §24 → Slice 4 (bölünmüş yol haritası)
 - Öncül: 03-deal-creation-and-listing, 03.9-hardening-and-decisions
 - Ardıl: 05-deal-parties-and-activation
-- **İlerleme ve erteleme notu (2026-07-18):** rollout adım 1 (expand release —
-  V6 participant tenant kolonu + backfill + dual-write + uyumluluk testi) PR #14
-  ile merge edildi. Switch release'in staging rollout/rollback kanıtı, Railway
-  ertelemesi (issue #15) nedeniyle **ertelenmiş kapı** statüsündedir ve
-  [issue #16](https://github.com/gencberke/m4trust-spring-front-prod/issues/16)
-  ile takip edilir; lokal geliştirme (switch + invitation + frontend + iki-browser
-  kabul) bloklanmaz. Switch (V7) implementer'ı için kritik gereksinim issue
-  #16'da: NOT NULL'dan önce NULL satırlar yeniden backfill edilmek zorundadır.
+- **Tamamlanma notu (2026-07-18):** rollout adım 1 (expand release — V6
+  participant tenant kolonu + backfill + dual-write + uyumluluk testi) PR #14
+  ile merge edildi. Switch release, issue #16'daki zorunlu yeniden backfill,
+  invitation backend/frontend, minimum invariant testleri ve gerçek iki-browser
+  kabul akışı tamamlandı. Contract validator, backend verify ve frontend
+  typecheck/build yeşildir.
 
 ## 1. Amaç ve kullanıcı sonucu
 
@@ -158,11 +156,11 @@ Bunların dışında geniş unit-test matrisi kurulmaz.
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI invitation/participant yüzeyi önce tasarlandı
-- [ ] Expand release participant tenant backfill'i ve rollback uyumluluğuyla kanıtlandı
-- [ ] Switch release cross-tenant visibility ve explicit initiator authorization ile çalışıyor
-- [ ] Invitation state machine ve idempotency çalışıyor
-- [ ] Yetki visibility'den bağımsız ve backend'de doğrulanıyor
-- [ ] §8 minimum testleri geçiyor
-- [ ] §7 iki-browser akışı gerçek sistemde tamamlandı
-- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
+- [x] OpenAPI invitation/participant yüzeyi önce tasarlandı
+- [x] Expand release participant tenant backfill'i ve rollback uyumluluğuyla kanıtlandı
+- [x] Switch release cross-tenant visibility ve explicit initiator authorization ile çalışıyor
+- [x] Invitation state machine ve idempotency çalışıyor
+- [x] Yetki visibility'den bağımsız ve backend'de doğrulanıyor
+- [x] §8 minimum testleri geçiyor
+- [x] §7 iki-browser akışı gerçek sistemde tamamlandı
+- [x] Contract validator, backend verify ve frontend typecheck/build yeşil

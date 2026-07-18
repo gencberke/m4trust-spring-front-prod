@@ -1,7 +1,6 @@
 package com.m4trust.coreapi.deal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.UUID;
@@ -24,7 +23,7 @@ class DealParticipantExpandMigrationIntegrationTest {
             new PostgreSQLContainer<>("postgres:17.5-alpine");
 
     @Test
-    void v6BackfillsParticipantsAndKeepsV5WritesCompatible() {
+    void v7BackfillsOldImageNullWritesBeforeEnforcingParticipantTenant() {
         migrateToVersionFive();
         JdbcTemplate jdbcTemplate = jdbcTemplate();
         UUID tenantId = UUID.randomUUID();
@@ -34,7 +33,7 @@ class DealParticipantExpandMigrationIntegrationTest {
         insertV5Fixture(jdbcTemplate, tenantId, userId, legalEntityId,
                 existingDealId);
 
-        migrateToLatest();
+        migrateToVersionSix();
 
         assertEquals(tenantId, jdbcTemplate.queryForObject("""
                 SELECT legal_entity_tenant_id
@@ -82,24 +81,68 @@ class DealParticipantExpandMigrationIntegrationTest {
                 VALUES (?, ?, ?)
                 """, legacyImageDealId, tenantId, legalEntityId);
 
-        assertNull(jdbcTemplate.queryForObject("""
+        assertEquals("YES", jdbcTemplate.queryForObject("""
+                SELECT is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'deal_participant'
+                  AND column_name = 'legal_entity_tenant_id'
+                """, String.class));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                FROM deal_participant
+                WHERE deal_id = ?
+                  AND legal_entity_tenant_id IS NULL
+                """, Integer.class, legacyImageDealId));
+
+        migrateToLatest();
+
+        assertEquals(tenantId, jdbcTemplate.queryForObject("""
                 SELECT legal_entity_tenant_id
                 FROM deal_participant
                 WHERE deal_id = ?
                   AND legal_entity_id = ?
                 """, UUID.class, legacyImageDealId, legalEntityId));
-        assertEquals(2, jdbcTemplate.queryForObject("""
+        assertEquals("NO", jdbcTemplate.queryForObject("""
+                SELECT is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'deal_participant'
+                  AND column_name = 'legal_entity_tenant_id'
+                """, String.class));
+        assertEquals(0, jdbcTemplate.queryForObject("""
                 SELECT count(*)
-                FROM deal
-                WHERE deal.tenant_id = ?
-                  AND EXISTS (
-                      SELECT 1
-                      FROM deal_participant participant
-                      WHERE participant.deal_id = deal.id
-                        AND participant.tenant_id = deal.tenant_id
-                        AND participant.legal_entity_id = ?
-                  )
-                """, Integer.class, tenantId, legalEntityId));
+                FROM pg_constraint
+                WHERE conrelid = 'deal_participant'::regclass
+                  AND conname = 'deal_participant_entity_tenant_fk'
+                """, Integer.class));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                FROM pg_constraint
+                WHERE conrelid = 'deal_participant'::regclass
+                  AND conname = 'deal_participant_deal_tenant_fk'
+                """, Integer.class));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                FROM pg_constraint
+                WHERE conrelid = 'deal_participant'::regclass
+                  AND conname = 'deal_participant_entity_legal_tenant_fk'
+                """, Integer.class));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                FROM pg_indexes
+                WHERE schemaname = 'public'
+                  AND tablename = 'deal_participant'
+                  AND indexname =
+                      'deal_participant_entity_legal_tenant_deal_idx'
+                """, Integer.class));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                FROM pg_indexes
+                WHERE schemaname = 'public'
+                  AND tablename = 'deal_participant'
+                  AND indexname = 'deal_participant_entity_tenant_deal_idx'
+                """, Integer.class));
 
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbcTemplate.update("""
@@ -122,6 +165,15 @@ class DealParticipantExpandMigrationIntegrationTest {
         Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
                         POSTGRES.getPassword())
+                .load()
+                .migrate();
+    }
+
+    private void migrateToVersionSix() {
+        Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
+                        POSTGRES.getPassword())
+                .target(MigrationVersion.fromVersion("6"))
                 .load()
                 .migrate();
     }

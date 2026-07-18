@@ -29,13 +29,12 @@ class DealRepository {
                 deal.updated_at,
                 deal.version
             FROM deal
-            WHERE deal.tenant_id = ?
-              AND EXISTS (
+            WHERE EXISTS (
                   SELECT 1
                   FROM deal_participant participant
                   WHERE participant.deal_id = deal.id
-                    AND participant.tenant_id = deal.tenant_id
                     AND participant.legal_entity_id = ?
+                    AND participant.legal_entity_tenant_id = ?
               )
             """;
 
@@ -102,19 +101,19 @@ class DealRepository {
     }
 
     Optional<DealRecord> findVisibleById(
-            UUID tenantId, UUID legalEntityId, UUID dealId) {
+            UUID legalEntityTenantId, UUID legalEntityId, UUID dealId) {
         return jdbcTemplate.query(
                         SELECT_VISIBLE_DEALS + " AND deal.id = ?",
                         this::mapDeal,
-                        tenantId,
                         legalEntityId,
+                        legalEntityTenantId,
                         dealId)
                 .stream()
                 .findFirst();
     }
 
     List<DealRecord> findVisiblePage(
-            UUID tenantId,
+            UUID legalEntityTenantId,
             UUID legalEntityId,
             DealStatus status,
             DealSort sort,
@@ -130,45 +129,58 @@ class DealRepository {
                 + " LIMIT ? OFFSET ?";
         if (status == null) {
             return jdbcTemplate.query(
-                    sql, this::mapDeal, tenantId, legalEntityId, limit, offset);
+                    sql, this::mapDeal, legalEntityId, legalEntityTenantId,
+                    limit, offset);
         }
         return jdbcTemplate.query(
                 sql,
                 this::mapDeal,
-                tenantId,
                 legalEntityId,
+                legalEntityTenantId,
                 status.name(),
                 limit,
                 offset);
     }
 
     long countVisible(
-            UUID tenantId, UUID legalEntityId, DealStatus status) {
+            UUID legalEntityTenantId, UUID legalEntityId, DealStatus status) {
         String statusPredicate = status == null
                 ? ""
                 : " AND deal.deal_status = ?";
         String sql = """
                 SELECT count(*)
                 FROM deal
-                WHERE deal.tenant_id = ?
-                  AND EXISTS (
+                WHERE EXISTS (
                       SELECT 1
                       FROM deal_participant participant
                       WHERE participant.deal_id = deal.id
-                        AND participant.tenant_id = deal.tenant_id
                         AND participant.legal_entity_id = ?
+                        AND participant.legal_entity_tenant_id = ?
                   )
                 """ + statusPredicate;
         if (status == null) {
             return jdbcTemplate.queryForObject(
-                    sql, Long.class, tenantId, legalEntityId);
+                    sql, Long.class, legalEntityId, legalEntityTenantId);
         }
         return jdbcTemplate.queryForObject(
-                sql, Long.class, tenantId, legalEntityId, status.name());
+                sql, Long.class, legalEntityId, legalEntityTenantId,
+                status.name());
+    }
+
+    List<ParticipantRecord> findParticipants(UUID dealId) {
+        return jdbcTemplate.query("""
+                SELECT legal_entity_id, legal_entity_tenant_id, created_at
+                FROM deal_participant
+                WHERE deal_id = ?
+                ORDER BY created_at, legal_entity_id
+                """, (resultSet, rowNumber) -> new ParticipantRecord(
+                        resultSet.getObject("legal_entity_id", UUID.class),
+                        resultSet.getObject("legal_entity_tenant_id", UUID.class),
+                        resultSet.getTimestamp("created_at").toInstant()), dealId);
     }
 
     boolean updateBasicFields(
-            UUID tenantId,
+            UUID legalEntityTenantId,
             UUID legalEntityId,
             UUID dealId,
             long expectedVersion,
@@ -181,29 +193,30 @@ class DealRepository {
                     description = ?,
                     updated_at = ?,
                     version = version + 1
-                WHERE tenant_id = ?
-                  AND id = ?
+                WHERE id = ?
                   AND version = ?
                   AND deal_status IN ('DRAFT', 'ACTIVE')
+                  AND initiator_legal_entity_id = ?
                   AND EXISTS (
                       SELECT 1
                       FROM deal_participant participant
                       WHERE participant.deal_id = deal.id
-                        AND participant.tenant_id = deal.tenant_id
                         AND participant.legal_entity_id = ?
+                        AND participant.legal_entity_tenant_id = ?
                   )
                 """,
                 title,
                 description,
                 Timestamp.from(updatedAt),
-                tenantId,
                 dealId,
                 expectedVersion,
-                legalEntityId) == 1;
+                legalEntityId,
+                legalEntityId,
+                legalEntityTenantId) == 1;
     }
 
     boolean updateStatus(
-            UUID tenantId,
+            UUID legalEntityTenantId,
             UUID legalEntityId,
             UUID dealId,
             DealStatus expectedStatus,
@@ -215,25 +228,26 @@ class DealRepository {
                 SET deal_status = ?,
                     updated_at = ?,
                     version = version + 1
-                WHERE tenant_id = ?
-                  AND id = ?
+                WHERE id = ?
                   AND deal_status = ?
                   AND version = ?
+                  AND initiator_legal_entity_id = ?
                   AND EXISTS (
                       SELECT 1
                       FROM deal_participant participant
                       WHERE participant.deal_id = deal.id
-                        AND participant.tenant_id = deal.tenant_id
                         AND participant.legal_entity_id = ?
+                        AND participant.legal_entity_tenant_id = ?
                   )
                 """,
                 nextStatus.name(),
                 Timestamp.from(updatedAt),
-                tenantId,
                 dealId,
                 expectedStatus.name(),
                 expectedVersion,
-                legalEntityId) == 1;
+                legalEntityId,
+                legalEntityId,
+                legalEntityTenantId) == 1;
     }
 
     private DealRecord mapDeal(
@@ -277,5 +291,9 @@ class DealRepository {
             Instant createdAt,
             Instant updatedAt,
             long version) {
+    }
+
+    record ParticipantRecord(UUID legalEntityId, UUID legalEntityTenantId,
+            Instant createdAt) {
     }
 }

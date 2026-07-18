@@ -18,6 +18,7 @@ export function AuthSessionExpiryHandler() {
       clearActiveSelectionUser();
       queryClient.removeQueries({ queryKey: ["organization"] });
       queryClient.removeQueries({ queryKey: ["deals"] });
+      queryClient.removeQueries({ queryKey: ["deal-invitations"] });
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
 
       if (!ANONYMOUS_ROUTES.has(location.pathname)) {

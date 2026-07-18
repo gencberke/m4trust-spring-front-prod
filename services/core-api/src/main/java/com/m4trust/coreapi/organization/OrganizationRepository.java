@@ -3,7 +3,9 @@ package com.m4trust.coreapi.organization;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -85,6 +87,42 @@ class OrganizationRepository {
                 (resultSet, rowNumber) ->
                         resultSet.getObject("tenant_id", UUID.class),
                 userId, legalEntityId).stream().findFirst();
+    }
+
+    Optional<InvitationLegalEntityQueryPort.InvitationLegalEntityMembership>
+            findCurrentMembership(UUID userId, UUID legalEntityId) {
+        return jdbcTemplate.query("""
+                        SELECT legal_entity_id, tenant_id
+                        FROM legal_entity_membership
+                        WHERE user_id = ?
+                          AND legal_entity_id = ?
+                        """,
+                (resultSet, rowNumber) ->
+                        new InvitationLegalEntityQueryPort.InvitationLegalEntityMembership(
+                                resultSet.getObject("legal_entity_id", UUID.class),
+                                resultSet.getObject("tenant_id", UUID.class)),
+                userId, legalEntityId).stream().findFirst();
+    }
+
+    Map<UUID, String> findLegalNames(Set<UUID> legalEntityIds) {
+        if (legalEntityIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = String.join(", ",
+                java.util.Collections.nCopies(legalEntityIds.size(), "?"));
+        return jdbcTemplate.query("""
+                        SELECT id, legal_name
+                        FROM legal_entity
+                        WHERE id IN (
+                        """ + placeholders + ")",
+                resultSet -> {
+                    Map<UUID, String> names = new java.util.HashMap<>();
+                    while (resultSet.next()) {
+                        names.put(resultSet.getObject("id", UUID.class),
+                                resultSet.getString("legal_name"));
+                    }
+                    return Map.copyOf(names);
+                }, legalEntityIds.toArray());
     }
 
     Optional<LegalEntity> findLegalEntity(UUID tenantId, UUID legalEntityId) {

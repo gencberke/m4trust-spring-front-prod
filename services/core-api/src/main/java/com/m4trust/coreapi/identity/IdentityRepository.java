@@ -43,6 +43,15 @@ public class IdentityRepository {
                 this::mapAccount, normalizedEmail).stream().findFirst();
     }
 
+    Optional<String> findNormalizedEmailById(UUID userId) {
+        return jdbcTemplate.query("""
+                        SELECT email
+                        FROM identity_user
+                        WHERE id = ?
+                        """, (resultSet, rowNumber) -> resultSet.getString("email"), userId)
+                .stream().findFirst();
+    }
+
     List<PublicIdentityProjection> findPublicProjections(
             Collection<UUID> userIds) {
         return namedParameterJdbcTemplate.query("""

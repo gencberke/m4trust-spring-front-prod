@@ -120,6 +120,7 @@ export function AuthenticatedLayout() {
     await queryClient.cancelQueries();
     queryClient.removeQueries({ queryKey: ["organization"] });
     queryClient.removeQueries({ queryKey: ["deals"] });
+    queryClient.removeQueries({ queryKey: ["deal-invitations"] });
     queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
     navigate("/login", { replace: true, state: { reason: "logged-out" } });
   }
@@ -176,6 +177,7 @@ export function AuthenticatedLayout() {
             Organizasyon
           </NavLink>
           <NavLink to="/app/deals">Deals</NavLink>
+          <NavLink to="/app/invitations">Davetler</NavLink>
         </nav>
       </header>
 
