@@ -56,7 +56,7 @@ class DealRepository {
     }
 
     @Transactional
-    void insert(DealRecord deal) {
+    void insert(DealRecord deal, UUID initiatorLegalEntityTenantId) {
         jdbcTemplate.update("""
                 INSERT INTO deal (
                     id,
@@ -89,13 +89,15 @@ class DealRepository {
                     deal_id,
                     tenant_id,
                     legal_entity_id,
+                    legal_entity_tenant_id,
                     created_at
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 deal.id(),
                 deal.tenantId(),
                 deal.initiatorLegalEntityId(),
+                initiatorLegalEntityTenantId,
                 Timestamp.from(deal.createdAt()));
     }
 
