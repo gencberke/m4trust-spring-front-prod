@@ -103,7 +103,7 @@ class DealIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(header().string("Location",
                         matchesPattern("/api/v1/deals/[0-9a-f-]{36}")))
-                .andExpect(jsonPath("$.*", hasSize(11)))
+                .andExpect(jsonPath("$.*", hasSize(13)))
                 .andExpect(jsonPath("$.reference")
                         .value(matchesPattern("DL-[0-9]{10}")))
                 .andExpect(jsonPath("$.title").value("Equipment Purchase"))
@@ -117,11 +117,16 @@ class DealIntegrationTest {
                         .value(true))
                 .andExpect(jsonPath("$.availableActions.canCreateInvitation")
                         .value(true))
+                .andExpect(jsonPath("$.availableActions.canManageParties")
+                        .value(true))
+                .andExpect(jsonPath("$.buyer").value((Object) null))
+                .andExpect(jsonPath("$.seller").value((Object) null))
                 .andExpect(jsonPath("$.participants", hasSize(1)))
                 .andExpect(jsonPath("$.participants[0].legalEntityId")
                         .value(owner.legalEntityId().toString()))
                 .andExpect(jsonPath("$.participants[0].legalName")
                         .value("Owner Entity"))
+                .andExpect(jsonPath("$.participants[0].partyRoles", hasSize(0)))
                 .andReturn();
         UUID firstDealId = dealId(firstCreation);
 
@@ -340,6 +345,8 @@ class DealIntegrationTest {
                 .andExpect(jsonPath("$.items[0].availableActions.canUpdate")
                         .value(false))
                 .andExpect(jsonPath("$.items[0].availableActions.canCancel")
+                        .value(false))
+                .andExpect(jsonPath("$.items[0].availableActions.canManageParties")
                         .value(false));
 
         mockMvc.perform(get("/api/v1/deals/" + dealId)
@@ -351,6 +358,8 @@ class DealIntegrationTest {
                 .andExpect(jsonPath("$.availableActions.canUpdate")
                         .value(false))
                 .andExpect(jsonPath("$.availableActions.canCancel")
+                        .value(false))
+                .andExpect(jsonPath("$.availableActions.canManageParties")
                         .value(false));
 
         mockMvc.perform(patch("/api/v1/deals/" + dealId)
@@ -379,6 +388,23 @@ class DealIntegrationTest {
                 .andExpect(jsonPath("$.code")
                         .value("DEAL_MUTATION_FORBIDDEN"));
 
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(participant.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER,
+                                participant.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": null,
+                                  "sellerLegalEntityId": null,
+                                  "expectedVersion": 0
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code")
+                        .value("DEAL_MUTATION_FORBIDDEN"));
+
         assertEquals("DRAFT", jdbcTemplate.queryForObject("""
                 SELECT deal_status FROM deal WHERE id = ?
                 """, String.class, dealId));
@@ -392,6 +418,215 @@ class DealIntegrationTest {
                                 outsider.legalEntityId()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("DEAL_NOT_FOUND"));
+    }
+
+    @Test
+    void initiatorAtomicallyAssignsAndClearsPartiesWithActorAwareProjections()
+            throws Exception {
+        UUID dealId = dealId(createDeal("Party Deal"));
+        insertParticipant(dealId, participant);
+        String assignmentCorrelation = UUID.randomUUID().toString();
+
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .header("X-Correlation-ID", assignmentCorrelation)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": "%s",
+                                  "sellerLegalEntityId": "%s",
+                                  "expectedVersion": 0
+                                }
+                                """.formatted(owner.legalEntityId(),
+                                participant.legalEntityId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.buyer.legalEntityId")
+                        .value(owner.legalEntityId().toString()))
+                .andExpect(jsonPath("$.seller.legalEntityId")
+                        .value(participant.legalEntityId().toString()))
+                .andExpect(jsonPath("$.participants[0].partyRoles[0]")
+                        .value("BUYER"))
+                .andExpect(jsonPath("$.participants[1].partyRoles[0]")
+                        .value("SELLER"));
+        assertEquals(1, auditCount(dealId, "DEAL_PARTIES_UPDATED",
+                assignmentCorrelation));
+
+        mockMvc.perform(get("/api/v1/deals/" + dealId)
+                        .with(user(participant.userId().toString()))
+                        .header(LEGAL_ENTITY_HEADER,
+                                participant.legalEntityId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.buyer.legalName").value("Owner Entity"))
+                .andExpect(jsonPath("$.seller.legalName")
+                        .value("Participant Entity"))
+                .andExpect(jsonPath("$.availableActions.canManageParties")
+                        .value(false))
+                .andExpect(jsonPath("$.participants[1].partyRoles[0]")
+                        .value("SELLER"));
+
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": null,
+                                  "sellerLegalEntityId": null,
+                                  "expectedVersion": 1
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(2))
+                .andExpect(jsonPath("$.buyer").value((Object) null))
+                .andExpect(jsonPath("$.seller").value((Object) null))
+                .andExpect(jsonPath("$.participants[0].partyRoles", hasSize(0)))
+                .andExpect(jsonPath("$.participants[1].partyRoles", hasSize(0)));
+        assertEquals(2, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM audit_record
+                WHERE subject_id = ? AND action = 'DEAL_PARTIES_UPDATED'
+                """, Integer.class, dealId));
+
+        mockMvc.perform(patch("/api/v1/deals/" + dealId)
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Party Deal Updated",
+                                  "description": null,
+                                  "expectedVersion": 2
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(3));
+        mockMvc.perform(post("/api/v1/deals/" + dealId + "/cancel")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.version").value(4));
+    }
+
+    @Test
+    void invalidStaleAndCancelledPartyUpdatesDoNotReplaceTheWinner()
+            throws Exception {
+        UUID dealId = dealId(createDeal("Party Validation Deal"));
+        insertParticipant(dealId, participant);
+
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": null,
+                                  "expectedVersion": 0
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field")
+                        .value("sellerLegalEntityId"));
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": "%s",
+                                  "sellerLegalEntityId": "%s",
+                                  "expectedVersion": 0
+                                }
+                                """.formatted(owner.legalEntityId(),
+                                owner.legalEntityId())))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": "%s",
+                                  "sellerLegalEntityId": "%s",
+                                  "expectedVersion": 0
+                                }
+                                """.formatted(owner.legalEntityId(),
+                                outsider.legalEntityId())))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        assertEquals(0L, jdbcTemplate.queryForObject(
+                "SELECT version FROM deal WHERE id = ?", Long.class, dealId));
+        assertEquals(0, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM audit_record
+                WHERE subject_id = ? AND action = 'DEAL_PARTIES_UPDATED'
+                """, Integer.class, dealId));
+
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": "%s",
+                                  "sellerLegalEntityId": "%s",
+                                  "expectedVersion": 0
+                                }
+                                """.formatted(owner.legalEntityId(),
+                                participant.legalEntityId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(1));
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": null,
+                                  "sellerLegalEntityId": null,
+                                  "expectedVersion": 0
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DEAL_STALE_VERSION"));
+        assertEquals(owner.legalEntityId(), jdbcTemplate.queryForObject("""
+                SELECT buyer_legal_entity_id FROM deal WHERE id = ?
+                """, UUID.class, dealId));
+        assertEquals(participant.legalEntityId(), jdbcTemplate.queryForObject("""
+                SELECT seller_legal_entity_id FROM deal WHERE id = ?
+                """, UUID.class, dealId));
+
+        mockMvc.perform(post("/api/v1/deals/" + dealId + "/cancel")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId()))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/deals/" + dealId + "/parties")
+                        .with(user(owner.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, owner.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "buyerLegalEntityId": null,
+                                  "sellerLegalEntityId": null,
+                                  "expectedVersion": 2
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
     }
 
     @Test

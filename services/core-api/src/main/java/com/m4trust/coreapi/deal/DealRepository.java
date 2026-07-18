@@ -221,6 +221,42 @@ class DealRepository {
                 legalEntityTenantId) == 1;
     }
 
+    boolean updateParties(
+            UUID legalEntityTenantId,
+            UUID legalEntityId,
+            UUID dealId,
+            long expectedVersion,
+            UUID buyerLegalEntityId,
+            UUID sellerLegalEntityId,
+            Instant updatedAt) {
+        return jdbcTemplate.update("""
+                UPDATE deal
+                SET buyer_legal_entity_id = ?,
+                    seller_legal_entity_id = ?,
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                  AND version = ?
+                  AND deal_status = 'DRAFT'
+                  AND initiator_legal_entity_id = ?
+                  AND EXISTS (
+                      SELECT 1
+                      FROM deal_participant participant
+                      WHERE participant.deal_id = deal.id
+                        AND participant.legal_entity_id = ?
+                        AND participant.legal_entity_tenant_id = ?
+                  )
+                """,
+                buyerLegalEntityId,
+                sellerLegalEntityId,
+                Timestamp.from(updatedAt),
+                dealId,
+                expectedVersion,
+                legalEntityId,
+                legalEntityId,
+                legalEntityTenantId) == 1;
+    }
+
     boolean updateStatus(
             UUID legalEntityTenantId,
             UUID legalEntityId,

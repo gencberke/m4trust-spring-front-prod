@@ -80,6 +80,18 @@ public class DealController {
                 UUID.fromString(correlationId));
     }
 
+    @PatchMapping("/{dealId}/parties")
+    DealDetail updateParties(
+            @ResolvedOperationContext(RequestedOperation.DEAL_PARTIES_UPDATE)
+            OperationContext context,
+            @PathVariable String dealId,
+            @Valid @RequestBody UpdateDealPartiesRequest request,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE)
+            String correlationId) {
+        return service.updateParties(context, parseDealId(dealId), request,
+                UUID.fromString(correlationId));
+    }
+
     @PostMapping("/{dealId}/cancel")
     DealDetail cancel(
             @ResolvedOperationContext(RequestedOperation.DEAL_CANCEL)

@@ -15,6 +15,8 @@ record DealDetail(
         Instant createdAt,
         Instant updatedAt,
         DealAvailableActions availableActions,
+        DealParty buyer,
+        DealParty seller,
         List<DealParticipant> participants) {
 
     DealDetail {

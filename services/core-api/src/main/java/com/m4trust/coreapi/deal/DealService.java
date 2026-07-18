@@ -19,17 +19,21 @@ class DealService {
     private static final String DEAL_SUBJECT = "DEAL";
     private static final String DEAL_CREATED = "DEAL_CREATED";
     private static final String DEAL_UPDATED = "DEAL_UPDATED";
+    private static final String DEAL_PARTIES_UPDATED = "DEAL_PARTIES_UPDATED";
     private static final String DEAL_CANCELLED = "DEAL_CANCELLED";
 
     private final DealRepository repository;
+    private final DealOperationPolicy operationPolicy;
     private final InvitationLegalEntityQueryPort legalEntityQueries;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
     DealService(DealRepository repository,
+            DealOperationPolicy operationPolicy,
             InvitationLegalEntityQueryPort legalEntityQueries,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
+        this.operationPolicy = operationPolicy;
         this.legalEntityQueries = legalEntityQueries;
         this.auditAppender = auditAppender;
         this.clock = clock;
@@ -94,7 +98,7 @@ class DealService {
                     "Description must be provided, and may be null.");
         }
         Deal deal = loadVisible(context, dealId);
-        requireInitiator(context, deal);
+        operationPolicy.requireInitiator(deal, context);
         long currentVersion = deal.version();
         Instant now = clock.instant();
         deal.updateBasicFields(request.title(), request.description(),
@@ -120,18 +124,45 @@ class DealService {
         requireOperation(context, RequestedOperation.DEAL_CANCEL);
         Instant now = clock.instant();
         Deal deal = loadVisible(context, dealId);
-        requireInitiator(context, deal);
+        operationPolicy.requireInitiator(deal, context);
         if (!tryPersistCancel(context, deal, now)) {
             // Cancel carries no expectedVersion, so a plain concurrent version
             // bump must not fail it: retry once against the latest state.
             deal = loadVisible(context, dealId);
-            requireInitiator(context, deal);
+            operationPolicy.requireInitiator(deal, context);
             if (!tryPersistCancel(context, deal, now)) {
                 throw new DealStateConflictException(
                         "Deal changed while cancellation was attempted");
             }
         }
         appendAudit(context, deal.id(), DEAL_CANCELLED, correlationId, now);
+        return toDetail(deal, context);
+    }
+
+    @Transactional
+    DealDetail updateParties(OperationContext context, UUID dealId,
+            UpdateDealPartiesRequest request, UUID correlationId) {
+        requireOperation(context, RequestedOperation.DEAL_PARTIES_UPDATE);
+        Deal deal = loadVisible(context, dealId);
+        operationPolicy.requireInitiator(deal, context);
+        deal.status().requirePartyManagementAllowed();
+        validatePartyRequest(request, deal.id());
+        long currentVersion = deal.version();
+        Instant now = clock.instant();
+        deal.assignParties(request.buyerLegalEntityId(),
+                request.sellerLegalEntityId(), request.expectedVersion(), now);
+        boolean updated = repository.updateParties(
+                context.tenantId(),
+                context.activeLegalEntityId(),
+                deal.id(),
+                currentVersion,
+                deal.buyerLegalEntityId(),
+                deal.sellerLegalEntityId(),
+                deal.updatedAt());
+        if (!updated) {
+            classifyFailedPartyUpdate(context, dealId, request.expectedVersion());
+        }
+        appendAudit(context, deal.id(), DEAL_PARTIES_UPDATED, correlationId, now);
         return toDetail(deal, context);
     }
 
@@ -162,13 +193,59 @@ class DealService {
     private void classifyFailedUpdate(OperationContext context, UUID dealId,
             long expectedVersion) {
         Deal latest = loadVisible(context, dealId);
-        requireInitiator(context, latest);
+        operationPolicy.requireInitiator(latest, context);
         latest.status().requireBasicFieldEditingAllowed();
         if (latest.version() != expectedVersion) {
             throw new DealStaleVersionException();
         }
         throw new IllegalStateException(
                 "Atomic Deal update failed without a visible conflict");
+    }
+
+    private void classifyFailedPartyUpdate(OperationContext context, UUID dealId,
+            long expectedVersion) {
+        Deal latest = loadVisible(context, dealId);
+        operationPolicy.requireInitiator(latest, context);
+        latest.status().requirePartyManagementAllowed();
+        if (latest.version() != expectedVersion) {
+            throw new DealStaleVersionException();
+        }
+        throw new IllegalStateException(
+                "Atomic Deal party update failed without a visible conflict");
+    }
+
+    private void validatePartyRequest(UpdateDealPartiesRequest request,
+            UUID dealId) {
+        if (!request.buyerLegalEntityIdPresent()) {
+            throw new DealValidationException("buyerLegalEntityId", "REQUIRED",
+                    "Buyer legal entity id must be provided and may be null.");
+        }
+        if (!request.sellerLegalEntityIdPresent()) {
+            throw new DealValidationException("sellerLegalEntityId", "REQUIRED",
+                    "Seller legal entity id must be provided and may be null.");
+        }
+        if (request.buyerLegalEntityId() != null
+                && request.buyerLegalEntityId().equals(
+                        request.sellerLegalEntityId())) {
+            throw new DealValidationException("buyerLegalEntityId", "MUST_DIFFER",
+                    "Buyer and seller must be different legal entities.");
+        }
+        java.util.Set<UUID> participantIds = repository.findParticipants(dealId)
+                .stream()
+                .map(DealRepository.ParticipantRecord::legalEntityId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (request.buyerLegalEntityId() != null
+                && !participantIds.contains(request.buyerLegalEntityId())) {
+            throw new DealValidationException("buyerLegalEntityId",
+                    "NOT_A_PARTICIPANT",
+                    "Buyer must be a current Deal participant.");
+        }
+        if (request.sellerLegalEntityId() != null
+                && !participantIds.contains(request.sellerLegalEntityId())) {
+            throw new DealValidationException("sellerLegalEntityId",
+                    "NOT_A_PARTICIPANT",
+                    "Seller must be a current Deal participant.");
+        }
     }
 
     private void appendAudit(OperationContext context, UUID dealId,
@@ -187,6 +264,7 @@ class DealService {
     }
 
     private DealDetail toDetail(Deal deal, OperationContext context) {
+        List<DealParticipant> participantProjections = participants(deal);
         return new DealDetail(
                 deal.id(),
                 deal.reference(),
@@ -197,7 +275,10 @@ class DealService {
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actions(deal, context), participants(deal.id()));
+                actions(deal, context),
+                party(deal.buyerLegalEntityId(), participantProjections),
+                party(deal.sellerLegalEntityId(), participantProjections),
+                participantProjections);
     }
 
     private DealSummary toSummary(Deal deal, OperationContext context) {
@@ -214,16 +295,12 @@ class DealService {
     }
 
     private DealAvailableActions actions(Deal deal, OperationContext context) {
-        boolean isInitiator = deal.isInitiatedBy(context.activeLegalEntityId());
-        return new DealAvailableActions(
-                isInitiator && deal.status().allowsBasicFieldEditing(),
-                isInitiator && deal.status().allowsCancellation(),
-                isInitiator && deal.status() == DealStatus.DRAFT);
+        return operationPolicy.availableActions(deal, context);
     }
 
-    private List<DealParticipant> participants(UUID dealId) {
+    private List<DealParticipant> participants(Deal deal) {
         List<DealRepository.ParticipantRecord> participantRecords =
-                repository.findParticipants(dealId);
+                repository.findParticipants(deal.id());
         java.util.Map<UUID, String> names = legalEntityQueries.findLegalNames(
                 participantRecords.stream()
                         .map(DealRepository.ParticipantRecord::legalEntityId)
@@ -235,14 +312,34 @@ class DealService {
                         "Participant legal entity projection is unavailable");
             }
             return new DealParticipant(participant.legalEntityId(), legalName,
-                    participant.createdAt());
+                    participant.createdAt(), partyRoles(deal,
+                            participant.legalEntityId()));
         }).toList();
     }
 
-    private void requireInitiator(OperationContext context, Deal deal) {
-        if (!deal.isInitiatedBy(context.activeLegalEntityId())) {
-            throw new DealMutationForbiddenException();
+    private List<DealPartyRole> partyRoles(Deal deal, UUID legalEntityId) {
+        if (legalEntityId.equals(deal.buyerLegalEntityId())) {
+            return List.of(DealPartyRole.BUYER);
         }
+        if (legalEntityId.equals(deal.sellerLegalEntityId())) {
+            return List.of(DealPartyRole.SELLER);
+        }
+        return List.of();
+    }
+
+    private DealParty party(UUID legalEntityId,
+            List<DealParticipant> participants) {
+        if (legalEntityId == null) {
+            return null;
+        }
+        return participants.stream()
+                .filter(participant -> participant.legalEntityId().equals(
+                        legalEntityId))
+                .findFirst()
+                .map(participant -> new DealParty(participant.legalEntityId(),
+                        participant.legalName()))
+                .orElseThrow(() -> new IllegalStateException(
+                        "Deal party is not represented by a participant"));
     }
 
     private void requireOperation(

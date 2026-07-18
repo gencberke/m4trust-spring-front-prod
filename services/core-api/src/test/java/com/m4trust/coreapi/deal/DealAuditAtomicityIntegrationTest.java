@@ -145,6 +145,43 @@ class DealAuditAtomicityIntegrationTest {
         assertEquals(0, count("audit_record"));
     }
 
+    @Test
+    void auditFailureRollsBackPartyAssignmentAndVersion() {
+        UUID dealId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO deal (
+                    id, tenant_id, reference, title, deal_status,
+                    initiator_legal_entity_id, created_by
+                ) VALUES (?, ?, 'DL-0000000002', 'Atomic party Deal',
+                    'DRAFT', ?, ?)
+                """, dealId, tenantId, legalEntityId, userId);
+        jdbcTemplate.update("""
+                INSERT INTO deal_participant (
+                    deal_id, tenant_id, legal_entity_id,
+                    legal_entity_tenant_id
+                ) VALUES (?, ?, ?, ?)
+                """, dealId, tenantId, legalEntityId, tenantId);
+        UpdateDealPartiesRequest request = new UpdateDealPartiesRequest();
+        request.setBuyerLegalEntityId(legalEntityId);
+        request.setSellerLegalEntityId(null);
+        request.setExpectedVersion(0L);
+        OperationContext partyContext = new OperationContext(userId, tenantId,
+                legalEntityId, RequestedOperation.DEAL_PARTIES_UPDATE);
+
+        assertThrows(IllegalStateException.class,
+                () -> service.updateParties(partyContext, dealId, request,
+                        UUID.randomUUID()));
+
+        assertEquals(0L, jdbcTemplate.queryForObject("""
+                SELECT version FROM deal WHERE id = ?
+                """, Long.class, dealId));
+        assertEquals(0, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM deal
+                WHERE id = ? AND buyer_legal_entity_id IS NOT NULL
+                """, Integer.class, dealId));
+        assertEquals(0, count("audit_record"));
+    }
+
     private int count(String table) {
         return jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM " + table, Integer.class);
