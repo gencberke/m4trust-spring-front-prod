@@ -15,6 +15,8 @@ tags:
     description: Legal entity creation, membership bootstrap, and organization-scoped reads.
   - name: Deals
     description: Legal-entity-scoped Deal creation, discovery, editing, and lifecycle actions.
+  - name: Deal Invitations
+    description: Cross-entity Deal invitation and participation operations.
 paths:
   /auth/register:
     post:
@@ -449,6 +451,240 @@ paths:
           $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
         '409':
           $ref: '#/components/responses/DealStateConflict'
+  /deals/{dealId}/invitations:
+    post:
+      operationId: createDealInvitation
+      tags: [Deal Invitations]
+      summary: Create a pending Deal invitation
+      description: >
+        Creates one PENDING invitation for the normalized recipient email. Only the
+        DRAFT Deal initiator may create invitations. Idempotency-Key is required:
+        a retried canonical request with the same key returns the original or an
+        equivalent result, while a reused key with a different request returns
+        IDEMPOTENCY_KEY_REUSED. At most one PENDING invitation may exist for a Deal
+        and normalized email.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDealInvitationRequest'
+      responses:
+        '201':
+          description: Pending invitation created.
+          headers:
+            Location:
+              description: Same-origin path of the created invitation.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealInvitation'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealInvitationMutationForbidden'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealInvitationCreateConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    get:
+      operationId: listDealInvitations
+      tags: [Deal Invitations]
+      summary: List invitations for a Deal
+      description: >
+        Lists the Deal's invitations only for its DRAFT initiator. Recipient email
+        is intentionally present only in this initiator-authorized projection and
+        never in Deal detail or ordinary participant projections.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of invitations visible to the Deal initiator; items is never null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealInvitationPage'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealInvitationListForbidden'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deal-invitations/incoming:
+    get:
+      operationId: listIncomingDealInvitations
+      tags: [Deal Invitations]
+      summary: List the authenticated user's pending incoming Deal invitations
+      description: >
+        User-scoped inbox for PENDING invitations whose normalized recipient email
+        matches the authenticated user. It does not require or inspect an active
+        legal-entity header, because the recipient chooses a legal entity only when
+        accepting an invitation.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of pending invitations addressed to the authenticated user; items is never null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomingDealInvitationPage'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deal-invitations/{invitationId}/accept:
+    post:
+      operationId: acceptDealInvitation
+      tags: [Deal Invitations]
+      summary: Accept a Deal invitation with one of the recipient's legal entities
+      description: >
+        User-scoped action that accepts a PENDING invitation and creates only a Deal
+        participant relationship. It does not assign buyer or seller roles, provide
+        contractual consent, or activate the Deal. The selected legalEntityId is
+        membership-validated by the backend at action time; no active legal-entity
+        header is used. A non-recipient receives non-disclosing
+        DEAL_INVITATION_NOT_FOUND. A repeated accept by the same user for the same
+        legal entity returns an equivalent accepted result; a different entity
+        conflicts.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/InvitationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptDealInvitationRequest'
+      responses:
+        '200':
+          description: Invitation accepted and participant relationship created or equivalently already accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomingDealInvitation'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/CsrfRejected'
+        '404':
+          $ref: '#/components/responses/DealInvitationAcceptNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealInvitationAcceptConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deal-invitations/{invitationId}/reject:
+    post:
+      operationId: rejectDealInvitation
+      tags: [Deal Invitations]
+      summary: Reject a Deal invitation
+      description: >
+        User-scoped terminal action for the authenticated invitation recipient. It
+        does not require an active legal-entity header. The backend atomically checks
+        expectedVersion and current PENDING state; a recipient mismatch is a
+        non-disclosing DEAL_INVITATION_NOT_FOUND.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/InvitationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealInvitationTerminalActionRequest'
+      responses:
+        '200':
+          description: Invitation rejected and current recipient projection returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomingDealInvitation'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/CsrfRejected'
+        '404':
+          $ref: '#/components/responses/DealInvitationNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealInvitationTerminalConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deal-invitations/{invitationId}/revoke:
+    post:
+      operationId: revokeDealInvitation
+      tags: [Deal Invitations]
+      summary: Revoke a pending Deal invitation
+      description: >
+        DRAFT initiator-scoped terminal action. The backend atomically checks
+        expectedVersion and current PENDING state. It requires the active legal
+        entity context and never exposes recipient email to ordinary participants.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/InvitationId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealInvitationTerminalActionRequest'
+      responses:
+        '200':
+          description: Invitation revoked and current initiator projection returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealInvitation'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealInvitationMutationForbidden'
+        '404':
+          $ref: '#/components/responses/DealInvitationOrLegalEntityNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealInvitationTerminalConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     SessionCookie:
@@ -506,6 +742,25 @@ components:
       in: path
       required: true
       description: Public UUID of the requested Deal.
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      description: Public UUID of the requested Deal invitation.
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: >
+        UUID key supplied by the client for a single invitation-create intent. Keep
+        the same key when retrying the same canonical request; never use it for a
+        different request.
       schema:
         type: string
         format: uuid
@@ -624,7 +879,9 @@ components:
       description: >
         CSRF validation failed (CSRF_TOKEN_INVALID), or the required active legal
         entity context header is missing or malformed
-        (LEGAL_ENTITY_ACCESS_DENIED). A syntactically valid but nonexistent or hidden
+        (LEGAL_ENTITY_ACCESS_DENIED), or a visible Deal participant is not its DRAFT
+        initiator and therefore cannot perform this Deal mutation
+        (DEAL_MUTATION_FORBIDDEN). A syntactically valid but nonexistent or hidden
         legal entity returns 404 LEGAL_ENTITY_NOT_FOUND instead.
       content:
         application/problem+json:
@@ -642,6 +899,81 @@ components:
       description: >
         The requested Deal action is invalid in the current lifecycle state;
         Problem Details code is DEAL_STATE_CONFLICT.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationMutationForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal
+        entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the
+        active legal entity is not the DRAFT Deal initiator for this mutation
+        (DEAL_INVITATION_FORBIDDEN).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationListForbidden:
+      description: >
+        The required active legal entity context is missing or malformed
+        (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is not the DRAFT
+        Deal initiator authorized to view recipient email
+        (DEAL_INVITATION_FORBIDDEN).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationCreateConflict:
+      description: >
+        A PENDING invitation already exists for the Deal and normalized recipient
+        email (DEAL_INVITATION_PENDING_EXISTS), or the Idempotency-Key was reused
+        with a different canonical request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationNotFoundOrHidden:
+      description: >
+        The invitation does not exist or is not addressed to the authenticated user;
+        both cases use DEAL_INVITATION_NOT_FOUND and do not disclose invitation
+        existence to a non-recipient.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationAcceptNotFoundOrHidden:
+      description: >
+        The invitation does not exist or is not addressed to the authenticated user
+        (DEAL_INVITATION_NOT_FOUND), or the selected legal entity is nonexistent or
+        not a current membership of the authenticated user (LEGAL_ENTITY_NOT_FOUND).
+        Neither case discloses an invitation to a non-recipient.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationOrLegalEntityNotFoundOrHidden:
+      description: >
+        The active legal entity is nonexistent or hidden (LEGAL_ENTITY_NOT_FOUND),
+        or the invitation does not exist or is inaccessible at the Deal authorization
+        boundary (DEAL_INVITATION_NOT_FOUND); both preserve non-disclosure.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationAcceptConflict:
+      description: >
+        The invitation version is stale (DEAL_INVITATION_STALE_VERSION), is no
+        longer PENDING (DEAL_INVITATION_STATE_CONFLICT), or was already accepted by
+        the recipient into a different legal entity
+        (DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealInvitationTerminalConflict:
+      description: >
+        The invitation version is stale (DEAL_INVITATION_STALE_VERSION) or its
+        current state is no longer PENDING (DEAL_INVITATION_STATE_CONFLICT).
       content:
         application/problem+json:
           schema:
@@ -855,6 +1187,199 @@ components:
           format: int64
           minimum: 0
           description: Current aggregate version observed by the client.
+    CreateDealInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [recipientEmail]
+      properties:
+        recipientEmail:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 320
+          description: >
+            Recipient email normalized by trimming and case-insensitive comparison.
+            This value is visible only in initiator-authorized invitation projections.
+    AcceptDealInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [legalEntityId, expectedVersion]
+      properties:
+        legalEntityId:
+          type: string
+          format: uuid
+          description: >
+            Legal entity selected by the recipient. The backend verifies current
+            membership for the authenticated user when the action is performed.
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current invitation aggregate version observed by the recipient.
+    DealInvitationTerminalActionRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current invitation aggregate version observed by the actor.
+    DealInvitationStatus:
+      type: string
+      description: Closed Deal invitation lifecycle; no expiry state exists in Slice 4.
+      enum: [PENDING, ACCEPTED, REJECTED, REVOKED]
+    DealInvitationAvailableActions:
+      type: object
+      additionalProperties: false
+      description: >
+        Backend-derived invitation action availability for the current actor. The
+        backend always re-authorizes actions; clients must not infer these booleans
+        from invitation status.
+      required: [canAccept, canReject, canRevoke]
+      properties:
+        canAccept:
+          type: boolean
+        canReject:
+          type: boolean
+        canRevoke:
+          type: boolean
+    DealInvitationDeal:
+      type: object
+      additionalProperties: false
+      description: Minimum Deal context disclosed to the invitation recipient.
+      required: [id, reference, title]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 50
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+    DealInvitation:
+      type: object
+      additionalProperties: false
+      description: >
+        Initiator-authorized invitation projection. recipientEmail is intentionally
+        excluded from Deal detail and recipient projections.
+      required:
+        - id
+        - dealId
+        - recipientEmail
+        - status
+        - version
+        - createdAt
+        - updatedAt
+        - availableActions
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        recipientEmail:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 320
+        status:
+          $ref: '#/components/schemas/DealInvitationStatus'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DealInvitationAvailableActions'
+    IncomingDealInvitation:
+      type: object
+      additionalProperties: false
+      description: >
+        Recipient-authorized invitation projection. The recipient email is omitted
+        because it is not needed to accept or reject the invitation.
+      required: [id, deal, status, version, createdAt, updatedAt, availableActions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        deal:
+          $ref: '#/components/schemas/DealInvitationDeal'
+        status:
+          $ref: '#/components/schemas/DealInvitationStatus'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DealInvitationAvailableActions'
+    DealInvitationPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          description: Initiator-authorized Deal invitations; never null.
+          items:
+            $ref: '#/components/schemas/DealInvitation'
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        size:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int32
+          minimum: 0
+    IncomingDealInvitationPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          description: Pending incoming invitations addressed to the authenticated user; never null.
+          items:
+            $ref: '#/components/schemas/IncomingDealInvitation'
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        size:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int32
+          minimum: 0
     DealStatus:
       type: string
       description: Closed authoritative Deal container status set.
@@ -883,12 +1408,17 @@ components:
         Backend-derived action availability for the current user and active legal
         entity. Clients use this projection for presentation but the backend always
         re-authorizes mutations.
-      required: [canUpdate, canCancel]
+      required: [canUpdate, canCancel, canCreateInvitation]
       properties:
         canUpdate:
           type: boolean
         canCancel:
           type: boolean
+        canCreateInvitation:
+          type: boolean
+          description: >
+            True only when the active legal entity is authorized as the DRAFT Deal
+            initiator to create invitations.
     UtcTimestamp:
       type: string
       format: date-time
@@ -934,6 +1464,23 @@ components:
           $ref: '#/components/schemas/UtcTimestamp'
         availableActions:
           $ref: '#/components/schemas/DealAvailableActions'
+    DealParticipant:
+      type: object
+      additionalProperties: false
+      description: >
+        Deal visibility participant projection. Participation conveys no buyer/seller
+        role, contractual consent, or lifecycle authority.
+      required: [legalEntityId, legalName, joinedAt]
+      properties:
+        legalEntityId:
+          type: string
+          format: uuid
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        joinedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
     DealDetail:
       type: object
       additionalProperties: false
@@ -948,6 +1495,7 @@ components:
         - createdAt
         - updatedAt
         - availableActions
+        - participants
       properties:
         id:
           type: string
@@ -979,6 +1527,13 @@ components:
           $ref: '#/components/schemas/UtcTimestamp'
         availableActions:
           $ref: '#/components/schemas/DealAvailableActions'
+        participants:
+          type: array
+          description: >
+            Legal entities with visibility participation in this Deal; never null.
+            Pending invitation recipient email is never included.
+          items:
+            $ref: '#/components/schemas/DealParticipant'
     DealPage:
       type: object
       additionalProperties: false

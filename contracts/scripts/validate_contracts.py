@@ -137,6 +137,36 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404", "409"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/invitations", "post"): {
+        "operationId": "createDealInvitation",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/invitations", "get"): {
+        "operationId": "listDealInvitations",
+        "responses": {"200", "400", "401", "403", "404", "422"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deal-invitations/incoming", "get"): {
+        "operationId": "listIncomingDealInvitations",
+        "responses": {"200", "400", "401", "422"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deal-invitations/{invitationId}/accept", "post"): {
+        "operationId": "acceptDealInvitation",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deal-invitations/{invitationId}/reject", "post"): {
+        "operationId": "rejectDealInvitation",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deal-invitations/{invitationId}/revoke", "post"): {
+        "operationId": "revokeDealInvitation",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
 }
 EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
@@ -144,6 +174,10 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/legal-entities", "post"): "#/components/schemas/CreateLegalEntityRequest",
     ("/deals", "post"): "#/components/schemas/CreateDealRequest",
     ("/deals/{dealId}", "patch"): "#/components/schemas/UpdateDealRequest",
+    ("/deals/{dealId}/invitations", "post"): "#/components/schemas/CreateDealInvitationRequest",
+    ("/deal-invitations/{invitationId}/accept", "post"): "#/components/schemas/AcceptDealInvitationRequest",
+    ("/deal-invitations/{invitationId}/reject", "post"): "#/components/schemas/DealInvitationTerminalActionRequest",
+    ("/deal-invitations/{invitationId}/revoke", "post"): "#/components/schemas/DealInvitationTerminalActionRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
@@ -159,6 +193,12 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}", "get", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}", "patch", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}/cancel", "post", "200"): "#/components/schemas/DealDetail",
+    ("/deals/{dealId}/invitations", "post", "201"): "#/components/schemas/DealInvitation",
+    ("/deals/{dealId}/invitations", "get", "200"): "#/components/schemas/DealInvitationPage",
+    ("/deal-invitations/incoming", "get", "200"): "#/components/schemas/IncomingDealInvitationPage",
+    ("/deal-invitations/{invitationId}/accept", "post", "200"): "#/components/schemas/IncomingDealInvitation",
+    ("/deal-invitations/{invitationId}/reject", "post", "200"): "#/components/schemas/IncomingDealInvitation",
+    ("/deal-invitations/{invitationId}/revoke", "post", "200"): "#/components/schemas/DealInvitation",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -210,6 +250,38 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/cancel", "post", "403"): "DealScopedMutationForbidden",
     ("/deals/{dealId}/cancel", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
     ("/deals/{dealId}/cancel", "post", "409"): "DealStateConflict",
+    ("/deals/{dealId}/invitations", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/invitations", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/invitations", "post", "403"): "DealInvitationMutationForbidden",
+    ("/deals/{dealId}/invitations", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/invitations", "post", "409"): "DealInvitationCreateConflict",
+    ("/deals/{dealId}/invitations", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/invitations", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/invitations", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/invitations", "get", "403"): "DealInvitationListForbidden",
+    ("/deals/{dealId}/invitations", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/invitations", "get", "422"): "ValidationFailed",
+    ("/deal-invitations/incoming", "get", "400"): "MalformedRequest",
+    ("/deal-invitations/incoming", "get", "401"): "SessionRequired",
+    ("/deal-invitations/incoming", "get", "422"): "ValidationFailed",
+    ("/deal-invitations/{invitationId}/accept", "post", "400"): "MalformedRequest",
+    ("/deal-invitations/{invitationId}/accept", "post", "401"): "SessionRequired",
+    ("/deal-invitations/{invitationId}/accept", "post", "403"): "CsrfRejected",
+    ("/deal-invitations/{invitationId}/accept", "post", "404"): "DealInvitationAcceptNotFoundOrHidden",
+    ("/deal-invitations/{invitationId}/accept", "post", "409"): "DealInvitationAcceptConflict",
+    ("/deal-invitations/{invitationId}/accept", "post", "422"): "ValidationFailed",
+    ("/deal-invitations/{invitationId}/reject", "post", "400"): "MalformedRequest",
+    ("/deal-invitations/{invitationId}/reject", "post", "401"): "SessionRequired",
+    ("/deal-invitations/{invitationId}/reject", "post", "403"): "CsrfRejected",
+    ("/deal-invitations/{invitationId}/reject", "post", "404"): "DealInvitationNotFoundOrHidden",
+    ("/deal-invitations/{invitationId}/reject", "post", "409"): "DealInvitationTerminalConflict",
+    ("/deal-invitations/{invitationId}/reject", "post", "422"): "ValidationFailed",
+    ("/deal-invitations/{invitationId}/revoke", "post", "400"): "MalformedRequest",
+    ("/deal-invitations/{invitationId}/revoke", "post", "401"): "SessionRequired",
+    ("/deal-invitations/{invitationId}/revoke", "post", "403"): "DealInvitationMutationForbidden",
+    ("/deal-invitations/{invitationId}/revoke", "post", "404"): "DealInvitationOrLegalEntityNotFoundOrHidden",
+    ("/deal-invitations/{invitationId}/revoke", "post", "409"): "DealInvitationTerminalConflict",
+    ("/deal-invitations/{invitationId}/revoke", "post", "422"): "ValidationFailed",
 }
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
@@ -218,7 +290,10 @@ REQUIRED_CORE_API_SCHEMAS = {
     "LegalEntityMember", "LegalEntityMemberList",
     "CreateDealRequest", "UpdateDealRequest", "DealStatus",
     "DealLifecycleProjection", "DealAvailableActions", "DealSummary",
-    "DealDetail", "DealPage", "UtcTimestamp", "ProblemDetail", "FieldError",
+    "DealParticipant", "DealDetail", "DealPage", "UtcTimestamp", "ProblemDetail", "FieldError",
+    "CreateDealInvitationRequest", "AcceptDealInvitationRequest", "DealInvitationTerminalActionRequest",
+    "DealInvitationStatus", "DealInvitationAvailableActions", "DealInvitationDeal",
+    "DealInvitation", "IncomingDealInvitation", "DealInvitationPage", "IncomingDealInvitationPage",
 }
 
 
@@ -326,7 +401,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         core_paths = core_openapi.get("paths", {})
         expected_core_paths = {path for path, _ in EXPECTED_CORE_API_OPERATIONS}
         if set(core_paths) != expected_core_paths:
-            failures.append("FAIL Core API OpenAPI paths: accepted Slice 1 through Slice 3 endpoint set changed")
+            failures.append("FAIL Core API OpenAPI paths: accepted Slice 1 through Slice 4 endpoint set changed")
         for (path, method), expected in EXPECTED_CORE_API_OPERATIONS.items():
             operation = core_paths.get(path, {}).get(method)
             if not isinstance(operation, dict):
@@ -424,12 +499,12 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "COMPLETED", "CANCELLED", "ARCHIVED"]:
             failures.append("FAIL Core API DealLifecycleProjection: ADR projection set changed")
         actions = core_components.get("schemas", {}).get("DealAvailableActions", {})
-        if (set(actions.get("required", [])) != {"canUpdate", "canCancel"}
-                or set(actions.get("properties", {})) != {"canUpdate", "canCancel"}
+        if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation"}
+                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation"}
                 or actions.get("additionalProperties") is not False
                 or any(
                     actions.get("properties", {}).get(name, {}).get("type") != "boolean"
-                    for name in ("canUpdate", "canCancel")
+                    for name in ("canUpdate", "canCancel", "canCreateInvitation")
                 )):
             failures.append("FAIL Core API DealAvailableActions: backend-derived action set changed")
         summary = core_components.get("schemas", {}).get("DealSummary", {})
@@ -442,14 +517,27 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or set(summary.get("properties", {})) != common_deal_fields
                 or summary.get("additionalProperties") is not False):
             failures.append("FAIL Core API DealSummary: frozen summary projection changed")
-        detail_fields = common_deal_fields | {"description"}
+        participant = core_components.get("schemas", {}).get("DealParticipant", {})
+        if (set(participant.get("required", [])) != {"legalEntityId", "legalName", "joinedAt"}
+                or set(participant.get("properties", {})) != {"legalEntityId", "legalName", "joinedAt"}
+                or participant.get("additionalProperties") is not False
+                or participant.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
+                or participant.get("properties", {}).get("legalName", {}).get("maxLength") != 200
+                or participant.get("properties", {}).get("joinedAt", {}).get("$ref")
+                != "#/components/schemas/UtcTimestamp"):
+            failures.append("FAIL Core API DealParticipant: minimal non-consent participant projection changed")
+        detail_fields = common_deal_fields | {"description", "participants"}
         detail_description = detail.get("properties", {}).get("description", {})
+        detail_participants = detail.get("properties", {}).get("participants", {})
         if (set(detail.get("required", [])) != detail_fields
                 or set(detail.get("properties", {})) != detail_fields
                 or detail.get("additionalProperties") is not False
                 or detail_description.get("type") != ["string", "null"]
-                or detail_description.get("maxLength") != 4000):
-            failures.append("FAIL Core API DealDetail: required nullable description projection changed")
+                or detail_description.get("maxLength") != 4000
+                or detail_participants.get("type") != "array"
+                or detail_participants.get("items", {}).get("$ref")
+                != "#/components/schemas/DealParticipant"):
+            failures.append("FAIL Core API DealDetail: required participant and nullable description projection changed")
         deal_page = core_components.get("schemas", {}).get("DealPage", {})
         deal_page_fields = {"items", "page", "size", "totalElements", "totalPages"}
         page_items = deal_page.get("properties", {}).get("items", {})
@@ -459,6 +547,63 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or page_items.get("type") != "array"
                 or page_items.get("items", {}).get("$ref") != "#/components/schemas/DealSummary"):
             failures.append("FAIL Core API DealPage: stable paginated list DTO changed")
+
+        invitation_status = core_components.get("schemas", {}).get("DealInvitationStatus", {})
+        if invitation_status.get("enum") != ["PENDING", "ACCEPTED", "REJECTED", "REVOKED"]:
+            failures.append("FAIL Core API DealInvitationStatus: closed Slice 4 state set changed")
+        create_invitation = core_components.get("schemas", {}).get("CreateDealInvitationRequest", {})
+        create_invitation_email = create_invitation.get("properties", {}).get("recipientEmail", {})
+        if (set(create_invitation.get("required", [])) != {"recipientEmail"}
+                or set(create_invitation.get("properties", {})) != {"recipientEmail"}
+                or create_invitation.get("additionalProperties") is not False
+                or (create_invitation_email.get("format"), create_invitation_email.get("minLength"),
+                    create_invitation_email.get("maxLength")) != ("email", 3, 320)):
+            failures.append("FAIL Core API CreateDealInvitationRequest: normalized-email request contract changed")
+        accept_invitation = core_components.get("schemas", {}).get("AcceptDealInvitationRequest", {})
+        accept_properties = accept_invitation.get("properties", {})
+        terminal_invitation = core_components.get("schemas", {}).get("DealInvitationTerminalActionRequest", {})
+        if (set(accept_invitation.get("required", [])) != {"legalEntityId", "expectedVersion"}
+                or set(accept_properties) != {"legalEntityId", "expectedVersion"}
+                or accept_invitation.get("additionalProperties") is not False
+                or accept_properties.get("legalEntityId", {}).get("format") != "uuid"
+                or accept_properties.get("expectedVersion", {}).get("minimum") != 0
+                or set(terminal_invitation.get("required", [])) != {"expectedVersion"}
+                or set(terminal_invitation.get("properties", {})) != {"expectedVersion"}
+                or terminal_invitation.get("additionalProperties") is not False
+                or terminal_invitation.get("properties", {}).get("expectedVersion", {}).get("minimum") != 0):
+            failures.append("FAIL Core API invitation terminal actions: expectedVersion contract changed")
+        invitation_actions = core_components.get("schemas", {}).get("DealInvitationAvailableActions", {})
+        if (set(invitation_actions.get("required", [])) != {"canAccept", "canReject", "canRevoke"}
+                or set(invitation_actions.get("properties", {})) != {"canAccept", "canReject", "canRevoke"}
+                or invitation_actions.get("additionalProperties") is not False
+                or any(invitation_actions.get("properties", {}).get(name, {}).get("type") != "boolean"
+                       for name in ("canAccept", "canReject", "canRevoke"))):
+            failures.append("FAIL Core API DealInvitationAvailableActions: actor-aware action set changed")
+        invitation = core_components.get("schemas", {}).get("DealInvitation", {})
+        incoming_invitation = core_components.get("schemas", {}).get("IncomingDealInvitation", {})
+        invitation_fields = {"id", "dealId", "recipientEmail", "status", "version", "createdAt", "updatedAt", "availableActions"}
+        incoming_fields = {"id", "deal", "status", "version", "createdAt", "updatedAt", "availableActions"}
+        if (set(invitation.get("required", [])) != invitation_fields
+                or set(invitation.get("properties", {})) != invitation_fields
+                or invitation.get("additionalProperties") is not False
+                or invitation.get("properties", {}).get("recipientEmail", {}).get("format") != "email"
+                or set(incoming_invitation.get("required", [])) != incoming_fields
+                or set(incoming_invitation.get("properties", {})) != incoming_fields
+                or incoming_invitation.get("additionalProperties") is not False
+                or "recipientEmail" in incoming_invitation.get("properties", {})):
+            failures.append("FAIL Core API invitation projections: recipient-email disclosure boundary changed")
+        for page_schema_name, item_schema_name in (
+                ("DealInvitationPage", "DealInvitation"),
+                ("IncomingDealInvitationPage", "IncomingDealInvitation")):
+            page_schema = core_components.get("schemas", {}).get(page_schema_name, {})
+            page_properties = page_schema.get("properties", {})
+            if (set(page_schema.get("required", [])) != deal_page_fields
+                    or set(page_properties) != deal_page_fields
+                    or page_schema.get("additionalProperties") is not False
+                    or page_properties.get("items", {}).get("type") != "array"
+                    or page_properties.get("items", {}).get("items", {}).get("$ref")
+                    != f"#/components/schemas/{item_schema_name}"):
+                failures.append(f"FAIL Core API {page_schema_name}: stable paginated invitation DTO changed")
         utc_timestamp = core_components.get("schemas", {}).get("UtcTimestamp", {})
         if (utc_timestamp.get("type") != "string"
                 or utc_timestamp.get("format") != "date-time"
@@ -520,6 +665,31 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/DealId",
                 "#/components/parameters/LegalEntityContext",
             },
+            ("/deals/{dealId}/invitations", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/invitations", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/Page",
+                "#/components/parameters/PageSize",
+            },
+            ("/deal-invitations/incoming", "get"): {
+                "#/components/parameters/Page",
+                "#/components/parameters/PageSize",
+            },
+            ("/deal-invitations/{invitationId}/accept", "post"): {
+                "#/components/parameters/InvitationId",
+            },
+            ("/deal-invitations/{invitationId}/reject", "post"): {
+                "#/components/parameters/InvitationId",
+            },
+            ("/deal-invitations/{invitationId}/revoke", "post"): {
+                "#/components/parameters/InvitationId",
+                "#/components/parameters/LegalEntityContext",
+            },
         }
         for (path, method), expected_refs in expected_deal_parameter_refs.items():
             parameter_refs = {
@@ -541,6 +711,9 @@ def validate_contract_documents(failures: list[str]) -> None:
         if ((page_size_parameter.get("default"), page_size_parameter.get("minimum"),
                 page_size_parameter.get("maximum")) != (20, 1, 100)):
             failures.append("FAIL Core API PageSize: default or bounds changed")
+        deal_mutation_forbidden = core_components.get("responses", {}).get("DealScopedMutationForbidden", {})
+        if "DEAL_MUTATION_FORBIDDEN" not in deal_mutation_forbidden.get("description", ""):
+            failures.append("FAIL Core API DealScopedMutationForbidden: visible non-initiator code missing")
         cancel_operation = core_paths.get("/deals/{dealId}/cancel", {}).get("post", {})
         if "requestBody" in cancel_operation:
             failures.append("FAIL Core API cancel Deal: business action must remain bodyless")
@@ -548,6 +721,14 @@ def validate_contract_documents(failures: list[str]) -> None:
                 .get("201", {}).get("headers", {}).get("Location", {}))
         if deal_location.get("schema", {}).get("format") != "uri-reference":
             failures.append("FAIL Core API create Deal: 201 Location header is required")
+        invitation_location = (core_paths.get("/deals/{dealId}/invitations", {}).get("post", {}).get("responses", {})
+                .get("201", {}).get("headers", {}).get("Location", {}))
+        if invitation_location.get("schema", {}).get("format") != "uri-reference":
+            failures.append("FAIL Core API create invitation: 201 Location header is required")
+        idempotency_key = core_parameters.get("IdempotencyKey", {})
+        if ((idempotency_key.get("name"), idempotency_key.get("in"), idempotency_key.get("required"),
+                idempotency_key.get("schema", {}).get("format")) != ("Idempotency-Key", "header", True, "uuid")):
+            failures.append("FAIL Core API IdempotencyKey: required UUID header contract changed")
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})
