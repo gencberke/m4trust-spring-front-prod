@@ -18,6 +18,7 @@ class DealPartyAssignmentTest {
         DealRecord invalidRecord = new DealRecord(
                 UUID.randomUUID(), UUID.randomUUID(), "DL-0000000001",
                 "Deal", null, DealStatus.DRAFT, partyId, partyId,
+                null,
                 UUID.randomUUID(), UUID.randomUUID(),
                 Instant.parse("2026-07-18T10:00:00Z"),
                 Instant.parse("2026-07-18T10:00:00Z"), 0);
@@ -68,6 +69,7 @@ class DealPartyAssignmentTest {
         Deal activeDeal = Deal.rehydrate(new DealRecord(
                 UUID.randomUUID(), UUID.randomUUID(), "DL-0000000002",
                 "Deal", null, DealStatus.ACTIVE, activeBuyerId, activeSellerId,
+                null,
                 UUID.randomUUID(), UUID.randomUUID(),
                 Instant.parse("2026-07-18T10:00:00Z"), activeUpdatedAt, 4));
         assertThrows(DealStateConflictException.class,
