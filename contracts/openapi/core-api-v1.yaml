@@ -451,6 +451,52 @@ paths:
           $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
         '409':
           $ref: '#/components/responses/DealStateConflict'
+  /deals/{dealId}/parties:
+    patch:
+      operationId: updateDealParties
+      tags: [Deals]
+      summary: Atomically replace the buyer and seller assignments of a Deal
+      description: >
+        Atomically replaces the complete buyer/seller assignment set of a DRAFT
+        Deal. buyerLegalEntityId and sellerLegalEntityId are both required: a null
+        value explicitly clears that role, so neither role can be retained by
+        omission. Each non-null entity must be a current Deal participant and the
+        two non-null values must differ. Only the immutable Deal initiator acting
+        through its active legal entity may perform this DRAFT coordination action;
+        visible participants have no mutation authority. The backend re-authorizes
+        this operation even when canManageParties was previously true. This action
+        neither records contractual consent nor activates the Deal.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDealPartiesRequest'
+      responses:
+        '200':
+          description: Deal parties replaced atomically and the current detail projection returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDetail'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealScopedMutationForbidden'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealPartiesConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /deals/{dealId}/invitations:
     post:
       operationId: createDealInvitation
@@ -895,6 +941,15 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
+    DealPartiesConflict:
+      description: >
+        The Deal was modified after expectedVersion (DEAL_STALE_VERSION), or it is
+        no longer DRAFT and therefore does not permit party changes
+        (DEAL_STATE_CONFLICT).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
     DealStateConflict:
       description: >
         The requested Deal action is invalid in the current lifecycle state;
@@ -1187,6 +1242,33 @@ components:
           format: int64
           minimum: 0
           description: Current aggregate version observed by the client.
+    UpdateDealPartiesRequest:
+      type: object
+      additionalProperties: false
+      required: [buyerLegalEntityId, sellerLegalEntityId, expectedVersion]
+      description: >
+        Complete atomic replacement of both Deal party assignments. Both role
+        fields are required even to clear a role: null explicitly clears that role.
+        The backend rejects equal non-null values and any non-null entity that is
+        not a current Deal participant with 422 VALIDATION_FAILED.
+      properties:
+        buyerLegalEntityId:
+          type: [string, 'null']
+          format: uuid
+          description: >
+            Buyer participant legal entity id; null explicitly clears the buyer
+            assignment.
+        sellerLegalEntityId:
+          type: [string, 'null']
+          format: uuid
+          description: >
+            Seller participant legal entity id; null explicitly clears the seller
+            assignment.
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current Deal aggregate version observed by the client.
     CreateDealInvitationRequest:
       type: object
       additionalProperties: false
@@ -1416,7 +1498,7 @@ components:
         Backend-derived action availability for the current user and active legal
         entity. Clients use this projection for presentation but the backend always
         re-authorizes mutations.
-      required: [canUpdate, canCancel, canCreateInvitation]
+      required: [canUpdate, canCancel, canCreateInvitation, canManageParties]
       properties:
         canUpdate:
           type: boolean
@@ -1427,6 +1509,12 @@ components:
           description: >
             True only when the active legal entity is authorized as the DRAFT Deal
             initiator to create invitations.
+        canManageParties:
+          type: boolean
+          description: >
+            Backend-derived party-management availability for the current user and
+            active legal entity. True only for the authorized DRAFT Deal initiator;
+            it does not represent consent authority or Deal activation eligibility.
     UtcTimestamp:
       type: string
       format: date-time
@@ -1476,9 +1564,10 @@ components:
       type: object
       additionalProperties: false
       description: >
-        Deal visibility participant projection. Participation conveys no buyer/seller
-        role, contractual consent, or lifecycle authority.
-      required: [legalEntityId, legalName, joinedAt]
+        Deal visibility participant projection. partyRoles describes the current
+        buyer/seller assignment only; participation and a party role convey no
+        contractual consent or lifecycle authority.
+      required: [legalEntityId, legalName, joinedAt, partyRoles]
       properties:
         legalEntityId:
           type: string
@@ -1489,6 +1578,37 @@ components:
           maxLength: 200
         joinedAt:
           $ref: '#/components/schemas/UtcTimestamp'
+        partyRoles:
+          type: array
+          minItems: 0
+          maxItems: 1
+          uniqueItems: true
+          description: >
+            Current Deal party roles for this participant; [] when unassigned and
+            exactly one of BUYER or SELLER when assigned. A participant cannot hold
+            both roles.
+          items:
+            $ref: '#/components/schemas/DealPartyRole'
+    DealPartyRole:
+      type: string
+      description: Closed current Deal party role set; it does not express contractual consent.
+      enum: [BUYER, SELLER]
+    DealParty:
+      type: object
+      additionalProperties: false
+      description: >
+        Current buyer or seller assignment in a Deal detail projection. Its presence
+        identifies a role assignment only; it does not indicate ratification,
+        contractual consent, or activation.
+      required: [legalEntityId, legalName]
+      properties:
+        legalEntityId:
+          type: string
+          format: uuid
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
     DealDetail:
       type: object
       additionalProperties: false
@@ -1503,6 +1623,8 @@ components:
         - createdAt
         - updatedAt
         - availableActions
+        - buyer
+        - seller
         - participants
       properties:
         id:
@@ -1535,6 +1657,22 @@ components:
           $ref: '#/components/schemas/UtcTimestamp'
         availableActions:
           $ref: '#/components/schemas/DealAvailableActions'
+        buyer:
+          description: >
+            Current buyer assignment when present; null means no buyer is assigned.
+            This field describes assignment only, not contractual consent or Deal
+            activation.
+          anyOf:
+            - $ref: '#/components/schemas/DealParty'
+            - type: 'null'
+        seller:
+          description: >
+            Current seller assignment when present; null means no seller is assigned.
+            This field describes assignment only, not contractual consent or Deal
+            activation.
+          anyOf:
+            - $ref: '#/components/schemas/DealParty'
+            - type: 'null'
         participants:
           type: array
           description: >

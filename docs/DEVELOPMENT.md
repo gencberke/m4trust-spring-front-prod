@@ -27,6 +27,10 @@ Bileşen rehberleri:
 - [Tamamlanmış Slice 1 planı](plan/done/01-authentication.md)
 - [Tamamlanmış Slice 2 planı](plan/done/02-organization-and-membership.md)
 - [Tamamlanmış Slice 3 planı](plan/done/03-deal-creation-and-listing.md)
+- [Tamamlanmış Slice 3.9 hardening planı](plan/done/03.9-hardening-and-decisions.md)
+- [Tamamlanmış Slice 4 planı](plan/done/04-deal-invitations-and-participation.md)
+- [Tamamlanmış Slice 5 planı](plan/done/05-deal-parties-and-activation.md)
+- [Sıradaki onaylı Slice 6 planı](plan/ready/06-document-upload.md)
 
 ## Railway staging hazırlığı
 

@@ -137,6 +137,11 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404", "409"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/parties", "patch"): {
+        "operationId": "updateDealParties",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
     ("/deals/{dealId}/invitations", "post"): {
         "operationId": "createDealInvitation",
         "responses": {"201", "400", "401", "403", "404", "409", "422"},
@@ -174,6 +179,7 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/legal-entities", "post"): "#/components/schemas/CreateLegalEntityRequest",
     ("/deals", "post"): "#/components/schemas/CreateDealRequest",
     ("/deals/{dealId}", "patch"): "#/components/schemas/UpdateDealRequest",
+    ("/deals/{dealId}/parties", "patch"): "#/components/schemas/UpdateDealPartiesRequest",
     ("/deals/{dealId}/invitations", "post"): "#/components/schemas/CreateDealInvitationRequest",
     ("/deal-invitations/{invitationId}/accept", "post"): "#/components/schemas/AcceptDealInvitationRequest",
     ("/deal-invitations/{invitationId}/reject", "post"): "#/components/schemas/DealInvitationTerminalActionRequest",
@@ -193,6 +199,7 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}", "get", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}", "patch", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}/cancel", "post", "200"): "#/components/schemas/DealDetail",
+    ("/deals/{dealId}/parties", "patch", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}/invitations", "post", "201"): "#/components/schemas/DealInvitation",
     ("/deals/{dealId}/invitations", "get", "200"): "#/components/schemas/DealInvitationPage",
     ("/deal-invitations/incoming", "get", "200"): "#/components/schemas/IncomingDealInvitationPage",
@@ -250,6 +257,12 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/cancel", "post", "403"): "DealScopedMutationForbidden",
     ("/deals/{dealId}/cancel", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
     ("/deals/{dealId}/cancel", "post", "409"): "DealStateConflict",
+    ("/deals/{dealId}/parties", "patch", "400"): "MalformedRequest",
+    ("/deals/{dealId}/parties", "patch", "401"): "SessionRequired",
+    ("/deals/{dealId}/parties", "patch", "403"): "DealScopedMutationForbidden",
+    ("/deals/{dealId}/parties", "patch", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/parties", "patch", "409"): "DealPartiesConflict",
+    ("/deals/{dealId}/parties", "patch", "422"): "ValidationFailed",
     ("/deals/{dealId}/invitations", "post", "400"): "MalformedRequest",
     ("/deals/{dealId}/invitations", "post", "401"): "SessionRequired",
     ("/deals/{dealId}/invitations", "post", "403"): "DealInvitationMutationForbidden",
@@ -288,9 +301,9 @@ REQUIRED_CORE_API_SCHEMAS = {
     "CreateLegalEntityRequest", "LegalEntity", "LegalEntityRole",
     "LegalEntityMembership", "LegalEntityMembershipList",
     "LegalEntityMember", "LegalEntityMemberList",
-    "CreateDealRequest", "UpdateDealRequest", "DealStatus",
+    "CreateDealRequest", "UpdateDealRequest", "UpdateDealPartiesRequest", "DealStatus",
     "DealLifecycleProjection", "DealAvailableActions", "DealSummary",
-    "DealParticipant", "DealDetail", "DealPage", "UtcTimestamp", "ProblemDetail", "FieldError",
+    "DealParticipant", "DealPartyRole", "DealParty", "DealDetail", "DealPage", "UtcTimestamp", "ProblemDetail", "FieldError",
     "CreateDealInvitationRequest", "AcceptDealInvitationRequest", "DealInvitationTerminalActionRequest",
     "DealInvitationStatus", "DealInvitationAvailableActions", "DealInvitationDeal",
     "DealInvitation", "IncomingDealInvitation", "DealInvitationPage", "IncomingDealInvitationPage",
@@ -489,6 +502,17 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or update_deal_properties.get("description", {}).get("maxLength") != 4000
                 or update_deal_properties.get("expectedVersion", {}).get("minimum") != 0):
             failures.append("FAIL Core API UpdateDealRequest: replacement fields or expectedVersion changed")
+        update_parties = core_components.get("schemas", {}).get("UpdateDealPartiesRequest", {})
+        update_parties_properties = update_parties.get("properties", {})
+        if (set(update_parties.get("required", [])) != {"buyerLegalEntityId", "sellerLegalEntityId", "expectedVersion"}
+                or set(update_parties_properties) != {"buyerLegalEntityId", "sellerLegalEntityId", "expectedVersion"}
+                or update_parties.get("additionalProperties") is not False
+                or update_parties_properties.get("buyerLegalEntityId", {}).get("type") != ["string", "null"]
+                or update_parties_properties.get("buyerLegalEntityId", {}).get("format") != "uuid"
+                or update_parties_properties.get("sellerLegalEntityId", {}).get("type") != ["string", "null"]
+                or update_parties_properties.get("sellerLegalEntityId", {}).get("format") != "uuid"
+                or update_parties_properties.get("expectedVersion", {}).get("minimum") != 0):
+            failures.append("FAIL Core API UpdateDealPartiesRequest: atomic nullable parties and expectedVersion changed")
         deal_status = core_components.get("schemas", {}).get("DealStatus", {})
         if deal_status.get("enum") != ["DRAFT", "ACTIVE", "CANCELLED", "COMPLETED", "ARCHIVED"]:
             failures.append("FAIL Core API DealStatus: ADR lifecycle state set changed")
@@ -499,12 +523,12 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "COMPLETED", "CANCELLED", "ARCHIVED"]:
             failures.append("FAIL Core API DealLifecycleProjection: ADR projection set changed")
         actions = core_components.get("schemas", {}).get("DealAvailableActions", {})
-        if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation"}
-                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation"}
+        if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties"}
+                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties"}
                 or actions.get("additionalProperties") is not False
                 or any(
                     actions.get("properties", {}).get(name, {}).get("type") != "boolean"
-                    for name in ("canUpdate", "canCancel", "canCreateInvitation")
+                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties")
                 )):
             failures.append("FAIL Core API DealAvailableActions: backend-derived action set changed")
         summary = core_components.get("schemas", {}).get("DealSummary", {})
@@ -518,26 +542,47 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or summary.get("additionalProperties") is not False):
             failures.append("FAIL Core API DealSummary: frozen summary projection changed")
         participant = core_components.get("schemas", {}).get("DealParticipant", {})
-        if (set(participant.get("required", [])) != {"legalEntityId", "legalName", "joinedAt"}
-                or set(participant.get("properties", {})) != {"legalEntityId", "legalName", "joinedAt"}
+        if (set(participant.get("required", [])) != {"legalEntityId", "legalName", "joinedAt", "partyRoles"}
+                or set(participant.get("properties", {})) != {"legalEntityId", "legalName", "joinedAt", "partyRoles"}
                 or participant.get("additionalProperties") is not False
                 or participant.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or participant.get("properties", {}).get("legalName", {}).get("maxLength") != 200
                 or participant.get("properties", {}).get("joinedAt", {}).get("$ref")
-                != "#/components/schemas/UtcTimestamp"):
-            failures.append("FAIL Core API DealParticipant: minimal non-consent participant projection changed")
-        detail_fields = common_deal_fields | {"description", "participants"}
+                != "#/components/schemas/UtcTimestamp"
+                or participant.get("properties", {}).get("partyRoles", {}).get("type") != "array"
+                or participant.get("properties", {}).get("partyRoles", {}).get("minItems") != 0
+                or participant.get("properties", {}).get("partyRoles", {}).get("maxItems") != 1
+                or participant.get("properties", {}).get("partyRoles", {}).get("uniqueItems") is not True
+                or participant.get("properties", {}).get("partyRoles", {}).get("items", {}).get("$ref")
+                != "#/components/schemas/DealPartyRole"):
+            failures.append("FAIL Core API DealParticipant: non-consent party-role projection changed")
+        party_role = core_components.get("schemas", {}).get("DealPartyRole", {})
+        party = core_components.get("schemas", {}).get("DealParty", {})
+        if party_role.get("enum") != ["BUYER", "SELLER"]:
+            failures.append("FAIL Core API DealPartyRole: closed buyer/seller role set changed")
+        if (set(party.get("required", [])) != {"legalEntityId", "legalName"}
+                or set(party.get("properties", {})) != {"legalEntityId", "legalName"}
+                or party.get("additionalProperties") is not False
+                or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
+                or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
+            failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
-        if (set(detail.get("required", [])) != detail_fields
+        detail_buyer = detail.get("properties", {}).get("buyer", {})
+        detail_seller = detail.get("properties", {}).get("seller", {})
+        nullable_party = [{"$ref": "#/components/schemas/DealParty"}, {"type": "null"}]
+        if (set(detail.get("required", [])) != common_deal_fields | {"description", "buyer", "seller", "participants"}
                 or set(detail.get("properties", {})) != detail_fields
                 or detail.get("additionalProperties") is not False
                 or detail_description.get("type") != ["string", "null"]
                 or detail_description.get("maxLength") != 4000
+                or detail_buyer.get("anyOf") != nullable_party
+                or detail_seller.get("anyOf") != nullable_party
                 or detail_participants.get("type") != "array"
                 or detail_participants.get("items", {}).get("$ref")
                 != "#/components/schemas/DealParticipant"):
-            failures.append("FAIL Core API DealDetail: required participant and nullable description projection changed")
+            failures.append("FAIL Core API DealDetail: party and participant-role projection changed")
         deal_page = core_components.get("schemas", {}).get("DealPage", {})
         deal_page_fields = {"items", "page", "size", "totalElements", "totalPages"}
         page_items = deal_page.get("properties", {}).get("items", {})

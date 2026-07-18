@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added the Slice 5 atomic Deal parties operation with required `expectedVersion`,
+  nullable buyer/seller assignments, participant-bound validation, and stable
+  stale-version, state-conflict, and semantic-validation errors.
+- Added buyer/seller detail projections, participant `partyRoles`, and the
+  actor-aware `canManageParties` action projection without exposing activation
+  or ratification operations.
+- Extended exact OpenAPI validation for the Slice 5 parties path, request and
+  response schemas, DRAFT-only semantics, participant constraints, and the
+  explicit absence of an activate endpoint.
 - Added the Slice 4 public Deal invitation contract: initiator-scoped create/list/revoke,
   user-scoped incoming/accept/reject, UUID Idempotency-Key create semantics, expectedVersion
   terminal actions, and non-disclosing invitation errors.

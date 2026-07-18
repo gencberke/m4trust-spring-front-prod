@@ -16,6 +16,8 @@ final class Deal {
     private String title;
     private String description;
     private DealStatus status;
+    private UUID buyerLegalEntityId;
+    private UUID sellerLegalEntityId;
     private final UUID initiatorLegalEntityId;
     private final UUID createdBy;
     private final Instant createdAt;
@@ -24,6 +26,7 @@ final class Deal {
 
     private Deal(UUID id, UUID tenantId, String reference, String title,
             String description, DealStatus status,
+            UUID buyerLegalEntityId, UUID sellerLegalEntityId,
             UUID initiatorLegalEntityId, UUID createdBy, Instant createdAt,
             Instant updatedAt, long version) {
         this.id = Objects.requireNonNull(id);
@@ -32,6 +35,9 @@ final class Deal {
         this.title = Objects.requireNonNull(title);
         this.description = description;
         this.status = Objects.requireNonNull(status);
+        validatePartyAssignments(buyerLegalEntityId, sellerLegalEntityId);
+        this.buyerLegalEntityId = buyerLegalEntityId;
+        this.sellerLegalEntityId = sellerLegalEntityId;
         this.initiatorLegalEntityId =
                 Objects.requireNonNull(initiatorLegalEntityId);
         this.createdBy = Objects.requireNonNull(createdBy);
@@ -47,13 +53,14 @@ final class Deal {
             String description, UUID initiatorLegalEntityId, UUID createdBy,
             Instant createdAt) {
         return new Deal(id, tenantId, reference, title, description,
-                DealStatus.DRAFT, initiatorLegalEntityId, createdBy,
+                DealStatus.DRAFT, null, null, initiatorLegalEntityId, createdBy,
                 createdAt, createdAt, 0);
     }
 
     static Deal rehydrate(DealRepository.DealRecord record) {
         return new Deal(record.id(), record.tenantId(), record.reference(),
                 record.title(), record.description(), record.status(),
+                record.buyerLegalEntityId(), record.sellerLegalEntityId(),
                 record.initiatorLegalEntityId(), record.createdBy(),
                 record.createdAt(), record.updatedAt(), record.version());
     }
@@ -76,9 +83,26 @@ final class Deal {
         version++;
     }
 
+    void assignParties(UUID nextBuyerLegalEntityId,
+            UUID nextSellerLegalEntityId, long expectedVersion,
+            Instant changedAt) {
+        status.requirePartyManagementAllowed();
+        if (version != expectedVersion) {
+            throw new DealStaleVersionException();
+        }
+        validatePartyAssignments(nextBuyerLegalEntityId,
+                nextSellerLegalEntityId);
+        Instant nextUpdatedAt = Objects.requireNonNull(changedAt);
+        buyerLegalEntityId = nextBuyerLegalEntityId;
+        sellerLegalEntityId = nextSellerLegalEntityId;
+        updatedAt = nextUpdatedAt;
+        version++;
+    }
+
     DealRepository.DealRecord toRecord() {
         return new DealRepository.DealRecord(id, tenantId, reference, title,
-                description, status, initiatorLegalEntityId, createdBy,
+                description, status, buyerLegalEntityId, sellerLegalEntityId,
+                initiatorLegalEntityId, createdBy,
                 createdAt, updatedAt, version);
     }
 
@@ -102,6 +126,14 @@ final class Deal {
         return status;
     }
 
+    UUID buyerLegalEntityId() {
+        return buyerLegalEntityId;
+    }
+
+    UUID sellerLegalEntityId() {
+        return sellerLegalEntityId;
+    }
+
     boolean isInitiatedBy(UUID legalEntityId) {
         return initiatorLegalEntityId.equals(legalEntityId);
     }
@@ -116,5 +148,14 @@ final class Deal {
 
     long version() {
         return version;
+    }
+
+    private static void validatePartyAssignments(UUID buyerLegalEntityId,
+            UUID sellerLegalEntityId) {
+        if (buyerLegalEntityId != null
+                && buyerLegalEntityId.equals(sellerLegalEntityId)) {
+            throw new IllegalArgumentException(
+                    "buyer and seller must be different legal entities");
+        }
     }
 }

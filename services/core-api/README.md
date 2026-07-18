@@ -4,12 +4,13 @@ Spring Boot modular-monolith Core API for M4Trust. The implemented foundation
 includes PostgreSQL-backed identity and server-side session authentication,
 tenant provisioning, legal entities, memberships, append-only business audit,
 reusable application-layer legal-entity authorization, and the participant-
-scoped Deal aggregate with optimistic concurrency and lifecycle projections.
+scoped Deal aggregate with cross-entity invitations, buyer/seller assignment,
+optimistic concurrency, and lifecycle/action projections.
 
 ## Operational endpoints
 
-The reviewed `contracts/openapi/core-api-v1.yaml` defines these runtime
-authentication and organization operations:
+The reviewed `contracts/openapi/core-api-v1.yaml` defines these implemented
+public operations:
 
 - `GET /api/v1/security/csrf` — issue/read the CSRF token and header name.
 - `POST /api/v1/auth/register` — create an account and authenticated session.
@@ -35,6 +36,17 @@ authentication and organization operations:
   stable conflict codes.
 - `POST /api/v1/deals/{dealId}/cancel` — apply the aggregate cancellation rule
   and return the current detail projection.
+
+- `PATCH /api/v1/deals/{dealId}/parties` atomically assigns or clears nullable
+  buyer/seller participant rows in DRAFT using required `expectedVersion`.
+- `POST /api/v1/deals/{dealId}/invitations` and
+  `GET /api/v1/deals/{dealId}/invitations` create and list initiator-scoped
+  Deal invitations with idempotency and disclosure-safe projections.
+- `GET /api/v1/deal-invitations/incoming` lists invitations addressed to the
+  authenticated account.
+- `POST /api/v1/deal-invitations/{invitationId}/accept`, `/reject`, and
+  `/revoke` apply explicit invitation terminal actions with the concurrency
+  requirements defined by the contract.
 
 All state-changing operations require the CSRF token from
 `GET /api/v1/security/csrf` in the response's declared header. The two scoped
@@ -148,6 +160,10 @@ Spring Session JDBC tables and indexes, and
 memberships, and append-only audit storage.
 `V5__deal_foundation.sql` owns Deal state, the generated human-readable
 reference sequence, optimistic-lock version, and participant access relation.
+`V6` and `V7` expand and switch participant storage to the accepted
+cross-tenant visibility model, `V8` owns reusable HTTP idempotency, `V9` owns
+Deal invitations, and `V10` enforces buyer/seller references to the same Deal's
+participant rows plus the database-level buyer-not-equal-seller invariant.
 Spring Session runtime schema initialization is disabled so Flyway remains the
 only schema owner. Migration files use `V<version>__<description>.sql` names,
 are forward-only, and are never edited after application. Seed data never
@@ -164,8 +180,8 @@ The modular monolith currently contains these explicit boundaries:
 - `audit` — append-only business audit persistence through a narrow port that
   joins the caller's business transaction.
 - `deal` — the Deal aggregate, centralized lifecycle behavior, participant-
-  scoped JDBC persistence, public projections, and create/update/cancel
-  application transactions.
+  scoped JDBC persistence, invitations, buyer/seller assignment, public
+  projections, and audited application transactions.
 
 - `sharedkernel` — genuinely shared, stable primitives; never generic helpers
   or module-specific business rules.
@@ -201,13 +217,14 @@ The browser end-to-end flow remains a separate acceptance step.
 
 ## Deal validation
 
-Deal integration tests use MockMvc with disposable PostgreSQL. They prove the
-frozen create/list/detail/update/cancel JSON surface, deterministic pagination,
-status filtering, explicit-null description replacement, version increments,
-stale and state conflict codes, participant non-disclosure, legal-entity
-context error semantics, non-null empty lists, all mutation audit actions, and
-rollback when the mandatory audit append fails. The separate browser flow
-remains the Slice 3 end-to-end acceptance step.
+Deal integration tests use MockMvc and disposable PostgreSQL. They prove the
+create/list/detail/update/cancel surface, deterministic pagination, optimistic
+conflicts, cross-tenant participant visibility, invitation state/idempotency
+rules, initiator-only mutations, atomic buyer/seller assignment, participant
+referential integrity, audit atomicity, and the absence of implicit activation.
+Real two-browser acceptance remains a separate slice completion gate; Slice 5
+passed that gate with invitation/participation regression and stale party-update
+recovery.
 
 ## Structured logging
 

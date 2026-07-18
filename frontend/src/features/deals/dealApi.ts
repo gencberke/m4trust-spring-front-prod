@@ -8,6 +8,7 @@ import {
 
 export type CreateDealRequest = components["schemas"]["CreateDealRequest"];
 export type UpdateDealRequest = components["schemas"]["UpdateDealRequest"];
+export type UpdateDealPartiesRequest = components["schemas"]["UpdateDealPartiesRequest"];
 export type DealStatus = components["schemas"]["DealStatus"];
 export type DealSort = components["parameters"]["DealSort"];
 export type DealSummary = components["schemas"]["DealSummary"];
@@ -66,6 +67,16 @@ export function updateDeal(
   request: UpdateDealRequest,
 ): Promise<DealDetail> {
   return patchJsonWithFreshCsrf<DealDetail>(`/deals/${dealId}`, request, {
+    "X-M4Trust-Legal-Entity-Id": legalEntityId,
+  });
+}
+
+export function updateDealParties(
+  legalEntityId: string,
+  dealId: string,
+  request: UpdateDealPartiesRequest,
+): Promise<DealDetail> {
+  return patchJsonWithFreshCsrf<DealDetail>(`/deals/${dealId}/parties`, request, {
     "X-M4Trust-Legal-Entity-Id": legalEntityId,
   });
 }

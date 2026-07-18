@@ -11,7 +11,10 @@ and TanStack Query; there is no mock user or browser-stored authentication state
 - `/app` is protected by the verified `GET /api/v1/auth/me` result and renders
   the real legal-entity workspace.
 - `/app/deals` lists and creates Deals for the active legal entity.
-- `/app/deals/:dealId` renders Deal detail, edit, and cancel flows.
+- `/app/deals/:dealId` renders Deal detail, edit, cancel, invitation, and
+  buyer/seller party-management flows when backend actions allow them.
+- `/app/invitations` lists incoming Deal invitations and supports accept/reject
+  flows with explicit participating-entity selection.
 - `/` redirects from the verified current-user result.
 
 Every register, login, and logout request first fetches a fresh CSRF token from
@@ -63,6 +66,18 @@ real Spring API. Successful creation returns the view to the newest unfiltered
 page and invalidates the active entity's Deal list so the new record is visible.
 Detail lifecycle and available actions are rendered exactly as returned by the
 backend; the client does not derive them from status combinations.
+
+Deal invitations use backend-derived create/revoke/accept/reject availability.
+Accepting an invitation creates participation, not a buyer/seller role or
+contractual consent. Participant and pending-invitation projections preserve
+the backend's disclosure boundaries across legal-entity contexts.
+
+The detail page projects buyer/seller assignments and participant party-role
+badges. The atomic party form is rendered only when `canManageParties` is true,
+sends both nullable assignments with the loaded `expectedVersion`, and maps
+semantic 422 field errors without client-derived authorization. Complete
+parties are described only as ready for ratification; the UI exposes no
+activation action in Slice 5.
 
 Deal updates retain the loaded server `version` and send it as
 `expectedVersion`. An empty edit description is sent as explicit `null`. On

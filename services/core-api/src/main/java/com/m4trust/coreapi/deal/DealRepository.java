@@ -23,6 +23,8 @@ class DealRepository {
                 deal.title,
                 deal.description,
                 deal.deal_status,
+                deal.buyer_legal_entity_id,
+                deal.seller_legal_entity_id,
                 deal.initiator_legal_entity_id,
                 deal.created_by,
                 deal.created_at,
@@ -64,13 +66,15 @@ class DealRepository {
                     title,
                     description,
                     deal_status,
+                    buyer_legal_entity_id,
+                    seller_legal_entity_id,
                     initiator_legal_entity_id,
                     created_by,
                     created_at,
                     updated_at,
                     version
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 deal.id(),
                 deal.tenantId(),
@@ -78,6 +82,8 @@ class DealRepository {
                 deal.title(),
                 deal.description(),
                 deal.status().name(),
+                deal.buyerLegalEntityId(),
+                deal.sellerLegalEntityId(),
                 deal.initiatorLegalEntityId(),
                 deal.createdBy(),
                 Timestamp.from(deal.createdAt()),
@@ -215,6 +221,42 @@ class DealRepository {
                 legalEntityTenantId) == 1;
     }
 
+    boolean updateParties(
+            UUID legalEntityTenantId,
+            UUID legalEntityId,
+            UUID dealId,
+            long expectedVersion,
+            UUID buyerLegalEntityId,
+            UUID sellerLegalEntityId,
+            Instant updatedAt) {
+        return jdbcTemplate.update("""
+                UPDATE deal
+                SET buyer_legal_entity_id = ?,
+                    seller_legal_entity_id = ?,
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                  AND version = ?
+                  AND deal_status = 'DRAFT'
+                  AND initiator_legal_entity_id = ?
+                  AND EXISTS (
+                      SELECT 1
+                      FROM deal_participant participant
+                      WHERE participant.deal_id = deal.id
+                        AND participant.legal_entity_id = ?
+                        AND participant.legal_entity_tenant_id = ?
+                  )
+                """,
+                buyerLegalEntityId,
+                sellerLegalEntityId,
+                Timestamp.from(updatedAt),
+                dealId,
+                expectedVersion,
+                legalEntityId,
+                legalEntityId,
+                legalEntityTenantId) == 1;
+    }
+
     boolean updateStatus(
             UUID legalEntityTenantId,
             UUID legalEntityId,
@@ -259,6 +301,8 @@ class DealRepository {
                 resultSet.getString("title"),
                 resultSet.getString("description"),
                 DealStatus.valueOf(resultSet.getString("deal_status")),
+                resultSet.getObject("buyer_legal_entity_id", UUID.class),
+                resultSet.getObject("seller_legal_entity_id", UUID.class),
                 resultSet.getObject("initiator_legal_entity_id", UUID.class),
                 resultSet.getObject("created_by", UUID.class),
                 resultSet.getTimestamp("created_at").toInstant(),
@@ -286,6 +330,8 @@ class DealRepository {
             String title,
             String description,
             DealStatus status,
+            UUID buyerLegalEntityId,
+            UUID sellerLegalEntityId,
             UUID initiatorLegalEntityId,
             UUID createdBy,
             Instant createdAt,
