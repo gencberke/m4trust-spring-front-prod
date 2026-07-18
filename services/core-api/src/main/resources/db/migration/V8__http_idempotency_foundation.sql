@@ -9,10 +9,9 @@ CREATE TABLE http_idempotency_record (
     result_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT http_idempotency_record_pk PRIMARY KEY (id),
-    CONSTRAINT http_idempotency_record_actor_user_fk
-        FOREIGN KEY (actor_user_id) REFERENCES identity_user (id),
     CONSTRAINT http_idempotency_record_actor_tenant_fk
-        FOREIGN KEY (actor_tenant_id) REFERENCES tenant (id),
+        FOREIGN KEY (actor_user_id, actor_tenant_id)
+        REFERENCES tenant_user (user_id, tenant_id),
     CONSTRAINT http_idempotency_record_actor_tenant_operation_key_uk
         UNIQUE (actor_user_id, actor_tenant_id, operation, idempotency_key),
     CONSTRAINT http_idempotency_record_operation_ck

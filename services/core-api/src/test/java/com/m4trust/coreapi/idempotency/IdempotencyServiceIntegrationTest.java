@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -58,6 +59,10 @@ class IdempotencyServiceIntegrationTest {
                 VALUES (?, ?, 'test-hash', 'Idempotency User', true)
                 """, actorUserId, "idempotency@example.com");
         jdbcTemplate.update("INSERT INTO tenant (id) VALUES (?)", actorTenantId);
+        jdbcTemplate.update("""
+                INSERT INTO tenant_user (user_id, tenant_id)
+                VALUES (?, ?)
+                """, actorUserId, actorTenantId);
     }
 
     @Test
@@ -97,27 +102,16 @@ class IdempotencyServiceIntegrationTest {
     }
 
     @Test
-    void sameUserOperationAndKeyCanBeClaimedInAnotherTenant() {
+    void mismatchedActorTenantIsRejectedByThePersistenceConstraint() {
         UUID key = UUID.randomUUID();
         UUID otherTenantId = UUID.randomUUID();
         jdbcTemplate.update("INSERT INTO tenant (id) VALUES (?)", otherTenantId);
 
-        inTransaction(() -> {
-            IdempotencyClaim claim = service.claim(request(key, REQUEST_HASH));
-            service.recordResult(claim, new IdempotencyResultReference(
-                    "DEAL_INVITATION", UUID.randomUUID()));
-            return null;
-        });
-        IdempotencyClaim otherTenantClaim = inTransaction(() -> {
-            IdempotencyClaim claim = service.claim(request(
-                    otherTenantId, key, REQUEST_HASH));
-            service.recordResult(claim, new IdempotencyResultReference(
-                    "DEAL_INVITATION", UUID.randomUUID()));
-            return claim;
-        });
+        assertThrows(DataIntegrityViolationException.class,
+                () -> inTransaction(() -> service.claim(request(
+                        otherTenantId, key, REQUEST_HASH))));
 
-        assertEquals(IdempotencyClaimStatus.CLAIMED, otherTenantClaim.status());
-        assertEquals(2, recordCount());
+        assertEquals(0, recordCount());
     }
 
     @Test
