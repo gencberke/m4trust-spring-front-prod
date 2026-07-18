@@ -84,11 +84,19 @@ final class Deal {
     }
 
     void assignParties(UUID nextBuyerLegalEntityId,
-            UUID nextSellerLegalEntityId) {
+            UUID nextSellerLegalEntityId, long expectedVersion,
+            Instant changedAt) {
+        status.requirePartyManagementAllowed();
+        if (version != expectedVersion) {
+            throw new DealStaleVersionException();
+        }
         validatePartyAssignments(nextBuyerLegalEntityId,
                 nextSellerLegalEntityId);
+        Instant nextUpdatedAt = Objects.requireNonNull(changedAt);
         buyerLegalEntityId = nextBuyerLegalEntityId;
         sellerLegalEntityId = nextSellerLegalEntityId;
+        updatedAt = nextUpdatedAt;
+        version++;
     }
 
     DealRepository.DealRecord toRecord() {

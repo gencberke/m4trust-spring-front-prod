@@ -38,6 +38,13 @@ enum DealStatus {
         }
     }
 
+    void requirePartyManagementAllowed() {
+        if (this != DRAFT) {
+            throw new DealStateConflictException(
+                    "Deal parties cannot be managed while status is " + this);
+        }
+    }
+
     private DealStatus transition(DealAction action) {
         return switch (this) {
             case DRAFT -> switch (action) {
