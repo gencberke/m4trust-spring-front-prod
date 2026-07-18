@@ -1718,8 +1718,10 @@ components:
           type: integer
           format: int64
           minimum: 1
-          maximum: 52428800
-          description: Client-declared byte size; the initial API maximum is 50 MiB.
+          description: >
+            Client-declared byte size. The server validates this against its active
+            deployment-configured upload limit and reports excess values as 422
+            VALIDATION_FAILED; the limit is not a versioned wire constant.
         sha256:
           $ref: '#/components/schemas/Sha256'
     FinalizeDocumentUploadRequest:
@@ -1734,7 +1736,7 @@ components:
           type: integer
           format: int64
           minimum: 1
-          maximum: 52428800
+          description: Subject to the active server-configured upload limit.
         sha256:
           $ref: '#/components/schemas/Sha256'
     DocumentAvailableActions:
@@ -1798,7 +1800,7 @@ components:
         mediaType:
           $ref: '#/components/schemas/DocumentMediaType'
         status:
-          enum: [AVAILABLE, SUPERSEDED]
+          const: AVAILABLE
         verifiedSizeBytes:
           type: integer
           format: int64
@@ -1811,6 +1813,45 @@ components:
           minLength: 1
           maxLength: 512
           description: Opaque immutable object-storage version reference pinned for download and later AI access; never an object key.
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DocumentAvailableActions'
+    HistoricalDealDocument:
+      type: object
+      additionalProperties: false
+      description: >
+        A finalized retained history version. SUPERSEDED is valid here but never for
+        the Deal currentDocument projection or a successful finalize response.
+      required: [id, dealId, fileName, mediaType, status, verifiedSizeBytes, verifiedSha256, objectVersion, createdAt, availableAt, availableActions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mediaType:
+          $ref: '#/components/schemas/DocumentMediaType'
+        status:
+          enum: [AVAILABLE, SUPERSEDED]
+        verifiedSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        verifiedSha256:
+          $ref: '#/components/schemas/Sha256'
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque immutable object-storage version reference; never an object key.
         createdAt:
           $ref: '#/components/schemas/UtcTimestamp'
         availableAt:
@@ -1830,7 +1871,7 @@ components:
           items:
             oneOf:
               - $ref: '#/components/schemas/PendingDealDocument'
-              - $ref: '#/components/schemas/AvailableDealDocument'
+              - $ref: '#/components/schemas/HistoricalDealDocument'
     DocumentUploadIntent:
       type: object
       additionalProperties: false

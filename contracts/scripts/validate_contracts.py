@@ -356,7 +356,7 @@ REQUIRED_CORE_API_SCHEMAS = {
     "DealInvitation", "IncomingDealInvitation", "DealInvitationPage", "IncomingDealInvitationPage",
     "DocumentMediaType", "DocumentStatus", "Sha256", "CreateDocumentUploadIntentRequest",
     "FinalizeDocumentUploadRequest", "DocumentAvailableActions", "PendingDealDocument",
-    "AvailableDealDocument", "DealDocumentHistory", "DocumentUploadIntent", "DocumentDownloadLink",
+    "AvailableDealDocument", "HistoricalDealDocument", "DealDocumentHistory", "DocumentUploadIntent", "DocumentDownloadLink",
 }
 
 
@@ -639,10 +639,13 @@ def validate_contract_documents(failures: list[str]) -> None:
         if (set(create_document_intent.get("required", [])) != {"fileName", "mediaType", "sizeBytes", "sha256"}
                 or set(create_document_intent.get("properties", {})) != {"fileName", "mediaType", "sizeBytes", "sha256"}
                 or create_document_intent.get("additionalProperties") is not False
-                or create_document_intent.get("properties", {}).get("sizeBytes", {}).get("maximum") != 52428800
+                or create_document_intent.get("properties", {}).get("sizeBytes", {}).get("minimum") != 1
+                or "maximum" in create_document_intent.get("properties", {}).get("sizeBytes", {})
                 or set(finalize_document.get("required", [])) != {"sizeBytes", "sha256"}
                 or set(finalize_document.get("properties", {})) != {"sizeBytes", "sha256"}
-                or finalize_document.get("additionalProperties") is not False):
+                or finalize_document.get("additionalProperties") is not False
+                or finalize_document.get("properties", {}).get("sizeBytes", {}).get("minimum") != 1
+                or "maximum" in finalize_document.get("properties", {}).get("sizeBytes", {})):
             failures.append("FAIL Core API document upload requests: bounded client metadata or finalize canonical request changed")
         if (core_components.get("schemas", {}).get("DocumentMediaType", {}).get("enum")
                 != ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
@@ -652,13 +655,21 @@ def validate_contract_documents(failures: list[str]) -> None:
         document_actions = core_components.get("schemas", {}).get("DocumentAvailableActions", {})
         pending_document = core_components.get("schemas", {}).get("PendingDealDocument", {})
         available_document = core_components.get("schemas", {}).get("AvailableDealDocument", {})
+        historical_document = core_components.get("schemas", {}).get("HistoricalDealDocument", {})
+        document_history = core_components.get("schemas", {}).get("DealDocumentHistory", {})
+        current_document = detail.get("properties", {}).get("currentDocument", {})
         if (set(document_actions.get("required", [])) != {"canFinalize", "canDownload"}
                 or set(document_actions.get("properties", {})) != {"canFinalize", "canDownload"}
                 or pending_document.get("properties", {}).get("status", {}).get("const") != "PENDING_UPLOAD"
-                or available_document.get("properties", {}).get("status", {}).get("enum") != ["AVAILABLE", "SUPERSEDED"]
+                or available_document.get("properties", {}).get("status", {}).get("const") != "AVAILABLE"
+                or historical_document.get("properties", {}).get("status", {}).get("enum") != ["AVAILABLE", "SUPERSEDED"]
+                or document_history.get("properties", {}).get("items", {}).get("items", {}).get("oneOf")
+                != [{"$ref": "#/components/schemas/PendingDealDocument"}, {"$ref": "#/components/schemas/HistoricalDealDocument"}]
+                or current_document.get("anyOf")
+                != [{"$ref": "#/components/schemas/AvailableDealDocument"}, {"type": "null"}]
                 or "objectVersion" not in available_document.get("required", [])
                 or available_document.get("properties", {}).get("objectVersion", {}).get("minLength") != 1):
-            failures.append("FAIL Core API document projections: actor actions or immutable-version history changed")
+            failures.append("FAIL Core API document projections: actor actions, AVAILABLE current/finalize, or immutable history changed")
         deal_page = core_components.get("schemas", {}).get("DealPage", {})
         deal_page_fields = {"items", "page", "size", "totalElements", "totalPages"}
         page_items = deal_page.get("properties", {}).get("items", {})
