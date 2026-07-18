@@ -78,6 +78,14 @@ class DocumentExceptionHandler {
                 "DOCUMENT_VERIFICATION_FAILED");
     }
 
+    @ExceptionHandler(DocumentExceptions.DownloadNotAvailable.class)
+    ResponseEntity<ProblemDetail> downloadNotAvailable(HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT, "document-download-not-available",
+                "Document download not available",
+                "The document has no verified immutable version available for download.",
+                "DOCUMENT_DOWNLOAD_NOT_AVAILABLE");
+    }
+
     @ExceptionHandler(DocumentExceptions.Validation.class)
     ResponseEntity<ProblemDetail> validation(DocumentExceptions.Validation exception,
             HttpServletRequest request) {

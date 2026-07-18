@@ -25,16 +25,19 @@ class DealService {
     private final DealRepository repository;
     private final DealOperationPolicy operationPolicy;
     private final InvitationLegalEntityQueryPort legalEntityQueries;
+    private final DealCurrentDocumentQueryPort currentDocumentQueries;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
     DealService(DealRepository repository,
             DealOperationPolicy operationPolicy,
             InvitationLegalEntityQueryPort legalEntityQueries,
+            DealCurrentDocumentQueryPort currentDocumentQueries,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
         this.legalEntityQueries = legalEntityQueries;
+        this.currentDocumentQueries = currentDocumentQueries;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -278,7 +281,18 @@ class DealService {
                 actions(deal, context),
                 party(deal.buyerLegalEntityId(), participantProjections),
                 party(deal.sellerLegalEntityId(), participantProjections),
-                participantProjections);
+                participantProjections,
+                currentDocument(deal));
+    }
+
+    private DealCurrentDocumentQueryPort.CurrentDealDocument currentDocument(Deal deal) {
+        UUID currentDocumentId = deal.currentDocumentId();
+        if (currentDocumentId == null) {
+            return null;
+        }
+        return currentDocumentQueries.findAvailable(currentDocumentId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Deal current document is unavailable"));
     }
 
     private DealSummary toSummary(Deal deal, OperationContext context) {

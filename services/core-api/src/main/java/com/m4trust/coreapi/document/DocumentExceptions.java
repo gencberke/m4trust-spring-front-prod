@@ -11,6 +11,7 @@ final class DocumentExceptions {
     static final class UploadExpired extends RuntimeException { }
     static final class UploadStateConflict extends RuntimeException { }
     static final class VerificationFailed extends RuntimeException { }
+    static final class DownloadNotAvailable extends RuntimeException { }
     static final class Validation extends RuntimeException {
         private final String field;
 

@@ -3,6 +3,7 @@ package com.m4trust.coreapi.document;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.time.Instant;
@@ -256,6 +257,67 @@ class DocumentUploadFinalizeIntegrationTest {
     }
 
     @Test
+    void nonParticipantListAndDownloadAreRejectedAsNotFound() {
+        UUID documentId = createIntent();
+        AvailableDealDocument available = finalizeDocument(documentId, UUID.randomUUID());
+        OperationContext outsider = outsiderContext();
+
+        assertThrows(DocumentExceptions.DealNotFound.class,
+                () -> service.listHistory(withOperation(outsider,
+                        RequestedOperation.DEAL_DOCUMENT_LIST_READ), dealId));
+        assertThrows(DocumentExceptions.NotFound.class,
+                () -> service.createDownloadLink(withOperation(outsider,
+                        RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE), available.id()));
+    }
+
+    @Test
+    void participantCanDownloadAvailableDocumentAndSeeItInHistory() {
+        UUID documentId = createIntent();
+        AvailableDealDocument available = finalizeDocument(documentId, UUID.randomUUID());
+        OperationContext participant = participantContext(
+                RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE);
+
+        DocumentDownloadLink link = service.createDownloadLink(participant, documentId);
+
+        assertEquals(documentId, link.documentId());
+        assertEquals(available.objectVersion(), link.objectVersion());
+        assertFalse(storage.downloadCalledInsideTransaction.get());
+
+        DealDocumentHistory history = service.listHistory(withOperation(participant,
+                RequestedOperation.DEAL_DOCUMENT_LIST_READ), dealId);
+        assertEquals(1, history.items().size());
+        HistoricalDealDocument item = (HistoricalDealDocument) history.items().get(0);
+        assertEquals(DocumentStatus.AVAILABLE, item.status());
+        assertTrue(item.availableActions().canDownload());
+        assertFalse(item.availableActions().canFinalize());
+    }
+
+    @Test
+    void downloadLinkPinsRecordedObjectVersionAcrossSupersession() {
+        UUID first = createIntent();
+        finalizeDocument(first, UUID.randomUUID());
+        storage.verified = new DocumentObjectStorage.VerifiedObject(12, SHA, "version-two");
+        UUID second = createIntent();
+        finalizeDocument(second, UUID.randomUUID());
+
+        DocumentDownloadLink supersededLink = service.createDownloadLink(downloadContext(),
+                first);
+
+        assertEquals("immutable-version", supersededLink.objectVersion());
+        assertEquals("immutable-version", storage.lastDownloadObjectVersion.get());
+        assertEquals("SUPERSEDED", jdbcTemplate.queryForObject(
+                "SELECT document_status FROM document WHERE id = ?", String.class, first));
+    }
+
+    @Test
+    void pendingUploadDownloadLinkIsRejectedWithConflict() {
+        UUID pending = createIntent();
+
+        assertThrows(DocumentExceptions.DownloadNotAvailable.class,
+                () -> service.createDownloadLink(downloadContext(), pending));
+    }
+
+    @Test
     void concurrentFinalizesLeaveOneCurrentAvailableDocumentAndRetainSupersededHistory()
             throws Exception {
         UUID first = createIntent();
@@ -305,6 +367,39 @@ class DocumentUploadFinalizeIntegrationTest {
                 RequestedOperation.DOCUMENT_UPLOAD_FINALIZE);
     }
 
+    private OperationContext downloadContext() {
+        return new OperationContext(userId, tenantId, legalEntityId,
+                RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE);
+    }
+
+    private OperationContext withOperation(OperationContext context,
+            RequestedOperation operation) {
+        return new OperationContext(context.authenticatedUserId(), context.tenantId(),
+                context.activeLegalEntityId(), operation);
+    }
+
+    private OperationContext outsiderContext() {
+        UUID outsiderUserId = UUID.randomUUID();
+        UUID outsiderEntityId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO identity_user (id, email, password_hash, display_name, enabled)
+                VALUES (?, ?, 'test-hash', 'Outsider User', true)
+                """, outsiderUserId, outsiderUserId + "@example.com");
+        jdbcTemplate.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)",
+                outsiderUserId, tenantId);
+        jdbcTemplate.update("""
+                INSERT INTO legal_entity (id, tenant_id, legal_name, registration_number)
+                VALUES (?, ?, 'Outsider Entity', ?)
+                """, outsiderEntityId, tenantId, "OUTSIDER-" + outsiderEntityId);
+        jdbcTemplate.update("""
+                INSERT INTO legal_entity_membership (id, tenant_id, legal_entity_id, user_id, role)
+                VALUES (?, ?, ?, ?, 'ADMIN')
+                """, UUID.randomUUID(), tenantId, outsiderEntityId, outsiderUserId);
+        // Deliberately no deal_participant row: this legal entity is a non-participant.
+        return new OperationContext(outsiderUserId, tenantId, outsiderEntityId,
+                RequestedOperation.DEAL_DOCUMENT_LIST_READ);
+    }
+
     private CreateDocumentUploadIntentRequest intentRequest() {
         return new CreateDocumentUploadIntentRequest("contract.pdf", "application/pdf", 12, SHA);
     }
@@ -345,7 +440,10 @@ class DocumentUploadFinalizeIntegrationTest {
 
     static class FakeStorage implements DocumentObjectStorage {
         private final AtomicBoolean calledInsideTransaction = new AtomicBoolean();
+        private final AtomicBoolean downloadCalledInsideTransaction = new AtomicBoolean();
         private final AtomicInteger verifyCalls = new AtomicInteger();
+        private final java.util.concurrent.atomic.AtomicReference<String>
+                lastDownloadObjectVersion = new java.util.concurrent.atomic.AtomicReference<>();
         private volatile VerifiedObject verified = new VerifiedObject(12, SHA,
                 "immutable-version");
 
@@ -360,7 +458,11 @@ class DocumentUploadFinalizeIntegrationTest {
         @Override
         public DirectDownload createDirectDownload(String objectKey,
                 String objectVersion) {
-            throw new UnsupportedOperationException();
+            downloadCalledInsideTransaction.compareAndSet(false,
+                    TransactionSynchronizationManager.isActualTransactionActive());
+            lastDownloadObjectVersion.set(objectVersion);
+            return new DirectDownload(URI.create("https://storage.example/" + objectKey
+                    + "?version=" + objectVersion), Instant.now().plusSeconds(300));
         }
 
         @Override
@@ -372,7 +474,9 @@ class DocumentUploadFinalizeIntegrationTest {
 
         void reset() {
             calledInsideTransaction.set(false);
+            downloadCalledInsideTransaction.set(false);
             verifyCalls.set(0);
+            lastDownloadObjectVersion.set(null);
             verified = new VerifiedObject(12, SHA, "immutable-version");
         }
 

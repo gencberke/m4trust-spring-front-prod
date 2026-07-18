@@ -6,5 +6,5 @@ import java.util.UUID;
 record PendingDealDocument(UUID id, UUID dealId, String fileName,
         String mediaType, DocumentStatus status, long clientSizeBytes,
         String clientSha256, Instant expiresAt, Instant createdAt,
-        DocumentAvailableActions availableActions) {
+        DocumentAvailableActions availableActions) implements DealDocumentHistoryItem {
 }

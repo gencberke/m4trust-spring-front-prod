@@ -7,12 +7,15 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.deal.DealDocumentMutationPort;
 import com.m4trust.coreapi.deal.DealDocumentMutationPort.LockedDealDocumentTarget;
+import com.m4trust.coreapi.deal.DealDocumentReadPort;
+import com.m4trust.coreapi.deal.DealDocumentReadPort.DealDocumentVisibility;
 import com.m4trust.coreapi.idempotency.IdempotencyClaim;
 import com.m4trust.coreapi.idempotency.IdempotencyRequest;
 import com.m4trust.coreapi.idempotency.IdempotencyResultReference;
@@ -34,6 +37,7 @@ class DocumentService {
 
     private final DocumentRepository repository;
     private final DealDocumentMutationPort dealMutations;
+    private final DealDocumentReadPort dealReads;
     private final DocumentObjectStorage storage;
     private final IdempotencyService idempotency;
     private final AuditAppendPort auditAppender;
@@ -43,12 +47,14 @@ class DocumentService {
 
     DocumentService(DocumentRepository repository,
             DealDocumentMutationPort dealMutations,
+            DealDocumentReadPort dealReads,
             DocumentObjectStorage storage, IdempotencyService idempotency,
             AuditAppendPort auditAppender, TransactionTemplate transactions,
             Clock clock,
             @Value("${app.object-storage.max-upload-size-bytes}") long maxUploadSizeBytes) {
         this.repository = repository;
         this.dealMutations = dealMutations;
+        this.dealReads = dealReads;
         this.storage = storage;
         this.idempotency = idempotency;
         this.auditAppender = auditAppender;
@@ -164,6 +170,54 @@ class DocumentService {
         idempotency.recordResult(claim, new IdempotencyResultReference(
                 IDEMPOTENCY_RESULT, document.id()));
         return available(document, true);
+    }
+
+    DealDocumentHistory listHistory(OperationContext context, UUID dealId) {
+        requireOperation(context, RequestedOperation.DEAL_DOCUMENT_LIST_READ);
+        DealDocumentVisibility target = dealReads.findVisibility(context, dealId)
+                .orElseThrow(DocumentExceptions.DealNotFound::new);
+        Instant now = clock.instant();
+        List<DealDocumentHistoryItem> items = repository.findByDealId(dealId).stream()
+                .map(Document::rehydrate)
+                .map(document -> toHistoryItem(document, target.initiator(), now))
+                .toList();
+        return new DealDocumentHistory(items);
+    }
+
+    DocumentDownloadLink createDownloadLink(OperationContext context, UUID documentId) {
+        requireOperation(context, RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE);
+        DocumentRepository.DocumentRecord record = repository.findById(documentId)
+                .orElseThrow(DocumentExceptions.NotFound::new);
+        dealReads.findVisibility(context, record.dealId())
+                .orElseThrow(DocumentExceptions.NotFound::new);
+        Document document = Document.rehydrate(record);
+        if (document.status() == DocumentStatus.PENDING_UPLOAD
+                || document.objectVersion() == null) {
+            throw new DocumentExceptions.DownloadNotAvailable();
+        }
+        // Presigning happens outside any database transaction; the link is never
+        // persisted or treated as a stable document URL.
+        DocumentObjectStorage.DirectDownload download = storage.createDirectDownload(
+                document.objectKey(), document.objectVersion());
+        return new DocumentDownloadLink(document.id(), document.objectVersion(),
+                download.url(), download.expiresAt());
+    }
+
+    private DealDocumentHistoryItem toHistoryItem(Document document, boolean initiator,
+            Instant now) {
+        if (document.status() == DocumentStatus.PENDING_UPLOAD) {
+            boolean canFinalize = initiator && now.isBefore(document.uploadExpiresAt());
+            return pending(document, canFinalize);
+        }
+        return historical(document);
+    }
+
+    private HistoricalDealDocument historical(Document document) {
+        return new HistoricalDealDocument(document.id(), document.dealId(),
+                document.fileName(), document.mediaType().value(), document.status(),
+                document.verifiedSizeBytes(), document.verifiedSha256(),
+                document.objectVersion(), document.createdAt(), document.availableAt(),
+                document.supersededAt(), new DocumentAvailableActions(false, true));
     }
 
     private LockedDealDocumentTarget preflightDealTarget(OperationContext context,

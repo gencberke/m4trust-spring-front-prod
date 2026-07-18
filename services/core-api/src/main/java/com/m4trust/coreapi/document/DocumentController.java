@@ -9,6 +9,7 @@ import com.m4trust.coreapi.organization.RequestedOperation;
 import com.m4trust.coreapi.organization.ResolvedOperationContext;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -52,6 +53,22 @@ public class DocumentController {
             @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
         return service.finalizeUpload(context, uuid(documentId), request,
                 uuid(idempotencyKey), uuid(correlationId));
+    }
+
+    @GetMapping("/deals/{dealId}/documents")
+    DealDocumentHistory listDealDocuments(
+            @ResolvedOperationContext(RequestedOperation.DEAL_DOCUMENT_LIST_READ)
+            OperationContext context,
+            @PathVariable String dealId) {
+        return service.listHistory(context, uuid(dealId));
+    }
+
+    @PostMapping("/documents/{documentId}/download-link")
+    DocumentDownloadLink createDownloadLink(
+            @ResolvedOperationContext(RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE)
+            OperationContext context,
+            @PathVariable String documentId) {
+        return service.createDownloadLink(context, uuid(documentId));
     }
 
     private UUID uuid(String value) {

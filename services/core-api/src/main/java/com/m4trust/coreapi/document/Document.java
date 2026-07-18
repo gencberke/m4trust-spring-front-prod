@@ -126,6 +126,7 @@ final class Document {
     String objectVersion() { return objectVersion; }
     String objectKey() { return objectKey; }
     Instant availableAt() { return availableAt; }
+    Instant supersededAt() { return supersededAt; }
 
     private void validate() {
         if (declaredSizeBytes <= 0 || version < 0

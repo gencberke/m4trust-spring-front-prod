@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,6 +47,13 @@ class DocumentRepository {
     Optional<DocumentRecord> findByIdForUpdate(UUID documentId) {
         return jdbcTemplate.query("SELECT * FROM document WHERE id = ? FOR UPDATE",
                 this::mapDocument, documentId).stream().findFirst();
+    }
+
+    List<DocumentRecord> findByDealId(UUID dealId) {
+        return jdbcTemplate.query("""
+                SELECT * FROM document WHERE deal_id = ?
+                ORDER BY created_at DESC, id DESC
+                """, this::mapDocument, dealId);
     }
 
     boolean update(DocumentRecord document, long previousVersion) {
