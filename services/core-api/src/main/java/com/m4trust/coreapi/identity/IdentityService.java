@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class IdentityService {
+public class IdentityService implements CurrentUserEmailQueryPort {
 
     private static final Set<String> COMMON_PASSWORDS = Set.of(
             "123456789012345",
@@ -60,6 +60,11 @@ public class IdentityService {
             throw new InvalidCredentialsException();
         }
         return toPublicUser(account);
+    }
+
+    @Override
+    public java.util.Optional<String> findNormalizedEmail(UUID userId) {
+        return repository.findNormalizedEmailById(userId);
     }
 
     private void rejectWeakPassword(String password) {

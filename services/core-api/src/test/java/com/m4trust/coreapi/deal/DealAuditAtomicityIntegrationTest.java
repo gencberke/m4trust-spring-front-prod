@@ -40,12 +40,18 @@ class DealAuditAtomicityIntegrationTest {
     private DealService service;
 
     @Autowired
+    private DealInvitationService invitationService;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private AtomicBoolean failAudit;
 
     private OperationContext context;
+    private UUID userId;
+    private UUID tenantId;
+    private UUID legalEntityId;
 
     @BeforeEach
     void setUp() {
@@ -54,6 +60,7 @@ class DealAuditAtomicityIntegrationTest {
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
                     http_idempotency_record,
+                    deal_invitation,
                     deal_participant,
                     deal,
                     audit_record,
@@ -63,9 +70,9 @@ class DealAuditAtomicityIntegrationTest {
                     tenant,
                     identity_user
                 """);
-        UUID userId = UUID.randomUUID();
-        UUID tenantId = UUID.randomUUID();
-        UUID legalEntityId = UUID.randomUUID();
+        userId = UUID.randomUUID();
+        tenantId = UUID.randomUUID();
+        legalEntityId = UUID.randomUUID();
         jdbcTemplate.update("""
                 INSERT INTO identity_user (
                     id, email, password_hash, display_name, enabled
@@ -83,6 +90,11 @@ class DealAuditAtomicityIntegrationTest {
                 )
                 VALUES (?, ?, 'Atomic Entity', 'ATOMIC-DEAL-1')
                 """, legalEntityId, tenantId);
+        jdbcTemplate.update("""
+                INSERT INTO legal_entity_membership (
+                    id, tenant_id, legal_entity_id, user_id, role
+                ) VALUES (?, ?, ?, ?, 'ADMIN')
+                """, UUID.randomUUID(), tenantId, legalEntityId, userId);
         context = new OperationContext(userId, tenantId, legalEntityId,
                 RequestedOperation.DEAL_CREATE);
         failAudit.set(true);
@@ -97,6 +109,38 @@ class DealAuditAtomicityIntegrationTest {
                         UUID.randomUUID()));
 
         assertEquals(0, count("deal"));
+        assertEquals(0, count("deal_participant"));
+        assertEquals(0, count("audit_record"));
+    }
+
+    @Test
+    void auditFailureRollsBackInvitationAcceptAndParticipant() {
+        UUID dealId = UUID.randomUUID();
+        UUID invitationId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO deal (
+                    id, tenant_id, reference, title, deal_status,
+                    initiator_legal_entity_id, created_by
+                ) VALUES (?, ?, 'DL-0000000001', 'Atomic invitation Deal',
+                    'DRAFT', ?, ?)
+                """, dealId, tenantId, legalEntityId, userId);
+        jdbcTemplate.update("""
+                INSERT INTO deal_invitation (
+                    id, tenant_id, deal_id, recipient_email,
+                    invitation_status
+                ) VALUES (?, ?, ?, 'atomic-deal@example.com', 'PENDING')
+                """, invitationId, tenantId, dealId);
+
+        assertThrows(IllegalStateException.class,
+                () -> invitationService.accept(userId, invitationId,
+                        new AcceptDealInvitationRequest(legalEntityId, 0L),
+                        UUID.randomUUID()));
+
+        assertEquals("PENDING", jdbcTemplate.queryForObject("""
+                SELECT invitation_status
+                FROM deal_invitation
+                WHERE id = ?
+                """, String.class, invitationId));
         assertEquals(0, count("deal_participant"));
         assertEquals(0, count("audit_record"));
     }

@@ -1,6 +1,7 @@
 package com.m4trust.coreapi.deal;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 record DealDetail(
@@ -13,5 +14,10 @@ record DealDetail(
         long version,
         Instant createdAt,
         Instant updatedAt,
-        DealAvailableActions availableActions) {
+        DealAvailableActions availableActions,
+        List<DealParticipant> participants) {
+
+    DealDetail {
+        participants = List.copyOf(participants);
+    }
 }

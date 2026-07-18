@@ -72,6 +72,63 @@ class DealExceptionHandler {
                 "DEAL_STATE_CONFLICT");
     }
 
+    @ExceptionHandler(DealInvitationNotFoundException.class)
+    ResponseEntity<ProblemDetail> handleInvitationNotFound(
+            HttpServletRequest request) {
+        return response(request, HttpStatus.NOT_FOUND,
+                "deal-invitation-not-found", "Deal invitation not found",
+                "The Deal invitation was not found.",
+                "DEAL_INVITATION_NOT_FOUND");
+    }
+
+    @ExceptionHandler(DealInvitationForbiddenException.class)
+    ResponseEntity<ProblemDetail> handleInvitationForbidden(
+            HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN,
+                "deal-invitation-forbidden", "Deal invitation forbidden",
+                "The active legal entity cannot perform this invitation operation.",
+                "DEAL_INVITATION_FORBIDDEN");
+    }
+
+    @ExceptionHandler(DealInvitationPendingExistsException.class)
+    ResponseEntity<ProblemDetail> handleInvitationPendingExists(
+            HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT,
+                "deal-invitation-pending-exists",
+                "Pending Deal invitation exists",
+                "A pending invitation already exists for this recipient.",
+                "DEAL_INVITATION_PENDING_EXISTS");
+    }
+
+    @ExceptionHandler(DealInvitationStaleVersionException.class)
+    ResponseEntity<ProblemDetail> handleInvitationStale(
+            HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT,
+                "deal-invitation-stale-version", "Resource has changed",
+                "The Deal invitation was modified by another operation.",
+                "DEAL_INVITATION_STALE_VERSION");
+    }
+
+    @ExceptionHandler(DealInvitationStateConflictException.class)
+    ResponseEntity<ProblemDetail> handleInvitationStateConflict(
+            HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT,
+                "deal-invitation-state-conflict",
+                "Deal invitation state conflict",
+                "The invitation state does not permit this operation.",
+                "DEAL_INVITATION_STATE_CONFLICT");
+    }
+
+    @ExceptionHandler(DealInvitationAcceptedByOtherEntityException.class)
+    ResponseEntity<ProblemDetail> handleInvitationAcceptedByOtherEntity(
+            HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT,
+                "deal-invitation-accepted-by-other-entity",
+                "Deal invitation already accepted",
+                "The invitation was accepted with a different legal entity.",
+                "DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY");
+    }
+
     private ResponseEntity<ProblemDetail> response(
             HttpServletRequest request, HttpStatus status, String typeSlug,
             String title, String detail, String code) {

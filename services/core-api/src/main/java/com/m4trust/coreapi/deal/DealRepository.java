@@ -167,6 +167,18 @@ class DealRepository {
                 status.name());
     }
 
+    List<ParticipantRecord> findParticipants(UUID dealId) {
+        return jdbcTemplate.query("""
+                SELECT legal_entity_id, legal_entity_tenant_id, created_at
+                FROM deal_participant
+                WHERE deal_id = ?
+                ORDER BY created_at, legal_entity_id
+                """, (resultSet, rowNumber) -> new ParticipantRecord(
+                        resultSet.getObject("legal_entity_id", UUID.class),
+                        resultSet.getObject("legal_entity_tenant_id", UUID.class),
+                        resultSet.getTimestamp("created_at").toInstant()), dealId);
+    }
+
     boolean updateBasicFields(
             UUID legalEntityTenantId,
             UUID legalEntityId,
@@ -279,5 +291,9 @@ class DealRepository {
             Instant createdAt,
             Instant updatedAt,
             long version) {
+    }
+
+    record ParticipantRecord(UUID legalEntityId, UUID legalEntityTenantId,
+            Instant createdAt) {
     }
 }

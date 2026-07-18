@@ -1,4 +1,4 @@
 package com.m4trust.coreapi.organization;
 
-final class LegalEntityNotFoundException extends RuntimeException {
+public final class LegalEntityNotFoundException extends RuntimeException {
 }

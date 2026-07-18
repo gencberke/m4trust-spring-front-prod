@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.organization.OperationContext;
+import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.RequestedOperation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +22,15 @@ class DealService {
     private static final String DEAL_CANCELLED = "DEAL_CANCELLED";
 
     private final DealRepository repository;
+    private final InvitationLegalEntityQueryPort legalEntityQueries;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
-    DealService(DealRepository repository, AuditAppendPort auditAppender,
-            Clock clock) {
+    DealService(DealRepository repository,
+            InvitationLegalEntityQueryPort legalEntityQueries,
+            AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
+        this.legalEntityQueries = legalEntityQueries;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -193,7 +197,7 @@ class DealService {
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actions(deal, context));
+                actions(deal, context), participants(deal.id()));
     }
 
     private DealSummary toSummary(Deal deal, OperationContext context) {
@@ -213,7 +217,26 @@ class DealService {
         boolean isInitiator = deal.isInitiatedBy(context.activeLegalEntityId());
         return new DealAvailableActions(
                 isInitiator && deal.status().allowsBasicFieldEditing(),
-                isInitiator && deal.status().allowsCancellation());
+                isInitiator && deal.status().allowsCancellation(),
+                isInitiator && deal.status() == DealStatus.DRAFT);
+    }
+
+    private List<DealParticipant> participants(UUID dealId) {
+        List<DealRepository.ParticipantRecord> participantRecords =
+                repository.findParticipants(dealId);
+        java.util.Map<UUID, String> names = legalEntityQueries.findLegalNames(
+                participantRecords.stream()
+                        .map(DealRepository.ParticipantRecord::legalEntityId)
+                        .collect(java.util.stream.Collectors.toSet()));
+        return participantRecords.stream().map(participant -> {
+            String legalName = names.get(participant.legalEntityId());
+            if (legalName == null) {
+                throw new IllegalStateException(
+                        "Participant legal entity projection is unavailable");
+            }
+            return new DealParticipant(participant.legalEntityId(), legalName,
+                    participant.createdAt());
+        }).toList();
     }
 
     private void requireInitiator(OperationContext context, Deal deal) {
