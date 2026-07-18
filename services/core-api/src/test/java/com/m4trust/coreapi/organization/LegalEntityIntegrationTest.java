@@ -60,6 +60,7 @@ class LegalEntityIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    http_idempotency_record,
                     deal_participant,
                     deal,
                     audit_record,

@@ -1,0 +1,31 @@
+CREATE TABLE http_idempotency_record (
+    id UUID NOT NULL,
+    actor_user_id UUID NOT NULL,
+    operation TEXT NOT NULL,
+    idempotency_key UUID NOT NULL,
+    canonical_request_hash CHAR(64) NOT NULL,
+    result_type TEXT,
+    result_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT http_idempotency_record_pk PRIMARY KEY (id),
+    CONSTRAINT http_idempotency_record_actor_user_fk
+        FOREIGN KEY (actor_user_id) REFERENCES identity_user (id),
+    CONSTRAINT http_idempotency_record_actor_operation_key_uk
+        UNIQUE (actor_user_id, operation, idempotency_key),
+    CONSTRAINT http_idempotency_record_operation_ck
+        CHECK (
+            operation = btrim(operation)
+            AND char_length(operation) BETWEEN 1 AND 100
+        ),
+    CONSTRAINT http_idempotency_record_request_hash_ck
+        CHECK (canonical_request_hash ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT http_idempotency_record_result_reference_ck
+        CHECK (
+            (result_type IS NULL AND result_id IS NULL)
+            OR (
+                result_type = btrim(result_type)
+                AND char_length(result_type) BETWEEN 1 AND 100
+                AND result_id IS NOT NULL
+            )
+        )
+);
