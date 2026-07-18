@@ -1,0 +1,10 @@
+server:
+  # Railway terminates TLS at the public edge. Framework processing makes the
+  # trusted proxy's Forwarded/X-Forwarded-* values authoritative for scheme,
+  # host, redirects, and Secure cookie behavior.
+  forward-headers-strategy: framework
+
+spring:
+  # Schema rollout is exclusively the Railway pre-deploy migration command.
+  flyway:
+    enabled: false

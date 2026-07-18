@@ -34,7 +34,12 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "app.environment=test",
+        "app.version=test-release",
+        "app.git-commit-sha=0123456789abcdef",
+        "app.build-time=2026-07-17T12:00:00Z"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
 @Testcontainers
@@ -69,6 +74,17 @@ class AuthenticationIntegrationTest {
                     tenant,
                     identity_user
                 """);
+    }
+
+    @Test
+    void privateInfoCarriesGenericReleaseIdentity() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.app.environment").value("test"))
+                .andExpect(jsonPath("$.app.version").value("test-release"))
+                .andExpect(jsonPath("$.app.gitCommitSha").value("0123456789abcdef"))
+                .andExpect(jsonPath("$.app.buildTime")
+                        .value("2026-07-17T12:00:00Z"));
     }
 
     @Test
