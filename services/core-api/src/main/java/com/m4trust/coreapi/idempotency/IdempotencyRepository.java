@@ -25,19 +25,26 @@ class IdempotencyRepository {
                 INSERT INTO http_idempotency_record (
                     id,
                     actor_user_id,
+                    actor_tenant_id,
                     operation,
                     idempotency_key,
                     canonical_request_hash,
                     created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT (actor_user_id, operation, idempotency_key)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (
+                    actor_user_id,
+                    actor_tenant_id,
+                    operation,
+                    idempotency_key
+                )
                 DO NOTHING
                 RETURNING id
                 """,
                 (resultSet, rowNumber) -> resultSet.getObject("id", UUID.class),
                 recordId,
                 request.actorUserId(),
+                request.actorTenantId(),
                 request.operation(),
                 request.key(),
                 request.canonicalRequestHash(),
@@ -50,10 +57,12 @@ class IdempotencyRepository {
                 SELECT id, canonical_request_hash, result_type, result_id
                 FROM http_idempotency_record
                 WHERE actor_user_id = ?
+                  AND actor_tenant_id = ?
                   AND operation = ?
                   AND idempotency_key = ?
                 """, this::mapRecord,
-                request.actorUserId(), request.operation(), request.key())
+                request.actorUserId(), request.actorTenantId(),
+                request.operation(), request.key())
                 .stream()
                 .findFirst();
     }

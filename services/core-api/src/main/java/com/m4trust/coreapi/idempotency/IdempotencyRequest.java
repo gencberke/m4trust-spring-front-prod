@@ -11,12 +11,14 @@ import java.util.UUID;
  */
 public record IdempotencyRequest(
         UUID actorUserId,
+        UUID actorTenantId,
         String operation,
         UUID key,
         String canonicalRequestHash) {
 
     public IdempotencyRequest {
         Objects.requireNonNull(actorUserId, "actorUserId must not be null");
+        Objects.requireNonNull(actorTenantId, "actorTenantId must not be null");
         Objects.requireNonNull(operation, "operation must not be null");
         Objects.requireNonNull(key, "key must not be null");
         Objects.requireNonNull(canonicalRequestHash,

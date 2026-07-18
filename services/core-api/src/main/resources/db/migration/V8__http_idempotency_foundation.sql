@@ -1,6 +1,7 @@
 CREATE TABLE http_idempotency_record (
     id UUID NOT NULL,
     actor_user_id UUID NOT NULL,
+    actor_tenant_id UUID NOT NULL,
     operation TEXT NOT NULL,
     idempotency_key UUID NOT NULL,
     canonical_request_hash CHAR(64) NOT NULL,
@@ -10,8 +11,10 @@ CREATE TABLE http_idempotency_record (
     CONSTRAINT http_idempotency_record_pk PRIMARY KEY (id),
     CONSTRAINT http_idempotency_record_actor_user_fk
         FOREIGN KEY (actor_user_id) REFERENCES identity_user (id),
-    CONSTRAINT http_idempotency_record_actor_operation_key_uk
-        UNIQUE (actor_user_id, operation, idempotency_key),
+    CONSTRAINT http_idempotency_record_actor_tenant_fk
+        FOREIGN KEY (actor_tenant_id) REFERENCES tenant (id),
+    CONSTRAINT http_idempotency_record_actor_tenant_operation_key_uk
+        UNIQUE (actor_user_id, actor_tenant_id, operation, idempotency_key),
     CONSTRAINT http_idempotency_record_operation_ck
         CHECK (
             operation = btrim(operation)

@@ -44,17 +44,20 @@ class IdempotencyServiceIntegrationTest {
     private PlatformTransactionManager transactionManager;
 
     private UUID actorUserId;
+    private UUID actorTenantId;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute("TRUNCATE TABLE http_idempotency_record, identity_user CASCADE");
         actorUserId = UUID.randomUUID();
+        actorTenantId = UUID.randomUUID();
         jdbcTemplate.update("""
                 INSERT INTO identity_user (
                     id, email, password_hash, display_name, enabled
                 )
                 VALUES (?, ?, 'test-hash', 'Idempotency User', true)
                 """, actorUserId, "idempotency@example.com");
+        jdbcTemplate.update("INSERT INTO tenant (id) VALUES (?)", actorTenantId);
     }
 
     @Test
@@ -94,6 +97,30 @@ class IdempotencyServiceIntegrationTest {
     }
 
     @Test
+    void sameUserOperationAndKeyCanBeClaimedInAnotherTenant() {
+        UUID key = UUID.randomUUID();
+        UUID otherTenantId = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO tenant (id) VALUES (?)", otherTenantId);
+
+        inTransaction(() -> {
+            IdempotencyClaim claim = service.claim(request(key, REQUEST_HASH));
+            service.recordResult(claim, new IdempotencyResultReference(
+                    "DEAL_INVITATION", UUID.randomUUID()));
+            return null;
+        });
+        IdempotencyClaim otherTenantClaim = inTransaction(() -> {
+            IdempotencyClaim claim = service.claim(request(
+                    otherTenantId, key, REQUEST_HASH));
+            service.recordResult(claim, new IdempotencyResultReference(
+                    "DEAL_INVITATION", UUID.randomUUID()));
+            return claim;
+        });
+
+        assertEquals(IdempotencyClaimStatus.CLAIMED, otherTenantClaim.status());
+        assertEquals(2, recordCount());
+    }
+
+    @Test
     void rolledBackBusinessTransactionDoesNotConsumeTheKey() {
         UUID key = UUID.randomUUID();
 
@@ -109,8 +136,13 @@ class IdempotencyServiceIntegrationTest {
     }
 
     private IdempotencyRequest request(UUID key, String canonicalRequestHash) {
-        return new IdempotencyRequest(actorUserId, CREATE_INVITATION, key,
-                canonicalRequestHash);
+        return request(actorTenantId, key, canonicalRequestHash);
+    }
+
+    private IdempotencyRequest request(UUID tenantId, UUID key,
+            String canonicalRequestHash) {
+        return new IdempotencyRequest(actorUserId, tenantId,
+                CREATE_INVITATION, key, canonicalRequestHash);
     }
 
     private int recordCount() {
