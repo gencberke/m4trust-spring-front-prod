@@ -46,6 +46,15 @@ app:
   security:
     session:
       absolute-timeout: ${SESSION_ABSOLUTE_TIMEOUT:8h}
+  object-storage:
+    endpoint: ${OBJECT_STORAGE_ENDPOINT}
+    region: ${OBJECT_STORAGE_REGION}
+    bucket: ${OBJECT_STORAGE_BUCKET}
+    access-key: ${OBJECT_STORAGE_ACCESS_KEY}
+    secret-key: ${OBJECT_STORAGE_SECRET_KEY}
+    upload-ttl: ${OBJECT_STORAGE_UPLOAD_TTL}
+    download-ttl: ${OBJECT_STORAGE_DOWNLOAD_TTL}
+    max-upload-size-bytes: ${OBJECT_STORAGE_MAX_UPLOAD_SIZE_BYTES}
 
 logging:
   structured:

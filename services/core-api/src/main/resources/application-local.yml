@@ -13,3 +13,14 @@ server:
       cookie:
         name: ${SESSION_COOKIE_NAME:M4TRUST_SESSION}
         secure: ${SESSION_COOKIE_SECURE:false}
+
+app:
+  object-storage:
+    endpoint: ${OBJECT_STORAGE_ENDPOINT:http://127.0.0.1:9000}
+    region: ${OBJECT_STORAGE_REGION:us-east-1}
+    bucket: ${OBJECT_STORAGE_BUCKET:m4trust-documents}
+    access-key: ${OBJECT_STORAGE_ACCESS_KEY:m4trust_local}
+    secret-key: ${OBJECT_STORAGE_SECRET_KEY:m4trust_local_password}
+    upload-ttl: ${OBJECT_STORAGE_UPLOAD_TTL:10m}
+    download-ttl: ${OBJECT_STORAGE_DOWNLOAD_TTL:5m}
+    max-upload-size-bytes: ${OBJECT_STORAGE_MAX_UPLOAD_SIZE_BYTES:52428800}
