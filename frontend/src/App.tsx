@@ -7,6 +7,7 @@ import {
 } from "./features/auth/AuthRouteGuards";
 import { DealDetailPage } from "./pages/DealDetailPage";
 import { DealListPage } from "./pages/DealListPage";
+import { IncomingInvitationsPage } from "./pages/IncomingInvitationsPage";
 import { AuthenticatedAppPage } from "./pages/AuthenticatedAppPage";
 import { AuthenticatedLayout } from "./pages/AuthenticatedLayout";
 import { LoginPage } from "./pages/LoginPage";
@@ -26,6 +27,7 @@ export function App() {
           <Route index element={<AuthenticatedAppPage />} />
           <Route path="deals" element={<DealListPage />} />
           <Route path="deals/:dealId" element={<DealDetailPage />} />
+          <Route path="invitations" element={<IncomingInvitationsPage />} />
         </Route>
       </Route>
       {import.meta.env.DEV ? (

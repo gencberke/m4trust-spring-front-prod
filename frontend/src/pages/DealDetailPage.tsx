@@ -30,6 +30,7 @@ import {
   dealDetailQueryKey,
   dealDetailQueryOptions,
 } from "../features/deals/dealQueries";
+import { DealInvitationManagement } from "../features/invitations/DealInvitationManagement";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
 import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
 import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
@@ -375,6 +376,22 @@ export function DealDetailPage() {
           </div>
         </dl>
 
+        <section className="workspace-panel deal-participants-panel">
+          <div className="panel-heading">
+            <span className="section-kicker">Katılımcılar</span>
+            <h2>Deal görünürlüğü olan legal entity’ler</h2>
+            <p>Katılım, taraf rolü veya sözleşmesel onay anlamına gelmez.</p>
+          </div>
+          <ul className="participant-list">
+            {deal.participants.map((participant) => (
+              <li key={participant.legalEntityId}>
+                <strong>{participant.legalName}</strong>
+                <span>Katılım: {formatDate(participant.joinedAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <div className="deal-detail-layout">
           {deal.availableActions.canUpdate ? (
             <EditDealForm
@@ -463,6 +480,11 @@ export function DealDetailPage() {
             ) : null}
           </aside>
         </div>
+
+        <DealInvitationManagement
+          deal={deal}
+          legalEntityId={selectedLegalEntityId}
+        />
       </div>
     </main>
   );

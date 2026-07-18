@@ -5,6 +5,10 @@ export type ProblemDetail = components["schemas"]["ProblemDetail"];
 
 type CsrfToken = components["schemas"]["CsrfToken"];
 
+interface CoreApiRequestOptions {
+  suppressLegalEntityContext?: boolean;
+}
+
 const API_ROOT = "/api/v1";
 
 export const AUTH_SESSION_EXPIRED_EVENT = "m4trust:auth-session-expired";
@@ -52,11 +56,17 @@ async function apiError(response: Response): Promise<ApiError> {
   return error;
 }
 
-function buildHeaders(initHeaders?: HeadersInit): Headers {
+function buildHeaders(
+  initHeaders?: HeadersInit,
+  options: CoreApiRequestOptions = {},
+): Headers {
   const headers = new Headers(initHeaders);
   headers.set("Accept", "application/json, application/problem+json");
 
-  if (!headers.has("X-M4Trust-Legal-Entity-Id")) {
+  if (
+    !options.suppressLegalEntityContext &&
+    !headers.has("X-M4Trust-Legal-Entity-Id")
+  ) {
     const selectedLegalEntityId = readSelectedLegalEntityId();
     if (selectedLegalEntityId) {
       headers.set("X-M4Trust-Legal-Entity-Id", selectedLegalEntityId);
@@ -66,11 +76,15 @@ function buildHeaders(initHeaders?: HeadersInit): Headers {
   return headers;
 }
 
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
+async function request(
+  path: string,
+  init: RequestInit = {},
+  options: CoreApiRequestOptions = {},
+): Promise<Response> {
   const response = await fetch(`${API_ROOT}${path}`, {
     ...init,
     credentials: "same-origin",
-    headers: buildHeaders(init.headers),
+    headers: buildHeaders(init.headers, options),
   });
 
   if (!response.ok) {
@@ -82,9 +96,10 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 
 export async function requestJson<T>(
   path: string,
-  init: RequestInit = {},
+  init: RequestInit & CoreApiRequestOptions = {},
 ): Promise<T> {
-  const response = await request(path, init);
+  const { suppressLegalEntityContext, ...requestInit } = init;
+  const response = await request(path, requestInit, { suppressLegalEntityContext });
   return (await response.json()) as T;
 }
 
@@ -99,10 +114,11 @@ async function postWithFreshCsrf(
   path: string,
   body?: unknown,
   initHeaders?: HeadersInit,
+  options: CoreApiRequestOptions = {},
 ): Promise<Response> {
   // This dependency is intentional: session rotation invalidates earlier CSRF tokens.
   const csrf = await fetchCsrfToken();
-  const headers = buildHeaders(initHeaders);
+  const headers = buildHeaders(initHeaders, options);
   if (body !== undefined) {
     headers.set("Content-Type", "application/json");
   }
@@ -112,15 +128,16 @@ async function postWithFreshCsrf(
     method: "POST",
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  }, options);
 }
 
 export async function postJsonWithFreshCsrf<T>(
   path: string,
   body: unknown,
   headers?: HeadersInit,
+  options?: CoreApiRequestOptions,
 ): Promise<T> {
-  const response = await postWithFreshCsrf(path, body, headers);
+  const response = await postWithFreshCsrf(path, body, headers, options);
   return (await response.json()) as T;
 }
 
