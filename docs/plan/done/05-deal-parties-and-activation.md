@@ -1,7 +1,14 @@
 # Slice 5 — Deal Parties (Buyer/Seller) ve Activation Readiness
 
-- Durum: ready
+- Durum: done
 - Slice sırası: ADR-004 §24 → Deal parties capability
+- **Tamamlanma notu (2026-07-18):** Gerçek local Spring + PostgreSQL + Vite
+  ortamında iki bağımsız tab bağlamıyla kabul tamamlandı. Alpha=BUYER ve
+  Beta=SELLER görünürlüğü, eşit/nonparticipant taraf redleri, non-initiator UI
+  ve zorlanmış istek reddi, CANCELLED mutation reddi, DRAFT/no-activate sınırı
+  ve stale-version recovery kanıtlandı. Slice 4 invitation/participation akışı
+  da regresyonsuz tekrar çalıştı. Contract validator, backend verify ve frontend
+  typecheck/build yeşildir; Deal DRAFT kalır ve activate endpoint/action yoktur.
 - Öncül: 04-deal-invitations-and-participation
 - Ardıl: 06-document-upload; ratification bu slice'ın taraf modeline dayanır
 
@@ -118,12 +125,12 @@ Aşırı state/HTTP kombinasyonu testi yazılmaz.
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI parties yüzeyi implementasyondan önce tasarlandı
-- [ ] Party migration ve composite participant bütünlüğü uygulandı
-- [ ] Buyer/seller assignment DRAFT'ta explicit initiator authorization ile çalışıyor
-- [ ] Deal activation bu slice'ta açılmadı
-- [ ] Actor-aware action projection frontend tarafından kullanılıyor
-- [ ] §8 minimum testleri geçiyor ve audit aynı transaction'da
-- [ ] §7 iki-browser kabul akışı tamamlandı
-- [ ] Önceki slice kabul akışları regresyonsuz
-- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
+- [x] OpenAPI parties yüzeyi implementasyondan önce tasarlandı
+- [x] Party migration ve composite participant bütünlüğü uygulandı
+- [x] Buyer/seller assignment DRAFT'ta explicit initiator authorization ile çalışıyor
+- [x] Deal activation bu slice'ta açılmadı
+- [x] Actor-aware action projection frontend tarafından kullanılıyor
+- [x] §8 minimum testleri geçiyor ve audit aynı transaction'da
+- [x] §7 iki-browser kabul akışı tamamlandı
+- [x] Önceki slice kabul akışları regresyonsuz
+- [x] Contract validator, backend verify ve frontend typecheck/build yeşil
