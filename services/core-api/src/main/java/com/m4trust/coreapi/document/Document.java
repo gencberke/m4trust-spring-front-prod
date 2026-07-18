@@ -113,7 +113,19 @@ final class Document {
     }
 
     DocumentStatus status() { return status; }
+    UUID id() { return id; }
+    UUID dealId() { return dealId; }
+    String fileName() { return fileName; }
+    DocumentMediaType mediaType() { return mediaType; }
+    long declaredSizeBytes() { return declaredSizeBytes; }
+    String declaredSha256() { return declaredSha256; }
+    Instant uploadExpiresAt() { return uploadExpiresAt; }
+    Instant createdAt() { return createdAt; }
+    Long verifiedSizeBytes() { return verifiedSizeBytes; }
+    String verifiedSha256() { return verifiedSha256; }
     String objectVersion() { return objectVersion; }
+    String objectKey() { return objectKey; }
+    Instant availableAt() { return availableAt; }
 
     private void validate() {
         if (declaredSizeBytes <= 0 || version < 0

@@ -18,6 +18,22 @@ class JdbcIdempotencyService implements IdempotencyService {
     }
 
     @Override
+    public Optional<IdempotencyResultReference> findCompleted(
+            IdempotencyRequest request) {
+        Optional<IdempotencyRecord> existing = repository.find(request);
+        if (existing.isEmpty()) {
+            return Optional.empty();
+        }
+        if (!existing.get().canonicalRequestHash().equals(
+                request.canonicalRequestHash())) {
+            throw new IdempotencyKeyReusedException();
+        }
+        return Optional.of(existing.get().resultReference().orElseThrow(() ->
+                new IllegalStateException(
+                        "Committed idempotency record has no result reference")));
+    }
+
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public IdempotencyClaim claim(IdempotencyRequest request) {
         UUID recordId = UUID.randomUUID();

@@ -43,6 +43,25 @@ class DocumentRepository {
                 this::mapDocument, documentId).stream().findFirst();
     }
 
+    Optional<DocumentRecord> findByIdForUpdate(UUID documentId) {
+        return jdbcTemplate.query("SELECT * FROM document WHERE id = ? FOR UPDATE",
+                this::mapDocument, documentId).stream().findFirst();
+    }
+
+    boolean update(DocumentRecord document, long previousVersion) {
+        return jdbcTemplate.update("""
+                UPDATE document
+                SET document_status = ?, verified_size_bytes = ?,
+                    verified_sha256 = ?, object_version = ?, available_at = ?,
+                    superseded_at = ?, updated_at = ?, version = ?
+                WHERE id = ? AND version = ?
+                """, document.status().name(), document.verifiedSizeBytes(),
+                document.verifiedSha256(), document.objectVersion(),
+                timestamp(document.availableAt()), timestamp(document.supersededAt()),
+                Timestamp.from(document.updatedAt()), document.version(),
+                document.id(), previousVersion) == 1;
+    }
+
     private DocumentRecord mapDocument(ResultSet resultSet, int rowNumber)
             throws SQLException {
         return new DocumentRecord(resultSet.getObject("id", UUID.class),

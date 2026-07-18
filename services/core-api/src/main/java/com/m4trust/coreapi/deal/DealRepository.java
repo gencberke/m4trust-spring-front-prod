@@ -121,6 +121,30 @@ class DealRepository {
                 .findFirst();
     }
 
+    Optional<DealRecord> findVisibleByIdForUpdate(
+            UUID legalEntityTenantId, UUID legalEntityId, UUID dealId) {
+        return jdbcTemplate.query(
+                        SELECT_VISIBLE_DEALS + " AND deal.id = ? FOR UPDATE",
+                        this::mapDeal,
+                        legalEntityId,
+                        legalEntityTenantId,
+                        dealId)
+                .stream()
+                .findFirst();
+    }
+
+    boolean repointCurrentDocument(UUID dealId, UUID documentId,
+            Instant changedAt) {
+        return jdbcTemplate.update("""
+                UPDATE deal
+                SET current_document_id = ?,
+                    current_document_status = 'AVAILABLE',
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                """, documentId, Timestamp.from(changedAt), dealId) == 1;
+    }
+
     List<DealRecord> findVisiblePage(
             UUID legalEntityTenantId,
             UUID legalEntityId,
