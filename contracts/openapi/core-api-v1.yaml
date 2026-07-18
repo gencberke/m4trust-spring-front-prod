@@ -879,8 +879,8 @@ components:
       description: >
         CSRF validation failed (CSRF_TOKEN_INVALID), or the required active legal
         entity context header is missing or malformed
-        (LEGAL_ENTITY_ACCESS_DENIED), or a visible Deal participant is not its DRAFT
-        initiator and therefore cannot perform this Deal mutation
+        (LEGAL_ENTITY_ACCESS_DENIED), or a visible Deal participant is not the
+        Deal's immutable initiator and therefore cannot perform this Deal mutation
         (DEAL_MUTATION_FORBIDDEN). A syntactically valid but nonexistent or hidden
         legal entity returns 404 LEGAL_ENTITY_NOT_FOUND instead.
       content:
