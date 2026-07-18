@@ -53,6 +53,7 @@ class DealIntegrationTest {
     private MockMvc mockMvc;
 
     private PrincipalContext owner;
+    private PrincipalContext participant;
     private PrincipalContext outsider;
 
     @BeforeEach
@@ -69,8 +70,10 @@ class DealIntegrationTest {
                     tenant_user,
                     tenant,
                     identity_user
-                """);
+        """);
         owner = insertPrincipal("owner@example.com", "Owner Entity");
+        participant = insertPrincipal("participant@example.com",
+                "Participant Entity");
         outsider = insertPrincipal("outsider@example.com", "Outsider Entity");
     }
 
@@ -298,6 +301,86 @@ class DealIntegrationTest {
     }
 
     @Test
+    void crossTenantParticipantCanReadButOnlyInitiatorCanMutate()
+            throws Exception {
+        UUID dealId = dealId(createDeal("Cross Tenant Deal"));
+        jdbcTemplate.update("""
+                INSERT INTO deal_participant (
+                    deal_id,
+                    tenant_id,
+                    legal_entity_id,
+                    legal_entity_tenant_id
+                )
+                VALUES (?, ?, ?, ?)
+                """, dealId, owner.tenantId(), participant.legalEntityId(),
+                participant.tenantId());
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .with(user(participant.userId().toString()))
+                        .header(LEGAL_ENTITY_HEADER,
+                                participant.legalEntityId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].id")
+                        .value(dealId.toString()))
+                .andExpect(jsonPath("$.items[0].availableActions.canUpdate")
+                        .value(false))
+                .andExpect(jsonPath("$.items[0].availableActions.canCancel")
+                        .value(false));
+
+        mockMvc.perform(get("/api/v1/deals/" + dealId)
+                        .with(user(participant.userId().toString()))
+                        .header(LEGAL_ENTITY_HEADER,
+                                participant.legalEntityId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dealId.toString()))
+                .andExpect(jsonPath("$.availableActions.canUpdate")
+                        .value(false))
+                .andExpect(jsonPath("$.availableActions.canCancel")
+                        .value(false));
+
+        mockMvc.perform(patch("/api/v1/deals/" + dealId)
+                        .with(user(participant.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER,
+                                participant.legalEntityId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Forced update",
+                                  "description": null,
+                                  "expectedVersion": 0
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code")
+                        .value("DEAL_MUTATION_FORBIDDEN"));
+
+        mockMvc.perform(post("/api/v1/deals/" + dealId + "/cancel")
+                        .with(user(participant.userId().toString()))
+                        .with(csrf())
+                        .header(LEGAL_ENTITY_HEADER,
+                                participant.legalEntityId()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code")
+                        .value("DEAL_MUTATION_FORBIDDEN"));
+
+        assertEquals("DRAFT", jdbcTemplate.queryForObject("""
+                SELECT deal_status FROM deal WHERE id = ?
+                """, String.class, dealId));
+        assertEquals(0L, jdbcTemplate.queryForObject("""
+                SELECT version FROM deal WHERE id = ?
+                """, Long.class, dealId));
+
+        mockMvc.perform(get("/api/v1/deals/" + dealId)
+                        .with(user(outsider.userId().toString()))
+                        .header(LEGAL_ENTITY_HEADER,
+                                outsider.legalEntityId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DEAL_NOT_FOUND"));
+    }
+
+    @Test
     void semanticQueryAndRequiredNullableFieldsReturnStableValidationErrors()
             throws Exception {
         String maxTitle = "X".repeat(200);
@@ -440,9 +523,10 @@ class DealIntegrationTest {
                 )
                 VALUES (?, ?, ?, ?, 'ADMIN')
                 """, UUID.randomUUID(), tenantId, legalEntityId, userId);
-        return new PrincipalContext(userId, legalEntityId);
+        return new PrincipalContext(userId, tenantId, legalEntityId);
     }
 
-    private record PrincipalContext(UUID userId, UUID legalEntityId) {
+    private record PrincipalContext(
+            UUID userId, UUID tenantId, UUID legalEntityId) {
     }
 }

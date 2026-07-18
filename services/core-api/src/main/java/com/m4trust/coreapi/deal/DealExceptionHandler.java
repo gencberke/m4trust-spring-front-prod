@@ -45,6 +45,15 @@ class DealExceptionHandler {
                 "The Deal was not found.", "DEAL_NOT_FOUND");
     }
 
+    @ExceptionHandler(DealMutationForbiddenException.class)
+    ResponseEntity<ProblemDetail> handleMutationForbidden(
+            HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN,
+                "deal-mutation-forbidden", "Deal mutation forbidden",
+                "The active legal entity cannot mutate this Deal.",
+                "DEAL_MUTATION_FORBIDDEN");
+    }
+
     @ExceptionHandler(DealStaleVersionException.class)
     ResponseEntity<ProblemDetail> handleStale(
             HttpServletRequest request) {

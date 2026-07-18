@@ -102,6 +102,10 @@ final class Deal {
         return status;
     }
 
+    boolean isInitiatedBy(UUID legalEntityId) {
+        return initiatorLegalEntityId.equals(legalEntityId);
+    }
+
     Instant createdAt() {
         return createdAt;
     }
