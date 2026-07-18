@@ -17,6 +17,8 @@ tags:
     description: Legal-entity-scoped Deal creation, discovery, editing, and lifecycle actions.
   - name: Deal Invitations
     description: Cross-entity Deal invitation and participation operations.
+  - name: Deal Documents
+    description: Direct-to-private-storage contractual document upload and participant read operations.
 paths:
   /auth/register:
     post:
@@ -497,6 +499,163 @@ paths:
           $ref: '#/components/responses/DealPartiesConflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /deals/{dealId}/documents/upload-intents:
+    post:
+      operationId: createDealDocumentUploadIntent
+      tags: [Deal Documents]
+      summary: Create a direct private-storage upload intent for a Deal document
+      description: >
+        Creates a PENDING_UPLOAD document record and a short-lived presigned PUT
+        target for direct browser-to-private-object-storage transfer. Spring never
+        proxies document bytes. Only the immutable Deal initiator acting through its
+        active legal entity may create an intent; a terminal Deal rejects it. The
+        client-declared SHA-256 and size are later verified against storage and are
+        not authoritative by themselves.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentUploadIntentRequest'
+      responses:
+        '201':
+          description: PENDING_UPLOAD document and short-lived direct PUT target created.
+          headers:
+            Location:
+              description: Same-origin path of the pending document resource.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadIntent'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealDocumentMutationForbidden'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealDocumentIntentConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deals/{dealId}/documents:
+    get:
+      operationId: listDealDocuments
+      tags: [Deal Documents]
+      summary: List Deal document history
+      description: >
+        Returns the complete retained document history visible to every Deal
+        participant, including PENDING_UPLOAD and SUPERSEDED records. A hidden or
+        nonexistent Deal returns the same non-disclosing response. Document bytes
+        are never returned; download requires a separately minted short-lived link.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Document history visible to the active Deal participant; items is never null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDocumentHistory'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+  /documents/{documentId}/finalize:
+    post:
+      operationId: finalizeDocumentUpload
+      tags: [Deal Documents]
+      summary: Verify and finalize a pending direct document upload
+      description: >
+        Verifies the pending object outside the database transaction and atomically
+        marks it AVAILABLE, supersedes the previous current document, updates the
+        Deal current-document pointer, writes audit/idempotency state, and pins the
+        immutable storage object version. Idempotency-Key is required: the same key
+        with the same canonical request replays the original result without another
+        supersede; reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED.
+        Verified storage metadata, not client declarations, determines success.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizeDocumentUploadRequest'
+      responses:
+        '200':
+          description: Verified document finalized; replay of the same idempotent request returns this original result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableDealDocument'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealDocumentMutationForbidden'
+        '404':
+          $ref: '#/components/responses/DealDocumentNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DocumentFinalizeConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /documents/{documentId}/download-link:
+    post:
+      operationId: createDocumentDownloadLink
+      tags: [Deal Documents]
+      summary: Mint a short-lived direct download link for a verified document
+      description: >
+        Any Deal participant may request a short-lived presigned GET link for an
+        AVAILABLE or SUPERSEDED document. The link is pinned to the recorded
+        immutable object version. The storage bucket remains private; the link is
+        not a stable document URL and the backend re-authorizes every request.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Short-lived direct download link for the immutable document version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDownloadLink'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/DealDocumentNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DocumentDownloadConflict'
   /deals/{dealId}/invitations:
     post:
       operationId: createDealInvitation
@@ -799,14 +958,23 @@ components:
       schema:
         type: string
         format: uuid
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      description: Public UUID of the requested Deal document.
+      schema:
+        type: string
+        format: uuid
     IdempotencyKey:
       name: Idempotency-Key
       in: header
       required: true
       description: >
-        UUID key supplied by the client for a single invitation-create intent. Keep
-        the same key when retrying the same canonical request; never use it for a
-        different request.
+        UUID key supplied by the client for one idempotent operation. Keep the same
+        key when retrying the same canonical request; never use it for a different
+        request. A different request with an already-used key returns 409
+        IDEMPOTENCY_KEY_REUSED.
       schema:
         type: string
         format: uuid
@@ -954,6 +1122,52 @@ components:
       description: >
         The requested Deal action is invalid in the current lifecycle state;
         Problem Details code is DEAL_STATE_CONFLICT.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealDocumentMutationForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity
+        context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active
+        entity is not the immutable Deal initiator authorized to create/finalize
+        documents (DEAL_DOCUMENT_MUTATION_FORBIDDEN). Participant visibility alone
+        never grants document mutation authority.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealDocumentIntentConflict:
+      description: >
+        The Deal is terminal and cannot accept an upload intent; Problem Details code
+        is DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealDocumentNotFoundOrHidden:
+      description: >
+        The document does not exist, does not belong to a Deal visible to the active
+        legal entity, or its owning Deal is hidden from a non-participant; all cases
+        use DEAL_DOCUMENT_NOT_FOUND and do not disclose document existence.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DocumentFinalizeConflict:
+      description: >
+        The pending upload expired (DOCUMENT_UPLOAD_EXPIRED), is no longer pending
+        (DOCUMENT_UPLOAD_STATE_CONFLICT), verified storage size or SHA-256 differs
+        from the canonical client request (DOCUMENT_VERIFICATION_FAILED), or the
+        Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DocumentDownloadConflict:
+      description: >
+        The document is PENDING_UPLOAD, expired, or otherwise lacks a verified
+        immutable object version; Problem Details code is DOCUMENT_DOWNLOAD_NOT_AVAILABLE.
       content:
         application/problem+json:
           schema:
@@ -1474,6 +1688,226 @@ components:
       type: string
       description: Closed authoritative Deal container status set.
       enum: [DRAFT, ACTIVE, CANCELLED, COMPLETED, ARCHIVED]
+    DocumentMediaType:
+      type: string
+      description: Initially supported contractual document media types.
+      enum:
+        - application/pdf
+        - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+    DocumentStatus:
+      type: string
+      description: Closed document history state set. Finalized versions are never overwritten.
+      enum: [PENDING_UPLOAD, AVAILABLE, SUPERSEDED]
+    Sha256:
+      type: string
+      pattern: '^[A-Fa-f0-9]{64}$'
+      description: Hex-encoded SHA-256 digest. Client-supplied values require storage verification.
+    CreateDocumentUploadIntentRequest:
+      type: object
+      additionalProperties: false
+      required: [fileName, mediaType, sizeBytes, sha256]
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Display filename after server-side normalization; it is not an object-storage key.
+        mediaType:
+          $ref: '#/components/schemas/DocumentMediaType'
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: >
+            Client-declared byte size. The server validates this against its active
+            deployment-configured upload limit and reports excess values as 422
+            VALIDATION_FAILED; the limit is not a versioned wire constant.
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+    FinalizeDocumentUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [sizeBytes, sha256]
+      description: >
+        Canonical client declaration for idempotency comparison. Finalization succeeds
+        only when storage verification independently confirms both values.
+      properties:
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Subject to the active server-configured upload limit.
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+    DocumentAvailableActions:
+      type: object
+      additionalProperties: false
+      description: Backend-derived action availability for this document and actor context.
+      required: [canFinalize, canDownload]
+      properties:
+        canFinalize:
+          type: boolean
+          description: True only for the authorized initiator while the document remains PENDING_UPLOAD and unexpired.
+        canDownload:
+          type: boolean
+          description: True only when the active legal entity is a Deal participant and the immutable version is available.
+    PendingDealDocument:
+      type: object
+      additionalProperties: false
+      required: [id, dealId, fileName, mediaType, status, clientSizeBytes, clientSha256, expiresAt, createdAt, availableActions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mediaType:
+          $ref: '#/components/schemas/DocumentMediaType'
+        status:
+          const: PENDING_UPLOAD
+        clientSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        clientSha256:
+          $ref: '#/components/schemas/Sha256'
+        expiresAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DocumentAvailableActions'
+    AvailableDealDocument:
+      type: object
+      additionalProperties: false
+      required: [id, dealId, fileName, mediaType, status, verifiedSizeBytes, verifiedSha256, objectVersion, createdAt, availableAt, availableActions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mediaType:
+          $ref: '#/components/schemas/DocumentMediaType'
+        status:
+          const: AVAILABLE
+        verifiedSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Size independently verified from object storage during finalize.
+        verifiedSha256:
+          $ref: '#/components/schemas/Sha256'
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque immutable object-storage version reference pinned for download and later AI access; never an object key.
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DocumentAvailableActions'
+    HistoricalDealDocument:
+      type: object
+      additionalProperties: false
+      description: >
+        A finalized retained history version. SUPERSEDED is valid here but never for
+        the Deal currentDocument projection or a successful finalize response.
+      required: [id, dealId, fileName, mediaType, status, verifiedSizeBytes, verifiedSha256, objectVersion, createdAt, availableAt, availableActions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mediaType:
+          $ref: '#/components/schemas/DocumentMediaType'
+        status:
+          enum: [AVAILABLE, SUPERSEDED]
+        verifiedSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        verifiedSha256:
+          $ref: '#/components/schemas/Sha256'
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque immutable object-storage version reference; never an object key.
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        supersededAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/DocumentAvailableActions'
+    DealDocumentHistory:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Retained Deal document history in backend-defined stable order; never null.
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/PendingDealDocument'
+              - $ref: '#/components/schemas/HistoricalDealDocument'
+    DocumentUploadIntent:
+      type: object
+      additionalProperties: false
+      required: [document, uploadUrl, uploadHeaders, expiresAt]
+      properties:
+        document:
+          $ref: '#/components/schemas/PendingDealDocument'
+        uploadUrl:
+          type: string
+          format: uri
+          description: Short-lived presigned PUT target for direct browser transfer; never persist or treat as a document URL.
+        uploadHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Required provider-neutral PUT request headers. Values may be signed and must be sent unchanged.
+        expiresAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+    DocumentDownloadLink:
+      type: object
+      additionalProperties: false
+      required: [documentId, objectVersion, downloadUrl, expiresAt]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+        downloadUrl:
+          type: string
+          format: uri
+          description: Short-lived presigned GET link for the immutable object version; never persist or expose as a stable URL.
+        expiresAt:
+          $ref: '#/components/schemas/UtcTimestamp'
     DealLifecycleProjection:
       type: string
       description: >
@@ -1498,7 +1932,7 @@ components:
         Backend-derived action availability for the current user and active legal
         entity. Clients use this projection for presentation but the backend always
         re-authorizes mutations.
-      required: [canUpdate, canCancel, canCreateInvitation, canManageParties]
+      required: [canUpdate, canCancel, canCreateInvitation, canManageParties, canCreateDocumentUploadIntent]
       properties:
         canUpdate:
           type: boolean
@@ -1515,6 +1949,12 @@ components:
             Backend-derived party-management availability for the current user and
             active legal entity. True only for the authorized DRAFT Deal initiator;
             it does not represent consent authority or Deal activation eligibility.
+        canCreateDocumentUploadIntent:
+          type: boolean
+          description: >
+            Backend-derived document upload availability. True only for the Deal
+            initiator when its current lifecycle permits a new upload intent;
+            participant visibility does not imply this authority.
     UtcTimestamp:
       type: string
       format: date-time
@@ -1626,6 +2066,7 @@ components:
         - buyer
         - seller
         - participants
+        - currentDocument
       properties:
         id:
           type: string
@@ -1680,6 +2121,14 @@ components:
             Pending invitation recipient email is never included.
           items:
             $ref: '#/components/schemas/DealParticipant'
+        currentDocument:
+          description: >
+            Current verified contractual document, or null when no document has been
+            finalized. This is a backend-owned pointer; clients must not infer it
+            from history or document status.
+          anyOf:
+            - $ref: '#/components/schemas/AvailableDealDocument'
+            - type: 'null'
     DealPage:
       type: object
       additionalProperties: false

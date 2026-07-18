@@ -25,6 +25,7 @@ class DealRepository {
                 deal.deal_status,
                 deal.buyer_legal_entity_id,
                 deal.seller_legal_entity_id,
+                deal.current_document_id,
                 deal.initiator_legal_entity_id,
                 deal.created_by,
                 deal.created_at,
@@ -68,13 +69,14 @@ class DealRepository {
                     deal_status,
                     buyer_legal_entity_id,
                     seller_legal_entity_id,
+                    current_document_id,
                     initiator_legal_entity_id,
                     created_by,
                     created_at,
                     updated_at,
                     version
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 deal.id(),
                 deal.tenantId(),
@@ -84,6 +86,7 @@ class DealRepository {
                 deal.status().name(),
                 deal.buyerLegalEntityId(),
                 deal.sellerLegalEntityId(),
+                deal.currentDocumentId(),
                 deal.initiatorLegalEntityId(),
                 deal.createdBy(),
                 Timestamp.from(deal.createdAt()),
@@ -116,6 +119,30 @@ class DealRepository {
                         dealId)
                 .stream()
                 .findFirst();
+    }
+
+    Optional<DealRecord> findVisibleByIdForUpdate(
+            UUID legalEntityTenantId, UUID legalEntityId, UUID dealId) {
+        return jdbcTemplate.query(
+                        SELECT_VISIBLE_DEALS + " AND deal.id = ? FOR UPDATE",
+                        this::mapDeal,
+                        legalEntityId,
+                        legalEntityTenantId,
+                        dealId)
+                .stream()
+                .findFirst();
+    }
+
+    boolean repointCurrentDocument(UUID dealId, UUID documentId,
+            Instant changedAt) {
+        return jdbcTemplate.update("""
+                UPDATE deal
+                SET current_document_id = ?,
+                    current_document_status = 'AVAILABLE',
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                """, documentId, Timestamp.from(changedAt), dealId) == 1;
     }
 
     List<DealRecord> findVisiblePage(
@@ -303,6 +330,7 @@ class DealRepository {
                 DealStatus.valueOf(resultSet.getString("deal_status")),
                 resultSet.getObject("buyer_legal_entity_id", UUID.class),
                 resultSet.getObject("seller_legal_entity_id", UUID.class),
+                resultSet.getObject("current_document_id", UUID.class),
                 resultSet.getObject("initiator_legal_entity_id", UUID.class),
                 resultSet.getObject("created_by", UUID.class),
                 resultSet.getTimestamp("created_at").toInstant(),
@@ -332,6 +360,7 @@ class DealRepository {
             DealStatus status,
             UUID buyerLegalEntityId,
             UUID sellerLegalEntityId,
+            UUID currentDocumentId,
             UUID initiatorLegalEntityId,
             UUID createdBy,
             Instant createdAt,

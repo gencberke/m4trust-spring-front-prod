@@ -17,7 +17,8 @@ record DealDetail(
         DealAvailableActions availableActions,
         DealParty buyer,
         DealParty seller,
-        List<DealParticipant> participants) {
+        List<DealParticipant> participants,
+        DealCurrentDocumentQueryPort.CurrentDealDocument currentDocument) {
 
     DealDetail {
         participants = List.copyOf(participants);

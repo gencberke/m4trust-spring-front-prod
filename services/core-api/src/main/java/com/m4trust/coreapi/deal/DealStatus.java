@@ -31,6 +31,10 @@ enum DealStatus {
         return this == DRAFT || this == ACTIVE;
     }
 
+    boolean allowsDocumentUpload() {
+        return this == DRAFT || this == ACTIVE;
+    }
+
     void requireBasicFieldEditingAllowed() {
         if (!allowsBasicFieldEditing()) {
             throw new DealStateConflictException(

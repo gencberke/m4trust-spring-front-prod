@@ -28,7 +28,10 @@ Yerel erişim noktaları:
 
 Port veya yerel credential değiştirmek gerekirse `infra/.env.example` dosyasını `infra/.env` olarak kopyalayıp değerleri düzenleyin. `infra/.env` Git tarafından ignore edilir. Compose dosyası `.env` olmadan da yerel varsayılanlarla çalışır.
 
-Bu temel kurulum RabbitMQ exchange/queue veya MinIO bucket/policy oluşturmaz.
+Başlatma, `m4trust-documents` private bucket'ını da deterministik olarak oluşturur,
+object versioning'i açar. MinIO, `http://localhost:5173` için direct browser
+PUT/GET CORS kurallarını server seviyesinde uygular. Bucket ve object listing
+public değildir.
 
 ## Seed
 

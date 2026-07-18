@@ -142,6 +142,26 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/documents/upload-intents", "post"): {
+        "operationId": "createDealDocumentUploadIntent",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/documents", "get"): {
+        "operationId": "listDealDocuments",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/documents/{documentId}/finalize", "post"): {
+        "operationId": "finalizeDocumentUpload",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/documents/{documentId}/download-link", "post"): {
+        "operationId": "createDocumentDownloadLink",
+        "responses": {"200", "400", "401", "403", "404", "409"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
     ("/deals/{dealId}/invitations", "post"): {
         "operationId": "createDealInvitation",
         "responses": {"201", "400", "401", "403", "404", "409", "422"},
@@ -180,6 +200,8 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deals", "post"): "#/components/schemas/CreateDealRequest",
     ("/deals/{dealId}", "patch"): "#/components/schemas/UpdateDealRequest",
     ("/deals/{dealId}/parties", "patch"): "#/components/schemas/UpdateDealPartiesRequest",
+    ("/deals/{dealId}/documents/upload-intents", "post"): "#/components/schemas/CreateDocumentUploadIntentRequest",
+    ("/documents/{documentId}/finalize", "post"): "#/components/schemas/FinalizeDocumentUploadRequest",
     ("/deals/{dealId}/invitations", "post"): "#/components/schemas/CreateDealInvitationRequest",
     ("/deal-invitations/{invitationId}/accept", "post"): "#/components/schemas/AcceptDealInvitationRequest",
     ("/deal-invitations/{invitationId}/reject", "post"): "#/components/schemas/DealInvitationTerminalActionRequest",
@@ -200,6 +222,10 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}", "patch", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}/cancel", "post", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}/parties", "patch", "200"): "#/components/schemas/DealDetail",
+    ("/deals/{dealId}/documents/upload-intents", "post", "201"): "#/components/schemas/DocumentUploadIntent",
+    ("/deals/{dealId}/documents", "get", "200"): "#/components/schemas/DealDocumentHistory",
+    ("/documents/{documentId}/finalize", "post", "200"): "#/components/schemas/AvailableDealDocument",
+    ("/documents/{documentId}/download-link", "post", "200"): "#/components/schemas/DocumentDownloadLink",
     ("/deals/{dealId}/invitations", "post", "201"): "#/components/schemas/DealInvitation",
     ("/deals/{dealId}/invitations", "get", "200"): "#/components/schemas/DealInvitationPage",
     ("/deal-invitations/incoming", "get", "200"): "#/components/schemas/IncomingDealInvitationPage",
@@ -263,6 +289,27 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/parties", "patch", "404"): "DealOrLegalEntityNotFoundOrHidden",
     ("/deals/{dealId}/parties", "patch", "409"): "DealPartiesConflict",
     ("/deals/{dealId}/parties", "patch", "422"): "ValidationFailed",
+    ("/deals/{dealId}/documents/upload-intents", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/documents/upload-intents", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/documents/upload-intents", "post", "403"): "DealDocumentMutationForbidden",
+    ("/deals/{dealId}/documents/upload-intents", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/documents/upload-intents", "post", "409"): "DealDocumentIntentConflict",
+    ("/deals/{dealId}/documents/upload-intents", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/documents", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/documents", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/documents", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/documents", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/documents/{documentId}/finalize", "post", "400"): "MalformedRequest",
+    ("/documents/{documentId}/finalize", "post", "401"): "SessionRequired",
+    ("/documents/{documentId}/finalize", "post", "403"): "DealDocumentMutationForbidden",
+    ("/documents/{documentId}/finalize", "post", "404"): "DealDocumentNotFoundOrHidden",
+    ("/documents/{documentId}/finalize", "post", "409"): "DocumentFinalizeConflict",
+    ("/documents/{documentId}/finalize", "post", "422"): "ValidationFailed",
+    ("/documents/{documentId}/download-link", "post", "400"): "MalformedRequest",
+    ("/documents/{documentId}/download-link", "post", "401"): "SessionRequired",
+    ("/documents/{documentId}/download-link", "post", "403"): "LegalEntityAccessDenied",
+    ("/documents/{documentId}/download-link", "post", "404"): "DealDocumentNotFoundOrHidden",
+    ("/documents/{documentId}/download-link", "post", "409"): "DocumentDownloadConflict",
     ("/deals/{dealId}/invitations", "post", "400"): "MalformedRequest",
     ("/deals/{dealId}/invitations", "post", "401"): "SessionRequired",
     ("/deals/{dealId}/invitations", "post", "403"): "DealInvitationMutationForbidden",
@@ -307,6 +354,9 @@ REQUIRED_CORE_API_SCHEMAS = {
     "CreateDealInvitationRequest", "AcceptDealInvitationRequest", "DealInvitationTerminalActionRequest",
     "DealInvitationStatus", "DealInvitationAvailableActions", "DealInvitationDeal",
     "DealInvitation", "IncomingDealInvitation", "DealInvitationPage", "IncomingDealInvitationPage",
+    "DocumentMediaType", "DocumentStatus", "Sha256", "CreateDocumentUploadIntentRequest",
+    "FinalizeDocumentUploadRequest", "DocumentAvailableActions", "PendingDealDocument",
+    "AvailableDealDocument", "HistoricalDealDocument", "DealDocumentHistory", "DocumentUploadIntent", "DocumentDownloadLink",
 }
 
 
@@ -523,12 +573,12 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "COMPLETED", "CANCELLED", "ARCHIVED"]:
             failures.append("FAIL Core API DealLifecycleProjection: ADR projection set changed")
         actions = core_components.get("schemas", {}).get("DealAvailableActions", {})
-        if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties"}
-                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties"}
+        if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent"}
+                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent"}
                 or actions.get("additionalProperties") is not False
                 or any(
                     actions.get("properties", {}).get(name, {}).get("type") != "boolean"
-                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties")
+                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent")
                 )):
             failures.append("FAIL Core API DealAvailableActions: backend-derived action set changed")
         summary = core_components.get("schemas", {}).get("DealSummary", {})
@@ -566,13 +616,13 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
             failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
-        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants"}
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
         detail_buyer = detail.get("properties", {}).get("buyer", {})
         detail_seller = detail.get("properties", {}).get("seller", {})
         nullable_party = [{"$ref": "#/components/schemas/DealParty"}, {"type": "null"}]
-        if (set(detail.get("required", [])) != common_deal_fields | {"description", "buyer", "seller", "participants"}
+        if (set(detail.get("required", [])) != common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument"}
                 or set(detail.get("properties", {})) != detail_fields
                 or detail.get("additionalProperties") is not False
                 or detail_description.get("type") != ["string", "null"]
@@ -583,6 +633,43 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or detail_participants.get("items", {}).get("$ref")
                 != "#/components/schemas/DealParticipant"):
             failures.append("FAIL Core API DealDetail: party and participant-role projection changed")
+
+        create_document_intent = core_components.get("schemas", {}).get("CreateDocumentUploadIntentRequest", {})
+        finalize_document = core_components.get("schemas", {}).get("FinalizeDocumentUploadRequest", {})
+        if (set(create_document_intent.get("required", [])) != {"fileName", "mediaType", "sizeBytes", "sha256"}
+                or set(create_document_intent.get("properties", {})) != {"fileName", "mediaType", "sizeBytes", "sha256"}
+                or create_document_intent.get("additionalProperties") is not False
+                or create_document_intent.get("properties", {}).get("sizeBytes", {}).get("minimum") != 1
+                or "maximum" in create_document_intent.get("properties", {}).get("sizeBytes", {})
+                or set(finalize_document.get("required", [])) != {"sizeBytes", "sha256"}
+                or set(finalize_document.get("properties", {})) != {"sizeBytes", "sha256"}
+                or finalize_document.get("additionalProperties") is not False
+                or finalize_document.get("properties", {}).get("sizeBytes", {}).get("minimum") != 1
+                or "maximum" in finalize_document.get("properties", {}).get("sizeBytes", {})):
+            failures.append("FAIL Core API document upload requests: bounded client metadata or finalize canonical request changed")
+        if (core_components.get("schemas", {}).get("DocumentMediaType", {}).get("enum")
+                != ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+                or core_components.get("schemas", {}).get("DocumentStatus", {}).get("enum")
+                != ["PENDING_UPLOAD", "AVAILABLE", "SUPERSEDED"]):
+            failures.append("FAIL Core API document enums: initial media types or retained state set changed")
+        document_actions = core_components.get("schemas", {}).get("DocumentAvailableActions", {})
+        pending_document = core_components.get("schemas", {}).get("PendingDealDocument", {})
+        available_document = core_components.get("schemas", {}).get("AvailableDealDocument", {})
+        historical_document = core_components.get("schemas", {}).get("HistoricalDealDocument", {})
+        document_history = core_components.get("schemas", {}).get("DealDocumentHistory", {})
+        current_document = detail.get("properties", {}).get("currentDocument", {})
+        if (set(document_actions.get("required", [])) != {"canFinalize", "canDownload"}
+                or set(document_actions.get("properties", {})) != {"canFinalize", "canDownload"}
+                or pending_document.get("properties", {}).get("status", {}).get("const") != "PENDING_UPLOAD"
+                or available_document.get("properties", {}).get("status", {}).get("const") != "AVAILABLE"
+                or historical_document.get("properties", {}).get("status", {}).get("enum") != ["AVAILABLE", "SUPERSEDED"]
+                or document_history.get("properties", {}).get("items", {}).get("items", {}).get("oneOf")
+                != [{"$ref": "#/components/schemas/PendingDealDocument"}, {"$ref": "#/components/schemas/HistoricalDealDocument"}]
+                or current_document.get("anyOf")
+                != [{"$ref": "#/components/schemas/AvailableDealDocument"}, {"type": "null"}]
+                or "objectVersion" not in available_document.get("required", [])
+                or available_document.get("properties", {}).get("objectVersion", {}).get("minLength") != 1):
+            failures.append("FAIL Core API document projections: actor actions, AVAILABLE current/finalize, or immutable history changed")
         deal_page = core_components.get("schemas", {}).get("DealPage", {})
         deal_page_fields = {"items", "page", "size", "totalElements", "totalPages"}
         page_items = deal_page.get("properties", {}).get("items", {})
@@ -722,6 +809,23 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/DealId",
                 "#/components/parameters/LegalEntityContext",
             },
+            ("/deals/{dealId}/documents/upload-intents", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/documents", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/documents/{documentId}/finalize", "post"): {
+                "#/components/parameters/DocumentId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/documents/{documentId}/download-link", "post"): {
+                "#/components/parameters/DocumentId",
+                "#/components/parameters/LegalEntityContext",
+            },
             ("/deals/{dealId}/invitations", "post"): {
                 "#/components/parameters/DealId",
                 "#/components/parameters/LegalEntityContext",
@@ -786,6 +890,13 @@ def validate_contract_documents(failures: list[str]) -> None:
         if ((idempotency_key.get("name"), idempotency_key.get("in"), idempotency_key.get("required"),
                 idempotency_key.get("schema", {}).get("format")) != ("Idempotency-Key", "header", True, "uuid")):
             failures.append("FAIL Core API IdempotencyKey: required UUID header contract changed")
+        document_id = core_parameters.get("DocumentId", {})
+        if ((document_id.get("name"), document_id.get("in"), document_id.get("required"),
+                document_id.get("schema", {}).get("format")) != ("documentId", "path", True, "uuid")):
+            failures.append("FAIL Core API DocumentId: required UUID path contract changed")
+        finalize_description = core_paths.get("/documents/{documentId}/finalize", {}).get("post", {}).get("description", "")
+        if "IDEMPOTENCY_KEY_REUSED" not in finalize_description or "same canonical request" not in finalize_description:
+            failures.append("FAIL Core API document finalize: replay and different-request idempotency semantics missing")
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})

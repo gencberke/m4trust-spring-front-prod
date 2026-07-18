@@ -62,6 +62,7 @@ class DealAuditAtomicityIntegrationTest {
                     http_idempotency_record,
                     deal_invitation,
                     deal_participant,
+                    document,
                     deal,
                     audit_record,
                     legal_entity_membership,

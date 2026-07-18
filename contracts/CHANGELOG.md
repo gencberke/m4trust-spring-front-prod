@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Added the Slice 6 public Deal document contract: JSON upload intents for direct
+  private-storage PUTs, idempotent verified finalize, retained document history,
+  short-lived direct download links, and no Spring binary upload proxy.
+- Added PDF/DOCX, client SHA-256 and size declarations, pending-upload expiry,
+  independently verified available metadata, and opaque immutable object-version
+  references for pinned download and later AI access.
+- Extended Deal detail with nullable backend-owned currentDocument and actor-aware
+  document actions; participants can read/download while initiator-only upload and
+  finalize authority remains projection-derived and re-authorized server-side.
+- Added stable terminal-state, expiry, verification-mismatch, idempotency-reuse,
+  and non-disclosing document Problem Details outcomes plus focused OpenAPI checks.
 - Added the Slice 5 atomic Deal parties operation with required `expectedVersion`,
   nullable buyer/seller assignments, participant-bound validation, and stable
   stale-version, state-conflict, and semantic-validation errors.

@@ -70,6 +70,7 @@ class DealIntegrationTest {
                     http_idempotency_record,
                     deal_invitation,
                     deal_participant,
+                    document,
                     deal,
                     audit_record,
                     legal_entity_membership,
@@ -103,7 +104,7 @@ class DealIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(header().string("Location",
                         matchesPattern("/api/v1/deals/[0-9a-f-]{36}")))
-                .andExpect(jsonPath("$.*", hasSize(13)))
+                .andExpect(jsonPath("$.*", hasSize(14)))
                 .andExpect(jsonPath("$.reference")
                         .value(matchesPattern("DL-[0-9]{10}")))
                 .andExpect(jsonPath("$.title").value("Equipment Purchase"))
@@ -119,8 +120,11 @@ class DealIntegrationTest {
                         .value(true))
                 .andExpect(jsonPath("$.availableActions.canManageParties")
                         .value(true))
+                .andExpect(jsonPath("$.availableActions.canCreateDocumentUploadIntent")
+                        .value(true))
                 .andExpect(jsonPath("$.buyer").value((Object) null))
                 .andExpect(jsonPath("$.seller").value((Object) null))
+                .andExpect(jsonPath("$.currentDocument").value((Object) null))
                 .andExpect(jsonPath("$.participants", hasSize(1)))
                 .andExpect(jsonPath("$.participants[0].legalEntityId")
                         .value(owner.legalEntityId().toString()))

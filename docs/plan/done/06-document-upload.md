@@ -1,6 +1,6 @@
 # Slice 6 — Document Upload
 
-- Durum: ready
+- Durum: done (kabul: 2026-07-18)
 - Slice sırası: yol haritası 06
 - Öncül: Deal creation; sırada Slice 4–5'ten sonra
 - Ardıl: AI Document Extraction
@@ -138,12 +138,12 @@ Bunların dışında adapter detaylarını test eden geniş matris kurulmaz.
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI intent/finalize/list/download yüzeyi önce tasarlandı
-- [ ] Document migration ve same-Deal current pointer bütünlüğü uygulandı
-- [ ] Storage adapter private, immutable ve verified metadata üretiyor
-- [ ] Direct browser upload + finalize gerçek MinIO ile çalışıyor
-- [ ] Concurrent finalize tek current sonucu veriyor
-- [ ] Yetki visibility'den bağımsız uygulanıyor
-- [ ] §8 minimum testleri geçiyor ve audit aynı transaction'da
-- [ ] §7 gerçek tarayıcı akışı tamamlandı
-- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
+- [x] OpenAPI intent/finalize/list/download yüzeyi önce tasarlandı
+- [x] Document migration ve same-Deal current pointer bütünlüğü uygulandı (V11 composite FK)
+- [x] Storage adapter private, immutable ve verified metadata üretiyor (MinIO versioning)
+- [x] Direct browser upload + finalize gerçek MinIO ile çalışıyor (CORS'lu direct PUT doğrulandı)
+- [x] Concurrent finalize tek current sonucu veriyor (§8 testi + DB tek-current invariant)
+- [x] Yetki visibility'den bağımsız uygulanıyor (participant read; non-initiator mutation 403)
+- [x] §8 minimum testleri geçiyor ve audit aynı transaction'da
+- [x] §7 gerçek tarayıcı akışı tamamlandı (initiator + participant, iki oturum; §7.1–7.8)
+- [x] Contract validator, backend verify ve frontend typecheck/build yeşil

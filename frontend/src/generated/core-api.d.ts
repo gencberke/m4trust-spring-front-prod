@@ -256,6 +256,86 @@ export interface paths {
         patch: operations["updateDealParties"];
         trace?: never;
     };
+    "/deals/{dealId}/documents/upload-intents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a direct private-storage upload intent for a Deal document
+         * @description Creates a PENDING_UPLOAD document record and a short-lived presigned PUT target for direct browser-to-private-object-storage transfer. Spring never proxies document bytes. Only the immutable Deal initiator acting through its active legal entity may create an intent; a terminal Deal rejects it. The client-declared SHA-256 and size are later verified against storage and are not authoritative by themselves.
+         */
+        post: operations["createDealDocumentUploadIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Deal document history
+         * @description Returns the complete retained document history visible to every Deal participant, including PENDING_UPLOAD and SUPERSEDED records. A hidden or nonexistent Deal returns the same non-disclosing response. Document bytes are never returned; download requires a separately minted short-lived link.
+         */
+        get: operations["listDealDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{documentId}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify and finalize a pending direct document upload
+         * @description Verifies the pending object outside the database transaction and atomically marks it AVAILABLE, supersedes the previous current document, updates the Deal current-document pointer, writes audit/idempotency state, and pins the immutable storage object version. Idempotency-Key is required: the same key with the same canonical request replays the original result without another supersede; reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED. Verified storage metadata, not client declarations, determines success.
+         */
+        post: operations["finalizeDocumentUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{documentId}/download-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mint a short-lived direct download link for a verified document
+         * @description Any Deal participant may request a short-lived presigned GET link for an AVAILABLE or SUPERSEDED document. The link is pinned to the recorded immutable object version. The storage bucket remains private; the link is not a stable document URL and the backend re-authorizes every request.
+         */
+        post: operations["createDocumentDownloadLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/{dealId}/invitations": {
         parameters: {
             query?: never;
@@ -577,6 +657,130 @@ export interface components {
          */
         DealStatus: "DRAFT" | "ACTIVE" | "CANCELLED" | "COMPLETED" | "ARCHIVED";
         /**
+         * @description Initially supported contractual document media types.
+         * @enum {string}
+         */
+        DocumentMediaType: "application/pdf" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        /**
+         * @description Closed document history state set. Finalized versions are never overwritten.
+         * @enum {string}
+         */
+        DocumentStatus: "PENDING_UPLOAD" | "AVAILABLE" | "SUPERSEDED";
+        /** @description Hex-encoded SHA-256 digest. Client-supplied values require storage verification. */
+        Sha256: string;
+        CreateDocumentUploadIntentRequest: {
+            /** @description Display filename after server-side normalization; it is not an object-storage key. */
+            fileName: string;
+            mediaType: components["schemas"]["DocumentMediaType"];
+            /**
+             * Format: int64
+             * @description Client-declared byte size. The server validates this against its active deployment-configured upload limit and reports excess values as 422 VALIDATION_FAILED; the limit is not a versioned wire constant.
+             */
+            sizeBytes: number;
+            sha256: components["schemas"]["Sha256"];
+        };
+        /** @description Canonical client declaration for idempotency comparison. Finalization succeeds only when storage verification independently confirms both values. */
+        FinalizeDocumentUploadRequest: {
+            /**
+             * Format: int64
+             * @description Subject to the active server-configured upload limit.
+             */
+            sizeBytes: number;
+            sha256: components["schemas"]["Sha256"];
+        };
+        /** @description Backend-derived action availability for this document and actor context. */
+        DocumentAvailableActions: {
+            /** @description True only for the authorized initiator while the document remains PENDING_UPLOAD and unexpired. */
+            canFinalize: boolean;
+            /** @description True only when the active legal entity is a Deal participant and the immutable version is available. */
+            canDownload: boolean;
+        };
+        PendingDealDocument: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            fileName: string;
+            mediaType: components["schemas"]["DocumentMediaType"];
+            /** @constant */
+            status: "PENDING_UPLOAD";
+            /** Format: int64 */
+            clientSizeBytes: number;
+            clientSha256: components["schemas"]["Sha256"];
+            expiresAt: components["schemas"]["UtcTimestamp"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            availableActions: components["schemas"]["DocumentAvailableActions"];
+        };
+        AvailableDealDocument: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            fileName: string;
+            mediaType: components["schemas"]["DocumentMediaType"];
+            /** @constant */
+            status: "AVAILABLE";
+            /**
+             * Format: int64
+             * @description Size independently verified from object storage during finalize.
+             */
+            verifiedSizeBytes: number;
+            verifiedSha256: components["schemas"]["Sha256"];
+            /** @description Opaque immutable object-storage version reference pinned for download and later AI access; never an object key. */
+            objectVersion: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            availableAt: components["schemas"]["UtcTimestamp"];
+            availableActions: components["schemas"]["DocumentAvailableActions"];
+        };
+        /** @description A finalized retained history version. SUPERSEDED is valid here but never for the Deal currentDocument projection or a successful finalize response. */
+        HistoricalDealDocument: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            fileName: string;
+            mediaType: components["schemas"]["DocumentMediaType"];
+            /** @enum {unknown} */
+            status: "AVAILABLE" | "SUPERSEDED";
+            /** Format: int64 */
+            verifiedSizeBytes: number;
+            verifiedSha256: components["schemas"]["Sha256"];
+            /** @description Opaque immutable object-storage version reference; never an object key. */
+            objectVersion: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            availableAt: components["schemas"]["UtcTimestamp"];
+            supersededAt?: components["schemas"]["UtcTimestamp"];
+            availableActions: components["schemas"]["DocumentAvailableActions"];
+        };
+        DealDocumentHistory: {
+            /** @description Retained Deal document history in backend-defined stable order; never null. */
+            items: (components["schemas"]["PendingDealDocument"] | components["schemas"]["HistoricalDealDocument"])[];
+        };
+        DocumentUploadIntent: {
+            document: components["schemas"]["PendingDealDocument"];
+            /**
+             * Format: uri
+             * @description Short-lived presigned PUT target for direct browser transfer; never persist or treat as a document URL.
+             */
+            uploadUrl: string;
+            /** @description Required provider-neutral PUT request headers. Values may be signed and must be sent unchanged. */
+            uploadHeaders: {
+                [key: string]: string;
+            };
+            expiresAt: components["schemas"]["UtcTimestamp"];
+        };
+        DocumentDownloadLink: {
+            /** Format: uuid */
+            documentId: string;
+            objectVersion: string;
+            /**
+             * Format: uri
+             * @description Short-lived presigned GET link for the immutable object version; never persist or expose as a stable URL.
+             */
+            downloadUrl: string;
+            expiresAt: components["schemas"]["UtcTimestamp"];
+        };
+        /**
          * @description Backend-derived display lifecycle. It is not mutable authoritative state and clients must not derive it from status combinations.
          * @enum {string}
          */
@@ -589,6 +793,8 @@ export interface components {
             canCreateInvitation: boolean;
             /** @description Backend-derived party-management availability for the current user and active legal entity. True only for the authorized DRAFT Deal initiator; it does not represent consent authority or Deal activation eligibility. */
             canManageParties: boolean;
+            /** @description Backend-derived document upload availability. True only for the Deal initiator when its current lifecycle permits a new upload intent; participant visibility does not imply this authority. */
+            canCreateDocumentUploadIntent: boolean;
         };
         /**
          * Format: date-time
@@ -650,6 +856,8 @@ export interface components {
             seller: components["schemas"]["DealParty"] | null;
             /** @description Legal entities with visibility participation in this Deal; never null. Pending invitation recipient email is never included. */
             participants: components["schemas"]["DealParticipant"][];
+            /** @description Current verified contractual document, or null when no document has been finalized. This is a backend-owned pointer; clients must not infer it from history or document status. */
+            currentDocument: components["schemas"]["AvailableDealDocument"] | null;
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -825,6 +1033,51 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active entity is not the immutable Deal initiator authorized to create/finalize documents (DEAL_DOCUMENT_MUTATION_FORBIDDEN). Participant visibility alone never grants document mutation authority. */
+        DealDocumentMutationForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The Deal is terminal and cannot accept an upload intent; Problem Details code is DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED. */
+        DealDocumentIntentConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The document does not exist, does not belong to a Deal visible to the active legal entity, or its owning Deal is hidden from a non-participant; all cases use DEAL_DOCUMENT_NOT_FOUND and do not disclose document existence. */
+        DealDocumentNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The pending upload expired (DOCUMENT_UPLOAD_EXPIRED), is no longer pending (DOCUMENT_UPLOAD_STATE_CONFLICT), verified storage size or SHA-256 differs from the canonical client request (DOCUMENT_VERIFICATION_FAILED), or the Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        DocumentFinalizeConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The document is PENDING_UPLOAD, expired, or otherwise lacks a verified immutable object version; Problem Details code is DOCUMENT_DOWNLOAD_NOT_AVAILABLE. */
+        DocumentDownloadConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
         /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is not the DRAFT Deal initiator for this mutation (DEAL_INVITATION_FORBIDDEN). */
         DealInvitationMutationForbidden: {
             headers: {
@@ -907,7 +1160,9 @@ export interface components {
         DealId: string;
         /** @description Public UUID of the requested Deal invitation. */
         InvitationId: string;
-        /** @description UUID key supplied by the client for a single invitation-create intent. Keep the same key when retrying the same canonical request; never use it for a different request. */
+        /** @description Public UUID of the requested Deal document. */
+        DocumentId: string;
+        /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
         IdempotencyKey: string;
         /** @description Optional exact Deal status filter. */
         DealStatusFilter: components["schemas"]["DealStatus"];
@@ -1367,6 +1622,143 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    createDealDocumentUploadIntent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDocumentUploadIntentRequest"];
+            };
+        };
+        responses: {
+            /** @description PENDING_UPLOAD document and short-lived direct PUT target created. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the pending document resource. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentUploadIntent"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealDocumentMutationForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["DealDocumentIntentConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listDealDocuments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document history visible to the active Deal participant; items is never null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDocumentHistory"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+        };
+    };
+    finalizeDocumentUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal document. */
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeDocumentUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Verified document finalized; replay of the same idempotent request returns this original result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailableDealDocument"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealDocumentMutationForbidden"];
+            404: components["responses"]["DealDocumentNotFoundOrHidden"];
+            409: components["responses"]["DocumentFinalizeConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createDocumentDownloadLink: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal document. */
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short-lived direct download link for the immutable document version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDownloadLink"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealDocumentNotFoundOrHidden"];
+            409: components["responses"]["DocumentDownloadConflict"];
+        };
+    };
     listDealInvitations: {
         parameters: {
             query?: {
@@ -1409,7 +1801,7 @@ export interface operations {
             header: {
                 /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
                 "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
-                /** @description UUID key supplied by the client for a single invitation-create intent. Keep the same key when retrying the same canonical request; never use it for a different request. */
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
             };
             path: {
