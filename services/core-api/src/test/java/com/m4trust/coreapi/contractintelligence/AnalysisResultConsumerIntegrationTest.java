@@ -76,7 +76,7 @@ class AnalysisResultConsumerIntegrationTest {
         UUID third=UUID.randomUUID(); insertJob(third,AnalysisJobStatus.QUEUED);
         assertThrows(AnalysisResultConsumer.IntegrationViolation.class,()->consumer.consume(json(completed(UUID.randomUUID(),third,"b".repeat(64)))));
         assertEquals("QUEUED",jdbc.queryForObject("SELECT status FROM contract_intelligence_analysis_job WHERE id=?",String.class,third));
-        assertEquals(2,count("integration_inbox_event"));
+        assertEquals(3,count("integration_inbox_event"));
     }
 
     @Test void failedAndAuditFailureAreAtomic() throws Exception {
@@ -96,7 +96,11 @@ class AnalysisResultConsumerIntegrationTest {
     private int count(String table){return jdbc.queryForObject("SELECT count(*) FROM "+table,Integer.class);}
     private String json(Map<String,Object> value)throws Exception{return mapper.writeValueAsString(value);}
     private Map<String,Object> completed(UUID event,UUID id,String hash){Map<String,Object> r=new LinkedHashMap<>();r.put("document",Map.of("detectedMediaType","application/pdf","detectedLanguage","tr","pageCount",1,"textExtractionMethod","DIGITAL_PDF","contentSha256",hash));r.put("parties",List.of());r.put("rules",List.of(Map.of("ruleReference","r","category","OTHER","title","t","description","d","structuredValue",Map.of("type","TEXT","value","v"),"confidence",0.5,"sourceReferences",List.of(),"legalBasis",Map.of("source","tbk-6098","articleNo","1"))));r.put("deliveryRequirements",List.of());r.put("summary",Map.of("requiresManualReview",false,"reviewReasons",List.of()));return envelope(event,id,"ai.job.completed.v1",Map.of("result",r,"technicalMetadata",Map.of("pipelineVersion","1","durationMs",0),"warnings",List.of()));}
-    private Map<String,Object> failed(UUID event,UUID id){return envelope(event,id,"ai.job.failed.v1",Map.of("error",Map.of("category","RETRYABLE_TECHNICAL","code","MODEL_PROVIDER_TIMEOUT","message","safe","retryRecommended",true,"details",null),"attempt",Map.of("attemptNumber",1,"maxAttempts",1),"technicalMetadata",Map.of("pipelineVersion","1","durationMs",0)));}
+    private Map<String,Object> failed(UUID event,UUID id){
+        Map<String,Object> error=new LinkedHashMap<>(); error.put("category","RETRYABLE_TECHNICAL"); error.put("code","MODEL_PROVIDER_TIMEOUT"); error.put("message","safe"); error.put("retryRecommended",true); error.put("details",null);
+        Map<String,Object> payload=new LinkedHashMap<>(); payload.put("error",error); payload.put("attempt",Map.of("attemptNumber",1,"maxAttempts",1)); payload.put("technicalMetadata",Map.of("pipelineVersion","1","durationMs",0));
+        return envelope(event,id,"ai.job.failed.v1",payload);
+    }
     private Map<String,Object> envelope(UUID event,UUID id,String type,Object payload){Map<String,Object> e=new LinkedHashMap<>();e.put("eventId",event.toString());e.put("eventType",type);e.put("schemaVersion","1.0.0");e.put("occurredAt","2026-07-19T00:00:00Z");e.put("correlationId",UUID.randomUUID().toString());e.put("causationId",null);e.put("jobId",id.toString());e.put("jobType","DOCUMENT_EXTRACTION");e.put("tenantId",tenant.toString());e.put("transactionId",deal.toString());e.put("subjectId",document.toString());e.put("idempotencyKey","k");e.put("producer",Map.of("service","worker","version","1.0.0"));e.put("payload",payload);return e;}
 
     @TestConfiguration(proxyBeanMethods = false)
