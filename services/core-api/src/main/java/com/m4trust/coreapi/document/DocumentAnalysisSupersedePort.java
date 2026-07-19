@@ -1,9 +1,9 @@
-package com.m4trust.coreapi.contractintelligence;
+package com.m4trust.coreapi.document;
 
 import java.time.Instant;
 import java.util.UUID;
 
-/** Narrow document-to-analysis boundary; document code never accesses analysis storage. */
+/** Contract-intelligence capability required when a document version is replaced. */
 public interface DocumentAnalysisSupersedePort {
 
     void supersedeForDocument(UUID documentId, UUID tenantId, UUID actorUserId,

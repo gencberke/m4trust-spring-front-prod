@@ -7,7 +7,6 @@ import java.util.UUID;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
-import com.m4trust.coreapi.contractintelligence.AnalysisJobStatus;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.RequestedOperation;
@@ -342,8 +341,7 @@ class DealService {
         UUID documentId = deal.currentDocumentId();
         boolean current = documentId != null && currentDocumentQueries.findAvailable(documentId).isPresent();
         String status = current ? analysisProjections.summary(documentId).status() : "NOT_REQUESTED";
-        return DealLifecycleProjectionCalculator.calculate(deal.status(),
-                AnalysisJobStatus.valueOf(status), current);
+        return DealLifecycleProjectionCalculator.calculate(deal.status(), status, current);
     }
 
     private List<DealParticipant> participants(Deal deal) {

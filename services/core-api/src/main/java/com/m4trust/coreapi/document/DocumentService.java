@@ -13,7 +13,6 @@ import java.util.UUID;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.deal.DealDocumentMutationPort;
-import com.m4trust.coreapi.contractintelligence.DocumentAnalysisSupersedePort;
 import com.m4trust.coreapi.deal.DealDocumentMutationPort.LockedDealDocumentTarget;
 import com.m4trust.coreapi.deal.DealDocumentReadPort;
 import com.m4trust.coreapi.deal.DealDocumentReadPort.DealDocumentVisibility;

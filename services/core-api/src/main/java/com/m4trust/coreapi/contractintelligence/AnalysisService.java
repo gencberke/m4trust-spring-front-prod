@@ -15,6 +15,7 @@ import com.m4trust.coreapi.deal.DealAnalysisMutationPort;
 import com.m4trust.coreapi.deal.DealAnalysisProjectionPort;
 import com.m4trust.coreapi.deal.DealAnalysisReadPort;
 import com.m4trust.coreapi.document.DocumentAnalysisInputPort;
+import com.m4trust.coreapi.document.DocumentAnalysisSupersedePort;
 import com.m4trust.coreapi.document.DocumentObjectStorage;
 import com.m4trust.coreapi.idempotency.IdempotencyClaim;
 import com.m4trust.coreapi.idempotency.IdempotencyRequest;

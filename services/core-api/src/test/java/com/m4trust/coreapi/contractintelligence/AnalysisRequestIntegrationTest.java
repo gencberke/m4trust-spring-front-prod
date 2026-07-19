@@ -86,7 +86,9 @@ class AnalysisRequestIntegrationTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute("""
-                TRUNCATE TABLE integration_outbox_event, contract_intelligence_analysis_job,
+                TRUNCATE TABLE integration_outbox_event,
+                    contract_intelligence_extraction_result_version,
+                    contract_intelligence_analysis_job,
                     http_idempotency_record, audit_record, deal_participant, document, deal,
                     legal_entity_membership, legal_entity, tenant_user, tenant, identity_user CASCADE
                 """);
