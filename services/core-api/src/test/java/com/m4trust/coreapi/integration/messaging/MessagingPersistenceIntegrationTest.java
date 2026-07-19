@@ -47,7 +47,9 @@ class MessagingPersistenceIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbcTemplate.execute("TRUNCATE TABLE integration_outbox_event, integration_inbox_event, tenant");
+        jdbcTemplate.update("DELETE FROM integration_outbox_event");
+        jdbcTemplate.update("DELETE FROM integration_inbox_event");
+        jdbcTemplate.update("DELETE FROM tenant");
     }
 
     @Test
