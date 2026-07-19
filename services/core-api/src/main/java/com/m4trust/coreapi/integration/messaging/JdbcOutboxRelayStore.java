@@ -2,6 +2,7 @@ package com.m4trust.coreapi.integration.messaging;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -47,8 +48,8 @@ class JdbcOutboxRelayStore {
                     WHERE event.id = candidates.id
                     RETURNING event.id, event.claim_token, event.exchange_name,
                               event.routing_key, event.payload::text
-                    """, (resultSet, rowNum) -> map(resultSet), now, reclaimBefore, batchSize,
-                    now, claimToken);
+                    """, (resultSet, rowNum) -> map(resultSet), Timestamp.from(now),
+                    Timestamp.from(reclaimBefore), batchSize, Timestamp.from(now), claimToken);
         });
     }
 
@@ -57,7 +58,7 @@ class JdbcOutboxRelayStore {
                 UPDATE integration_outbox_event
                 SET published_at = ?, claim_token = NULL, claimed_at = NULL
                 WHERE id = ? AND claim_token = ? AND published_at IS NULL
-                """, clock.instant(), claim.id(), claim.claimToken()));
+                """, Timestamp.from(clock.instant()), claim.id(), claim.claimToken()));
     }
 
     private static OutboxClaim map(ResultSet resultSet) throws SQLException {

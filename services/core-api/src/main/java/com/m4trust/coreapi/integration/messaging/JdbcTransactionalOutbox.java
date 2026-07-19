@@ -2,6 +2,7 @@ package com.m4trust.coreapi.integration.messaging;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.sql.Timestamp;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -35,7 +36,8 @@ class JdbcTransactionalOutbox implements TransactionalOutbox {
                 INSERT INTO integration_outbox_event (
                     id, event_type, exchange_name, routing_key, payload, created_at, available_at
                 ) VALUES (?, ?, ?, ?, CAST(? AS jsonb), ?, ?)
-                """, id, eventType, exchangeName, routingKey, payload, now, now);
+                """, id, eventType, exchangeName, routingKey, payload,
+                Timestamp.from(now), Timestamp.from(now));
         return id;
     }
 

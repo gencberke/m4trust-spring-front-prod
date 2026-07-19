@@ -1,6 +1,7 @@
 package com.m4trust.coreapi.integration.messaging;
 
 import java.time.Clock;
+import java.sql.Timestamp;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -31,6 +32,6 @@ class JdbcTransactionalInbox implements TransactionalInbox {
                 INSERT INTO integration_inbox_event (event_id, event_type, received_at)
                 VALUES (?, ?, ?)
                 ON CONFLICT (event_id) DO NOTHING
-                """, eventId, eventType, clock.instant()) == 1;
+                """, eventId, eventType, Timestamp.from(clock.instant())) == 1;
     }
 }

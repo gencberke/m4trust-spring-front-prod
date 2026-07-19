@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
+import java.time.Duration;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +40,9 @@ class MessagingPersistenceIntegrationTest {
 
     @Autowired
     private TransactionalInbox inbox;
+
+    @Autowired
+    private JdbcOutboxRelayStore relayStore;
 
     @Autowired
     private TransactionTemplate transactions;
@@ -97,6 +102,23 @@ class MessagingPersistenceIntegrationTest {
 
         assertEquals(1, count("tenant"));
         assertEquals(1, count("integration_inbox_event"));
+    }
+
+    @Test
+    void claimedOutboxEventCanBeMarkedPublished() {
+        UUID eventId = transactions.execute(status -> outbox.enqueue(
+                "ai.document-extraction.requested.v1", "m4trust.ai.commands",
+                "ai.document-extraction.requested.v1", "{}"));
+
+        List<OutboxClaim> claims = relayStore.claimAvailable(10, Duration.ofMinutes(1));
+
+        assertEquals(1, claims.size());
+        assertEquals(eventId, claims.getFirst().id());
+        relayStore.markPublished(claims.getFirst());
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM integration_outbox_event
+                WHERE id = ? AND published_at IS NOT NULL
+                """, Integer.class, eventId));
     }
 
     private int count(String table) {
