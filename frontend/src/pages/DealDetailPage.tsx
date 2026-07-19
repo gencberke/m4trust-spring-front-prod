@@ -14,6 +14,7 @@ import {
   useParams,
 } from "react-router";
 
+import { DealContractAnalysis } from "../features/analysis/DealContractAnalysis";
 import {
   cancelDeal,
   updateDeal,
@@ -667,6 +668,11 @@ export function DealDetailPage() {
         </div>
 
         <DealDocumentManagement
+          deal={deal}
+          legalEntityId={selectedLegalEntityId}
+        />
+
+        <DealContractAnalysis
           deal={deal}
           legalEntityId={selectedLegalEntityId}
         />
