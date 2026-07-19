@@ -744,7 +744,9 @@ function ValueFields({
       ? "structuredValue.amountMinor"
       : value.type === "PERCENTAGE"
         ? "structuredValue.basisPoints"
-        : "structuredValue.value";
+        : value.type === "DURATION"
+          ? "structuredValue.valueSeconds"
+          : "structuredValue.value";
   const primaryError = errors[primaryErrorField];
   const primaryErrorId = `${idPrefix}-value-error`;
   if (value.type === "BOOLEAN")
