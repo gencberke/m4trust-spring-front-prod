@@ -54,6 +54,9 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | ACTIVE cancel | Tek taraflı doğrudan cancel yok; mutual buyer+seller veya casework kararı | ADR-009 §2.5 |
 | Yüksek riskli onay | İlk rol modelinde ratification/cancellation approval yalnız `ADMIN` | ADR-009 §2.6 |
 | Ratified değişiklik | Package mutation yok; yeni version + yeni ratification | ADR-003 §11, §20; ADR-009 §2.4 |
+| Ratification commercial terms | `amountMinor` + `currency`, explicit teyit, dedicated immutable snapshot, RFC 8785 hash | ADR-010 §2.1 |
+| Funding V1 | ACTIVE Deal, tek plan/unit, buyer ADMIN, sandbox/polling-first, async `202 + Location` | ADR-010 §2.2–§2.5 |
+| Unknown payment | Failure veya yeni charge değil; aynı operation için reconciliation | ADR-003 §21; ADR-010 §2.3–§2.4 |
 | Transaction | Mutation + audit + outbox aynı PostgreSQL transaction | ADR-003 §24 |
 | External çağrı | DB transaction açıkken yapılmaz | ADR-003 §24 |
 | Concurrency | Mutable aggregate `version`; sessiz last-write-wins yasak | ADR-003 §25 |
@@ -104,7 +107,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | invitation | ADR-008 §2.7; ADR-009 §2.1–2.2 | Kabul ticari rıza değildir |
 | participant / cross-tenant | ADR-008; ADR-009 §2.2 | Visibility ≠ mutation authority |
 | buyer / seller | ADR-003 §7, §20; ADR-009 §2.3 | Aynı package sürümünün gerekli tarafları |
-| ratification | ADR-003 §11, §20; ADR-009 §2.3–2.6 | ESKALASYON |
+| ratification | ADR-003 §11, §20; ADR-009 §2.3–2.6; ADR-010 §2.1 | Onaylı Slice 10 scope'u bağlayıcı; sapma ESKALASYON |
 | authorization / yetki | ADR-003 §28; ADR-005 §21; ADR-009 | Operation bazlı, application katmanında |
 | Deal state / lifecycle | ADR-003 §8–9, §16; ADR-009 | Projection authoritative state değildir |
 | dispute / casework | ADR-003 §15; ADR-009 §2.5 | ACTIVE cancellation için yetkili resolution yolu |
@@ -116,6 +119,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | public OpenAPI | ADR-006 §42–48 | Implementasyondan önce |
 | error / Problem Details | ADR-006 §13–20 | Stable code |
 | money / percentage | ADR-003 §21, §27; ADR-006 §28–29 | integer |
+| payment / funding | ADR-003 §12, §21; ADR-010 | Onaylı Slice 11 sandbox scope'u bağlayıcı; gerçek provider/sapma ESKALASYON |
 | object storage | ADR-001 §6; ADR-007 §14 | Private, presigned |
 | document upload | ADR-001 §6; ADR-006 §49–50 | Spring upload binary proxy'si değil |
 | RabbitMQ / schema | ADR-002 §5–6, §15, §25 | Contract süreci |
@@ -154,10 +158,13 @@ veya açık kullanıcı-scoped context kullan; endpoint'e kopya kontrol yazma.
 
 ## Katman 3 — Eskalasyon Kuralları
 
-Implementasyondan önce dur ve planner/insana çık:
+Implementasyondan önce dur ve planner/insana çık. İstisna: exact mutation veya
+contract yüzeyi, insan-onaylı güncel bir `docs/plan/ready/` planında açıkça
+tanımlanmış ve ilgili ADR kararı kabul edilmişse implementer o sınırlar içinde
+ilerler; kapsam sapması yine eskalasyondur.
 
 1. Payment, funding, settlement, ratification veya ACTIVE cancellation mutation'ı.
-2. `contracts/` altında değişiklik.
+2. `contracts/` altında, onaylı ready planın tarif ettiği yüzey dışındaki değişiklik.
 3. İki ADR çelişiyor görünüyorsa.
 4. Cevap hiçbir ADR'de yok ve birden fazla modülü etkiliyorsa.
 5. İhtiyaç FORBIDDEN listesine takılıyorsa.
@@ -194,6 +201,7 @@ Implementasyondan önce dur ve planner/insana çık:
 | ADR-007 | Deployment, migration, secrets, health ve rollback |
 | ADR-008 | Cross-tenant participant tenant/visibility modeli |
 | ADR-009 | Deal initiator, commitment, mutual ratification ve ACTIVE cancellation consent |
+| ADR-010 | Ratification commercial terms ve provider-bağımsız funding/payment foundation |
 
 ## Reading rules
 

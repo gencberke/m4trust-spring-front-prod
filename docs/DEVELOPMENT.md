@@ -33,6 +33,9 @@ Bileşen rehberleri:
 - [Tamamlanmış Slice 6 planı](plan/done/06-document-upload.md)
 - [Tamamlanmış Slice 8 planı](plan/done/08-ai-document-extraction.md)
 - [Paralel yürütülen Slice 7 staging planı](plan/ready/07-staging-deployment.md)
+- [Hazır Slice 9 manual review planı](plan/ready/09-manual-review-and-ruleset.md)
+- [Hazır Slice 10 ratification planı](plan/ready/10-ratification.md)
+- [Hazır Slice 11 funding foundation planı](plan/ready/11-funding-and-payment.md)
 
 ## Slice 8 yerel analiz akışı
 
