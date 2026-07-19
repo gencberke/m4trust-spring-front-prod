@@ -162,6 +162,26 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"202", "400", "401", "403", "404", "409"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/extraction-review", "get"): {
+        "operationId": "getDealExtractionReview",
+        "responses": {"200", "400", "401", "403", "404", "409"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/extraction-review/accept", "post"): {
+        "operationId": "acceptDealExtractionReview",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/rule-set-versions", "get"): {
+        "operationId": "listDealRuleSetVersions",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/rule-set-versions/{ruleSetVersionId}", "get"): {
+        "operationId": "getDealRuleSetVersion",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
     ("/documents/{documentId}/finalize", "post"): {
         "operationId": "finalizeDocumentUpload",
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
@@ -212,6 +232,7 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deals/{dealId}/parties", "patch"): "#/components/schemas/UpdateDealPartiesRequest",
     ("/deals/{dealId}/documents/upload-intents", "post"): "#/components/schemas/CreateDocumentUploadIntentRequest",
     ("/documents/{documentId}/finalize", "post"): "#/components/schemas/FinalizeDocumentUploadRequest",
+    ("/deals/{dealId}/extraction-review/accept", "post"): "#/components/schemas/AcceptExtractionReviewRequest",
     ("/deals/{dealId}/invitations", "post"): "#/components/schemas/CreateDealInvitationRequest",
     ("/deal-invitations/{invitationId}/accept", "post"): "#/components/schemas/AcceptDealInvitationRequest",
     ("/deal-invitations/{invitationId}/reject", "post"): "#/components/schemas/DealInvitationTerminalActionRequest",
@@ -236,6 +257,10 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}/documents", "get", "200"): "#/components/schemas/DealDocumentHistory",
     ("/deals/{dealId}/document-analysis", "get", "200"): "#/components/schemas/DealDocumentAnalysis",
     ("/deals/{dealId}/document-analysis", "post", "202"): "#/components/schemas/DealDocumentAnalysis",
+    ("/deals/{dealId}/extraction-review", "get", "200"): "#/components/schemas/DealExtractionReview",
+    ("/deals/{dealId}/extraction-review/accept", "post", "201"): "#/components/schemas/RuleSetVersion",
+    ("/deals/{dealId}/rule-set-versions", "get", "200"): "#/components/schemas/RuleSetVersionHistory",
+    ("/deals/{dealId}/rule-set-versions/{ruleSetVersionId}", "get", "200"): "#/components/schemas/RuleSetVersion",
     ("/documents/{documentId}/finalize", "post", "200"): "#/components/schemas/AvailableDealDocument",
     ("/documents/{documentId}/download-link", "post", "200"): "#/components/schemas/DocumentDownloadLink",
     ("/deals/{dealId}/invitations", "post", "201"): "#/components/schemas/DealInvitation",
@@ -320,6 +345,25 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/document-analysis", "post", "403"): "DealAnalysisRequestForbidden",
     ("/deals/{dealId}/document-analysis", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
     ("/deals/{dealId}/document-analysis", "post", "409"): "DealDocumentAnalysisRequestConflict",
+    ("/deals/{dealId}/extraction-review", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/extraction-review", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/extraction-review", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/extraction-review", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/extraction-review", "get", "409"): "DealReviewConflict",
+    ("/deals/{dealId}/extraction-review/accept", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/extraction-review/accept", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/extraction-review/accept", "post", "403"): "DealReviewAcceptanceForbidden",
+    ("/deals/{dealId}/extraction-review/accept", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/extraction-review/accept", "post", "409"): "DealReviewAcceptanceConflict",
+    ("/deals/{dealId}/extraction-review/accept", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/rule-set-versions", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/rule-set-versions", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/rule-set-versions", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/rule-set-versions", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/rule-set-versions/{ruleSetVersionId}", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/rule-set-versions/{ruleSetVersionId}", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/rule-set-versions/{ruleSetVersionId}", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/rule-set-versions/{ruleSetVersionId}", "get", "404"): "RuleSetVersionNotFoundOrHidden",
     ("/documents/{documentId}/finalize", "post", "400"): "MalformedRequest",
     ("/documents/{documentId}/finalize", "post", "401"): "SessionRequired",
     ("/documents/{documentId}/finalize", "post", "403"): "DealDocumentMutationForbidden",
@@ -382,6 +426,8 @@ REQUIRED_CORE_API_SCHEMAS = {
     "ExtractionSourceReference", "ExtractedParty", "ExtractedRuleValue", "AdvisoryLegalBasis",
     "ExtractedRule", "ExtractedDeliveryRequirement", "DocumentAnalysisResultSummary",
     "DocumentAnalysisResult", "DealDocumentAnalysis",
+    "DealExtractionReview", "ReviewRuleDecision", "KeptRuleDecision", "ModifiedRuleDecision", "ExcludedRuleDecision", "AddedRuleDecision", "AcceptExtractionReviewRequest",
+    "RuleCategory", "RuleLegalBasisProvenance", "RuleSetRule", "RuleSetVersionSummary", "RuleSetVersion", "RuleSetVersionHistory",
 }
 
 
@@ -599,11 +645,11 @@ def validate_contract_documents(failures: list[str]) -> None:
             failures.append("FAIL Core API DealLifecycleProjection: ADR projection set changed")
         actions = core_components.get("schemas", {}).get("DealAvailableActions", {})
         if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
-                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
+                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis", "canReviewExtraction"}
                 or actions.get("additionalProperties") is not False
                 or any(
                     actions.get("properties", {}).get(name, {}).get("type") != "boolean"
-                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis")
+                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis", "canReviewExtraction")
                 )):
             failures.append("FAIL Core API DealAvailableActions: backend-derived action set changed")
         summary = core_components.get("schemas", {}).get("DealSummary", {})
@@ -641,7 +687,7 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
             failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
-        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis"}
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
         detail_buyer = detail.get("properties", {}).get("buyer", {})
@@ -656,14 +702,16 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or detail_seller.get("anyOf") != nullable_party
                 or detail_participants.get("type") != "array"
                 or detail_participants.get("items", {}).get("$ref")
-                != "#/components/schemas/DealParticipant"):
+                != "#/components/schemas/DealParticipant"
+                or detail.get("properties", {}).get("currentRuleSet", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/RuleSetVersionSummary"}, {"type": "null"}]):
             failures.append("FAIL Core API DealDetail: party and participant-role projection changed")
 
         analysis_status = core_components.get("schemas", {}).get("DocumentAnalysisStatus", {})
         analysis_summary = core_components.get("schemas", {}).get("DealDocumentAnalysisSummary", {})
         analysis = core_components.get("schemas", {}).get("DealDocumentAnalysis", {})
         analysis_conflict = core_components.get("responses", {}).get("DealDocumentAnalysisRequestConflict", {})
-        if (analysis_status.get("enum") != ["NOT_REQUESTED", "QUEUED", "PROCESSING", "REVIEW_REQUIRED", "FAILED"]
+        if (analysis_status.get("enum") != ["NOT_REQUESTED", "QUEUED", "PROCESSING", "REVIEW_REQUIRED", "ACCEPTED", "FAILED"]
                 or set(analysis_summary.get("required", [])) != {"currentDocumentId", "status", "requestedAt", "processingStartedAt", "completedAt", "failedAt", "failure"}
                 or analysis.get("properties", {}).get("result", {}).get("anyOf")
                 != [{"$ref": "#/components/schemas/DocumentAnalysisResult"}, {"type": "null"}]
@@ -671,6 +719,27 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE" not in analysis_conflict.get("description", "")
                 or "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS" not in analysis_conflict.get("description", "")):
             failures.append("FAIL Core API document analysis: state, result, or stable conflict codes changed")
+
+        review_request = core_components.get("schemas", {}).get("AcceptExtractionReviewRequest", {})
+        review_decision = core_components.get("schemas", {}).get("ReviewRuleDecision", {})
+        rule_set = core_components.get("schemas", {}).get("RuleSetVersion", {})
+        review_conflict = core_components.get("responses", {}).get("DealReviewAcceptanceConflict", {})
+        if (set(review_request.get("required", [])) != {"analysisId", "expectedVersion", "decisions"}
+                or set(review_request.get("properties", {})) != {"analysisId", "expectedVersion", "decisions"}
+                or review_request.get("additionalProperties") is not False
+                or review_request.get("properties", {}).get("analysisId", {}).get("format") != "uuid"
+                or review_request.get("properties", {}).get("expectedVersion", {}).get("minimum") != 0
+                or review_request.get("properties", {}).get("decisions", {}).get("items", {}).get("$ref")
+                != "#/components/schemas/ReviewRuleDecision"
+                or review_decision.get("discriminator", {}).get("propertyName") != "decision"
+                or set(review_decision.get("discriminator", {}).get("mapping", {})) != {"KEPT", "MODIFIED", "EXCLUDED", "ADDED"}
+                or set(rule_set.get("required", [])) != {"id", "version", "sourceAnalysisId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount", "rules", "excludedRuleReferences"}
+                or set(rule_set.get("properties", {})) != {"id", "version", "sourceAnalysisId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount", "rules", "excludedRuleReferences"}
+                or rule_set.get("additionalProperties") is not False
+                or "DEAL_STALE_VERSION" not in review_conflict.get("description", "")
+                or "DEAL_STATE_CONFLICT" not in review_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in review_conflict.get("description", "")):
+            failures.append("FAIL Core API Slice 9 review acceptance: decisions, immutable version, or stable conflicts changed")
 
         create_document_intent = core_components.get("schemas", {}).get("CreateDocumentUploadIntentRequest", {})
         finalize_document = core_components.get("schemas", {}).get("FinalizeDocumentUploadRequest", {})
@@ -864,6 +933,24 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/LegalEntityContext",
                 "#/components/parameters/IdempotencyKey",
             },
+            ("/deals/{dealId}/extraction-review", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/extraction-review/accept", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/rule-set-versions", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/rule-set-versions/{ruleSetVersionId}", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/RuleSetVersionId",
+                "#/components/parameters/LegalEntityContext",
+            },
             ("/documents/{documentId}/finalize", "post"): {
                 "#/components/parameters/DocumentId",
                 "#/components/parameters/LegalEntityContext",
@@ -941,9 +1028,20 @@ def validate_contract_documents(failures: list[str]) -> None:
         if ((document_id.get("name"), document_id.get("in"), document_id.get("required"),
                 document_id.get("schema", {}).get("format")) != ("documentId", "path", True, "uuid")):
             failures.append("FAIL Core API DocumentId: required UUID path contract changed")
+        rule_set_version_id = core_parameters.get("RuleSetVersionId", {})
+        if ((rule_set_version_id.get("name"), rule_set_version_id.get("in"), rule_set_version_id.get("required"),
+                rule_set_version_id.get("schema", {}).get("format")) != ("ruleSetVersionId", "path", True, "uuid")):
+            failures.append("FAIL Core API RuleSetVersionId: required UUID path contract changed")
         finalize_description = core_paths.get("/documents/{documentId}/finalize", {}).get("post", {}).get("description", "")
         if "IDEMPOTENCY_KEY_REUSED" not in finalize_description or "same canonical request" not in finalize_description:
             failures.append("FAIL Core API document finalize: replay and different-request idempotency semantics missing")
+        review_accept_description = core_paths.get("/deals/{dealId}/extraction-review/accept", {}).get("post", {}).get("description", "")
+        review_accept_location = (core_paths.get("/deals/{dealId}/extraction-review/accept", {}).get("post", {}).get("responses", {})
+                .get("201", {}).get("headers", {}).get("Location", {}))
+        if ("IDEMPOTENCY_KEY_REUSED" not in review_accept_description
+                or "current REVIEW_REQUIRED analysis" not in review_accept_description
+                or review_accept_location.get("schema", {}).get("format") != "uri-reference"):
+            failures.append("FAIL Core API review acceptance: idempotency, target-state, or 201 Location contract changed")
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})

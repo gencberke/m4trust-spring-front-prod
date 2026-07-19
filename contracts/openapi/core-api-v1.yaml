@@ -21,6 +21,8 @@ tags:
     description: Direct-to-private-storage contractual document upload and participant read operations.
   - name: Deal Analysis
     description: Initiator-requested asynchronous analysis of a Deal's current AVAILABLE document and participant read projections.
+  - name: Deal Rule Sets
+    description: Participant-readable manual extraction review and immutable accepted rule-set history.
 paths:
   /auth/register:
     post:
@@ -653,6 +655,145 @@ paths:
           $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
         '409':
           $ref: '#/components/responses/DealDocumentAnalysisRequestConflict'
+  /deals/{dealId}/extraction-review:
+    get:
+      operationId: getDealExtractionReview
+      tags: [Deal Rule Sets]
+      summary: Get the participant-readable current extraction review projection
+      description: >
+        Returns the canonical extracted rules and their review input for the current
+        REVIEW_REQUIRED analysis to every Deal participant. This is review material,
+        not ratification or contractual consent. A visible Deal without a current
+        reviewable analysis returns 409 DEAL_STATE_CONFLICT; a hidden Deal remains
+        non-disclosing.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Current review projection visible to the active Deal participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealExtractionReview'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealReviewConflict'
+  /deals/{dealId}/extraction-review/accept:
+    post:
+      operationId: acceptDealExtractionReview
+      tags: [Deal Rule Sets]
+      summary: Accept a reviewed extraction as an immutable rule-set version
+      description: >
+        Initiator-only bulk review action. The required target analysisId must still
+        be the current REVIEW_REQUIRED analysis for the current document under the
+        Deal lock. Idempotency-Key is required: replaying the same canonical request
+        returns the originally created RuleSetVersion, while reuse for a different
+        request returns 409 IDEMPOTENCY_KEY_REUSED. A successful action atomically
+        creates one immutable RuleSetVersion, marks the analysis ACCEPTED, and moves
+        the Deal current rule-set pointer. It is not ratification or commercial consent.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptExtractionReviewRequest'
+      responses:
+        '201':
+          description: Immutable RuleSetVersion created; idempotent replay returns this original version.
+          headers:
+            Location:
+              description: Same-origin path of the created immutable rule-set version.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleSetVersion'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealReviewAcceptanceForbidden'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealReviewAcceptanceConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /deals/{dealId}/rule-set-versions:
+    get:
+      operationId: listDealRuleSetVersions
+      tags: [Deal Rule Sets]
+      summary: List immutable rule-set version history
+      description: >
+        Returns all immutable accepted rule-set versions for the Deal to every
+        participant, including superseded historical versions. No version may be
+        edited, deleted, or inferred as current from position in this list.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Immutable rule-set history visible to the active Deal participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleSetVersionHistory'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+  /deals/{dealId}/rule-set-versions/{ruleSetVersionId}:
+    get:
+      operationId: getDealRuleSetVersion
+      tags: [Deal Rule Sets]
+      summary: Get one immutable rule-set version
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/RuleSetVersionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Immutable rule-set version visible to the active Deal participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleSetVersion'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/RuleSetVersionNotFoundOrHidden'
   /documents/{documentId}/finalize:
     post:
       operationId: finalizeDocumentUpload
@@ -1041,6 +1182,14 @@ components:
       schema:
         type: string
         format: uuid
+    RuleSetVersionId:
+      name: ruleSetVersionId
+      in: path
+      required: true
+      description: Immutable RuleSetVersion identifier.
+      schema:
+        type: string
+        format: uuid
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1238,6 +1387,44 @@ components:
         is already QUEUED or PROCESSING for that current document
         (DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS), or Idempotency-Key was reused for
         a different request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealReviewConflict:
+      description: >
+        No current REVIEW_REQUIRED analysis is available for review; Problem Details
+        code is DEAL_STATE_CONFLICT.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealReviewAcceptanceForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity
+        context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the visible
+        Deal participant is not the immutable Deal initiator
+        (DEAL_REVIEW_ACCEPTANCE_FORBIDDEN). Participant visibility never grants
+        review acceptance authority.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealReviewAcceptanceConflict:
+      description: >
+        The supplied expectedVersion is stale (DEAL_STALE_VERSION), the target
+        analysis is not the current REVIEW_REQUIRED analysis or has been superseded
+        (DEAL_STATE_CONFLICT), or Idempotency-Key was reused for a different request
+        (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    RuleSetVersionNotFoundOrHidden:
+      description: >
+        The rule-set version does not exist, does not belong to the visible Deal, or
+        the Deal is hidden from a non-participant; all cases use
+        RULE_SET_VERSION_NOT_FOUND and do not disclose existence.
       content:
         application/problem+json:
           schema:
@@ -2027,7 +2214,7 @@ components:
       description: >
         Current-document analysis state owned by the analysis state machine. REVIEW_REQUIRED
         is a technical extraction completion requiring human review, not business acceptance.
-      enum: [NOT_REQUESTED, QUEUED, PROCESSING, REVIEW_REQUIRED, FAILED]
+      enum: [NOT_REQUESTED, QUEUED, PROCESSING, REVIEW_REQUIRED, ACCEPTED, FAILED]
     DocumentAnalysisFailureSummary:
       type: object
       additionalProperties: false
@@ -2327,6 +2514,250 @@ components:
           anyOf:
             - $ref: '#/components/schemas/DocumentAnalysisResult'
             - type: 'null'
+    DealExtractionReview:
+      type: object
+      additionalProperties: false
+      description: >
+        Participant-readable, immutable review input for the current REVIEW_REQUIRED
+        extraction. It does not persist a draft and does not represent ratification.
+      required: [analysisId, documentId, rules]
+      properties:
+        analysisId:
+          type: string
+          format: uuid
+          description: Target analysis identity required by the acceptance action.
+        documentId:
+          type: string
+          format: uuid
+        rules:
+          type: array
+          description: Canonical extracted rules to decide in the acceptance action; never null.
+          items:
+            $ref: '#/components/schemas/ExtractedRule'
+    ReviewRuleDecision:
+      description: Exactly one disposition for an extracted rule, or one manually added rule.
+      oneOf:
+        - $ref: '#/components/schemas/KeptRuleDecision'
+        - $ref: '#/components/schemas/ModifiedRuleDecision'
+        - $ref: '#/components/schemas/ExcludedRuleDecision'
+        - $ref: '#/components/schemas/AddedRuleDecision'
+      discriminator:
+        propertyName: decision
+        mapping:
+          KEPT: '#/components/schemas/KeptRuleDecision'
+          MODIFIED: '#/components/schemas/ModifiedRuleDecision'
+          EXCLUDED: '#/components/schemas/ExcludedRuleDecision'
+          ADDED: '#/components/schemas/AddedRuleDecision'
+    KeptRuleDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, ruleReference]
+      properties:
+        decision: {const: KEPT}
+        ruleReference:
+          type: string
+          minLength: 1
+          description: ruleReference from the target extraction.
+    ModifiedRuleDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, ruleReference, category, title, description, structuredValue]
+      properties:
+        decision: {const: MODIFIED}
+        ruleReference:
+          type: string
+          minLength: 1
+          description: ruleReference from the target extraction.
+        category:
+          $ref: '#/components/schemas/RuleCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        structuredValue:
+          $ref: '#/components/schemas/ExtractedRuleValue'
+        legalBasis:
+          description: >
+            Optional advisory legal reference. When supplied for a modification, the
+            final rule exposes reviewerModified provenance; it never authorizes a
+            business decision.
+          anyOf:
+            - $ref: '#/components/schemas/AdvisoryLegalBasis'
+            - type: 'null'
+    ExcludedRuleDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, ruleReference]
+      properties:
+        decision: {const: EXCLUDED}
+        ruleReference:
+          type: string
+          minLength: 1
+          description: ruleReference from the target extraction; retained only in immutable decision history.
+    AddedRuleDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, category, title, description, structuredValue]
+      properties:
+        decision: {const: ADDED}
+        category:
+          $ref: '#/components/schemas/RuleCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        structuredValue:
+          $ref: '#/components/schemas/ExtractedRuleValue'
+        legalBasis:
+          description: >
+            Optional advisory legal reference. A final manually added rule exposes
+            manuallyAdded provenance; it never authorizes a business decision.
+          anyOf:
+            - $ref: '#/components/schemas/AdvisoryLegalBasis'
+            - type: 'null'
+    AcceptExtractionReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [analysisId, expectedVersion, decisions]
+      properties:
+        analysisId:
+          type: string
+          format: uuid
+          description: Current REVIEW_REQUIRED analysis being accepted.
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current Deal optimistic-lock version.
+        decisions:
+          type: array
+          minItems: 1
+          description: >
+            Complete bulk review decisions. The backend requires exactly one decision
+            for every extracted rule and assigns unique manual-N rule references to
+            ADDED decisions within the created RuleSetVersion.
+          items:
+            $ref: '#/components/schemas/ReviewRuleDecision'
+    RuleCategory:
+      type: string
+      enum: [PAYMENT, DELIVERY, QUALITY, PENALTY, TERMINATION, DISPUTE, OTHER, UNKNOWN]
+    RuleLegalBasisProvenance:
+      type: string
+      description: Advisory legal-basis origin only; no business rule may depend on it.
+      enum: [EXTRACTED, REVIEWER_MODIFIED, MANUALLY_ADDED]
+    RuleSetRule:
+      type: object
+      additionalProperties: false
+      description: Immutable final rule contained in an accepted RuleSetVersion.
+      required: [ruleReference, decision, category, title, description, structuredValue, legalBasis, legalBasisProvenance]
+      properties:
+        ruleReference:
+          type: string
+          minLength: 1
+          description: Extracted reference, or unique server-assigned manual-N reference for an added rule.
+        decision:
+          type: string
+          enum: [KEPT, MODIFIED, ADDED]
+        category:
+          $ref: '#/components/schemas/RuleCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        structuredValue:
+          $ref: '#/components/schemas/ExtractedRuleValue'
+        legalBasis:
+          anyOf:
+            - $ref: '#/components/schemas/AdvisoryLegalBasis'
+            - type: 'null'
+        legalBasisProvenance:
+          $ref: '#/components/schemas/RuleLegalBasisProvenance'
+    RuleSetVersionSummary:
+      type: object
+      additionalProperties: false
+      required: [id, version, sourceAnalysisId, createdAt, createdByUserId, previousRuleSetVersionId, ruleCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        sourceAnalysisId:
+          type: string
+          format: uuid
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        createdByUserId:
+          type: string
+          format: uuid
+        previousRuleSetVersionId:
+          type: [string, 'null']
+          format: uuid
+        ruleCount:
+          type: integer
+          minimum: 0
+    RuleSetVersion:
+      type: object
+      additionalProperties: false
+      required: [id, version, sourceAnalysisId, createdAt, createdByUserId, previousRuleSetVersionId, ruleCount, rules, excludedRuleReferences]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        sourceAnalysisId:
+          type: string
+          format: uuid
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        createdByUserId:
+          type: string
+          format: uuid
+        previousRuleSetVersionId:
+          type: [string, 'null']
+          format: uuid
+        ruleCount:
+          type: integer
+          minimum: 0
+        rules:
+          type: array
+          description: Final valid immutable rules only; EXCLUDED rules are absent.
+          items:
+            $ref: '#/components/schemas/RuleSetRule'
+        excludedRuleReferences:
+          type: array
+          uniqueItems: true
+          description: Immutable review-decision history for excluded extracted rules; never null.
+          items:
+            type: string
+            minLength: 1
+    RuleSetVersionHistory:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Immutable accepted rule-set versions, including superseded history; never null.
+          items:
+            $ref: '#/components/schemas/RuleSetVersionSummary'
     DealAvailableActions:
       type: object
       additionalProperties: false
@@ -2363,6 +2794,13 @@ components:
             Backend-derived analysis-request availability. True only for the Deal
             initiator when the Deal is non-terminal, its current document is AVAILABLE,
             and no analysis job is QUEUED or PROCESSING for that document.
+        canReviewExtraction:
+          type: boolean
+          description: >
+            Optional backend-derived review-acceptance availability. When absent or
+            unknown, clients must treat it as false and remain read-only. When true,
+            the active user is authorized for the Deal initiator and the current
+            analysis is REVIEW_REQUIRED.
     UtcTimestamp:
       type: string
       format: date-time
@@ -2540,6 +2978,14 @@ components:
             - type: 'null'
         analysis:
           $ref: '#/components/schemas/DealDocumentAnalysisSummary'
+        currentRuleSet:
+          description: >
+            Optional backend-owned current accepted rule-set summary. Null means no
+            accepted rule-set currently backs this Deal; clients must not infer one
+            from history. Its absence is tolerated for additive compatibility.
+          anyOf:
+            - $ref: '#/components/schemas/RuleSetVersionSummary'
+            - type: 'null'
     DealPage:
       type: object
       additionalProperties: false

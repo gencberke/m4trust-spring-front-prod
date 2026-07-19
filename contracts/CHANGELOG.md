@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Added the Slice 9 public manual-review contract: participant-readable extraction
+  review, initiator-only idempotent acceptance with target `analysisId`, bulk
+  kept/modified/excluded/added decisions, Deal `expectedVersion`, stable 403/404/
+  409/422 outcomes, and atomic `ACCEPTED` analysis semantics.
+- Added immutable RuleSetVersion history/detail reads, final-rule and excluded-decision
+  history projections, source-analysis/creator/time/previous-version provenance, and
+  unique server-assigned `manual-N` references for accepted manually added rules.
+- Added optional `canReviewExtraction` and nullable `currentRuleSet` to the closed
+  Deal response property allowlists without changing their existing required members;
+  omitted or unknown action availability is read-only/false for consumers.
+- Extended exact public OpenAPI validation for Slice 9 paths, scoped parameters,
+  response/request schemas, `ACCEPTED`, decision discriminators, idempotency,
+  immutable version projection, and stable concurrency errors. AI schemas, fixtures,
+  AsyncAPI, and the AI-internal OpenAPI are unchanged.
+
 - Added the optional advisory `legalBasis` object (`source` closed enum of Turkish
   legislation identifiers + `articleNo`) to document-extraction `result.rules[]`
   items. Backward-compatible additive change within schema 1.0.0 (ADR-002 §15.3);
