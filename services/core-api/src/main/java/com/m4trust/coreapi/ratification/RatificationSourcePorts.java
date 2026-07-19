@@ -3,6 +3,7 @@ package com.m4trust.coreapi.ratification;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
 import com.m4trust.coreapi.organization.OperationContext;
 import tools.jackson.databind.JsonNode;
 
@@ -12,6 +13,7 @@ public final class RatificationSourcePorts {
     public interface DealTarget {
         Optional<Target> findVisible(OperationContext context, UUID dealId);
         Optional<Target> lockVisibleForCreate(OperationContext context, UUID dealId);
+        void pointCurrentPackage(UUID dealId, UUID packageId, Instant changedAt);
     }
     public interface AvailableDocument { Optional<Document> find(UUID documentId); }
     public interface AcceptedRuleSet { Optional<RuleSet> find(UUID ruleSetId); }

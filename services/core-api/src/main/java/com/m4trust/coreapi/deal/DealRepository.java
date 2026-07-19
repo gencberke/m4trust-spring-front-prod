@@ -27,6 +27,7 @@ class DealRepository {
                 deal.seller_legal_entity_id,
                 deal.current_document_id,
                 deal.current_rule_set_version_id,
+                deal.current_ratification_package_id,
                 deal.initiator_legal_entity_id,
                 deal.created_by,
                 deal.created_at,
@@ -70,14 +71,14 @@ class DealRepository {
                     deal_status,
                     buyer_legal_entity_id,
                     seller_legal_entity_id,
-                    current_document_id, current_rule_set_version_id,
+                    current_document_id, current_rule_set_version_id, current_ratification_package_id,
                     initiator_legal_entity_id,
                     created_by,
                     created_at,
                     updated_at,
                     version
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 deal.id(),
                 deal.tenantId(),
@@ -87,7 +88,7 @@ class DealRepository {
                 deal.status().name(),
                 deal.buyerLegalEntityId(),
                 deal.sellerLegalEntityId(),
-                deal.currentDocumentId(), deal.currentRuleSetVersionId(),
+                deal.currentDocumentId(), deal.currentRuleSetVersionId(), deal.currentRatificationPackageId(),
                 deal.initiatorLegalEntityId(),
                 deal.createdBy(),
                 Timestamp.from(deal.createdAt()),
@@ -152,6 +153,18 @@ class DealRepository {
                 WHERE id = ?
                 """, ruleSetVersionId, Timestamp.from(changedAt), dealId) != 1) {
             throw new IllegalStateException("Deal disappeared while setting current rule set");
+        }
+    }
+
+    void pointCurrentRatificationPackage(UUID dealId, UUID packageId, Instant changedAt) {
+        if (jdbcTemplate.update("""
+                UPDATE deal
+                SET current_ratification_package_id = ?,
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                """, packageId, Timestamp.from(changedAt), dealId) != 1) {
+            throw new IllegalStateException("Deal disappeared while setting current ratification package");
         }
     }
 
@@ -356,6 +369,7 @@ class DealRepository {
                 resultSet.getObject("seller_legal_entity_id", UUID.class),
                 resultSet.getObject("current_document_id", UUID.class),
                 resultSet.getObject("current_rule_set_version_id", UUID.class),
+                resultSet.getObject("current_ratification_package_id", UUID.class),
                 resultSet.getObject("initiator_legal_entity_id", UUID.class),
                 resultSet.getObject("created_by", UUID.class),
                 resultSet.getTimestamp("created_at").toInstant(),
@@ -387,6 +401,7 @@ class DealRepository {
             UUID sellerLegalEntityId,
             UUID currentDocumentId,
             UUID currentRuleSetVersionId,
+            UUID currentRatificationPackageId,
             UUID initiatorLegalEntityId,
             UUID createdBy,
             Instant createdAt,
@@ -397,8 +412,18 @@ class DealRepository {
                 UUID currentDocumentId, UUID initiatorLegalEntityId, UUID createdBy,
                 Instant createdAt, Instant updatedAt, long version) {
             this(id, tenantId, reference, title, description, status, buyerLegalEntityId,
-                    sellerLegalEntityId, currentDocumentId, null, initiatorLegalEntityId,
+                    sellerLegalEntityId, currentDocumentId, null, null, initiatorLegalEntityId,
                     createdBy, createdAt, updatedAt, version);
+        }
+
+        DealRecord(UUID id, UUID tenantId, String reference, String title, String description,
+                DealStatus status, UUID buyerLegalEntityId, UUID sellerLegalEntityId,
+                UUID currentDocumentId, UUID currentRuleSetVersionId,
+                UUID initiatorLegalEntityId, UUID createdBy,
+                Instant createdAt, Instant updatedAt, long version) {
+            this(id, tenantId, reference, title, description, status, buyerLegalEntityId,
+                    sellerLegalEntityId, currentDocumentId, currentRuleSetVersionId, null,
+                    initiatorLegalEntityId, createdBy, createdAt, updatedAt, version);
         }
     }
 

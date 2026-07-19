@@ -20,6 +20,7 @@ final class Deal {
     private UUID sellerLegalEntityId;
     private UUID currentDocumentId;
     private UUID currentRuleSetVersionId;
+    private UUID currentRatificationPackageId;
     private final UUID initiatorLegalEntityId;
     private final UUID createdBy;
     private final Instant createdAt;
@@ -29,7 +30,7 @@ final class Deal {
     private Deal(UUID id, UUID tenantId, String reference, String title,
             String description, DealStatus status,
             UUID buyerLegalEntityId, UUID sellerLegalEntityId,
-            UUID currentDocumentId, UUID currentRuleSetVersionId,
+            UUID currentDocumentId, UUID currentRuleSetVersionId, UUID currentRatificationPackageId,
             UUID initiatorLegalEntityId, UUID createdBy, Instant createdAt,
             Instant updatedAt, long version) {
         this.id = Objects.requireNonNull(id);
@@ -43,6 +44,7 @@ final class Deal {
         this.sellerLegalEntityId = sellerLegalEntityId;
         this.currentDocumentId = currentDocumentId;
         this.currentRuleSetVersionId = currentRuleSetVersionId;
+        this.currentRatificationPackageId = currentRatificationPackageId;
         this.initiatorLegalEntityId =
                 Objects.requireNonNull(initiatorLegalEntityId);
         this.createdBy = Objects.requireNonNull(createdBy);
@@ -58,7 +60,7 @@ final class Deal {
             String description, UUID initiatorLegalEntityId, UUID createdBy,
             Instant createdAt) {
         return new Deal(id, tenantId, reference, title, description,
-                DealStatus.DRAFT, null, null, null, null, initiatorLegalEntityId, createdBy,
+                DealStatus.DRAFT, null, null, null, null, null, initiatorLegalEntityId, createdBy,
                 createdAt, createdAt, 0);
     }
 
@@ -66,7 +68,7 @@ final class Deal {
         return new Deal(record.id(), record.tenantId(), record.reference(),
                 record.title(), record.description(), record.status(),
                 record.buyerLegalEntityId(), record.sellerLegalEntityId(),
-                record.currentDocumentId(), record.currentRuleSetVersionId(),
+                record.currentDocumentId(), record.currentRuleSetVersionId(), record.currentRatificationPackageId(),
                 record.initiatorLegalEntityId(), record.createdBy(),
                 record.createdAt(), record.updatedAt(), record.version());
     }
@@ -108,7 +110,7 @@ final class Deal {
     DealRepository.DealRecord toRecord() {
         return new DealRepository.DealRecord(id, tenantId, reference, title,
                 description, status, buyerLegalEntityId, sellerLegalEntityId,
-                currentDocumentId, currentRuleSetVersionId,
+                currentDocumentId, currentRuleSetVersionId, currentRatificationPackageId,
                 initiatorLegalEntityId, createdBy,
                 createdAt, updatedAt, version);
     }
@@ -145,6 +147,8 @@ final class Deal {
         return currentDocumentId;
     }
     UUID currentRuleSetVersionId() { return currentRuleSetVersionId; }
+
+    UUID currentRatificationPackageId() { return currentRatificationPackageId; }
 
     boolean isInitiatedBy(UUID legalEntityId) {
         return initiatorLegalEntityId.equals(legalEntityId);
