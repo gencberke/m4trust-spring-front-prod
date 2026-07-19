@@ -12,6 +12,7 @@ import {
   getReviewErrorMessage,
   getReviewFieldErrors,
   shouldRefetchReview,
+  shouldResetReviewIdempotencyKey,
   type ReviewFieldError,
 } from "./reviewErrors";
 
@@ -93,6 +94,13 @@ function decimalToInteger(
   return Number(integer);
 }
 
+function decimalToFiniteNumber(text: string): number | undefined {
+  const normalized = text.trim().replace(",", ".");
+  if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return undefined;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : undefined;
+}
+
 function draftValue(value: ExtractedRule["structuredValue"]): ValueDraft {
   switch (value.type) {
     case "TEXT":
@@ -164,7 +172,7 @@ function toRuleValue(value: ValueDraft): RuleValue | undefined {
     case "BOOLEAN":
       return { type: "BOOLEAN", value: value.flag };
     case "QUANTITY": {
-      const amount = decimalToInteger(value.first, 0);
+      const amount = decimalToFiniteNumber(value.first);
       return amount === undefined || !value.second.trim()
         ? undefined
         : { type: "QUANTITY", value: amount, unit: value.second.trim() };
@@ -215,6 +223,21 @@ function legalBasis(rule: {
   return rule.legalBasis
     ? `${rule.legalBasis.source} · Md. ${rule.legalBasis.articleNo}${rule.legalBasisProvenance ? ` (${rule.legalBasisProvenance})` : ""}`
     : "Hukuki dayanak belirtilmedi";
+}
+
+function getDecisionErrors(
+  errors: ReviewFieldError,
+  decisionIndex: number,
+): ReviewFieldError {
+  const prefix = `decisions[${decisionIndex}].`;
+  return Object.entries(errors).reduce<ReviewFieldError>(
+    (result, [field, message]) => {
+      if (field.startsWith(prefix))
+        result[field.slice(prefix.length)] = message;
+      return result;
+    },
+    {},
+  );
 }
 
 interface Props {
@@ -329,6 +352,8 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
       ]);
     },
     onError: async (error) => {
+      if (shouldResetReviewIdempotencyKey(error))
+        requestKey.current = undefined;
       if (shouldRefetchReview(error))
         await Promise.all([
           queryClient.invalidateQueries({
@@ -367,6 +392,13 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
       ),
     );
   };
+  const restore = (reference: string) => {
+    requestKey.current = undefined;
+    setDrafts((current) => {
+      const { [reference]: _discarded, ...remaining } = current;
+      return remaining;
+    });
+  };
 
   return (
     <section
@@ -393,12 +425,12 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
           okunabilir.
         </p>
       )}
-      {review.isPending ? (
+      {reviewEnabled && review.isPending ? (
         <p className="inline-state" role="status">
           İnceleme yükleniyor…
         </p>
       ) : null}
-      {review.isError ? (
+      {reviewEnabled && review.isError ? (
         <p className="form-alert" role="alert">
           İnceleme verisi alınamadı.{" "}
           <button
@@ -421,14 +453,15 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
             <span>{review.data.rules.length} çıkarılmış kural</span>
           </div>
           <ul className="review-rule-list">
-            {allDrafts.map(({ rule, draft }) => (
+            {allDrafts.map(({ rule, draft }, index) => (
               <ReviewRule
                 key={rule.ruleReference}
                 rule={rule}
                 draft={draft}
                 editable={mayReview}
-                errors={fieldErrors}
+                errors={getDecisionErrors(fieldErrors, index)}
                 onChange={(next) => update(rule.ruleReference, next)}
+                onRestore={() => restore(rule.ruleReference)}
               />
             ))}
           </ul>
@@ -440,7 +473,11 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
                   <ManualRule
                     key={index}
                     draft={draft}
-                    errors={fieldErrors}
+                    errors={getDecisionErrors(
+                      fieldErrors,
+                      review.data.rules.length + index,
+                    )}
+                    idPrefix={`review-manual-${index}`}
                     onChange={(next) => updateAdded(index, next)}
                     onRemove={() => {
                       requestKey.current = undefined;
@@ -520,12 +557,14 @@ function ReviewRule({
   editable,
   errors,
   onChange,
+  onRestore,
 }: {
   rule: ExtractedRule;
   draft: Draft;
   editable: boolean;
   errors: ReviewFieldError;
   onChange: (next: Partial<Draft>) => void;
+  onRestore: () => void;
 }) {
   return (
     <li className={draft.excluded ? "review-rule excluded" : "review-rule"}>
@@ -536,7 +575,12 @@ function ReviewRule({
         <span>Güven %{Math.round(rule.confidence * 100)}</span>
       </div>
       {editable ? (
-        <RuleEditor draft={draft} errors={errors} onChange={onChange} />
+        <RuleEditor
+          draft={draft}
+          errors={errors}
+          idPrefix={`review-rule-${rule.ruleReference}`}
+          onChange={onChange}
+        />
       ) : (
         <>
           <h3>{rule.title}</h3>
@@ -554,14 +598,19 @@ function ReviewRule({
       </p>
       <p className="review-legal-basis">{legalBasis(rule)}</p>
       {editable ? (
-        <label className="review-exclude">
-          <input
-            type="checkbox"
-            checked={draft.excluded}
-            onChange={(event) => onChange({ excluded: event.target.checked })}
-          />{" "}
-          Bu kuralı hariç tut
-        </label>
+        <div className="review-rule-actions">
+          <label className="review-exclude">
+            <input
+              type="checkbox"
+              checked={draft.excluded}
+              onChange={(event) => onChange({ excluded: event.target.checked })}
+            />{" "}
+            Bu kuralı hariç tut
+          </label>
+          <button className="text-button" type="button" onClick={onRestore}>
+            Orijinale geri yükle
+          </button>
+        </div>
       ) : null}
     </li>
   );
@@ -569,17 +618,24 @@ function ReviewRule({
 function ManualRule({
   draft,
   errors,
+  idPrefix,
   onChange,
   onRemove,
 }: {
   draft: Draft;
   errors: ReviewFieldError;
+  idPrefix: string;
   onChange: (next: Partial<Draft>) => void;
   onRemove: () => void;
 }) {
   return (
     <div className="manual-rule">
-      <RuleEditor draft={draft} errors={errors} onChange={onChange} />
+      <RuleEditor
+        draft={draft}
+        errors={errors}
+        idPrefix={idPrefix}
+        onChange={onChange}
+      />
       <p className="review-legal-basis">
         Manuel eklenen kuralların hukuki dayanağı yoktur; kaynak işareti
         MANUALLY_ADDED olur.
@@ -593,13 +649,17 @@ function ManualRule({
 function RuleEditor({
   draft,
   errors,
+  idPrefix,
   onChange,
 }: {
   draft: Draft;
   errors: ReviewFieldError;
+  idPrefix: string;
   onChange: (next: Partial<Draft>) => void;
 }) {
   const value = draft.value;
+  const titleErrorId = `${idPrefix}-title-error`;
+  const descriptionErrorId = `${idPrefix}-description-error`;
   const changeValue = (next: Partial<ValueDraft>) =>
     onChange({ value: { ...value, ...next } });
   return (
@@ -623,15 +683,21 @@ function RuleEditor({
         Başlık
         <input
           value={draft.title}
+          aria-invalid={!!errors.title}
+          aria-describedby={errors.title ? titleErrorId : undefined}
           onChange={(event) => onChange({ title: event.target.value })}
         />
+        <InputError id={titleErrorId} message={errors.title} />
       </label>
       <label className="review-wide">
         Açıklama
         <textarea
           value={draft.description}
+          aria-invalid={!!errors.description}
+          aria-describedby={errors.description ? descriptionErrorId : undefined}
           onChange={(event) => onChange({ description: event.target.value })}
         />
+        <InputError id={descriptionErrorId} message={errors.description} />
       </label>
       <label>
         Değer tipi
@@ -653,26 +719,42 @@ function RuleEditor({
           ))}
         </select>
       </label>
-      <ValueFields value={value} onChange={changeValue} />
-      {errors["decisions"] ? (
-        <small className="field-error">{errors["decisions"]}</small>
-      ) : null}
+      <ValueFields
+        value={value}
+        errors={errors}
+        idPrefix={idPrefix}
+        onChange={changeValue}
+      />
     </fieldset>
   );
 }
 function ValueFields({
   value,
+  errors,
+  idPrefix,
   onChange,
 }: {
   value: ValueDraft;
+  errors: ReviewFieldError;
+  idPrefix: string;
   onChange: (next: Partial<ValueDraft>) => void;
 }) {
+  const primaryErrorField =
+    value.type === "MONEY"
+      ? "structuredValue.amountMinor"
+      : value.type === "PERCENTAGE"
+        ? "structuredValue.basisPoints"
+        : "structuredValue.value";
+  const primaryError = errors[primaryErrorField];
+  const primaryErrorId = `${idPrefix}-value-error`;
   if (value.type === "BOOLEAN")
     return (
       <label>
         Değer
         <select
           value={String(value.flag)}
+          aria-invalid={!!primaryError}
+          aria-describedby={primaryError ? primaryErrorId : undefined}
           onChange={(event) =>
             onChange({ flag: event.target.value === "true" })
           }
@@ -680,6 +762,7 @@ function ValueFields({
           <option value="true">Evet</option>
           <option value="false">Hayır</option>
         </select>
+        <InputError id={primaryErrorId} message={primaryError} />
       </label>
     );
   const primary =
@@ -695,10 +778,13 @@ function ValueFields({
       <label>
         {primary}
         <input
-          type={value.type === "DATE" ? "date" : "text"}
+          type="text"
           value={value.first}
+          aria-invalid={!!primaryError}
+          aria-describedby={primaryError ? primaryErrorId : undefined}
           onChange={(event) => onChange({ first: event.target.value })}
         />
+        <InputError id={primaryErrorId} message={primaryError} />
       </label>
       {value.type === "MONEY" ? (
         <label>
@@ -706,9 +792,19 @@ function ValueFields({
           <input
             value={value.second}
             maxLength={3}
+            aria-invalid={!!errors["structuredValue.currency"]}
+            aria-describedby={
+              errors["structuredValue.currency"]
+                ? `${idPrefix}-currency-error`
+                : undefined
+            }
             onChange={(event) =>
               onChange({ second: event.target.value.toUpperCase() })
             }
+          />
+          <InputError
+            id={`${idPrefix}-currency-error`}
+            message={errors["structuredValue.currency"]}
           />
         </label>
       ) : null}
@@ -717,12 +813,30 @@ function ValueFields({
           Birim
           <input
             value={value.second}
+            aria-invalid={!!errors["structuredValue.unit"]}
+            aria-describedby={
+              errors["structuredValue.unit"]
+                ? `${idPrefix}-unit-error`
+                : undefined
+            }
             onChange={(event) => onChange({ second: event.target.value })}
+          />
+          <InputError
+            id={`${idPrefix}-unit-error`}
+            message={errors["structuredValue.unit"]}
           />
         </label>
       ) : null}
     </>
   );
+}
+
+function InputError({ id, message }: { id: string; message?: string }) {
+  return message ? (
+    <small className="field-error" id={id}>
+      {message}
+    </small>
+  ) : null;
 }
 function CurrentRuleSet({
   summary,

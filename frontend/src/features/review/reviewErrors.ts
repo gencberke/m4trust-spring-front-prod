@@ -43,3 +43,11 @@ export function shouldRefetchReview(error: unknown): boolean {
       error.code === "DEAL_STATE_CONFLICT")
   );
 }
+
+/** A stale server state or a reused key changes the canonical request on recovery. */
+export function shouldResetReviewIdempotencyKey(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (shouldRefetchReview(error) || error.code === "IDEMPOTENCY_KEY_REUSED")
+  );
+}

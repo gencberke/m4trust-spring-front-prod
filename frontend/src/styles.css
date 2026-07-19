@@ -1524,6 +1524,19 @@ a:hover {
   margin-top: 16px;
   font-weight: 700;
 }
+
+.review-rule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.review-rule-actions .review-exclude {
+  margin-top: 0;
+}
 .review-editor {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
