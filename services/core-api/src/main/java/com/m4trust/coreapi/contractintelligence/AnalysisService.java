@@ -31,7 +31,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Coordinates the 3A request and read projection; result consumption is intentionally absent. */
 @Service
-class AnalysisService implements DealAnalysisProjectionPort {
+class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSupersedePort {
 
     private static final String IDEMPOTENCY_OPERATION = "DEAL_DOCUMENT_ANALYSIS_REQUEST";
     private static final String IDEMPOTENCY_RESULT = "DEAL_DOCUMENT_ANALYSIS";
@@ -49,6 +49,7 @@ class AnalysisService implements DealAnalysisProjectionPort {
     private final TransactionTemplate transactions;
     private final Clock clock;
     private final DocumentExtractionRequestedEventFactory eventFactory;
+    private final ObjectMapper objectMapper;
 
     AnalysisService(AnalysisRepository repository, DealAnalysisReadPort dealReads,
             DealAnalysisMutationPort dealMutations, DocumentAnalysisInputPort documentInputs,
@@ -66,6 +67,7 @@ class AnalysisService implements DealAnalysisProjectionPort {
         this.auditAppender = auditAppender;
         this.transactions = transactions;
         this.clock = clock;
+        this.objectMapper = objectMapper;
         this.eventFactory = new DocumentExtractionRequestedEventFactory(objectMapper, producerVersion);
     }
 
@@ -167,6 +169,17 @@ class AnalysisService implements DealAnalysisProjectionPort {
         return repository.hasActiveJob(currentDocumentId);
     }
 
+    @Override
+    public void supersedeForDocument(UUID documentId, UUID tenantId, UUID actorUserId,
+            UUID legalEntityId, UUID correlationId, Instant occurredAt) {
+        int changed = repository.supersedeDocument(documentId);
+        if (changed > 0) {
+            auditAppender.append(new AuditRecord(UUID.randomUUID(), tenantId, actorUserId,
+                    legalEntityId, AUDIT_SUBJECT, documentId, "DOCUMENT_ANALYSIS_SUPERSEDED",
+                    correlationId, null, occurredAt));
+        }
+    }
+
     private DealDocumentAnalysis currentProjection(UUID currentDocumentId) {
         if (currentDocumentId == null || documentInputs.findAvailable(currentDocumentId).isEmpty()) {
             return notRequested(null);
@@ -187,8 +200,14 @@ class AnalysisService implements DealAnalysisProjectionPort {
         DealDocumentAnalysis.Failure failure = job.failureCode() == null ? null
                 : new DealDocumentAnalysis.Failure(job.failureCode(),
                         Boolean.TRUE.equals(job.retryRecommended()));
+        Object result = repository.findResult(job.id()).map(this::readResult).orElse(null);
         return new DealDocumentAnalysis(job.documentId(), job.status(), job.requestedAt(),
-                job.processingStartedAt(), job.completedAt(), job.failedAt(), failure, null);
+                job.processingStartedAt(), job.completedAt(), job.failedAt(), failure, result);
+    }
+
+    private Object readResult(String serialized) {
+        try { return objectMapper.readValue(serialized, Object.class); }
+        catch (Exception exception) { throw new IllegalStateException("Stored canonical result is invalid", exception); }
     }
 
     private static DealDocumentAnalysis notRequested(UUID currentDocumentId) {

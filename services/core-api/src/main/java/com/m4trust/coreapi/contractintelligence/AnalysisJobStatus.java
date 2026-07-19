@@ -1,6 +1,6 @@
 package com.m4trust.coreapi.contractintelligence;
 
-enum AnalysisJobStatus {
+public enum AnalysisJobStatus {
     NOT_REQUESTED,
     QUEUED,
     PROCESSING,

@@ -114,6 +114,18 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- The consumer validates against the reviewed contract files, not a
+                 second, hand-maintained representation of the event shape. -->
+            <resource>
+                <directory>../../contracts/schemas</directory>
+                <targetPath>contracts/schemas</targetPath>
+                <includes><include>**/*.json</include></includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
