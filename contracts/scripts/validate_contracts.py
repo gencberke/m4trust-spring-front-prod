@@ -722,6 +722,9 @@ def validate_contract_documents(failures: list[str]) -> None:
 
         review_request = core_components.get("schemas", {}).get("AcceptExtractionReviewRequest", {})
         review_decision = core_components.get("schemas", {}).get("ReviewRuleDecision", {})
+        modified_decision = core_components.get("schemas", {}).get("ModifiedRuleDecision", {})
+        added_decision = core_components.get("schemas", {}).get("AddedRuleDecision", {})
+        rule_set_summary = core_components.get("schemas", {}).get("RuleSetVersionSummary", {})
         rule_set = core_components.get("schemas", {}).get("RuleSetVersion", {})
         review_conflict = core_components.get("responses", {}).get("DealReviewAcceptanceConflict", {})
         if (set(review_request.get("required", [])) != {"analysisId", "expectedVersion", "decisions"}
@@ -731,10 +734,16 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or review_request.get("properties", {}).get("expectedVersion", {}).get("minimum") != 0
                 or review_request.get("properties", {}).get("decisions", {}).get("items", {}).get("$ref")
                 != "#/components/schemas/ReviewRuleDecision"
+                or "minItems" in review_request.get("properties", {}).get("decisions", {})
                 or review_decision.get("discriminator", {}).get("propertyName") != "decision"
                 or set(review_decision.get("discriminator", {}).get("mapping", {})) != {"KEPT", "MODIFIED", "EXCLUDED", "ADDED"}
-                or set(rule_set.get("required", [])) != {"id", "version", "sourceAnalysisId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount", "rules", "excludedRuleReferences"}
-                or set(rule_set.get("properties", {})) != {"id", "version", "sourceAnalysisId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount", "rules", "excludedRuleReferences"}
+                or set(modified_decision.get("properties", {})) != {"decision", "ruleReference", "category", "title", "description", "structuredValue"}
+                or set(added_decision.get("properties", {})) != {"decision", "category", "title", "description", "structuredValue"}
+                or set(rule_set_summary.get("required", [])) != {"id", "version", "sourceAnalysisId", "sourceExtractionResultVersionId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount"}
+                or set(rule_set_summary.get("properties", {})) != {"id", "version", "sourceAnalysisId", "sourceExtractionResultVersionId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount"}
+                or rule_set_summary.get("properties", {}).get("sourceExtractionResultVersionId", {}).get("format") != "uuid"
+                or set(rule_set.get("required", [])) != {"id", "version", "sourceAnalysisId", "sourceExtractionResultVersionId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount", "rules", "excludedRuleReferences"}
+                or set(rule_set.get("properties", {})) != {"id", "version", "sourceAnalysisId", "sourceExtractionResultVersionId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount", "rules", "excludedRuleReferences"}
                 or rule_set.get("additionalProperties") is not False
                 or "DEAL_STALE_VERSION" not in review_conflict.get("description", "")
                 or "DEAL_STATE_CONFLICT" not in review_conflict.get("description", "")

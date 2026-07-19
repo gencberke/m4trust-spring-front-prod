@@ -2580,14 +2580,6 @@ components:
           maxLength: 4000
         structuredValue:
           $ref: '#/components/schemas/ExtractedRuleValue'
-        legalBasis:
-          description: >
-            Optional advisory legal reference. When supplied for a modification, the
-            final rule exposes reviewerModified provenance; it never authorizes a
-            business decision.
-          anyOf:
-            - $ref: '#/components/schemas/AdvisoryLegalBasis'
-            - type: 'null'
     ExcludedRuleDecision:
       type: object
       additionalProperties: false
@@ -2616,13 +2608,6 @@ components:
           maxLength: 4000
         structuredValue:
           $ref: '#/components/schemas/ExtractedRuleValue'
-        legalBasis:
-          description: >
-            Optional advisory legal reference. A final manually added rule exposes
-            manuallyAdded provenance; it never authorizes a business decision.
-          anyOf:
-            - $ref: '#/components/schemas/AdvisoryLegalBasis'
-            - type: 'null'
     AcceptExtractionReviewRequest:
       type: object
       additionalProperties: false
@@ -2639,11 +2624,12 @@ components:
           description: Current Deal optimistic-lock version.
         decisions:
           type: array
-          minItems: 1
           description: >
             Complete bulk review decisions. The backend requires exactly one decision
-            for every extracted rule and assigns unique manual-N rule references to
-            ADDED decisions within the created RuleSetVersion.
+            for every extracted rule and semantic validation allows an empty array
+            when the target extraction contains no rules. The backend assigns unique
+            manual-N rule references to ADDED decisions within the created
+            RuleSetVersion.
           items:
             $ref: '#/components/schemas/ReviewRuleDecision'
     RuleCategory:
@@ -2679,6 +2665,10 @@ components:
         structuredValue:
           $ref: '#/components/schemas/ExtractedRuleValue'
         legalBasis:
+          description: >
+            Advisory legal reference copied from the target extraction for KEPT and
+            MODIFIED rules. ADDED rules always expose null. It never authorizes a
+            business decision.
           anyOf:
             - $ref: '#/components/schemas/AdvisoryLegalBasis'
             - type: 'null'
@@ -2687,7 +2677,7 @@ components:
     RuleSetVersionSummary:
       type: object
       additionalProperties: false
-      required: [id, version, sourceAnalysisId, createdAt, createdByUserId, previousRuleSetVersionId, ruleCount]
+      required: [id, version, sourceAnalysisId, sourceExtractionResultVersionId, createdAt, createdByUserId, previousRuleSetVersionId, ruleCount]
       properties:
         id:
           type: string
@@ -2699,6 +2689,11 @@ components:
         sourceAnalysisId:
           type: string
           format: uuid
+          description: Target analysis identity accepted to create this immutable version.
+        sourceExtractionResultVersionId:
+          type: string
+          format: uuid
+          description: Immutable canonical ExtractionResultVersion from which this rule set was accepted.
         createdAt:
           $ref: '#/components/schemas/UtcTimestamp'
         createdByUserId:
@@ -2713,7 +2708,7 @@ components:
     RuleSetVersion:
       type: object
       additionalProperties: false
-      required: [id, version, sourceAnalysisId, createdAt, createdByUserId, previousRuleSetVersionId, ruleCount, rules, excludedRuleReferences]
+      required: [id, version, sourceAnalysisId, sourceExtractionResultVersionId, createdAt, createdByUserId, previousRuleSetVersionId, ruleCount, rules, excludedRuleReferences]
       properties:
         id:
           type: string
@@ -2725,6 +2720,11 @@ components:
         sourceAnalysisId:
           type: string
           format: uuid
+          description: Target analysis identity accepted to create this immutable version.
+        sourceExtractionResultVersionId:
+          type: string
+          format: uuid
+          description: Immutable canonical ExtractionResultVersion from which this rule set was accepted.
         createdAt:
           $ref: '#/components/schemas/UtcTimestamp'
         createdByUserId:
