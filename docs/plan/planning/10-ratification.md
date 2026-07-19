@@ -30,6 +30,12 @@ Kapsam:
 - `ratification` modülü (ADR-003 §4.6): RatificationPackage, party approvals
 - Package = canonical immutable snapshot + canonical content hash (ADR-003 §20;
   içerik kapsamı §9'daki karara tabi)
+- **Structured commercial terms:** package, en az sözleşme bedelini
+  (`amountMinor` + ISO 4217 `currency`) yapılandırılmış alan olarak taşır.
+  Değer, kabul edilmiş RuleSetVersion'daki MONEY kurallarından ÖNERİLİR ve
+  initiator package oluştururken açıkça teyit eder/düzeltir; onaylanan şey bu
+  yapılandırılmış değerdir. Funding slice'ı (11) tutarı serbest metinden veya
+  rule listesinden DEĞİL bu alandan okur.
 - RatificationStatus: NOT_READY → READY → PENDING → RATIFIED / REJECTED /
   SUPERSEDED (ADR-003 §11; EXPIRED bu slice'ta kullanılmaz)
 - Package oluşturma (initiator), approve/reject (taraf ADMIN'leri), entity
@@ -86,8 +92,10 @@ Sabit davranışlar:
 
 - **Package snapshot:** package, oluşturulduğu anda kaynak verilerin
   KOPYASINI taşır (dealId, reference, title, buyer/seller entity kimlikleri +
-  legal name'leri, RuleSetVersion id + kural içerik özeti, current document id
-  + object version + sha256, package schema version). Kaynak kayıtlar sonradan
+  legal name'leri, RuleSetVersion id + kural içerik özeti, structured
+  commercial terms — sözleşme bedeli amountMinor + currency —, current
+  document id + object version + sha256, package schema version). Commercial
+  terms alanı integer minor unit'tir; float yasak (ADR-003 §21, ADR-006 §28). Kaynak kayıtlar sonradan
   değişse bile package içeriği değişmez; `contentHash` canonical JSON
   serileştirmesinin SHA-256'sıdır ve onayların neye verildiğini kanıtlar
   (ADR-003 §20).
@@ -169,6 +177,10 @@ Sabit davranışlar:
   package içeriği funding-öncesi mevcut verilerle sınırlanır (deal çekirdeği,
   taraflar, RuleSetVersion, current document) ve bu daraltma kısa bir karar
   notu / ADR-003 amendment'ı olarak kayda geçirilir. İnsan onayı gerekir.
+- Structured commercial terms önerisinin RuleSetVersion'dan türetilme kuralı
+  (hangi kategori/valueType eşleşmesi öneri sayılır; birden fazla MONEY kuralı
+  varsa seçim davranışı) ve initiator teyidinin package create isteğindeki
+  temsili — OpenAPI tasarımında kesinleşir
 - Onaylayan kullanıcı kimliğinin karşı tarafa gösterilip gösterilmeyeceği
   (öneri: yalnız entity + zaman gösterilir; kullanıcı adı kendi entity'sine
   görünür)
@@ -185,6 +197,8 @@ Sabit davranışlar:
 - [ ] OpenAPI ratification yüzeyi implementasyondan önce tasarlandı
 - [ ] Package snapshot + contentHash + append-only approvals migration'ları
       DB kısıtlarıyla kuruldu
+- [ ] Structured commercial terms package'ta yapılandırılmış ve initiator
+      teyitli olarak taşınıyor; Slice 11'in tutar kaynağı hazır
 - [ ] Atomik RATIFIED+ACTIVE geçişi ve yarış serileştirmesi testli çalışıyor
 - [ ] Supersede tetikleri ilgili modüllerden dar port'larla bağlandı
 - [ ] ADMIN-only onay ve entity-başına-tek-onay uygulanıyor

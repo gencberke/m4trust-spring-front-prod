@@ -1,27 +1,40 @@
-# Slice 11 — Funding ve Payment (Buyer Funding)
+# Slice 11 — Funding Foundation (Provider-Bağımsız Sandbox)
 
-- Durum: planning (insan talimatıyla; bkz. eskalasyon önkoşulu)
+- Durum: planning
 - Slice sırası: ADR-004 §24 → "Funding and Payment" (bölünmüş yol haritasında 11)
-- Öncül: 10-ratification (funding yalnız ACTIVE Deal'de anlam taşır)
-- Ardıl: fulfillment/evidence slice'ı; payment release/settlement bu planın
-  kapsamı DIŞINDADIR
+- Öncül: 10-ratification (funding yalnız ACTIVE Deal'de anlam taşır; funding
+  tutarı Slice 10 package'ının structured commercial terms alanından gelir)
+- Ardıl: **Slice 11B — gerçek provider entegrasyonu** (ayrı plan; aday: Moka
+  United havuz ödeme modeli) ve fulfillment/evidence slice'ı. Payment
+  release/settlement bu planın kapsamı DIŞINDADIR.
 - **Eskalasyon önkoşulu (bağlayıcı):** ADR-003 §21 exact payment workflow'un
   ayrı bir ADR/payment design dokümanında detaylandırılmasını şart koşar ve bu
   slice ADR-INDEX Katman 3 kapsamındadır (payment/funding mutation'ı).
-  Implementasyona başlamadan önce: (a) payment design karar notu/ADR'si insan
-  onayıyla kabul edilir, (b) staging/production provider seçimi karara
-  bağlanır. Bu iki karar kapanmadan yalnız OpenAPI/port tasarımına kadar
-  ilerlenebilir.
+  Implementasyona başlamadan önce payment design karar notu/ADR'si insan
+  onayıyla kabul edilir ve ŞUNLARI KAPATIR: (a) FundingUnit/PaymentOperation
+  exact state machine'i, (b) crash recovery politikası (provider çağrısı ile
+  sonuç uygulaması arasında process ölürse kurtarma kuralları), (c)
+  callback/polling sonuç kanalı seçimi, (d) provider port'unun hedef provider
+  yetenekleriyle uyum kontrolü (Moka United araştırması girdi olur). Gerçek
+  provider SEÇİMİ port tasarımını bilgilendirir; gerçek entegrasyon bu
+  slice'ın değil Slice 11B'nin işidir. Bu kararlar kapanmadan yalnız
+  OpenAPI/port tasarımına kadar ilerlenebilir.
 
 ## 1. Amaç ve kullanıcı sonucu
 
 ACTIVE (ratified) bir Deal'de buyer tarafı gerçek tarayıcıdan funding sürecini
-başlatır → Deal'in funding planı (bir veya birden fazla funding unit) görünür →
-buyer bir funding unit için ödeme başlatır → provider (local'de sandbox/mock)
-sonucu döner → FundingStatus ilerleyişi Deal detayında izlenir:
-NOT_CONFIGURED → PLANNED → PENDING → (PARTIALLY_FUNDED) → FUNDED. Başarısız
+başlatır → Deal'in funding planı (v1'de TEK funding unit; tutar ratified
+package'ın structured commercial terms alanından) görünür → buyer ödeme
+başlatır → sandbox provider sonucu döner → FundingStatus ilerleyişi Deal
+detayında izlenir: NOT_CONFIGURED → PLANNED → PENDING → FUNDED
+(PARTIALLY_FUNDED v1'de erişilemezdir; çoklu unit ileriki iş). Başarısız
 ödeme FAILED unit durumu üretir ve yeniden denenebilir; provider timeout'u
 asla otomatik failure sayılmaz (ADR-003 §21).
+
+Bu slice provider-BAĞIMSIZ foundation'dır: amaç port, durum makinesi,
+idempotency, reconciliation ve UI iskeletinin sandbox adapter'la uçtan uca
+kanıtlanmasıdır. Gerçek provider (Slice 11B) yalnız yeni bir adapter olarak
+eklenmeli, bu slice'ın hiçbir davranışını değiştirmemelidir.
 
 Seller ve diğer participant'lar funding durumunu okur; para hareketi başlatma
 yalnız buyer tarafına aittir. Bu slice'ta para YALNIZ platforma girer; release,
@@ -36,10 +49,11 @@ Kapsam:
   payment operation kayıtları
 - FundingStatus ekseni (ADR-003 §12) ve DealLifecycleProjection'a FUNDING
   girdisi
-- Funding planının oluşturulması — ratified package içeriğindeki tutara bağlı
-  (tek unit varsayılan; çoklu unit desteği veri modelinde)
-- Payment provider PORT'u + local sandbox/mock adapter (integration modülü,
-  ADR-003 §4.11); gerçek provider adapter'ı ayrı iş
+- Funding planının oluşturulması — tutar ratified package'ın structured
+  commercial terms alanından; v1'de TEK funding unit (veri modeli çoklu unit'e
+  kapı bırakır ama v1 yüzeyi tek unit sunar)
+- Payment provider PORT'u + local sandbox adapter (integration modülü,
+  ADR-003 §4.11); gerçek provider adapter'ı Slice 11B
 - Provider idempotency key zorunluluğu; duplicate isteğin duplicate para
   hareketi üretmemesi (ADR-003 §21)
 - Timeout/bilinmeyen sonuç → reconciliation-gerekli durumu ve manuel/basit
@@ -49,6 +63,10 @@ Kapsam:
 
 Kapsam dışı:
 
+- **Gerçek provider entegrasyonu → Slice 11B** (adapter, credential/secret
+  kurulumu, gerçek callback doğrulaması, staging kabulü)
+- Çoklu funding unit / kısmi fonlama yüzeyi (PARTIALLY_FUNDED v1'de
+  erişilemez)
 - Payment release, payout, settlement (SettlementStatus akışı) → sonraki
   slice'lar
 - Refund/reversal (açık business operation olarak ayrıca modellenecek)
@@ -72,14 +90,15 @@ Kapsam dışı:
 
 Implementasyondan önce OpenAPI tasarlanır:
 
-- Funding planı oluşturma/görüntüleme (plan tutarı ratified package'tan;
-  elle serbest tutar girilmez)
+- Funding planı oluşturma/görüntüleme (plan tutarı ratified package'ın
+  structured commercial terms alanından; elle serbest tutar girilmez)
 - Funding unit için ödeme başlatma action'ı (`Idempotency-Key` ZORUNLU;
   `expectedVersion` ile)
 - Ödeme sonucu/durum read projection'ı; reconciliation-gerekli durumun açık
   gösterimi
-- Provider callback/confirmation yüzeyi (mock provider'ın sonucu ilettiği
-  internal endpoint veya polling — §9 kararına göre)
+- Provider callback/confirmation yüzeyi — kanal (callback vs polling) payment
+  design karar notunda İMPLEMENTASYONDAN ÖNCE seçilir; OpenAPI seçilen modele
+  göre tasarlanır
 - Deal detail'e funding özeti + actor-aware action'lar (`canInitiateFunding`
   vb.)
 
@@ -117,10 +136,16 @@ Sabit davranışlar:
   yeniden sorgular. Otomatik scheduler bu slice'ta zorunlu değildir; tasarım
   buna açık bırakılır.
 - **Provider port:** dar interface (initiate, queryStatus); adapter integration
-  modülünde. Local sandbox/mock adapter deterministik senaryolar sunar
-  (başarı, decline, timeout, geç onay) — senaryo seçimi production API'sine
-  alan sızdırmadan (tutar deseni veya mock config'i ile; ADR-004 §13 ruhu).
-  Provider secret'ları yalnız environment'tan (ADR-007 §19–§20).
+  modülünde. Sandbox adapter deterministik senaryolar sunar (başarı, decline,
+  timeout, geç onay) — senaryo seçimi BUSINESS TUTARINDAN TAMAMEN AYRIDIR:
+  yalnız sandbox konfigürasyonu/test kontrol yüzeyi ile seçilir; tutar deseni
+  gibi business verisine bağlı tetikler YASAKTIR ve production API'sine hiçbir
+  senaryo alanı sızmaz (ADR-004 §13 ruhu). Provider secret'ları yalnız
+  environment'tan (ADR-007 §19–§20).
+- **Crash recovery:** payment design notundaki politika uygulanır — intent
+  kaydı persist edilmiş ama sonucu uygulanmamış operation'lar (process ölümü,
+  timeout) startup/reconciliation yolunda deterministik olarak çözülür; hiçbir
+  crash senaryosu duplicate para hareketi veya kayıp operation bırakamaz.
 - **Sınırlar:** FastAPI/AI hiçbir payment yüzeyine dokunmaz (FORBIDDEN §1);
   AI sonucu payment operation ÜRETEMEZ (ADR-003 §21). Payment modülü Deal'e
   dar port üzerinden bağlanır; FUNDED bilgisi Deal'e event/port ile yansır,
@@ -177,23 +202,29 @@ senaryoları §7 akışıyla doğrulanır.
 
 ## 9. Açık sorular / karar noktaları
 
-- **Payment design ADR'si (önkoşul):** funding unit granülaritesi (tek ödeme
-  mi, taksit/milestone mu), platform hesabı modeli (escrow benzeri tutma
-  biçimi), UNCONFIRMED→otomatik reconciliation politikası ve refund modelinin
-  iskeleti bu dokümanda karara bağlanır — insan onayı şart.
-- **Provider seçimi (önkoşul):** staging/production için gerçek provider
-  (örn. Stripe/iyzico/craftgate sınıfı) kararı; sandbox port tasarımı bu
-  karardan bağımsız ilerleyebilir ama kabulden önce karar kapanmalıdır.
-- Provider sonucunun platforma dönüş kanalı: webhook mu polling mi (öneri:
-  port her ikisine açık; local mock'ta senkron sonuç + geç-onay senaryosu)
+- **Payment design ADR'si (önkoşul; kapatılması ZORUNLU başlıklar):**
+  FundingUnit + PaymentOperation exact state machine'i (tüm durumlar ve izinli
+  geçişler, UNCONFIRMED dahil), crash recovery politikası (intent-persist +
+  sonuç-uygulama arası ölüm senaryoları, startup reconciliation), callback vs
+  polling sonuç kanalı seçimi, platform hesabı modeli (escrow benzeri tutma
+  biçimi), refund modelinin iskeleti — insan onayı şart.
+- **Provider adayı:** Moka United (havuz ödeme: havuz onay / havuz onay iptal
+  modeli M4Trust'ın fund→release/cancel yaşam döngüsüyle doğal eşleşir).
+  Developer portal araştırması payment design ADR'sine girdi olur; port
+  interface'i bu yeteneklerle uyumlu tasarlanır ama gerçek entegrasyon
+  Slice 11B'dir.
 - Çoklu currency desteği: v1'de tek currency (package currency'si) önerilir
 - PaymentOperation'da saklanacak provider yanıt özetinin alan seti (raw
   yanıt/PII saklanmaz — ADR-007 §33)
 
 ## 10. Done tanımı
 
-- [ ] §9'daki payment design ADR'si ve provider kararı insan onayıyla kapandı
+- [ ] Payment design ADR'si (state machine + crash recovery + callback/polling
+      dahil) insan onayıyla kapandı
 - [ ] OpenAPI funding yüzeyi implementasyondan önce tasarlandı
+- [ ] V1 tek FundingUnit sınırı korunuyor; PARTIALLY_FUNDED yüzeyde yok
+- [ ] Sandbox senaryo seçimi business tutarından bağımsız; production API'ye
+      senaryo alanı sızmıyor
 - [ ] FundingPlan/FundingUnit/PaymentOperation migration'ları para
       invariant'larını DB seviyesinde taşıyor
 - [ ] Provider port + sandbox adapter çalışıyor; provider çağrıları TX dışında
