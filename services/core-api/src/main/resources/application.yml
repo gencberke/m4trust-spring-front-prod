@@ -55,6 +55,15 @@ app:
     upload-ttl: ${OBJECT_STORAGE_UPLOAD_TTL}
     download-ttl: ${OBJECT_STORAGE_DOWNLOAD_TTL}
     max-upload-size-bytes: ${OBJECT_STORAGE_MAX_UPLOAD_SIZE_BYTES}
+  messaging:
+    topology:
+      enabled: ${MESSAGING_TOPOLOGY_ENABLED:false}
+    relay:
+      enabled: ${MESSAGING_RELAY_ENABLED:false}
+      fixed-delay: ${MESSAGING_RELAY_FIXED_DELAY:5s}
+      claim-timeout: ${MESSAGING_RELAY_CLAIM_TIMEOUT:1m}
+      batch-size: ${MESSAGING_RELAY_BATCH_SIZE:20}
+      confirm-timeout: ${MESSAGING_RELAY_CONFIRM_TIMEOUT:10s}
 
 logging:
   structured:
