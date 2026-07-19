@@ -778,6 +778,9 @@ def validate_contract_documents(failures: list[str]) -> None:
         ratification_detail = core_components.get("schemas", {}).get("RatificationPackageDetail", {})
         ratification_approval = core_components.get("schemas", {}).get("RatificationApproval", {})
         ratification_snapshot_rule_set = core_components.get("schemas", {}).get("RatificationSnapshotRuleSet", {})
+        lowercase_uuid_pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        ratification_snapshot_party = core_components.get("schemas", {}).get("RatificationSnapshotParty", {})
+        ratification_snapshot_document = core_components.get("schemas", {}).get("RatificationSnapshotDocument", {})
         ratification_conflict = core_components.get("responses", {}).get("RatificationPackageActionConflict", {})
         ratification_create_conflict = core_components.get("responses", {}).get("RatificationPackageCreateConflict", {})
         snapshot_rules = ratification_snapshot.get("properties", {}).get("ruleSet", {}).get("$ref")
@@ -832,6 +835,10 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or ratification_snapshot.get("additionalProperties") is not False
                 or ratification_snapshot.get("properties", {}).get("schemaVersion", {}).get("const") != 1
                 or snapshot_rules != "#/components/schemas/RatificationSnapshotRuleSet"
+                or ratification_snapshot.get("properties", {}).get("dealId", {}).get("pattern") != lowercase_uuid_pattern
+                or ratification_snapshot_party.get("properties", {}).get("legalEntityId", {}).get("pattern") != lowercase_uuid_pattern
+                or ratification_snapshot_rule_set.get("properties", {}).get("ruleSetVersionId", {}).get("pattern") != lowercase_uuid_pattern
+                or ratification_snapshot_document.get("properties", {}).get("documentId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_rule_set.get("properties", {}).get("rules", {}).get("uniqueItems") is not True
                 or "UTF-8 bytewise" not in ratification_snapshot_rule_set.get("properties", {}).get("rules", {}).get("description", "")
                 or "sole contentHash input" not in ratification_snapshot.get("description", "")

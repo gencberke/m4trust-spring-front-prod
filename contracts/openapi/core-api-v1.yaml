@@ -3047,7 +3047,7 @@ components:
       additionalProperties: false
       required: [legalEntityId, legalName]
       properties:
-        legalEntityId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        legalEntityId: {type: string, format: uuid, pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', description: Lowercase canonical UUID string.}
         legalName: {type: string, minLength: 1, maxLength: 200}
     RatificationSnapshotRule:
       type: object
@@ -3071,7 +3071,7 @@ components:
       additionalProperties: false
       required: [ruleSetVersionId, version, rules]
       properties:
-        ruleSetVersionId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        ruleSetVersionId: {type: string, format: uuid, pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', description: Lowercase canonical UUID string.}
         version: {type: integer, minimum: 1, maximum: 9007199254740991}
         rules:
           type: array
@@ -3083,7 +3083,7 @@ components:
       additionalProperties: false
       required: [documentId, objectVersion, sha256]
       properties:
-        documentId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        documentId: {type: string, format: uuid, pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', description: Lowercase canonical UUID string.}
         objectVersion: {type: string, minLength: 1, maxLength: 512}
         sha256:
           type: string
@@ -3103,7 +3103,7 @@ components:
       required: [schemaVersion, dealId, dealReference, dealTitle, buyer, seller, ruleSet, commercialTerms, document]
       properties:
         schemaVersion: {type: integer, const: 1}
-        dealId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        dealId: {type: string, format: uuid, pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', description: Lowercase canonical UUID string.}
         dealReference: {type: string, minLength: 1, maxLength: 50}
         dealTitle: {type: string, minLength: 1, maxLength: 200}
         buyer: {$ref: '#/components/schemas/RatificationSnapshotParty'}
