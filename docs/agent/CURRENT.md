@@ -42,6 +42,12 @@ projection and frontend analysis view are implemented. Real-browser acceptance
 §7.1–§7.8 passed with real RabbitMQ and the Compose worker; successful results
 always land at REVIEW_REQUIRED.
 
+Slice 9 Manual Review and RuleSetVersion is accepted under
+`docs/plan/done/`. Initiator review, typed rule corrections/exclusions/manual
+rules, immutable version history, atomic acceptance, document supersession,
+participant read-only visibility and real two-session concurrency acceptance
+passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
+
 ## Accepted foundations
 
 - ADR-001 through ADR-010 are accepted and remain authoritative.
@@ -55,6 +61,8 @@ always land at REVIEW_REQUIRED.
   `docs/plan/done/`.
 - Slice 6 Document upload is accepted under `docs/plan/done/`.
 - Slice 8 AI Document Extraction is accepted under `docs/plan/done/`.
+- Slice 9 Manual Review and RuleSetVersion is accepted under
+  `docs/plan/done/`.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
 - The system direction remains Vite/React/TypeScript + Spring Boot modular
@@ -95,7 +103,7 @@ always land at REVIEW_REQUIRED.
 
 ## Validation state
 
-- Contract validation passes for the committed Slice 5 OpenAPI.
+- Contract validation passes for the committed Slice 9 OpenAPI.
 - Core API `mvn verify` passes against Testcontainers PostgreSQL.
 - Frontend `npm run typecheck` and production `npm run build` pass.
 - Slice 4 invitation/participation regression and Slice 5 real two-browser
@@ -108,7 +116,10 @@ always land at REVIEW_REQUIRED.
 - Slice 8 real-browser acceptance passed on 2026-07-19 with real RabbitMQ and
   the Compose Mock AI Worker, including queued recovery, duplicate delivery
   idempotency, retry, supersede, authorization and Slice 6 regression.
-- Core API tests pass 105/105, Mock AI Worker tests pass 14/14, the contract
+- Slice 9 real-browser acceptance passed on 2026-07-19 with initiator and
+  participant sessions, field-level 422 recovery, immutable history,
+  supersession, a real concurrent acceptance race and responsive read-only UI.
+- Core API tests pass 129/129, Mock AI Worker tests pass 14/14, the contract
   validator passes 21 schemas and 13 fixtures, and frontend typecheck/build pass.
 
 ## Not yet stable or accepted
@@ -118,15 +129,11 @@ always land at REVIEW_REQUIRED.
 
 ## Active work
 
-Slice 8 AI Document Extraction is accepted on
-`codex/slice-8-e2e-acceptance` and awaits PR/merge. Slice 7 Railway staging is
-being executed independently and in parallel on
-`codex/slice7-staging-deployment`; its deployment acceptance remains separate
-from the Slice 8 implementation lineage.
-
-Slice 9–11 plans have explicit human approval and are under
-`docs/plan/ready/`. ADR-010 closes the V1 ratification commercial-terms and
-provider-independent funding-foundation decisions needed by Slices 10–11.
+Slice 9 is accepted on `codex/slice-9-11`; Slice 10 Ratification is the active
+approved slice. Slice 7 Railway staging remains separate from this implementation
+lineage. Slice 10–11 plans retain explicit human approval under
+`docs/plan/ready/`; ADR-010 closes their V1 commercial-terms and
+provider-independent funding-foundation decisions.
 
 ## Known blockers
 
@@ -134,8 +141,8 @@ No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Execute approved Slices 9, 10 and 11 in dependency order. Slice 7 Railway
-staging continues independently in parallel.
+Execute approved Slices 10 and 11 in dependency order. Slice 7 Railway staging
+continues independently.
 
 ## Update rule
 
