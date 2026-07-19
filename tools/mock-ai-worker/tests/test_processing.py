@@ -9,6 +9,19 @@ def processor(contracts, scenario="auto"):
     return Processor(contracts, DocumentDownloader(2, 2, backoff=lambda _: None), ScenarioSelector(scenario))
 
 
+def test_local_host_override_preserves_the_signed_host_header():
+    downloader = DocumentDownloader(2, 1, host_override="host.docker.internal")
+
+    connection_url, host_header = downloader._connection_target(
+        "http://localhost:9000/bucket/object?X-Amz-Signature=signed"
+    )
+
+    assert connection_url == (
+        "http://host.docker.internal:9000/bucket/object?X-Amz-Signature=signed"
+    )
+    assert host_header == "localhost:9000"
+
+
 def test_success_downloads_and_emits_correlated_contract_valid_result(
     contracts, request_event, download_server
 ):

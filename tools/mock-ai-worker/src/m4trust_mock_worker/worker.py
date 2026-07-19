@@ -101,7 +101,8 @@ def main() -> None:
         contracts = ContractValidator(settings.contracts_dir)
         processor = Processor(
             contracts,
-            DocumentDownloader(settings.download_timeout_seconds, settings.download_max_attempts),
+            DocumentDownloader(settings.download_timeout_seconds, settings.download_max_attempts,
+                               host_override=settings.download_host_override),
             ScenarioSelector(settings.scenario),
         )
         while True:

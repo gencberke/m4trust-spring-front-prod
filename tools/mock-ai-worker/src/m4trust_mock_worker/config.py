@@ -17,6 +17,7 @@ class Settings:
     scenario: str
     download_timeout_seconds: float
     download_max_attempts: int
+    download_host_override: str | None = None
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -31,6 +32,7 @@ class Settings:
             scenario=os.getenv("M4TRUST_MOCK_AI_SCENARIO", "auto").strip().lower(),
             download_timeout_seconds=float(os.getenv("M4TRUST_MOCK_AI_DOWNLOAD_TIMEOUT_SECONDS", "10")),
             download_max_attempts=int(os.getenv("M4TRUST_MOCK_AI_DOWNLOAD_MAX_ATTEMPTS", "3")),
+            download_host_override=os.getenv("M4TRUST_MOCK_AI_DOWNLOAD_HOST_OVERRIDE") or None,
         )
 
     def validate_startup(self) -> None:

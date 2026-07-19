@@ -37,6 +37,10 @@ exhausted transient download errors become
 `OBJECT_STORAGE_TEMPORARILY_UNAVAILABLE`. Logs contain identifiers and stable
 codes only, never URLs, request bodies, credentials, or document bytes.
 
+The Compose profile connects to browser-reachable `localhost` presigned URLs
+through Docker's `host.docker.internal` alias while preserving the signed Host
+header. This is a local transport bridge only; event URLs are not rewritten.
+
 ## Validate
 
 ```powershell

@@ -49,6 +49,9 @@ services:
       APP_ENVIRONMENT: local
       M4TRUST_MOCK_AI_ENABLED: "true"
       M4TRUST_MOCK_AI_SCENARIO: ${M4TRUST_MOCK_AI_SCENARIO:-auto}
+      # Core API signs browser-reachable localhost URLs. The container connects
+      # through Docker's host alias while retaining the signed Host header.
+      M4TRUST_MOCK_AI_DOWNLOAD_HOST_OVERRIDE: host.docker.internal
       M4TRUST_RABBITMQ_HOST: rabbitmq
       M4TRUST_RABBITMQ_PORT: 5672
       M4TRUST_RABBITMQ_USER: ${M4TRUST_RABBITMQ_USER:-m4trust_local}

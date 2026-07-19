@@ -4,6 +4,7 @@ import copy
 import hashlib
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from dataclasses import dataclass
@@ -23,10 +24,13 @@ class DownloadFailure(Exception):
 
 
 class DocumentDownloader:
-    def __init__(self, timeout_seconds: float, max_attempts: int, backoff: Callable[[float], None] = time.sleep):
+    def __init__(self, timeout_seconds: float, max_attempts: int,
+                 backoff: Callable[[float], None] = time.sleep,
+                 host_override: str | None = None):
         self._timeout_seconds = timeout_seconds
         self._max_attempts = max_attempts
         self._backoff = backoff
+        self._host_override = host_override
 
     def download_and_verify(self, input_data: dict[str, Any]) -> bytes:
         expires_at = datetime.fromisoformat(input_data["download"]["expiresAt"].replace("Z", "+00:00"))
@@ -51,9 +55,15 @@ class DocumentDownloader:
         return document
 
     def _download_with_retry(self, url: str) -> bytes:
+        connection_url, host_header = self._connection_target(url)
         for attempt in range(1, self._max_attempts + 1):
             try:
-                request = urllib.request.Request(url, headers={"User-Agent": "m4trust-mock-ai-worker/1.0"})
+                headers = {"User-Agent": "m4trust-mock-ai-worker/1.0"}
+                if host_header:
+                    # SigV4 includes Host in the signature. Connect through the
+                    # Docker host alias while preserving the signed public host.
+                    headers["Host"] = host_header
+                request = urllib.request.Request(connection_url, headers=headers)
                 with urllib.request.urlopen(request, timeout=self._timeout_seconds) as response:
                     return response.read()
             except urllib.error.HTTPError as error:
@@ -72,6 +82,22 @@ class DocumentDownloader:
             "The object storage dependency is temporarily unavailable.",
             {"dependency": "object-storage", "reason": "temporarily unavailable", "retryAfterMs": 1000}, True,
         ) from last_error
+
+    def _connection_target(self, url: str) -> tuple[str, str | None]:
+        if not self._host_override:
+            return url, None
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.scheme != "http":
+            raise DownloadFailure(
+                "INVALID_INPUT", "INVALID_DOWNLOAD_REFERENCE",
+                "The local download host override only supports HTTP.",
+                {"field": "input.download", "reason": "unsupported local override"}, False,
+            )
+        port = f":{parsed.port}" if parsed.port else ""
+        target = urllib.parse.urlunsplit(
+            (parsed.scheme, f"{self._host_override}{port}", parsed.path, parsed.query, parsed.fragment)
+        )
+        return target, parsed.netloc
 
 
 class ScenarioSelector:
