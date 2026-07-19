@@ -96,6 +96,9 @@ class AnalysisService implements DealAnalysisProjectionPort {
         requireEligible(preflight.initiator(), preflight.acceptsAnalysis(),
                 preflight.currentDocumentId());
         DocumentAnalysisInputPort.Input input = availableInput(preflight.currentDocumentId());
+        if (repository.hasActiveJob(input.id())) {
+            throw activeJobConflict();
+        }
         DocumentObjectStorage.DirectDownload download = storage.createAiDirectDownload(
                 input.objectKey(), input.objectVersion());
 

@@ -1,7 +1,14 @@
 package com.m4trust.coreapi.document;
-import java.util.Optional; import java.util.UUID;
+
+import java.util.Optional;
+import java.util.UUID;
+
+/** Immutable verified-document input required to issue an AI analysis request. */
 public interface DocumentAnalysisInputPort {
- Optional<Input> findAvailable(UUID documentId);
- record Input(UUID id, UUID dealId, String fileName, String mediaType, long sizeBytes,
-              String sha256, String objectKey, String objectVersion) { }
+
+    Optional<Input> findAvailable(UUID documentId);
+
+    record Input(UUID id, UUID dealId, String fileName, String mediaType, long sizeBytes,
+            String sha256, String objectKey, String objectVersion) {
+    }
 }
