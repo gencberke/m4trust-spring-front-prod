@@ -57,11 +57,21 @@ final class S3DocumentObjectStorage implements DocumentObjectStorage {
 
     @Override
     public DirectDownload createDirectDownload(String objectKey, String objectVersion) {
+        return createDownload(objectKey, objectVersion, properties.downloadTtl());
+    }
+
+    @Override
+    public DirectDownload createAiDirectDownload(String objectKey, String objectVersion) {
+        return createDownload(objectKey, objectVersion, properties.aiDownloadTtl());
+    }
+
+    private DirectDownload createDownload(String objectKey, String objectVersion,
+            java.time.Duration ttl) {
         GetObjectRequest request = GetObjectRequest.builder().bucket(properties.bucket())
                 .key(objectKey).versionId(objectVersion).build();
         PresignedGetObjectRequest signed = presigner.presignGetObject(GetObjectPresignRequest.builder()
-                .signatureDuration(properties.downloadTtl()).getObjectRequest(request).build());
-        return new DirectDownload(URI.create(signed.url().toString()), clock.instant().plus(properties.downloadTtl()));
+                .signatureDuration(ttl).getObjectRequest(request).build());
+        return new DirectDownload(URI.create(signed.url().toString()), clock.instant().plus(ttl));
     }
 
     @Override

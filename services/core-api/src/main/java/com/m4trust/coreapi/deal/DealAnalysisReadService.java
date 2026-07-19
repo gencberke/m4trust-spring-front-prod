@@ -5,29 +5,27 @@ import java.util.UUID;
 
 import com.m4trust.coreapi.organization.OperationContext;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-class DealAnalysisMutationService implements DealAnalysisMutationPort {
+class DealAnalysisReadService implements DealAnalysisReadPort {
 
     private final DealRepository repository;
     private final DealOperationPolicy operationPolicy;
 
-    DealAnalysisMutationService(DealRepository repository,
+    DealAnalysisReadService(DealRepository repository,
             DealOperationPolicy operationPolicy) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
     }
 
     @Override
-    @Transactional(propagation = Propagation.MANDATORY)
-    public Optional<AnalysisTarget> lockForAnalysisRequest(
+    @Transactional(readOnly = true)
+    public Optional<AnalysisVisibility> findAnalysisVisibility(
             OperationContext context, UUID dealId) {
-        return repository.findVisibleByIdForUpdate(context.tenantId(),
-                        context.activeLegalEntityId(), dealId)
+        return repository.findVisibleById(context.tenantId(), context.activeLegalEntityId(), dealId)
                 .map(Deal::rehydrate)
-                .map(deal -> new AnalysisTarget(deal.id(), deal.toRecord().tenantId(),
+                .map(deal -> new AnalysisVisibility(deal.id(), deal.toRecord().tenantId(),
                         deal.currentDocumentId(), operationPolicy.isInitiator(deal, context),
                         deal.status().allowsDocumentUpload()));
     }

@@ -1,2 +1,28 @@
 package com.m4trust.coreapi.contractintelligence;
-class AnalysisExceptions { static class Forbidden extends RuntimeException{} static class NotFound extends RuntimeException{} static class Conflict extends RuntimeException{final String code; Conflict(String c){code=c;}} }
+
+final class AnalysisExceptions {
+
+    private AnalysisExceptions() {
+    }
+
+    static final class DealNotFound extends RuntimeException {
+    }
+
+    static final class MalformedRequest extends RuntimeException {
+    }
+
+    static final class RequestForbidden extends RuntimeException {
+    }
+
+    static final class Conflict extends RuntimeException {
+        private final String code;
+
+        Conflict(String code) {
+            this.code = code;
+        }
+
+        String code() {
+            return code;
+        }
+    }
+}

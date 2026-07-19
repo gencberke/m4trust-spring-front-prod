@@ -20,11 +20,13 @@ public record ObjectStorageProperties(
         @NotBlank String secretKey,
         @NotNull Duration uploadTtl,
         @NotNull Duration downloadTtl,
+        @NotNull Duration aiDownloadTtl,
         @Positive long maxUploadSizeBytes) {
 
     public ObjectStorageProperties {
         if (!endpoint.isAbsolute() || uploadTtl.isNegative() || uploadTtl.isZero()
-                || downloadTtl.isNegative() || downloadTtl.isZero()) {
+                || downloadTtl.isNegative() || downloadTtl.isZero()
+                || aiDownloadTtl.isNegative() || aiDownloadTtl.isZero()) {
             throw new IllegalArgumentException("object storage endpoint and TTLs must be valid");
         }
     }

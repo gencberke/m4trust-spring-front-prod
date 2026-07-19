@@ -11,6 +11,14 @@ public interface DocumentObjectStorage {
 
     DirectDownload createDirectDownload(String objectKey, String objectVersion);
 
+    /**
+     * Creates the longer-lived immutable download capability carried in an AI
+     * command event. Browser links continue to use the regular download TTL.
+     */
+    default DirectDownload createAiDirectDownload(String objectKey, String objectVersion) {
+        return createDirectDownload(objectKey, objectVersion);
+    }
+
     VerifiedObject verify(String objectKey);
 
     record DirectUpload(URI url, Map<String, String> headers, Instant expiresAt) {

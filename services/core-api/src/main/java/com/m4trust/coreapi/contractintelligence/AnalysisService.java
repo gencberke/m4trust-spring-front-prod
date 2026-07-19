@@ -1,15 +1,252 @@
 package com.m4trust.coreapi.contractintelligence;
-import java.net.URI; import java.time.*; import java.util.*;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.HexFormat;
+import java.util.UUID;
+
+import com.m4trust.coreapi.audit.AuditAppendPort;
+import com.m4trust.coreapi.audit.AuditRecord;
+import com.m4trust.coreapi.deal.DealAnalysisMutationPort;
+import com.m4trust.coreapi.deal.DealAnalysisProjectionPort;
+import com.m4trust.coreapi.deal.DealAnalysisReadPort;
+import com.m4trust.coreapi.document.DocumentAnalysisInputPort;
+import com.m4trust.coreapi.document.DocumentObjectStorage;
+import com.m4trust.coreapi.idempotency.IdempotencyClaim;
+import com.m4trust.coreapi.idempotency.IdempotencyRequest;
+import com.m4trust.coreapi.idempotency.IdempotencyResultReference;
+import com.m4trust.coreapi.idempotency.IdempotencyService;
+import com.m4trust.coreapi.integration.messaging.TransactionalOutbox;
+import com.m4trust.coreapi.organization.OperationContext;
+import com.m4trust.coreapi.organization.RequestedOperation;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
-import com.m4trust.coreapi.audit.*; import com.m4trust.coreapi.deal.*; import com.m4trust.coreapi.document.*; import com.m4trust.coreapi.idempotency.*; import com.m4trust.coreapi.integration.messaging.TransactionalOutbox; import com.m4trust.coreapi.organization.*;
-import org.springframework.beans.factory.annotation.Value; import org.springframework.stereotype.Service; import org.springframework.transaction.support.TransactionTemplate;
-@Service class AnalysisService implements DealAnalysisProjectionPort {
- private final AnalysisRepository jobs; private final DealAnalysisMutationPort deals; private final DocumentAnalysisInputPort documents; private final DocumentObjectStorage storage; private final IdempotencyService idem; private final TransactionTemplate tx; private final TransactionalOutbox outbox; private final AuditAppendPort audit; private final Clock clock; private final ObjectMapper json;
- AnalysisService(AnalysisRepository jobs,DealAnalysisMutationPort deals,DocumentAnalysisInputPort documents,DocumentObjectStorage storage,IdempotencyService idem,TransactionTemplate tx,TransactionalOutbox outbox,AuditAppendPort audit,Clock clock,ObjectMapper json){this.jobs=jobs;this.deals=deals;this.documents=documents;this.storage=storage;this.idem=idem;this.tx=tx;this.outbox=outbox;this.audit=audit;this.clock=clock;this.json=json;}
- public DealDocumentAnalysis get(OperationContext c,UUID dealId){ require(c,RequestedOperation.DEAL_DOCUMENT_ANALYSIS_READ); DealAnalysisMutationPort.AnalysisTarget t=required(tx.execute(s->deals.lockForAnalysis(c,dealId).orElseThrow(AnalysisExceptions.NotFound::new))); return projection(t.currentDocumentId()); }
- DealDocumentAnalysis request(OperationContext c,UUID dealId,UUID key,UUID correlation){require(c,RequestedOperation.DEAL_DOCUMENT_ANALYSIS_REQUEST); IdempotencyRequest request=new IdempotencyRequest(c.authenticatedUserId(),c.tenantId(),"DEAL_DOCUMENT_ANALYSIS_REQUEST",key,hash(c.activeLegalEntityId(),dealId)); IdempotencyResultReference completed=idem.findCompleted(request).orElse(null); if(completed!=null)return projectionForJob(completed.id());
-  DealAnalysisMutationPort.AnalysisTarget pre=required(tx.execute(s->deals.lockForAnalysis(c,dealId).orElseThrow(AnalysisExceptions.NotFound::new))); requireTarget(pre); DocumentAnalysisInputPort.Input input=documents.findAvailable(pre.currentDocumentId()).orElseThrow(()->new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE")); DocumentObjectStorage.DirectDownload signed=storage.createDirectDownload(input.objectKey(),input.objectVersion());
-  return required(tx.execute(s->{IdempotencyClaim claim=idem.claim(request);if(claim.isReplay())return projectionForJob(claim.resultReference().id()); DealAnalysisMutationPort.AnalysisTarget target=deals.lockForAnalysis(c,dealId).orElseThrow(AnalysisExceptions.NotFound::new);requireTarget(target); DocumentAnalysisInputPort.Input locked=documents.findAvailable(target.currentDocumentId()).orElseThrow(()->new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE")); if(!locked.id().equals(input.id())||!locked.objectVersion().equals(input.objectVersion()))throw new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");if(jobs.active(locked.id()))throw new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS"); Instant now=clock.instant(); UUID jobId=UUID.randomUUID(); jobs.insert(new AnalysisRepository.Row(jobId,target.tenantId(),target.dealId(),locked.id(),locked.objectVersion(),locked.sha256(),"QUEUED",now,null,null,null,null,null,0)); outbox.enqueue("ai.document-extraction.requested.v1","m4trust.ai.commands","ai.document-extraction.requested.v1",event(jobId,target,locked,key,correlation,signed,now)); audit.append(new AuditRecord(UUID.randomUUID(),target.tenantId(),c.authenticatedUserId(),c.activeLegalEntityId(),"ANALYSIS_JOB",jobId,"DOCUMENT_ANALYSIS_REQUESTED",correlation,null,now)); idem.recordResult(claim,new IdempotencyResultReference("DEAL_DOCUMENT_ANALYSIS",jobId));return projection(locked.id());})); }
- private String event(UUID job,DealAnalysisMutationPort.AnalysisTarget t,DocumentAnalysisInputPort.Input d,UUID key,UUID correlation,DocumentObjectStorage.DirectDownload link,Instant now){try{Map<String,Object> envelope=new LinkedHashMap<>(); envelope.put("eventId",UUID.randomUUID());envelope.put("eventType","ai.job.requested.v1");envelope.put("schemaVersion","1.0.0");envelope.put("occurredAt",now);envelope.put("correlationId",correlation);envelope.put("causationId",null);envelope.put("jobId",job);envelope.put("jobType","DOCUMENT_EXTRACTION");envelope.put("tenantId",t.tenantId());envelope.put("transactionId",t.dealId());envelope.put("subjectId",d.id());envelope.put("idempotencyKey",key.toString());envelope.put("producer",Map.of("service","core-api","version","0.1.0"));envelope.put("payload",Map.of("input",Map.of("documentId",d.id(),"fileName",d.fileName(),"mediaType",d.mediaType(),"sizeBytes",d.sizeBytes(),"sha256",d.sha256(),"download",Map.of("url",link.url().toString(),"expiresAt",link.expiresAt())),"processing",Map.of("languageHints",List.of(),"documentCategory","B2B_CONTRACT","requestedOutputSchema","m4trust.document-extraction-result","requestedOutputSchemaVersion","1.0.0","privacyProfile","DEFAULT","retrievalProfile","M4TRUST_LEGAL_DEFAULT"),"deadlineAt",link.expiresAt()));return json.writeValueAsString(envelope);}catch(Exception e){throw new IllegalStateException(e);}}
- private DealDocumentAnalysis projection(UUID doc){return jobs.latest(doc).map(this::row).orElse(new DealDocumentAnalysis(doc,"NOT_REQUESTED",null,null,null,null,null,null));} private DealDocumentAnalysis projectionForJob(UUID id){return jobs.latestForJob(id).map(this::row).orElseThrow(()->new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE"));} private DealDocumentAnalysis row(AnalysisRepository.Row r){return new DealDocumentAnalysis(r.documentId(),r.status(),r.requestedAt(),r.processingStartedAt(),r.completedAt(),r.failedAt(),r.failureCode()==null?null:new DealDocumentAnalysis.Failure(r.failureCode(),Boolean.TRUE.equals(r.retryRecommended())),null);} public AnalysisSummary summary(UUID d){DealDocumentAnalysis p=projection(d);return new AnalysisSummary(p.currentDocumentId(),p.status(),p.requestedAt(),p.processingStartedAt(),p.completedAt(),p.failedAt(),p.failure()==null?null:new Failure(p.failure().code(),p.failure().retryRecommended()));} public boolean hasActiveJob(UUID d){return jobs.active(d);} private void requireTarget(DealAnalysisMutationPort.AnalysisTarget t){if(!t.initiator())throw new AnalysisExceptions.Forbidden();if(!t.acceptsAnalysis())throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");if(t.currentDocumentId()==null)throw new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");} private void require(OperationContext c,RequestedOperation o){if(c.requestedOperation()!=o)throw new IllegalArgumentException();} private String hash(UUID a,UUID d){return a+":"+d;} private static <T>T required(T x){if(x==null)throw new IllegalStateException();return x;}
+
+/** Coordinates the 3A request and read projection; result consumption is intentionally absent. */
+@Service
+class AnalysisService implements DealAnalysisProjectionPort {
+
+    private static final String IDEMPOTENCY_OPERATION = "DEAL_DOCUMENT_ANALYSIS_REQUEST";
+    private static final String IDEMPOTENCY_RESULT = "DEAL_DOCUMENT_ANALYSIS";
+    private static final String AUDIT_SUBJECT = "ANALYSIS_JOB";
+    private static final String AUDIT_ACTION = "DOCUMENT_ANALYSIS_REQUESTED";
+
+    private final AnalysisRepository repository;
+    private final DealAnalysisReadPort dealReads;
+    private final DealAnalysisMutationPort dealMutations;
+    private final DocumentAnalysisInputPort documentInputs;
+    private final DocumentObjectStorage storage;
+    private final IdempotencyService idempotency;
+    private final TransactionalOutbox outbox;
+    private final AuditAppendPort auditAppender;
+    private final TransactionTemplate transactions;
+    private final Clock clock;
+    private final DocumentExtractionRequestedEventFactory eventFactory;
+
+    AnalysisService(AnalysisRepository repository, DealAnalysisReadPort dealReads,
+            DealAnalysisMutationPort dealMutations, DocumentAnalysisInputPort documentInputs,
+            DocumentObjectStorage storage, IdempotencyService idempotency,
+            TransactionalOutbox outbox, AuditAppendPort auditAppender,
+            TransactionTemplate transactions, Clock clock, ObjectMapper objectMapper,
+            @Value("${app.ai.producer-version:1.0.0}") String producerVersion) {
+        this.repository = repository;
+        this.dealReads = dealReads;
+        this.dealMutations = dealMutations;
+        this.documentInputs = documentInputs;
+        this.storage = storage;
+        this.idempotency = idempotency;
+        this.outbox = outbox;
+        this.auditAppender = auditAppender;
+        this.transactions = transactions;
+        this.clock = clock;
+        this.eventFactory = new DocumentExtractionRequestedEventFactory(objectMapper, producerVersion);
+    }
+
+    DealDocumentAnalysis get(OperationContext context, UUID dealId) {
+        requireOperation(context, RequestedOperation.DEAL_DOCUMENT_ANALYSIS_READ);
+        DealAnalysisReadPort.AnalysisVisibility visibility = dealReads
+                .findAnalysisVisibility(context, dealId)
+                .orElseThrow(AnalysisExceptions.DealNotFound::new);
+        return currentProjection(visibility.currentDocumentId());
+    }
+
+    DealDocumentAnalysis request(OperationContext context, UUID dealId, UUID idempotencyKey,
+            UUID correlationId) {
+        requireOperation(context, RequestedOperation.DEAL_DOCUMENT_ANALYSIS_REQUEST);
+        IdempotencyRequest request = new IdempotencyRequest(context.authenticatedUserId(),
+                context.tenantId(), IDEMPOTENCY_OPERATION, idempotencyKey,
+                canonicalHash(context.activeLegalEntityId(), dealId));
+        IdempotencyResultReference completed = idempotency.findCompleted(request).orElse(null);
+        if (completed != null) {
+            return projectionForJob(completed);
+        }
+
+        // This read is intentionally not a mutation lock. Presigning is external I/O,
+        // so it happens after a read-only preflight and before the atomic write.
+        DealAnalysisReadPort.AnalysisVisibility preflight = dealReads
+                .findAnalysisVisibility(context, dealId)
+                .orElseThrow(AnalysisExceptions.DealNotFound::new);
+        requireEligible(preflight.initiator(), preflight.acceptsAnalysis(),
+                preflight.currentDocumentId());
+        DocumentAnalysisInputPort.Input input = availableInput(preflight.currentDocumentId());
+        DocumentObjectStorage.DirectDownload download = storage.createAiDirectDownload(
+                input.objectKey(), input.objectVersion());
+
+        return required(transactions.execute(status -> requestInTransaction(context, dealId,
+                idempotencyKey, correlationId, request, input, download)));
+    }
+
+    private DealDocumentAnalysis requestInTransaction(OperationContext context, UUID dealId,
+            UUID idempotencyKey, UUID correlationId, IdempotencyRequest request,
+            DocumentAnalysisInputPort.Input preflightInput,
+            DocumentObjectStorage.DirectDownload download) {
+        IdempotencyClaim claim = idempotency.claim(request);
+        if (claim.isReplay()) {
+            return projectionForJob(claim.resultReference());
+        }
+
+        DealAnalysisMutationPort.AnalysisTarget target = dealMutations
+                .lockForAnalysisRequest(context, dealId)
+                .orElseThrow(AnalysisExceptions.DealNotFound::new);
+        requireEligible(target.initiator(), target.acceptsAnalysis(), target.currentDocumentId());
+        DocumentAnalysisInputPort.Input lockedInput = availableInput(target.currentDocumentId());
+        if (!sameImmutableInput(preflightInput, lockedInput)) {
+            throw new AnalysisExceptions.Conflict(
+                    "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");
+        }
+        if (repository.hasActiveJob(lockedInput.id())) {
+            throw activeJobConflict();
+        }
+
+        Instant requestedAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        UUID jobId = UUID.randomUUID();
+        try {
+            repository.insertQueued(AnalysisRepository.AnalysisJob.queued(jobId,
+                    target.owningTenantId(), target.dealId(), lockedInput.id(),
+                    lockedInput.objectVersion(), lockedInput.sha256(), requestedAt));
+        } catch (DuplicateKeyException exception) {
+            // The partial unique index is the final authority under concurrent writers.
+            throw activeJobConflict();
+        }
+
+        String event = eventFactory.create(UUID.randomUUID(), jobId, target.owningTenantId(),
+                target.dealId(), correlationId, idempotencyKey, lockedInput, download, requestedAt);
+        outbox.enqueue(DocumentExtractionRequestedEventFactory.EVENT_TYPE, "m4trust.ai.commands",
+                "ai.document-extraction.requested.v1", event);
+        auditAppender.append(new AuditRecord(UUID.randomUUID(), target.owningTenantId(),
+                context.authenticatedUserId(), context.activeLegalEntityId(), AUDIT_SUBJECT,
+                jobId, AUDIT_ACTION, correlationId, null, requestedAt));
+        idempotency.recordResult(claim, new IdempotencyResultReference(IDEMPOTENCY_RESULT, jobId));
+        return projection(AnalysisRepository.AnalysisJob.queued(jobId, target.owningTenantId(),
+                target.dealId(), lockedInput.id(), lockedInput.objectVersion(),
+                lockedInput.sha256(), requestedAt));
+    }
+
+    @Override
+    public AnalysisSummary summary(UUID currentDocumentId) {
+        DealDocumentAnalysis projection = currentProjection(currentDocumentId);
+        return new AnalysisSummary(projection.currentDocumentId(), projection.status().name(),
+                projection.requestedAt(), projection.processingStartedAt(),
+                projection.completedAt(), projection.failedAt(), projection.failure() == null ? null
+                        : new Failure(projection.failure().code(),
+                                projection.failure().retryRecommended()));
+    }
+
+    @Override
+    public boolean hasActiveJob(UUID currentDocumentId) {
+        return repository.hasActiveJob(currentDocumentId);
+    }
+
+    private DealDocumentAnalysis currentProjection(UUID currentDocumentId) {
+        if (currentDocumentId == null || documentInputs.findAvailable(currentDocumentId).isEmpty()) {
+            return notRequested(null);
+        }
+        return repository.findLatestForDocument(currentDocumentId).map(this::projection)
+                .orElseGet(() -> notRequested(currentDocumentId));
+    }
+
+    private DealDocumentAnalysis projectionForJob(IdempotencyResultReference reference) {
+        if (!IDEMPOTENCY_RESULT.equals(reference.type())) {
+            throw new IllegalStateException("Unexpected analysis idempotency result type");
+        }
+        return repository.findById(reference.id()).map(this::projection)
+                .orElseThrow(() -> new IllegalStateException("Idempotency result job is unavailable"));
+    }
+
+    private DealDocumentAnalysis projection(AnalysisRepository.AnalysisJob job) {
+        DealDocumentAnalysis.Failure failure = job.failureCode() == null ? null
+                : new DealDocumentAnalysis.Failure(job.failureCode(),
+                        Boolean.TRUE.equals(job.retryRecommended()));
+        return new DealDocumentAnalysis(job.documentId(), job.status(), job.requestedAt(),
+                job.processingStartedAt(), job.completedAt(), job.failedAt(), failure, null);
+    }
+
+    private static DealDocumentAnalysis notRequested(UUID currentDocumentId) {
+        return new DealDocumentAnalysis(currentDocumentId, AnalysisJobStatus.NOT_REQUESTED,
+                null, null, null, null, null, null);
+    }
+
+    private DocumentAnalysisInputPort.Input availableInput(UUID documentId) {
+        if (documentId == null) {
+            throw new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");
+        }
+        return documentInputs.findAvailable(documentId).orElseThrow(
+                () -> new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE"));
+    }
+
+    private static boolean sameImmutableInput(DocumentAnalysisInputPort.Input preflight,
+            DocumentAnalysisInputPort.Input locked) {
+        return preflight.id().equals(locked.id())
+                && preflight.objectVersion().equals(locked.objectVersion())
+                && preflight.sha256().equals(locked.sha256());
+    }
+
+    private static void requireEligible(boolean initiator, boolean acceptsAnalysis,
+            UUID currentDocumentId) {
+        if (!initiator) {
+            throw new AnalysisExceptions.RequestForbidden();
+        }
+        if (!acceptsAnalysis) {
+            throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");
+        }
+        if (currentDocumentId == null) {
+            throw new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");
+        }
+    }
+
+    private static AnalysisExceptions.Conflict activeJobConflict() {
+        return new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS");
+    }
+
+    private static String canonicalHash(UUID activeLegalEntityId, UUID dealId) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] canonical = ("activeLegalEntityId=" + activeLegalEntityId + "\n"
+                    + "dealId=" + dealId + "\n").getBytes(StandardCharsets.UTF_8);
+            return HexFormat.of().formatHex(digest.digest(canonical));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
+    private static void requireOperation(OperationContext context,
+            RequestedOperation expectedOperation) {
+        if (context.requestedOperation() != expectedOperation) {
+            throw new IllegalArgumentException("Operation context does not match analysis use case");
+        }
+    }
+
+    private static <T> T required(T result) {
+        if (result == null) {
+            throw new IllegalStateException("Transaction returned no result");
+        }
+        return result;
+    }
 }

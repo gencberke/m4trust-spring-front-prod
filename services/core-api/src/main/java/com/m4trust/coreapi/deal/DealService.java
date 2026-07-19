@@ -33,7 +33,8 @@ class DealService {
     DealService(DealRepository repository,
             DealOperationPolicy operationPolicy,
             InvitationLegalEntityQueryPort legalEntityQueries,
-            DealCurrentDocumentQueryPort currentDocumentQueries, DealAnalysisProjectionPort analysisProjections,
+            DealCurrentDocumentQueryPort currentDocumentQueries,
+            DealAnalysisProjectionPort analysisProjections,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
@@ -314,11 +315,13 @@ class DealService {
         return operationPolicy.availableActions(deal, context);
     }
 
-    private DealAvailableActions actionsWithAnalysis(Deal deal, OperationContext context) {
+    private DealAvailableActions actionsWithAnalysis(Deal deal,
+            OperationContext context) {
         DealAvailableActions base = actions(deal, context);
         UUID documentId = deal.currentDocumentId();
         boolean allowed = operationPolicy.isInitiator(deal, context)
-                && deal.status().allowsDocumentUpload() && documentId != null
+                && deal.status().allowsDocumentUpload()
+                && documentId != null
                 && currentDocumentQueries.findAvailable(documentId).isPresent()
                 && !analysisProjections.hasActiveJob(documentId);
         return new DealAvailableActions(base.canUpdate(), base.canCancel(),
@@ -329,7 +332,8 @@ class DealService {
     private DealAnalysisProjectionPort.AnalysisSummary analysis(Deal deal) {
         UUID documentId = deal.currentDocumentId();
         return documentId == null
-                ? new DealAnalysisProjectionPort.AnalysisSummary(null, "NOT_REQUESTED", null, null, null, null, null)
+                ? new DealAnalysisProjectionPort.AnalysisSummary(null, "NOT_REQUESTED",
+                        null, null, null, null, null)
                 : analysisProjections.summary(documentId);
     }
 

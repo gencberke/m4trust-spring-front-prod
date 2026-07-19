@@ -47,6 +47,8 @@ app:
   version: ${APP_VERSION:unknown}
   git-commit-sha: ${GIT_COMMIT_SHA:unknown}
   build-time: ${BUILD_TIME:unknown}
+  ai:
+    producer-version: ${AI_PRODUCER_VERSION:1.0.0}
   security:
     session:
       absolute-timeout: ${SESSION_ABSOLUTE_TIMEOUT:8h}
@@ -58,6 +60,7 @@ app:
     secret-key: ${OBJECT_STORAGE_SECRET_KEY}
     upload-ttl: ${OBJECT_STORAGE_UPLOAD_TTL}
     download-ttl: ${OBJECT_STORAGE_DOWNLOAD_TTL}
+    ai-download-ttl: ${OBJECT_STORAGE_AI_DOWNLOAD_TTL:15m}
     max-upload-size-bytes: ${OBJECT_STORAGE_MAX_UPLOAD_SIZE_BYTES}
   messaging:
     topology:

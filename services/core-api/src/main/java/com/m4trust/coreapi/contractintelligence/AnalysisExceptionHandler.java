@@ -1,8 +1,62 @@
 package com.m4trust.coreapi.contractintelligence;
-import java.net.URI; import com.m4trust.coreapi.api.CorrelationIdFilter; import jakarta.servlet.http.HttpServletRequest; import org.springframework.http.*; import org.springframework.web.bind.annotation.*;
-@RestControllerAdvice class AnalysisExceptionHandler {
- @ExceptionHandler(AnalysisExceptions.NotFound.class) ResponseEntity<ProblemDetail> notFound(HttpServletRequest r){return response(r,HttpStatus.NOT_FOUND,"DEAL_NOT_FOUND");}
- @ExceptionHandler(AnalysisExceptions.Forbidden.class) ResponseEntity<ProblemDetail> forbidden(HttpServletRequest r){return response(r,HttpStatus.FORBIDDEN,"DEAL_ANALYSIS_REQUEST_FORBIDDEN");}
- @ExceptionHandler(AnalysisExceptions.Conflict.class) ResponseEntity<ProblemDetail> conflict(AnalysisExceptions.Conflict e,HttpServletRequest r){return response(r,HttpStatus.CONFLICT,e.code);}
- private ResponseEntity<ProblemDetail> response(HttpServletRequest r,HttpStatus status,String code){ProblemDetail p=ProblemDetail.forStatusAndDetail(status,"The request conflicts with the current resource state.");p.setType(URI.create("https://problems.m4trust.internal/"+code.toLowerCase().replace('_','-')));p.setTitle(status.getReasonPhrase());p.setInstance(URI.create(r.getRequestURI()));p.setProperty("code",code);Object c=r.getAttribute(CorrelationIdFilter.ATTRIBUTE);p.setProperty("correlationId",c==null?"":c.toString());return ResponseEntity.status(status).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(p);}
+
+import java.net.URI;
+
+import com.m4trust.coreapi.api.CorrelationIdFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE + 20)
+class AnalysisExceptionHandler {
+
+    @ExceptionHandler(AnalysisExceptions.MalformedRequest.class)
+    ResponseEntity<ProblemDetail> malformedRequest(HttpServletRequest request) {
+        return response(request, HttpStatus.BAD_REQUEST, "malformed-request", "Malformed request",
+                "The request could not be parsed.", "MALFORMED_REQUEST");
+    }
+
+    @ExceptionHandler(AnalysisExceptions.DealNotFound.class)
+    ResponseEntity<ProblemDetail> dealNotFound(HttpServletRequest request) {
+        return response(request, HttpStatus.NOT_FOUND, "deal-not-found", "Deal not found",
+                "The Deal was not found.", "DEAL_NOT_FOUND");
+    }
+
+    @ExceptionHandler(AnalysisExceptions.RequestForbidden.class)
+    ResponseEntity<ProblemDetail> requestForbidden(HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN, "deal-analysis-request-forbidden",
+                "Deal analysis request forbidden",
+                "The active legal entity cannot request analysis for this Deal.",
+                "DEAL_ANALYSIS_REQUEST_FORBIDDEN");
+    }
+
+    @ExceptionHandler(AnalysisExceptions.Conflict.class)
+    ResponseEntity<ProblemDetail> conflict(AnalysisExceptions.Conflict exception,
+            HttpServletRequest request) {
+        return response(request, HttpStatus.CONFLICT,
+                exception.code().toLowerCase().replace('_', '-'),
+                "Analysis request conflict",
+                "The request conflicts with the current Deal analysis state.",
+                exception.code());
+    }
+
+    private ResponseEntity<ProblemDetail> response(HttpServletRequest request,
+            HttpStatus status, String typeSlug, String title, String detail, String code) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setType(URI.create("https://problems.m4trust.internal/" + typeSlug));
+        problem.setTitle(title);
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("code", code);
+        Object correlationId = request.getAttribute(CorrelationIdFilter.ATTRIBUTE);
+        problem.setProperty("correlationId", correlationId == null ? "" : correlationId.toString());
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
 }

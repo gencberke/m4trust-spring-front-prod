@@ -33,4 +33,5 @@ app:
     secret-key: ${OBJECT_STORAGE_SECRET_KEY:m4trust_local_password}
     upload-ttl: ${OBJECT_STORAGE_UPLOAD_TTL:10m}
     download-ttl: ${OBJECT_STORAGE_DOWNLOAD_TTL:5m}
+    ai-download-ttl: ${OBJECT_STORAGE_AI_DOWNLOAD_TTL:15m}
     max-upload-size-bytes: ${OBJECT_STORAGE_MAX_UPLOAD_SIZE_BYTES:52428800}
