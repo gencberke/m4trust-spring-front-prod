@@ -794,6 +794,162 @@ paths:
           $ref: '#/components/responses/LegalEntityAccessDenied'
         '404':
           $ref: '#/components/responses/RuleSetVersionNotFoundOrHidden'
+  /deals/{dealId}/ratification-packages:
+    post:
+      operationId: createRatificationPackage
+      tags: [Deal Ratification]
+      summary: Create an immutable ratification package
+      description: >
+        Initiator-only DRAFT action. The request always carries the exact commercial
+        terms to ratify; accepted MONEY rules are suggestions only and the server
+        never selects terms silently. Parties, a current accepted rule-set, and a
+        current AVAILABLE document are required. Creating with different terms
+        supersedes a current PENDING package under the Deal lock. Idempotency-Key
+        replays the original package for the same canonical request; reuse with a
+        different request returns 409 IDEMPOTENCY_KEY_REUSED.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRatificationPackageRequest'
+      responses:
+        '201':
+          description: Created immutable package; idempotent replay returns the original package.
+          headers:
+            Location:
+              description: Same-origin path of the created ratification package.
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RatificationPackageDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/RatificationPackageCreateForbidden'}
+        '404': {$ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/RatificationPackageCreateConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    get:
+      operationId: listRatificationPackages
+      tags: [Deal Ratification]
+      summary: List retained ratification package history
+      description: >
+        Returns immutable package snapshots with their current mutable status and
+        approval projection to Deal participants. History is not a current-package
+        inference mechanism; use DealDetail.ratification for the current projection.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Retained package history visible to the active Deal participant.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RatificationPackageHistory'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/LegalEntityAccessDenied'}
+        '404': {$ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'}
+  /deals/{dealId}/ratification-packages/{ratificationPackageId}:
+    get:
+      operationId: getRatificationPackage
+      tags: [Deal Ratification]
+      summary: Get one immutable ratification package and approval projection
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/RatificationPackageId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Package detail visible to the active Deal participant.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RatificationPackageDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/LegalEntityAccessDenied'}
+        '404': {$ref: '#/components/responses/RatificationPackageNotFoundOrHidden'}
+  /deals/{dealId}/ratification-packages/{ratificationPackageId}/approve:
+    post:
+      operationId: approveRatificationPackage
+      tags: [Deal Ratification]
+      summary: Approve a ratification package for the active buyer or seller entity
+      description: >
+        Only an ADMIN of the package buyer or seller legal entity may approve. The
+        target package version is checked under lock. One effective approval per
+        entity exists; another ADMIN of that entity receives the idempotent current
+        result without increasing approval count. The second required approval
+        atomically changes the package to RATIFIED and the Deal to ACTIVE.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/RatificationPackageId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RatificationPackageActionRequest'}
+      responses:
+        '200':
+          description: Current package detail after the effective or idempotent approval.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RatificationPackageDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/RatificationPackageActionForbidden'}
+        '404': {$ref: '#/components/responses/RatificationPackageNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/RatificationPackageActionConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/ratification-packages/{ratificationPackageId}/reject:
+    post:
+      operationId: rejectRatificationPackage
+      tags: [Deal Ratification]
+      summary: Reject a pending ratification package for the active buyer or seller entity
+      description: >
+        Only an ADMIN of the package buyer or seller legal entity may reject. The
+        target package version is checked under lock. A successful rejection changes
+        the package to REJECTED; creating a new package is required to continue.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/RatificationPackageId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RatificationPackageActionRequest'}
+      responses:
+        '200':
+          description: Current package detail after the rejection.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RatificationPackageDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/RatificationPackageActionForbidden'}
+        '404': {$ref: '#/components/responses/RatificationPackageNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/RatificationPackageActionConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /documents/{documentId}/finalize:
     post:
       operationId: finalizeDocumentUpload
@@ -1190,6 +1346,14 @@ components:
       schema:
         type: string
         format: uuid
+    RatificationPackageId:
+      name: ratificationPackageId
+      in: path
+      required: true
+      description: Immutable ratification package identifier.
+      schema:
+        type: string
+        format: uuid
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1531,6 +1695,51 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
+    RatificationPackageCreateForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context
+        is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the visible Deal
+        participant is not its immutable initiator (RATIFICATION_PACKAGE_CREATE_FORBIDDEN).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    RatificationPackageCreateConflict:
+      description: >
+        The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is
+        not DRAFT (DEAL_STATE_CONFLICT), required parties/rule-set/document are not
+        ready (RATIFICATION_NOT_READY), or Idempotency-Key was reused for a different
+        canonical request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    RatificationPackageNotFoundOrHidden:
+      description: >
+        The package does not exist, does not belong to the visible Deal, or the Deal
+        is hidden from a non-participant; all cases use RATIFICATION_PACKAGE_NOT_FOUND
+        and do not disclose existence.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    RatificationPackageActionForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context
+        is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active entity is
+        not the package buyer/seller or the caller is not an ADMIN
+        (RATIFICATION_APPROVAL_FORBIDDEN). Participant visibility alone, and MEMBER
+        membership, never grant approval or rejection authority.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    RatificationPackageActionConflict:
+      description: >
+        The supplied package version is stale (RATIFICATION_STALE_PACKAGE), the
+        package is RATIFIED, REJECTED, or SUPERSEDED and cannot be acted on
+        (RATIFICATION_PACKAGE_STATE_CONFLICT), the Deal is no longer DRAFT
+        (DEAL_STATE_CONFLICT), or Idempotency-Key was reused for a different canonical
+        request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
   schemas:
     RegisterRequest:
       type: object
@@ -2810,6 +3019,176 @@ components:
           description: Immutable accepted rule-set versions, including superseded history; never null.
           items:
             $ref: '#/components/schemas/RuleSetVersionSummary'
+    RatificationReadiness:
+      type: string
+      description: Backend-derived ratification readiness; READY is not a persisted package state.
+      enum: [NOT_READY, READY]
+    RatificationPackageStatus:
+      type: string
+      description: Closed persisted ratification package state set. EXPIRED is not used in Slice 10.
+      enum: [PENDING, RATIFIED, REJECTED, SUPERSEDED]
+    RatificationCommercialTerms:
+      type: object
+      additionalProperties: false
+      description: Exact structured commercial terms that both parties ratify; never inferred from MONEY suggestions.
+      required: [amountMinor, currency]
+      properties:
+        amountMinor:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Positive I-JSON-safe minor-unit amount; floats and values outside the safe integer range are invalid.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: Uppercase ISO 4217 currency code.
+    RatificationSnapshotParty:
+      type: object
+      additionalProperties: false
+      required: [legalEntityId, legalName]
+      properties:
+        legalEntityId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        legalName: {type: string, minLength: 1, maxLength: 200}
+    RatificationSnapshotRule:
+      type: object
+      additionalProperties: false
+      description: Immutable accepted rule copied into the package snapshot.
+      required: [ruleReference, decision, category, title, description, structuredValue, legalBasis, legalBasisProvenance]
+      properties:
+        ruleReference: {type: string, minLength: 1}
+        decision: {type: string, enum: [KEPT, MODIFIED, ADDED]}
+        category: {$ref: '#/components/schemas/RuleCategory'}
+        title: {type: string, minLength: 1, maxLength: 500}
+        description: {type: string, minLength: 1, maxLength: 4000}
+        structuredValue: {$ref: '#/components/schemas/RuleSetStructuredValue'}
+        legalBasis:
+          anyOf:
+            - $ref: '#/components/schemas/AdvisoryLegalBasis'
+            - type: 'null'
+        legalBasisProvenance: {$ref: '#/components/schemas/RuleLegalBasisProvenance'}
+    RatificationSnapshotRuleSet:
+      type: object
+      additionalProperties: false
+      required: [ruleSetVersionId, version, rules]
+      properties:
+        ruleSetVersionId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        version: {type: integer, minimum: 1, maximum: 9007199254740991}
+        rules:
+          type: array
+          uniqueItems: true
+          description: Unique rules sorted ascending by ruleReference using UTF-8 bytewise order before JCS hashing.
+          items: {$ref: '#/components/schemas/RatificationSnapshotRule'}
+    RatificationSnapshotDocument:
+      type: object
+      additionalProperties: false
+      required: [documentId, objectVersion, sha256]
+      properties:
+        documentId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        objectVersion: {type: string, minLength: 1, maxLength: 512}
+        sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Lowercase hex SHA-256 of the immutable document object.
+    RatificationPackageSnapshot:
+      type: object
+      additionalProperties: false
+      description: >
+        The sole contentHash input: this closed immutable JSON object is canonicalized
+        with RFC 8785 JCS, encoded as UTF-8 bytes, then SHA-256 hashed to lowercase
+        hexadecimal. It excludes package id/version/status/contentHash, approvals,
+        approver or actor visibility, available actions, timestamps, audit, and all
+        detail-wrapper metadata. UUID strings are lowercase; currency is uppercase.
+        V1 rules are unique by ruleReference and sorted by its UTF-8 bytewise ascending
+        value. Any future snapshot array requires an explicit contract ordering rule.
+      required: [schemaVersion, dealId, dealReference, dealTitle, buyer, seller, ruleSet, commercialTerms, document]
+      properties:
+        schemaVersion: {type: integer, const: 1}
+        dealId: {type: string, format: uuid, description: Lowercase canonical UUID string.}
+        dealReference: {type: string, minLength: 1, maxLength: 50}
+        dealTitle: {type: string, minLength: 1, maxLength: 200}
+        buyer: {$ref: '#/components/schemas/RatificationSnapshotParty'}
+        seller: {$ref: '#/components/schemas/RatificationSnapshotParty'}
+        ruleSet: {$ref: '#/components/schemas/RatificationSnapshotRuleSet'}
+        commercialTerms: {$ref: '#/components/schemas/RatificationCommercialTerms'}
+        document: {$ref: '#/components/schemas/RatificationSnapshotDocument'}
+    RatificationApproval:
+      type: object
+      additionalProperties: false
+      required: [legalEntityId, legalName, status, approvedAt, approverUserId]
+      properties:
+        legalEntityId: {type: string, format: uuid}
+        legalName: {type: string, minLength: 1, maxLength: 200}
+        status: {type: string, enum: [PENDING, APPROVED]}
+        approvedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        approverUserId:
+          description: Visible only to authorized users of the same legal entity; otherwise null.
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+    RatificationPackageAvailableActions:
+      type: object
+      additionalProperties: false
+      required: [canApprove, canReject]
+      properties:
+        canApprove: {type: boolean}
+        canReject: {type: boolean}
+    RatificationPackageDetail:
+      type: object
+      additionalProperties: false
+      required: [id, version, status, contentHash, snapshot, approvals, availableActions, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        version: {type: integer, minimum: 0, maximum: 9007199254740991}
+        status: {$ref: '#/components/schemas/RatificationPackageStatus'}
+        contentHash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Lowercase SHA-256 hex of the UTF-8 RFC 8785 JCS RatificationPackageSnapshot only.
+        snapshot: {$ref: '#/components/schemas/RatificationPackageSnapshot'}
+        approvals:
+          type: array
+          minItems: 2
+          maxItems: 2
+          description: Buyer and seller approval projections; never null and excluded from contentHash input.
+          items: {$ref: '#/components/schemas/RatificationApproval'}
+        availableActions: {$ref: '#/components/schemas/RatificationPackageAvailableActions'}
+        createdAt: {$ref: '#/components/schemas/UtcTimestamp'}
+    RatificationPackageHistory:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Retained immutable package history; never null.
+          items: {$ref: '#/components/schemas/RatificationPackageDetail'}
+    RatificationProjection:
+      type: object
+      additionalProperties: false
+      required: [readiness, currentPackage]
+      properties:
+        readiness: {$ref: '#/components/schemas/RatificationReadiness'}
+        currentPackage:
+          anyOf:
+            - $ref: '#/components/schemas/RatificationPackageDetail'
+            - type: 'null'
+    CreateRatificationPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, commercialTerms]
+      properties:
+        expectedVersion: {type: integer, minimum: 0, maximum: 9007199254740991}
+        commercialTerms: {$ref: '#/components/schemas/RatificationCommercialTerms'}
+    RatificationPackageActionRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedPackageVersion]
+      properties:
+        expectedPackageVersion: {type: integer, minimum: 0, maximum: 9007199254740991}
     DealAvailableActions:
       type: object
       additionalProperties: false
@@ -2853,6 +3232,15 @@ components:
             unknown, clients must treat it as false and remain read-only. When true,
             the active user is authorized for the Deal initiator and the current
             analysis is REVIEW_REQUIRED.
+        canCreateRatificationPackage:
+          type: boolean
+          description: Optional actor-aware availability; absent or unknown means false/read-only.
+        canApproveRatification:
+          type: boolean
+          description: Optional actor-aware availability; absent or unknown means false/read-only.
+        canRejectRatification:
+          type: boolean
+          description: Optional actor-aware availability; absent or unknown means false/read-only.
     UtcTimestamp:
       type: string
       format: date-time
@@ -3037,6 +3425,11 @@ components:
             from history. Its absence is tolerated for additive compatibility.
           anyOf:
             - $ref: '#/components/schemas/RuleSetVersionSummary'
+            - type: 'null'
+        ratification:
+          description: Optional backend-owned ratification readiness and current-package projection.
+          anyOf:
+            - $ref: '#/components/schemas/RatificationProjection'
             - type: 'null'
     DealPage:
       type: object

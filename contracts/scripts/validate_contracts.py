@@ -182,6 +182,31 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404"},
         "security": [{"SessionCookie": []}],
     },
+    ("/deals/{dealId}/ratification-packages", "post"): {
+        "operationId": "createRatificationPackage",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/ratification-packages", "get"): {
+        "operationId": "listRatificationPackages",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}", "get"): {
+        "operationId": "getRatificationPackage",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post"): {
+        "operationId": "approveRatificationPackage",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post"): {
+        "operationId": "rejectRatificationPackage",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
     ("/documents/{documentId}/finalize", "post"): {
         "operationId": "finalizeDocumentUpload",
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
@@ -237,6 +262,9 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deal-invitations/{invitationId}/accept", "post"): "#/components/schemas/AcceptDealInvitationRequest",
     ("/deal-invitations/{invitationId}/reject", "post"): "#/components/schemas/DealInvitationTerminalActionRequest",
     ("/deal-invitations/{invitationId}/revoke", "post"): "#/components/schemas/DealInvitationTerminalActionRequest",
+    ("/deals/{dealId}/ratification-packages", "post"): "#/components/schemas/CreateRatificationPackageRequest",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post"): "#/components/schemas/RatificationPackageActionRequest",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post"): "#/components/schemas/RatificationPackageActionRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
@@ -269,6 +297,11 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deal-invitations/{invitationId}/accept", "post", "200"): "#/components/schemas/IncomingDealInvitation",
     ("/deal-invitations/{invitationId}/reject", "post", "200"): "#/components/schemas/IncomingDealInvitation",
     ("/deal-invitations/{invitationId}/revoke", "post", "200"): "#/components/schemas/DealInvitation",
+    ("/deals/{dealId}/ratification-packages", "post", "201"): "#/components/schemas/RatificationPackageDetail",
+    ("/deals/{dealId}/ratification-packages", "get", "200"): "#/components/schemas/RatificationPackageHistory",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}", "get", "200"): "#/components/schemas/RatificationPackageDetail",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post", "200"): "#/components/schemas/RatificationPackageDetail",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post", "200"): "#/components/schemas/RatificationPackageDetail",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -407,6 +440,32 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deal-invitations/{invitationId}/revoke", "post", "404"): "DealInvitationOrLegalEntityNotFoundOrHidden",
     ("/deal-invitations/{invitationId}/revoke", "post", "409"): "DealInvitationTerminalConflict",
     ("/deal-invitations/{invitationId}/revoke", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/ratification-packages", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/ratification-packages", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/ratification-packages", "post", "403"): "RatificationPackageCreateForbidden",
+    ("/deals/{dealId}/ratification-packages", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/ratification-packages", "post", "409"): "RatificationPackageCreateConflict",
+    ("/deals/{dealId}/ratification-packages", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/ratification-packages", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/ratification-packages", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/ratification-packages", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/ratification-packages", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}", "get", "404"): "RatificationPackageNotFoundOrHidden",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post", "403"): "RatificationPackageActionForbidden",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post", "404"): "RatificationPackageNotFoundOrHidden",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post", "409"): "RatificationPackageActionConflict",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post", "403"): "RatificationPackageActionForbidden",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post", "404"): "RatificationPackageNotFoundOrHidden",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post", "409"): "RatificationPackageActionConflict",
+    ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post", "422"): "ValidationFailed",
 }
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
@@ -428,6 +487,7 @@ REQUIRED_CORE_API_SCHEMAS = {
     "DocumentAnalysisResult", "DealDocumentAnalysis",
     "DealExtractionReview", "ReviewRuleDecision", "KeptRuleDecision", "ModifiedRuleDecision", "ExcludedRuleDecision", "AddedRuleDecision", "AcceptExtractionReviewRequest",
     "RuleCategory", "RuleLegalBasisProvenance", "RuleSetRule", "RuleSetVersionSummary", "RuleSetVersion", "RuleSetVersionHistory",
+    "RatificationReadiness", "RatificationPackageStatus", "RatificationCommercialTerms", "RatificationSnapshotParty", "RatificationSnapshotRule", "RatificationSnapshotRuleSet", "RatificationSnapshotDocument", "RatificationPackageSnapshot", "RatificationApproval", "RatificationPackageAvailableActions", "RatificationPackageDetail", "RatificationPackageHistory", "RatificationProjection", "CreateRatificationPackageRequest", "RatificationPackageActionRequest",
 }
 
 
@@ -645,11 +705,11 @@ def validate_contract_documents(failures: list[str]) -> None:
             failures.append("FAIL Core API DealLifecycleProjection: ADR projection set changed")
         actions = core_components.get("schemas", {}).get("DealAvailableActions", {})
         if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
-                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis", "canReviewExtraction"}
+                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis", "canReviewExtraction", "canCreateRatificationPackage", "canApproveRatification", "canRejectRatification"}
                 or actions.get("additionalProperties") is not False
                 or any(
                     actions.get("properties", {}).get(name, {}).get("type") != "boolean"
-                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis", "canReviewExtraction")
+                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis", "canReviewExtraction", "canCreateRatificationPackage", "canApproveRatification", "canRejectRatification")
                 )):
             failures.append("FAIL Core API DealAvailableActions: backend-derived action set changed")
         summary = core_components.get("schemas", {}).get("DealSummary", {})
@@ -687,7 +747,7 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
             failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
-        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet"}
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet", "ratification"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
         detail_buyer = detail.get("properties", {}).get("buyer", {})
@@ -704,8 +764,97 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or detail_participants.get("items", {}).get("$ref")
                 != "#/components/schemas/DealParticipant"
                 or detail.get("properties", {}).get("currentRuleSet", {}).get("anyOf")
-                != [{"$ref": "#/components/schemas/RuleSetVersionSummary"}, {"type": "null"}]):
+                != [{"$ref": "#/components/schemas/RuleSetVersionSummary"}, {"type": "null"}]
+                or detail.get("properties", {}).get("ratification", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/RatificationProjection"}, {"type": "null"}]):
             failures.append("FAIL Core API DealDetail: party and participant-role projection changed")
+
+        ratification_terms = core_components.get("schemas", {}).get("RatificationCommercialTerms", {})
+        ratification_snapshot = core_components.get("schemas", {}).get("RatificationPackageSnapshot", {})
+        ratification_status = core_components.get("schemas", {}).get("RatificationPackageStatus", {})
+        ratification_readiness = core_components.get("schemas", {}).get("RatificationReadiness", {})
+        ratification_create = core_components.get("schemas", {}).get("CreateRatificationPackageRequest", {})
+        ratification_action = core_components.get("schemas", {}).get("RatificationPackageActionRequest", {})
+        ratification_detail = core_components.get("schemas", {}).get("RatificationPackageDetail", {})
+        ratification_approval = core_components.get("schemas", {}).get("RatificationApproval", {})
+        ratification_snapshot_rule_set = core_components.get("schemas", {}).get("RatificationSnapshotRuleSet", {})
+        ratification_conflict = core_components.get("responses", {}).get("RatificationPackageActionConflict", {})
+        ratification_create_conflict = core_components.get("responses", {}).get("RatificationPackageCreateConflict", {})
+        snapshot_rules = ratification_snapshot.get("properties", {}).get("ruleSet", {}).get("$ref")
+        ratification_closed_fields = {
+            "RatificationCommercialTerms": {"amountMinor", "currency"},
+            "RatificationSnapshotParty": {"legalEntityId", "legalName"},
+            "RatificationSnapshotRule": {"ruleReference", "decision", "category", "title", "description", "structuredValue", "legalBasis", "legalBasisProvenance"},
+            "RatificationSnapshotRuleSet": {"ruleSetVersionId", "version", "rules"},
+            "RatificationSnapshotDocument": {"documentId", "objectVersion", "sha256"},
+            "RatificationPackageSnapshot": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
+            "RatificationApproval": {"legalEntityId", "legalName", "status", "approvedAt", "approverUserId"},
+            "RatificationPackageAvailableActions": {"canApprove", "canReject"},
+            "RatificationPackageDetail": {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"},
+            "RatificationPackageHistory": {"items"},
+            "RatificationProjection": {"readiness", "currentPackage"},
+            "CreateRatificationPackageRequest": {"expectedVersion", "commercialTerms"},
+            "RatificationPackageActionRequest": {"expectedPackageVersion"},
+        }
+        ratification_required_fields = {
+            "RatificationCommercialTerms": {"amountMinor", "currency"},
+            "RatificationSnapshotParty": {"legalEntityId", "legalName"},
+            "RatificationSnapshotRule": {"ruleReference", "decision", "category", "title", "description", "structuredValue", "legalBasis", "legalBasisProvenance"},
+            "RatificationSnapshotRuleSet": {"ruleSetVersionId", "version", "rules"},
+            "RatificationSnapshotDocument": {"documentId", "objectVersion", "sha256"},
+            "RatificationPackageSnapshot": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
+            "RatificationApproval": {"legalEntityId", "legalName", "status", "approvedAt", "approverUserId"},
+            "RatificationPackageAvailableActions": {"canApprove", "canReject"},
+            "RatificationPackageDetail": {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"},
+            "RatificationPackageHistory": {"items"},
+            "RatificationProjection": {"readiness", "currentPackage"},
+            "CreateRatificationPackageRequest": {"expectedVersion", "commercialTerms"},
+            "RatificationPackageActionRequest": {"expectedPackageVersion"},
+        }
+        if (ratification_readiness.get("enum") != ["NOT_READY", "READY"]
+                or ratification_status.get("enum") != ["PENDING", "RATIFIED", "REJECTED", "SUPERSEDED"]
+                or set(ratification_terms.get("required", [])) != {"amountMinor", "currency"}
+                or set(ratification_terms.get("properties", {})) != {"amountMinor", "currency"}
+                or ratification_terms.get("additionalProperties") is not False
+                or ratification_terms.get("properties", {}).get("amountMinor", {}).get("minimum") != 1
+                or ratification_terms.get("properties", {}).get("amountMinor", {}).get("maximum") != 9007199254740991
+                or ratification_terms.get("properties", {}).get("currency", {}).get("pattern") != "^[A-Z]{3}$"
+                or set(ratification_create.get("required", [])) != {"expectedVersion", "commercialTerms"}
+                or set(ratification_create.get("properties", {})) != {"expectedVersion", "commercialTerms"}
+                or ratification_create.get("additionalProperties") is not False
+                or ratification_create.get("properties", {}).get("expectedVersion", {}).get("maximum") != 9007199254740991
+                or set(ratification_action.get("required", [])) != {"expectedPackageVersion"}
+                or set(ratification_action.get("properties", {})) != {"expectedPackageVersion"}
+                or ratification_action.get("additionalProperties") is not False
+                or ratification_action.get("properties", {}).get("expectedPackageVersion", {}).get("maximum") != 9007199254740991
+                or set(ratification_snapshot.get("required", [])) != {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"}
+                or set(ratification_snapshot.get("properties", {})) != {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"}
+                or ratification_snapshot.get("additionalProperties") is not False
+                or ratification_snapshot.get("properties", {}).get("schemaVersion", {}).get("const") != 1
+                or snapshot_rules != "#/components/schemas/RatificationSnapshotRuleSet"
+                or ratification_snapshot_rule_set.get("properties", {}).get("rules", {}).get("uniqueItems") is not True
+                or "UTF-8 bytewise" not in ratification_snapshot_rule_set.get("properties", {}).get("rules", {}).get("description", "")
+                or "sole contentHash input" not in ratification_snapshot.get("description", "")
+                or "RFC 8785" not in ratification_snapshot.get("description", "")
+                or "excludes" not in ratification_snapshot.get("description", "")
+                or set(ratification_detail.get("required", [])) != {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"}
+                or ratification_detail.get("additionalProperties") is not False
+                or ratification_detail.get("properties", {}).get("contentHash", {}).get("pattern") != "^[a-f0-9]{64}$"
+                or ratification_detail.get("properties", {}).get("snapshot", {}).get("$ref") != "#/components/schemas/RatificationPackageSnapshot"
+                or set(ratification_approval.get("required", [])) != {"legalEntityId", "legalName", "status", "approvedAt", "approverUserId"}
+                or ratification_approval.get("additionalProperties") is not False
+                or "RATIFICATION_STALE_PACKAGE" not in ratification_conflict.get("description", "")
+                or "RATIFICATION_PACKAGE_STATE_CONFLICT" not in ratification_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in ratification_conflict.get("description", "")
+                or "DEAL_STALE_VERSION" not in ratification_create_conflict.get("description", "")
+                or "RATIFICATION_NOT_READY" not in ratification_create_conflict.get("description", "")):
+            failures.append("FAIL Core API Slice 10 ratification: closed snapshot, exact terms, actions, or stable conflicts changed")
+        for schema_name, expected_fields in ratification_closed_fields.items():
+            schema = core_components.get("schemas", {}).get(schema_name, {})
+            if (schema.get("additionalProperties") is not False
+                    or set(schema.get("properties", {})) != expected_fields
+                    or set(schema.get("required", [])) != ratification_required_fields[schema_name]):
+                failures.append(f"FAIL Core API Slice 10 {schema_name}: closed field set changed")
 
         analysis_status = core_components.get("schemas", {}).get("DocumentAnalysisStatus", {})
         analysis_summary = core_components.get("schemas", {}).get("DealDocumentAnalysisSummary", {})
@@ -970,6 +1119,32 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/RuleSetVersionId",
                 "#/components/parameters/LegalEntityContext",
             },
+            ("/deals/{dealId}/ratification-packages", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/ratification-packages", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/ratification-packages/{ratificationPackageId}", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/RatificationPackageId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/RatificationPackageId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/RatificationPackageId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
             ("/documents/{documentId}/finalize", "post"): {
                 "#/components/parameters/DocumentId",
                 "#/components/parameters/LegalEntityContext",
@@ -1043,6 +1218,11 @@ def validate_contract_documents(failures: list[str]) -> None:
         if ((idempotency_key.get("name"), idempotency_key.get("in"), idempotency_key.get("required"),
                 idempotency_key.get("schema", {}).get("format")) != ("Idempotency-Key", "header", True, "uuid")):
             failures.append("FAIL Core API IdempotencyKey: required UUID header contract changed")
+        ratification_package_id = core_parameters.get("RatificationPackageId", {})
+        if (ratification_package_id.get("name"), ratification_package_id.get("in"),
+                ratification_package_id.get("required"), ratification_package_id.get("schema", {}).get("format")) != (
+                "ratificationPackageId", "path", True, "uuid"):
+            failures.append("FAIL Core API RatificationPackageId: required UUID path contract changed")
         document_id = core_parameters.get("DocumentId", {})
         if ((document_id.get("name"), document_id.get("in"), document_id.get("required"),
                 document_id.get("schema", {}).get("format")) != ("documentId", "path", True, "uuid")):

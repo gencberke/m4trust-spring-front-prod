@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Added the Slice 10 additive ratification contract: initiator package creation with
+  exact Deal `expectedVersion`, explicit positive I-JSON-safe `amountMinor` and
+  uppercase ISO 4217 `currency`, participant-readable immutable package detail and
+  retained history, and buyer/seller ADMIN approve/reject actions with target
+  `expectedPackageVersion` and UUID `Idempotency-Key`.
+- Added the dedicated closed `RatificationPackageSnapshot` as the sole canonical
+  content-hash input. It locks RFC 8785 JCS, UTF-8, lowercase SHA-256 hex, UUID and
+  currency casing, and unique UTF-8-bytewise `ruleReference` ordering; mutable,
+  actor-aware, audit, timestamp, id/version/status, approval, and wrapper fields are
+  explicitly outside the hash boundary.
+- Added optional Deal ratification readiness/current-package projection and optional
+  actor-aware create/approve/reject action members without changing existing required
+  Deal response fields or their meanings. Locked stable readiness, stale-package,
+  state, authorization, non-disclosure, and idempotency Problem Details expectations
+  in the exact public-contract validator. AI schemas, fixtures, AsyncAPI, and the
+  AI-internal OpenAPI remain unchanged.
+
 - Added the Slice 9 public manual-review contract: participant-readable extraction
   review, initiator-only idempotent acceptance with target `analysisId`, bulk
   kept/modified/excluded/added decisions, Deal `expectedVersion`, stable 403/404/
