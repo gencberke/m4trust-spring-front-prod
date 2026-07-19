@@ -982,7 +982,6 @@ export interface components {
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
             availableActions: components["schemas"]["DealAvailableActions"];
-            analysis: components["schemas"]["DealDocumentAnalysisSummary"];
         };
         /** @description Deal visibility participant projection. partyRoles describes the current buyer/seller assignment only; participation and a party role convey no contractual consent or lifecycle authority. */
         DealParticipant: {

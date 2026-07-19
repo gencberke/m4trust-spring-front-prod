@@ -2381,7 +2381,6 @@ components:
         - createdAt
         - updatedAt
         - availableActions
-        - analysis
       properties:
         id:
           type: string
@@ -2409,8 +2408,6 @@ components:
           $ref: '#/components/schemas/UtcTimestamp'
         availableActions:
           $ref: '#/components/schemas/DealAvailableActions'
-        analysis:
-          $ref: '#/components/schemas/DealDocumentAnalysisSummary'
     DealParticipant:
       type: object
       additionalProperties: false

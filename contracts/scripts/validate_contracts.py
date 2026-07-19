@@ -610,7 +610,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         detail = core_components.get("schemas", {}).get("DealDetail", {})
         common_deal_fields = {
             "id", "reference", "title", "status", "lifecycle", "version",
-            "createdAt", "updatedAt", "availableActions", "analysis",
+            "createdAt", "updatedAt", "availableActions",
         }
         if (set(summary.get("required", [])) != common_deal_fields
                 or set(summary.get("properties", {})) != common_deal_fields
