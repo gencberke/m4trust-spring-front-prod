@@ -1,4 +1,5 @@
--- Manual review is the terminal business acceptance of a successful extraction.
+-- Manual review accepts the technical extraction into an immutable rule-set chain.
+-- It is not commercial acceptance and it does not ratify the Deal.
 ALTER TABLE contract_intelligence_analysis_job
     DROP CONSTRAINT contract_intelligence_analysis_job_status_ck,
     DROP CONSTRAINT contract_intelligence_analysis_job_state_times_ck,
