@@ -29,6 +29,6 @@ class DealOperationPolicy {
                 isInitiator && deal.status().allowsCancellation(),
                 isInitiator && deal.status() == DealStatus.DRAFT,
                 isInitiator && deal.status() == DealStatus.DRAFT,
-                isInitiator && deal.status().allowsDocumentUpload());
+                isInitiator && deal.status().allowsDocumentUpload(), false);
     }
 }
