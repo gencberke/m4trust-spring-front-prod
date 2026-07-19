@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import java.util.Map;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
@@ -72,15 +71,8 @@ final class AnalysisResultConsumer {
         String contentHash = payload.path("result").path("document").path("contentSha256").asString();
         if (!job.inputSha256().equalsIgnoreCase(contentHash)) throw integrationViolation();
         try {
-            JsonNode canonical = payload.get("result");
-            // The persisted/public projection intentionally excludes the worker's
-            // document-detection metadata; OpenAPI exposes only canonical review inputs.
-            Map<String, JsonNode> projection = Map.of(
-                    "parties", canonical.get("parties"), "rules", canonical.get("rules"),
-                    "deliveryRequirements", canonical.get("deliveryRequirements"),
-                    "summary", canonical.get("summary"));
             repository.insertResult(UUID.randomUUID(), job.id(), event.get("schemaVersion").asString(),
-                    mapper.writeValueAsString(projection), now);
+                    mapper.writeValueAsString(payload.get("result")), now);
         } catch (Exception exception) { throw new IllegalStateException("Canonical result cannot be persisted", exception); }
         repository.complete(job, job.processingStartedAt() == null ? now : job.processingStartedAt(), now);
         appendAudit(job, event, "AI_DOCUMENT_EXTRACTION_COMPLETED", now);

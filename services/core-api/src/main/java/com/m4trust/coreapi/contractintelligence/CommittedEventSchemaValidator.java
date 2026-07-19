@@ -45,7 +45,7 @@ final class CommittedEventSchemaValidator {
     private void validate(JsonNode event, String resource) {
         List<String> errors = new ArrayList<>();
         evaluate(event, load(resource), resource, errors, "$");
-        if (!errors.isEmpty()) throw new ContractViolationException("AI event violates committed schema");
+        if (!errors.isEmpty()) throw new ContractViolationException("AI event violates committed schema: " + errors);
     }
 
     private boolean evaluate(JsonNode value, JsonNode schema, String resource,
@@ -71,6 +71,10 @@ final class CommittedEventSchemaValidator {
         if (value.isObject()) object(value, schema, resource, errors, path);
         if (value.isArray() && schema.has("items")) for (int i = 0; i < value.size(); i++)
             evaluate(value.get(i), schema.get("items"), resource, errors, path + "[" + i + "]");
+        if (value.isArray()) {
+            if (schema.has("minItems") && value.size() < schema.get("minItems").asInt()) errors.add(path + ": minItems");
+            if (schema.has("maxItems") && value.size() > schema.get("maxItems").asInt()) errors.add(path + ": maxItems");
+        }
         scalar(value, schema, errors, path);
         return errors.isEmpty();
     }
@@ -104,7 +108,7 @@ final class CommittedEventSchemaValidator {
             String text = value.asString();
             if (schema.has("minLength") && text.length() < schema.get("minLength").asInt()) errors.add(path + ": minLength");
             if (schema.has("maxLength") && text.length() > schema.get("maxLength").asInt()) errors.add(path + ": maxLength");
-            if (schema.has("pattern") && !Pattern.compile(schema.get("pattern").asString()).matcher(text).matches()) errors.add(path + ": pattern");
+            if (schema.has("pattern") && !Pattern.compile(schema.get("pattern").asString()).matcher(text).find()) errors.add(path + ": pattern");
             if (schema.has("format") && !format(text, schema.get("format").asString())) errors.add(path + ": format");
         }
         if (value.isNumber()) {
@@ -139,9 +143,29 @@ final class CommittedEventSchemaValidator {
         return schemas.computeIfAbsent(resource, key -> {
             try (InputStream input = getClass().getClassLoader().getResourceAsStream(SCHEMA_ROOT + key)) {
                 if (input == null) throw new IllegalStateException("Committed schema resource is missing");
-                return mapper.readTree(input);
+                JsonNode schema = mapper.readTree(input);
+                ensureSupported(schema);
+                return schema;
             } catch (IOException exception) { throw new IllegalStateException("Committed schema cannot be read", exception); }
         });
+    }
+
+    /** Any future schema vocabulary is rejected at startup/first use, never ignored. */
+    private void ensureSupported(JsonNode schema) {
+        Set<String> supported = Set.of("$schema", "$id", "$defs", "$ref", "title", "description",
+                "type", "additionalProperties", "properties", "required", "enum", "pattern", "format",
+                "allOf", "oneOf", "const", "items", "minimum", "maximum", "minLength", "maxLength",
+                "minItems", "maxItems");
+        schema.properties().forEach(entry -> {
+            if (!supported.contains(entry.getKey())) throw new ContractViolationException("Unsupported schema vocabulary");
+        });
+        if (schema.has("properties")) schema.get("properties").properties()
+                .forEach(entry -> ensureSupported(entry.getValue()));
+        if (schema.has("$defs")) schema.get("$defs").properties()
+                .forEach(entry -> ensureSupported(entry.getValue()));
+        for (String combinator : List.of("allOf", "oneOf")) if (schema.has(combinator))
+            for (JsonNode child : schema.get(combinator)) ensureSupported(child);
+        if (schema.has("items")) ensureSupported(schema.get("items"));
     }
 
     static final class ContractViolationException extends RuntimeException {

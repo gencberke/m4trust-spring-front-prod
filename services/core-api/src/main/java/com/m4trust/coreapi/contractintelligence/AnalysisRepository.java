@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -105,12 +106,24 @@ class AnalysisRepository {
                 """, (rs, row) -> rs.getString(1), jobId).stream().findFirst();
     }
 
-    int supersedeDocument(UUID documentId) {
-        return jdbcTemplate.update("""
-                UPDATE contract_intelligence_analysis_job
-                SET status = 'SUPERSEDED', version = version + 1
-                WHERE document_id = ? AND status <> 'SUPERSEDED'
-                """, documentId);
+    List<AnalysisJob> lockAndSupersedeDocument(UUID documentId) {
+        List<AnalysisJob> jobs = jdbcTemplate.query("""
+                SELECT id, tenant_id, deal_id, document_id, object_version, input_sha256,
+                       status, requested_at, processing_started_at, completed_at, failed_at,
+                       failure_code, retry_recommended, version
+                FROM contract_intelligence_analysis_job
+                WHERE document_id = ? AND status <> 'SUPERSEDED' FOR UPDATE
+                """, this::map, documentId);
+        for (AnalysisJob job : jobs) {
+            if (jdbcTemplate.update("""
+                    UPDATE contract_intelligence_analysis_job
+                    SET status = 'SUPERSEDED', version = version + 1
+                    WHERE id = ? AND version = ?
+                    """, job.id(), job.version()) != 1) {
+                throw new IllegalStateException("Analysis job changed while superseding");
+            }
+        }
+        return jobs;
     }
 
     private AnalysisJob map(ResultSet resultSet, int rowNumber) throws SQLException {

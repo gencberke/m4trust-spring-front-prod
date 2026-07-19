@@ -172,12 +172,10 @@ class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSup
     @Override
     public void supersedeForDocument(UUID documentId, UUID tenantId, UUID actorUserId,
             UUID legalEntityId, UUID correlationId, Instant occurredAt) {
-        int changed = repository.supersedeDocument(documentId);
-        if (changed > 0) {
-            auditAppender.append(new AuditRecord(UUID.randomUUID(), tenantId, actorUserId,
-                    legalEntityId, AUDIT_SUBJECT, documentId, "DOCUMENT_ANALYSIS_SUPERSEDED",
-                    correlationId, null, occurredAt));
-        }
+        repository.lockAndSupersedeDocument(documentId).forEach(job -> auditAppender.append(
+                new AuditRecord(UUID.randomUUID(), tenantId, actorUserId, legalEntityId,
+                        AUDIT_SUBJECT, job.id(), "DOCUMENT_ANALYSIS_SUPERSEDED",
+                        correlationId, null, occurredAt)));
     }
 
     private DealDocumentAnalysis currentProjection(UUID currentDocumentId) {
@@ -200,13 +198,19 @@ class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSup
         DealDocumentAnalysis.Failure failure = job.failureCode() == null ? null
                 : new DealDocumentAnalysis.Failure(job.failureCode(),
                         Boolean.TRUE.equals(job.retryRecommended()));
-        Object result = repository.findResult(job.id()).map(this::readResult).orElse(null);
+        Object result = repository.findResult(job.id()).map(this::readPublicResult).orElse(null);
         return new DealDocumentAnalysis(job.documentId(), job.status(), job.requestedAt(),
                 job.processingStartedAt(), job.completedAt(), job.failedAt(), failure, result);
     }
 
-    private Object readResult(String serialized) {
-        try { return objectMapper.readValue(serialized, Object.class); }
+    private Object readPublicResult(String serialized) {
+        try {
+            var complete = objectMapper.readTree(serialized);
+            return java.util.Map.of("parties", objectMapper.treeToValue(complete.get("parties"), Object.class),
+                    "rules", objectMapper.treeToValue(complete.get("rules"), Object.class),
+                    "deliveryRequirements", objectMapper.treeToValue(complete.get("deliveryRequirements"), Object.class),
+                    "summary", objectMapper.treeToValue(complete.get("summary"), Object.class));
+        }
         catch (Exception exception) { throw new IllegalStateException("Stored canonical result is invalid", exception); }
     }
 
