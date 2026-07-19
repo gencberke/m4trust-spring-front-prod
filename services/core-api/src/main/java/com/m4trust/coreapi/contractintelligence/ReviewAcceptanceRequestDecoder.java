@@ -49,13 +49,14 @@ final class ReviewAcceptanceRequestDecoder {
     private Decision decision(JsonNode node) {
         if (!node.isObject() || !node.path("decision").isTextual()) throw new AnalysisExceptions.MalformedRequest();
         return switch (node.path("decision").asText()) {
-            case "KEPT" -> new Kept(reference(node, Set.of("decision", "ruleReference")));
-            case "EXCLUDED" -> new Excluded(reference(node, Set.of("decision", "ruleReference")));
+            case "KEPT" -> new Kept(referenced(node));
+            case "EXCLUDED" -> new Excluded(referenced(node));
             case "MODIFIED" -> modified(node, true);
             case "ADDED" -> added(node);
             default -> throw new AnalysisExceptions.MalformedRequest();
         };
     }
+    private String referenced(JsonNode node) { if (!objectWith(node, Set.of("decision", "ruleReference"))) throw new AnalysisExceptions.MalformedRequest(); return reference(node, Set.of()); }
     private Modified modified(JsonNode node, boolean referenced) { if (!objectWith(node, Set.of("decision","ruleReference","category","title","description","structuredValue"))) throw new AnalysisExceptions.MalformedRequest(); return new Modified(reference(node, Set.of()),node.get("category"),node.get("title"),node.get("description"),node.get("structuredValue")); }
     private Added added(JsonNode node) { if (!objectWith(node, Set.of("decision","category","title","description","structuredValue"))) throw new AnalysisExceptions.MalformedRequest(); return new Added(node.get("category"),node.get("title"),node.get("description"),node.get("structuredValue")); }
     private static String reference(JsonNode node, Set<String> ignored) { if (!node.path("ruleReference").isTextual() || node.path("ruleReference").asText().isBlank()) throw new AnalysisExceptions.MalformedRequest(); return node.path("ruleReference").asText(); }
