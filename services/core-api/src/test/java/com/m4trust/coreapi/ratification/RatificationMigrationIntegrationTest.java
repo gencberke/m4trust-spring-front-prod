@@ -28,6 +28,10 @@ class RatificationMigrationIntegrationTest {
     @Test void enforcesRatificationSnapshotApprovalAndCurrentPointerInvariants() {
         Fixture f = fixture();
         UUID snapshot = snapshot(); UUID packageId = packageFor(f.dealId, f.buyerId, f.sellerId, snapshot, 1, "TRY");
+        assertThrows(DataAccessException.class, () -> jdbc.update("UPDATE ratification_package SET amount_minor=2 WHERE id=?", packageId));
+        assertThrows(DataAccessException.class, () -> jdbc.update("DELETE FROM ratification_package WHERE id=?", packageId));
+        assertDoesNotThrow(() -> jdbc.update("UPDATE ratification_package SET status='SUPERSEDED', version=1 WHERE id=?", packageId));
+        assertThrows(DataAccessException.class, () -> jdbc.update("UPDATE ratification_package SET version=? WHERE id=?", 9007199254740992L, packageId));
         assertThrows(DataAccessException.class, () -> jdbc.update("UPDATE ratification_package_snapshot SET content_hash=? WHERE id=?", "b".repeat(64), snapshot));
         assertThrows(DataAccessException.class, () -> jdbc.update("DELETE FROM ratification_package_snapshot WHERE id=?", snapshot));
         UUID approval = UUID.randomUUID();
@@ -36,9 +40,11 @@ class RatificationMigrationIntegrationTest {
         assertThrows(DataAccessException.class, () -> jdbc.update("DELETE FROM ratification_package_approval WHERE id=?", approval));
         assertThrows(DataAccessException.class, () -> jdbc.update("INSERT INTO ratification_package_approval (id,package_id,legal_entity_id,approved_by_user_id,approved_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)", UUID.randomUUID(), packageId, f.buyerId, f.userId));
         assertThrows(DataAccessException.class, () -> jdbc.update("INSERT INTO ratification_package_approval (id,package_id,legal_entity_id,approved_by_user_id,approved_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)", UUID.randomUUID(), packageId, f.outsiderId, f.userId));
+        assertThrows(DataAccessException.class, () -> jdbc.update("INSERT INTO ratification_package_approval (id,package_id,legal_entity_id,approved_by_user_id,approved_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)", UUID.randomUUID(), packageId, f.sellerId, UUID.randomUUID()));
         assertThrows(DataAccessException.class, () -> packageFor(f.dealId, f.buyerId, f.sellerId, snapshot(), 0, "TRY"));
         assertThrows(DataAccessException.class, () -> packageFor(f.dealId, f.buyerId, f.sellerId, snapshot(), 9007199254740992L, "TRY"));
         assertThrows(DataAccessException.class, () -> packageFor(f.dealId, f.buyerId, f.sellerId, snapshot(), 1, "try"));
+        assertThrows(DataAccessException.class, () -> packageFor(f.dealId, f.buyerId, f.sellerId, snapshot(), 1, "TRYY"));
         assertThrows(DataAccessException.class, () -> jdbc.update("INSERT INTO ratification_package_snapshot (id,schema_version,canonical_snapshot,content_hash,created_at) VALUES (?,1,'{}',?,CURRENT_TIMESTAMP)", UUID.randomUUID(), "A".repeat(64)));
         UUID badSnapshot = snapshot();
         assertThrows(DataAccessException.class, () -> jdbc.update("INSERT INTO ratification_package (id,deal_id,snapshot_id,status,buyer_legal_entity_id,seller_legal_entity_id,amount_minor,currency,created_at) VALUES (?,?,?,'EXPIRED',?,?,1,'TRY',CURRENT_TIMESTAMP)", UUID.randomUUID(), f.dealId, badSnapshot, f.buyerId, f.sellerId));

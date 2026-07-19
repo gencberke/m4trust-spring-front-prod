@@ -12,7 +12,7 @@ CREATE TABLE ratification_package (
     id UUID PRIMARY KEY,
     deal_id UUID NOT NULL REFERENCES deal(id),
     snapshot_id UUID NOT NULL UNIQUE REFERENCES ratification_package_snapshot(id),
-    version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
+    version BIGINT NOT NULL DEFAULT 0 CHECK (version BETWEEN 0 AND 9007199254740991),
     status VARCHAR(16) NOT NULL CHECK (status IN ('PENDING', 'RATIFIED', 'REJECTED', 'SUPERSEDED')),
     buyer_legal_entity_id UUID NOT NULL,
     seller_legal_entity_id UUID NOT NULL,
@@ -51,6 +51,28 @@ END; $$;
 CREATE TRIGGER ratification_snapshot_no_mutation
   BEFORE UPDATE OR DELETE ON ratification_package_snapshot
   FOR EACH ROW EXECUTE FUNCTION ratification_snapshot_immutable();
+
+CREATE OR REPLACE FUNCTION ratification_package_wrapper_guard()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'ratification package history is retained';
+  END IF;
+  IF OLD.id IS DISTINCT FROM NEW.id
+      OR OLD.deal_id IS DISTINCT FROM NEW.deal_id
+      OR OLD.snapshot_id IS DISTINCT FROM NEW.snapshot_id
+      OR OLD.buyer_legal_entity_id IS DISTINCT FROM NEW.buyer_legal_entity_id
+      OR OLD.seller_legal_entity_id IS DISTINCT FROM NEW.seller_legal_entity_id
+      OR OLD.amount_minor IS DISTINCT FROM NEW.amount_minor
+      OR OLD.currency IS DISTINCT FROM NEW.currency
+      OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+    RAISE EXCEPTION 'only ratification package status and version are mutable';
+  END IF;
+  RETURN NEW;
+END; $$;
+CREATE TRIGGER ratification_package_wrapper_guard
+  BEFORE UPDATE OR DELETE ON ratification_package
+  FOR EACH ROW EXECUTE FUNCTION ratification_package_wrapper_guard();
 
 CREATE OR REPLACE FUNCTION ratification_approval_immutable()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
