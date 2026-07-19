@@ -54,12 +54,16 @@ class RatificationPackageReadService {
         return deals.findVisible(context, dealId).orElseThrow(PackageNotFound::new);
     }
 
-    private RatificationPackageReadDtos.Detail project(
+    /** Internal projection shared by package mutations after they have obtained deal visibility. */
+    RatificationPackageReadDtos.Detail project(
             OperationContext context,
             RatificationSourcePorts.Target target,
             RatificationRepository.PackageRecord packageRecord) {
         RatificationSnapshotAssembler.Snapshot snapshot = parseAndVerifySnapshot(packageRecord);
-        verifyWrapper(target, packageRecord, snapshot);
+        if (!packageRecord.dealId().equals(target.dealId())) {
+            throw corruption();
+        }
+        verifyWrapper(packageRecord, snapshot);
         List<RatificationRepository.ApprovalRecord> storedApprovals = packages.listApprovals(packageRecord.id());
         List<RatificationPackageReadDtos.Approval> approvals = approvalProjection(context, packageRecord,
                 snapshot, storedApprovals);
@@ -93,11 +97,9 @@ class RatificationPackageReadService {
     }
 
     private static void verifyWrapper(
-            RatificationSourcePorts.Target target,
             RatificationRepository.PackageRecord packageRecord,
             RatificationSnapshotAssembler.Snapshot snapshot) {
-        if (!packageRecord.dealId().equals(target.dealId())
-                || !snapshot.dealId().equals(packageRecord.dealId().toString())
+        if (!snapshot.dealId().equals(packageRecord.dealId().toString())
                 || snapshot.buyer() == null
                 || snapshot.seller() == null
                 || snapshot.buyer().legalEntityId().equals(snapshot.seller().legalEntityId())

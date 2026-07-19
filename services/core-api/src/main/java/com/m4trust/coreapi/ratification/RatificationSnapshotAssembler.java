@@ -13,8 +13,10 @@ import java.util.Set;
 import java.util.UUID;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 
 /** Pure V1 snapshot assembler: only this closed value is passed to the JCS hasher. */
+@Component
 final class RatificationSnapshotAssembler {
     static final long MAX_SAFE_INTEGER = 9007199254740991L;
 
