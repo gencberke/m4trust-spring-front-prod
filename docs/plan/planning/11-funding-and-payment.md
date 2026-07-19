@@ -1,6 +1,6 @@
 # Slice 11 — Funding ve Payment (Buyer Funding)
 
-- Durum: ready (insan talimatıyla; bkz. eskalasyon önkoşulu)
+- Durum: planning (insan talimatıyla; bkz. eskalasyon önkoşulu)
 - Slice sırası: ADR-004 §24 → "Funding and Payment" (bölünmüş yol haritasında 11)
 - Öncül: 10-ratification (funding yalnız ACTIVE Deal'de anlam taşır)
 - Ardıl: fulfillment/evidence slice'ı; payment release/settlement bu planın
