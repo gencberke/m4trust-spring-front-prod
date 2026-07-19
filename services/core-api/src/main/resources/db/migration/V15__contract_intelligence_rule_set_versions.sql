@@ -19,9 +19,6 @@ CREATE TABLE contract_intelligence_rule_set_version (
 
 ALTER TABLE deal
     ADD COLUMN current_rule_set_version_id UUID,
-    ADD CONSTRAINT deal_current_rule_set_pair_ck CHECK (
-       (current_rule_set_version_id IS NULL) OR current_rule_set_version_id IS NOT NULL
-    ),
     ADD CONSTRAINT deal_current_rule_set_fk
        FOREIGN KEY (id, current_rule_set_version_id)
        REFERENCES contract_intelligence_rule_set_version(deal_id, id);
