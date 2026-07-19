@@ -86,7 +86,12 @@ class ReviewService implements DealRuleSetProjectionPort {
 
     ReviewDtos.Version version(OperationContext context, UUID dealId, UUID versionId) {
         require(context, RequestedOperation.DEAL_RULE_SET_VERSION_READ);
-        requireVisible(context, dealId);
+        // A single version is an opaque historical resource.  Unlike the history
+        // endpoint, its not-found contract deliberately does not disclose Deal
+        // visibility to callers that are not participants.
+        if (dealReads.findAnalysisVisibility(context, dealId).isEmpty()) {
+            throw new AnalysisExceptions.RuleSetVersionNotFound();
+        }
         return versionForDeal(dealId, versionId);
     }
 
