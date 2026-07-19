@@ -378,6 +378,14 @@ class DealRepository {
             Instant createdAt,
             Instant updatedAt,
             long version) {
+        DealRecord(UUID id, UUID tenantId, String reference, String title, String description,
+                DealStatus status, UUID buyerLegalEntityId, UUID sellerLegalEntityId,
+                UUID currentDocumentId, UUID initiatorLegalEntityId, UUID createdBy,
+                Instant createdAt, Instant updatedAt, long version) {
+            this(id, tenantId, reference, title, description, status, buyerLegalEntityId,
+                    sellerLegalEntityId, currentDocumentId, null, initiatorLegalEntityId,
+                    createdBy, createdAt, updatedAt, version);
+        }
     }
 
     record ParticipantRecord(UUID legalEntityId, UUID legalEntityTenantId,
