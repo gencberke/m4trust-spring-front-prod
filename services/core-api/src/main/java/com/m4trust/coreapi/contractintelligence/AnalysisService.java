@@ -179,7 +179,7 @@ class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSup
                         correlationId, null, occurredAt)));
         // Document finalization owns the Deal lock. Clearing here keeps the stale
         // chain and its historical rule versions readable without presenting it current.
-        dealMutations.clearCurrentRuleSet(dealId, occurredAt);
+        dealMutations.clearCurrentRuleSet(dealId);
     }
 
     private DealDocumentAnalysis currentProjection(UUID currentDocumentId) {

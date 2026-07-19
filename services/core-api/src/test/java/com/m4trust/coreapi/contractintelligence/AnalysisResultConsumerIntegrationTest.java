@@ -129,6 +129,32 @@ class AnalysisResultConsumerIntegrationTest {
         assertEquals(3,count("integration_inbox_event"));
     }
 
+    @Test void lateCompletedEventForAcceptedAnalysisIsInboxedAndIgnoredWithoutCreatingRules() throws Exception {
+        consumer.consume(json(completed(UUID.randomUUID(), job, SHA)));
+        jdbc.update("UPDATE contract_intelligence_analysis_job SET status = 'ACCEPTED' WHERE id = ?", job);
+        String resultBefore = jdbc.queryForObject("""
+                SELECT canonical_result::text FROM contract_intelligence_extraction_result_version
+                WHERE analysis_job_id = ?
+                """, String.class, job);
+
+        consumer.consume(json(completed(UUID.randomUUID(), job, SHA)));
+
+        assertEquals("ACCEPTED", jobStatus());
+        assertEquals(resultBefore, jdbc.queryForObject("""
+                SELECT canonical_result::text FROM contract_intelligence_extraction_result_version
+                WHERE analysis_job_id = ?
+                """, String.class, job));
+        assertEquals(1, count("contract_intelligence_extraction_result_version"));
+        assertEquals(0, count("contract_intelligence_rule_set_version"));
+        assertEquals(0, jdbc.queryForObject("""
+                SELECT count(*) FROM deal WHERE id = ? AND current_rule_set_version_id IS NOT NULL
+                """, Integer.class, deal));
+        assertEquals(2, count("integration_inbox_event"));
+        assertEquals(1, jdbc.queryForObject("""
+                SELECT count(*) FROM audit_record WHERE action = 'AI_ANALYSIS_TERMINAL_EVENT_IGNORED'
+                """, Integer.class));
+    }
+
     @Test void failedAndAuditFailureAreAtomic() throws Exception {
         consumer.consume(json(failed(UUID.randomUUID(),job)));
         assertEquals("FAILED",jobStatus()); assertEquals("MODEL_PROVIDER_TIMEOUT",jdbc.queryForObject("SELECT failure_code FROM contract_intelligence_analysis_job WHERE id=?",String.class,job));

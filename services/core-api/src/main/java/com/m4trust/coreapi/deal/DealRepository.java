@@ -155,6 +155,20 @@ class DealRepository {
         }
     }
 
+    /**
+     * Document finalization already advances the Deal aggregate when it repoints the
+     * current document.  Clearing a stale rule-set is part of that same mutation,
+     * so it deliberately does not advance the version or timestamp a second time.
+     */
+    void clearCurrentRuleSetForDocumentSupersession(UUID dealId) {
+        jdbcTemplate.update("""
+                UPDATE deal
+                SET current_rule_set_version_id = NULL
+                WHERE id = ?
+                  AND current_rule_set_version_id IS NOT NULL
+                """, dealId);
+    }
+
     List<DealRecord> findVisiblePage(
             UUID legalEntityTenantId,
             UUID legalEntityId,

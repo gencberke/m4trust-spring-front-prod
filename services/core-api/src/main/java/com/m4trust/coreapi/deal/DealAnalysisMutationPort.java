@@ -14,7 +14,7 @@ public interface DealAnalysisMutationPort {
 
     void setCurrentRuleSet(UUID dealId, UUID ruleSetVersionId, java.time.Instant changedAt);
 
-    void clearCurrentRuleSet(UUID dealId, java.time.Instant changedAt);
+    void clearCurrentRuleSet(UUID dealId);
 
     record AnalysisTarget(UUID dealId, UUID owningTenantId, UUID currentDocumentId,
             boolean initiator, boolean acceptsAnalysis) {

@@ -47,7 +47,7 @@ class DealAnalysisMutationService implements DealAnalysisMutationPort {
     }
 
     @Override @Transactional(propagation = Propagation.MANDATORY)
-    public void clearCurrentRuleSet(UUID dealId, java.time.Instant changedAt) {
-        repository.setCurrentRuleSet(dealId, null, changedAt);
+    public void clearCurrentRuleSet(UUID dealId) {
+        repository.clearCurrentRuleSetForDocumentSupersession(dealId);
     }
 }
