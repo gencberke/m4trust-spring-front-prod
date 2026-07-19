@@ -9,9 +9,10 @@ class CanonicalSnapshotHasherTest {
     private final CanonicalSnapshotHasher hasher = new CanonicalSnapshotHasher();
 
     @Test
-    void appliesTheRfc8785ObjectMemberOrderingVector() throws Exception {
-        // RFC 8785 JCS sorts object properties lexicographically, independently of input order.
-        assertEquals("{\"a\":1,\"b\":2}", hasher.canonicalize("{\"b\":2,\"a\":1}"));
+    void appliesTheRfc8785Section322SerializationSample() throws Exception {
+        String source = "{\"numbers\":[333333333.33333329,1E30,4.50,2e-3,0.000000000000000000000000001],\"string\":\"\\u20ac$\\u000f\\nA'B\\\"\\\\\\\"/\"}";
+        String expected = "{\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\"/\"}";
+        assertEquals(expected, hasher.canonicalize(source));
     }
 
     @Test
