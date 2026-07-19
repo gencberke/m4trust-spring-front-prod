@@ -164,3 +164,40 @@ No pool-specific Java sample; the same JSON POST pattern presumably applies.
   happens ONLY inside the provider adapter; the core keeps integers.
 - Biggest open items before Slice 11B: pool-state detection (#1), pre-approval
   refund path (#2), pool holding limit (#3), charge idempotency (#6).
+
+## Gap handling — self-reliant strategy (no direct Moka contact available)
+
+Decision (2026-07-19): the gaps above cannot be resolved by asking Moka; the
+payment design ADR adopts defensive assumptions and empirical verification
+instead. Binding principles:
+
+1. Never depend on undocumented behavior; assume the worst case; verify
+   empirically against the Moka test environment.
+2. **Probe suite is the first Slice 11B deliverable:** an automated test pack
+   that exercises the full pool flow (charge → status → approve → undo →
+   refund attempts) against the test environment. Probe results are recorded
+   as evidence in the ADR; assumptions are upgraded only with probe proof.
+3. Gap #1 (no pool status enum): our ledger is the sole source of truth for
+   pool/release state; the Moka status endpoint is reconciliation-only.
+4. Gap #2 (pre-approval refund unknown): ASSUME not possible. Money-return
+   before release is modeled as approve → next-day refund (funds transit the
+   statement for one day; accounting note required). If probes show direct
+   void/refund works on pooled state, relax the ADR.
+5. Gap #3 (pool holding limit unknown): aged-pool monitoring with alerting on
+   operations pooled longer than a configured threshold; release-timing policy
+   approves promptly after fulfillment acceptance; the unknown maximum stays
+   an explicit open risk in the ADR until probed.
+6. Gap #4 (redirect hash unverified): 3D redirect is UX-only; NO state
+   transition is driven by redirect data; every outcome is confirmed via
+   status polling.
+7. Gaps #5/#9 (sub-dealer split/KYC): v1 target is the marketplace
+   (sub-dealer) pool model — platform-held funds with manual EFT payout risks
+   unlicensed payment-institution exposure under Law 6493 and is rejected as
+   default. Requires explicit legal review; sub-dealer onboarding is probed
+   empirically in 11B.
+8. Gap #6 (charge idempotency unknown): charges are never blindly retried.
+   Intent record → on unclear outcome, status query by OtherTrxCode → only a
+   confirmed-absent charge may be retried, and only with a NEW OtherTrxCode.
+9. Gap #10 (no same-day refund after approve): release timing waits for the
+   fulfillment-acceptance gate; approval is not granted while a dispute
+   window is open.
