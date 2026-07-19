@@ -27,6 +27,7 @@ class DealService {
     private final InvitationLegalEntityQueryPort legalEntityQueries;
     private final DealCurrentDocumentQueryPort currentDocumentQueries;
     private final DealAnalysisProjectionPort analysisProjections;
+    private final DealRuleSetProjectionPort ruleSetProjections;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
@@ -35,12 +36,14 @@ class DealService {
             InvitationLegalEntityQueryPort legalEntityQueries,
             DealCurrentDocumentQueryPort currentDocumentQueries,
             DealAnalysisProjectionPort analysisProjections,
+            DealRuleSetProjectionPort ruleSetProjections,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
         this.legalEntityQueries = legalEntityQueries;
         this.currentDocumentQueries = currentDocumentQueries;
         this.analysisProjections = analysisProjections;
+        this.ruleSetProjections = ruleSetProjections;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -285,7 +288,7 @@ class DealService {
                 party(deal.buyerLegalEntityId(), participantProjections),
                 party(deal.sellerLegalEntityId(), participantProjections),
                 participantProjections,
-                currentDocument(deal), analysis(deal));
+                currentDocument(deal), analysis(deal), currentRuleSet(deal));
     }
 
     private DealCurrentDocumentQueryPort.CurrentDealDocument currentDocument(Deal deal) {
@@ -337,6 +340,11 @@ class DealService {
                 ? new DealAnalysisProjectionPort.AnalysisSummary(null, "NOT_REQUESTED",
                         null, null, null, null, null)
                 : analysisProjections.summary(documentId);
+    }
+    private DealRuleSetProjectionPort.CurrentRuleSet currentRuleSet(Deal deal) {
+        UUID pointer = deal.currentRuleSetVersionId();
+        return pointer == null ? null : ruleSetProjections.findCurrent(pointer)
+                .orElseThrow(() -> new IllegalStateException("Deal rule-set pointer is unavailable"));
     }
 
     private DealLifecycleProjection lifecycle(Deal deal) {

@@ -47,6 +47,17 @@ class AnalysisExceptionHandler {
                 exception.code());
     }
 
+    @ExceptionHandler(AnalysisExceptions.Validation.class)
+    ResponseEntity<ProblemDetail> validation(AnalysisExceptions.Validation exception,
+            HttpServletRequest request) {
+        ProblemDetail problem = response(request, HttpStatus.UNPROCESSABLE_ENTITY,
+                "review-validation-failed", "Review validation failed",
+                "A reviewed rule value is invalid.", "VALIDATION_FAILED").getBody();
+        problem.setProperty("fieldErrors", java.util.Map.of(exception.field(), "INVALID"));
+        return ResponseEntity.unprocessableEntity().contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
+
     private ResponseEntity<ProblemDetail> response(HttpServletRequest request,
             HttpStatus status, String typeSlug, String title, String detail, String code) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);

@@ -19,7 +19,8 @@ record DealDetail(
         DealParty seller,
         List<DealParticipant> participants,
         DealCurrentDocumentQueryPort.CurrentDealDocument currentDocument,
-        DealAnalysisProjectionPort.AnalysisSummary analysis) {
+        DealAnalysisProjectionPort.AnalysisSummary analysis,
+        DealRuleSetProjectionPort.CurrentRuleSet currentRuleSet) {
 
     DealDetail {
         participants = List.copyOf(participants);

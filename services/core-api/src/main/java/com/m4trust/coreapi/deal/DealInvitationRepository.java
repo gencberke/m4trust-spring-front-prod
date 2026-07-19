@@ -189,7 +189,7 @@ class DealInvitationRepository {
                 DealStatus.valueOf(resultSet.getString("deal_status")),
                 resultSet.getObject("buyer_legal_entity_id", UUID.class),
                 resultSet.getObject("seller_legal_entity_id", UUID.class),
-                resultSet.getObject("current_document_id", UUID.class),
+                resultSet.getObject("current_document_id", UUID.class), null,
                 resultSet.getObject("initiator_legal_entity_id", UUID.class),
                 resultSet.getObject("created_by", UUID.class),
                 resultSet.getTimestamp("deal_created_at").toInstant(),

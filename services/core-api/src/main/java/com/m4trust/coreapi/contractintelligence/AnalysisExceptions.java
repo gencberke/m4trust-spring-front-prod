@@ -25,4 +25,10 @@ final class AnalysisExceptions {
             return code;
         }
     }
+
+    static final class Validation extends RuntimeException {
+        private final String field;
+        Validation(String field) { this.field = field; }
+        String field() { return field; }
+    }
 }
