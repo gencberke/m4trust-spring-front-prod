@@ -1,0 +1,62 @@
+-- Slice 10: immutable canonical snapshot is deliberately separate from the mutable package wrapper.
+CREATE TABLE ratification_package_snapshot (
+    id UUID PRIMARY KEY,
+    schema_version INTEGER NOT NULL CHECK (schema_version = 1),
+    canonical_snapshot JSONB NOT NULL,
+    content_hash CHAR(64) NOT NULL CHECK (content_hash ~ '^[a-f0-9]{64}$'),
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT ratification_package_snapshot_json_ck CHECK (jsonb_typeof(canonical_snapshot) = 'object')
+);
+
+CREATE TABLE ratification_package (
+    id UUID PRIMARY KEY,
+    deal_id UUID NOT NULL REFERENCES deal(id),
+    snapshot_id UUID NOT NULL UNIQUE REFERENCES ratification_package_snapshot(id),
+    version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
+    status VARCHAR(16) NOT NULL CHECK (status IN ('PENDING', 'RATIFIED', 'REJECTED', 'SUPERSEDED')),
+    buyer_legal_entity_id UUID NOT NULL,
+    seller_legal_entity_id UUID NOT NULL,
+    amount_minor BIGINT NOT NULL CHECK (amount_minor BETWEEN 1 AND 9007199254740991),
+    currency CHAR(3) NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT ratification_package_parties_distinct_ck CHECK (buyer_legal_entity_id <> seller_legal_entity_id),
+    CONSTRAINT ratification_package_buyer_fk FOREIGN KEY (deal_id, buyer_legal_entity_id)
+        REFERENCES deal_participant(deal_id, legal_entity_id),
+    CONSTRAINT ratification_package_seller_fk FOREIGN KEY (deal_id, seller_legal_entity_id)
+        REFERENCES deal_participant(deal_id, legal_entity_id),
+    CONSTRAINT ratification_package_deal_id_uk UNIQUE (deal_id, id)
+);
+CREATE INDEX ratification_package_deal_created_idx ON ratification_package(deal_id, created_at, id);
+
+ALTER TABLE deal ADD COLUMN current_ratification_package_id UUID;
+ALTER TABLE deal ADD CONSTRAINT deal_current_ratification_package_fk
+    FOREIGN KEY (id, current_ratification_package_id)
+    REFERENCES ratification_package(deal_id, id);
+
+-- Kept now so the approval slice starts from an append-only, one-effective-approval schema.
+CREATE TABLE ratification_package_approval (
+    id UUID PRIMARY KEY,
+    package_id UUID NOT NULL REFERENCES ratification_package(id),
+    legal_entity_id UUID NOT NULL,
+    approved_by_user_id UUID NOT NULL,
+    approved_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT ratification_package_approval_package_entity_uk UNIQUE (package_id, legal_entity_id)
+);
+
+CREATE OR REPLACE FUNCTION ratification_snapshot_immutable()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'ratification snapshots are immutable and insert-only';
+END; $$;
+CREATE TRIGGER ratification_snapshot_no_mutation
+  BEFORE UPDATE OR DELETE ON ratification_package_snapshot
+  FOR EACH ROW EXECUTE FUNCTION ratification_snapshot_immutable();
+
+CREATE OR REPLACE FUNCTION ratification_approval_immutable()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'ratification approvals are append-only';
+END; $$;
+CREATE TRIGGER ratification_approval_no_mutation
+  BEFORE UPDATE OR DELETE ON ratification_package_approval
+  FOR EACH ROW EXECUTE FUNCTION ratification_approval_immutable();
