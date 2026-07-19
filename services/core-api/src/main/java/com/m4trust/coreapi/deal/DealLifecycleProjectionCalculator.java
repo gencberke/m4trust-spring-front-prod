@@ -31,6 +31,7 @@ final class DealLifecycleProjectionCalculator {
                         case "QUEUED", "PROCESSING", "FAILED", "NOT_REQUESTED",
                                 "SUPERSEDED" -> DealLifecycleProjection.CONTRACT_ANALYSIS;
                         case "REVIEW_REQUIRED" -> DealLifecycleProjection.MANUAL_REVIEW;
+                        case "ACCEPTED" -> DealLifecycleProjection.RATIFICATION;
                         default -> throw new IllegalArgumentException(
                                 "Unknown analysis status: " + analysisStatus);
                     };

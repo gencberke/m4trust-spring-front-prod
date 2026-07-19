@@ -320,6 +320,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/extraction-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the participant-readable current extraction review projection
+         * @description Returns the canonical extracted rules and their review input for the current REVIEW_REQUIRED analysis to every Deal participant. This is review material, not ratification or contractual consent. A visible Deal without a current reviewable analysis returns 409 DEAL_STATE_CONFLICT; a hidden Deal remains non-disclosing.
+         */
+        get: operations["getDealExtractionReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/extraction-review/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a reviewed extraction as an immutable rule-set version
+         * @description Initiator-only bulk review action. The required target analysisId must still be the current REVIEW_REQUIRED analysis for the current document under the Deal lock. Idempotency-Key is required: replaying the same canonical request returns the originally created RuleSetVersion, while reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. A successful action atomically creates one immutable RuleSetVersion, marks the analysis ACCEPTED, and moves the Deal current rule-set pointer. It is not ratification or commercial consent.
+         */
+        post: operations["acceptDealExtractionReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/rule-set-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List immutable rule-set version history
+         * @description Returns all immutable accepted rule-set versions for the Deal to every participant, including superseded historical versions. No version may be edited, deleted, or inferred as current from position in this list.
+         */
+        get: operations["listDealRuleSetVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/rule-set-versions/{ruleSetVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one immutable rule-set version */
+        get: operations["getDealRuleSetVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/documents/{documentId}/finalize": {
         parameters: {
             query?: never;
@@ -813,7 +890,7 @@ export interface components {
          * @description Current-document analysis state owned by the analysis state machine. REVIEW_REQUIRED is a technical extraction completion requiring human review, not business acceptance.
          * @enum {string}
          */
-        DocumentAnalysisStatus: "NOT_REQUESTED" | "QUEUED" | "PROCESSING" | "REVIEW_REQUIRED" | "FAILED";
+        DocumentAnalysisStatus: "NOT_REQUESTED" | "QUEUED" | "PROCESSING" | "REVIEW_REQUIRED" | "ACCEPTED" | "FAILED";
         /** @description Safe terminal failure projection. It deliberately excludes provider messages, stack traces, technical metadata, and raw worker error details. */
         DocumentAnalysisFailureSummary: {
             /** @description Stable canonical AI technical or invalid-input failure code. */
@@ -861,6 +938,39 @@ export interface components {
         };
         /** @description Closed canonical structured-value union for an extracted rule. */
         ExtractedRuleValue: {
+            /** @constant */
+            type: "TEXT";
+            value: string;
+        } | {
+            /** @constant */
+            type: "MONEY";
+            amountMinor: number;
+            currency: string;
+        } | {
+            /** @constant */
+            type: "PERCENTAGE";
+            basisPoints: number;
+        } | {
+            /** @constant */
+            type: "DURATION";
+            valueSeconds: number;
+        } | {
+            /** @constant */
+            type: "DATE";
+            /** Format: date */
+            value: string;
+        } | {
+            /** @constant */
+            type: "BOOLEAN";
+            value: boolean;
+        } | {
+            /** @constant */
+            type: "QUANTITY";
+            value: number;
+            unit: string;
+        };
+        /** @description Closed reviewed/final structured-value union for Slice 9. Unlike advisory extraction output, money cannot be negative at this business-rule boundary; KEPT extracted values are semantically checked against this boundary during acceptance and an invalid amount is rejected with 422. Money and percentage are integer minor units and basis points, never floating-point values. */
+        RuleSetStructuredValue: {
             /** @constant */
             type: "TEXT";
             value: string;
@@ -951,6 +1061,149 @@ export interface components {
             /** @description Canonical result when extraction completed; null before completion or after FAILED. */
             result: components["schemas"]["DocumentAnalysisResult"] | null;
         };
+        /** @description Participant-readable, immutable review input for the current REVIEW_REQUIRED extraction. It does not persist a draft and does not represent ratification. */
+        DealExtractionReview: {
+            /**
+             * Format: uuid
+             * @description Target analysis identity required by the acceptance action.
+             */
+            analysisId: string;
+            /** Format: uuid */
+            documentId: string;
+            /** @description Canonical extracted rules to decide in the acceptance action; never null. */
+            rules: components["schemas"]["ExtractedRule"][];
+        };
+        /** @description Exactly one disposition for an extracted rule, or one manually added rule. */
+        ReviewRuleDecision: components["schemas"]["KeptRuleDecision"] | components["schemas"]["ModifiedRuleDecision"] | components["schemas"]["ExcludedRuleDecision"] | components["schemas"]["AddedRuleDecision"];
+        KeptRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "KEPT";
+            /** @description ruleReference from the target extraction. */
+            ruleReference: string;
+        };
+        ModifiedRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "MODIFIED";
+            /** @description ruleReference from the target extraction. */
+            ruleReference: string;
+            category: components["schemas"]["RuleCategory"];
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["RuleSetStructuredValue"];
+        };
+        ExcludedRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "EXCLUDED";
+            /** @description ruleReference from the target extraction; retained only in immutable decision history. */
+            ruleReference: string;
+        };
+        AddedRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "ADDED";
+            category: components["schemas"]["RuleCategory"];
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["RuleSetStructuredValue"];
+        };
+        AcceptExtractionReviewRequest: {
+            /**
+             * Format: uuid
+             * @description Current REVIEW_REQUIRED analysis being accepted.
+             */
+            analysisId: string;
+            /**
+             * Format: int64
+             * @description Current Deal optimistic-lock version.
+             */
+            expectedVersion: number;
+            /** @description Complete bulk review decisions. The backend requires exactly one decision for every extracted rule and semantic validation allows an empty array when the target extraction contains no rules. The backend assigns unique manual-N rule references to ADDED decisions within the created RuleSetVersion. */
+            decisions: components["schemas"]["ReviewRuleDecision"][];
+        };
+        /** @enum {string} */
+        RuleCategory: "PAYMENT" | "DELIVERY" | "QUALITY" | "PENALTY" | "TERMINATION" | "DISPUTE" | "OTHER" | "UNKNOWN";
+        /**
+         * @description Advisory legal-basis origin only; no business rule may depend on it.
+         * @enum {string}
+         */
+        RuleLegalBasisProvenance: "EXTRACTED" | "REVIEWER_MODIFIED" | "MANUALLY_ADDED";
+        /** @description Immutable final rule contained in an accepted RuleSetVersion. */
+        RuleSetRule: {
+            /** @description Extracted reference, or unique server-assigned manual-N reference for an added rule. */
+            ruleReference: string;
+            /** @enum {string} */
+            decision: "KEPT" | "MODIFIED" | "ADDED";
+            category: components["schemas"]["RuleCategory"];
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["RuleSetStructuredValue"];
+            /** @description Advisory legal reference copied from the target extraction for KEPT and MODIFIED rules. ADDED rules always expose null. It never authorizes a business decision. */
+            legalBasis: components["schemas"]["AdvisoryLegalBasis"] | null;
+            legalBasisProvenance: components["schemas"]["RuleLegalBasisProvenance"];
+        };
+        RuleSetVersionSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            version: number;
+            /**
+             * Format: uuid
+             * @description Target analysis identity accepted to create this immutable version.
+             */
+            sourceAnalysisId: string;
+            /**
+             * Format: uuid
+             * @description Immutable canonical ExtractionResultVersion from which this rule set was accepted.
+             */
+            sourceExtractionResultVersionId: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            /** Format: uuid */
+            createdByUserId: string;
+            /** Format: uuid */
+            previousRuleSetVersionId: string | null;
+            ruleCount: number;
+        };
+        RuleSetVersion: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            version: number;
+            /**
+             * Format: uuid
+             * @description Target analysis identity accepted to create this immutable version.
+             */
+            sourceAnalysisId: string;
+            /**
+             * Format: uuid
+             * @description Immutable canonical ExtractionResultVersion from which this rule set was accepted.
+             */
+            sourceExtractionResultVersionId: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            /** Format: uuid */
+            createdByUserId: string;
+            /** Format: uuid */
+            previousRuleSetVersionId: string | null;
+            ruleCount: number;
+            /** @description Final valid immutable rules only; EXCLUDED rules are absent. */
+            rules: components["schemas"]["RuleSetRule"][];
+            /** @description Immutable review-decision history for excluded extracted rules; never null. */
+            excludedRuleReferences: string[];
+        };
+        RuleSetVersionHistory: {
+            /** @description Immutable accepted rule-set versions, including superseded history; never null. */
+            items: components["schemas"]["RuleSetVersionSummary"][];
+        };
         /** @description Backend-derived action availability for the current user and active legal entity. Clients use this projection for presentation but the backend always re-authorizes mutations. */
         DealAvailableActions: {
             canUpdate: boolean;
@@ -963,6 +1216,8 @@ export interface components {
             canCreateDocumentUploadIntent: boolean;
             /** @description Backend-derived analysis-request availability. True only for the Deal initiator when the Deal is non-terminal, its current document is AVAILABLE, and no analysis job is QUEUED or PROCESSING for that document. */
             canRequestAnalysis: boolean;
+            /** @description Optional backend-derived review-acceptance availability. When absent or unknown, clients must treat it as false and remain read-only. When true, the active user is authorized for the Deal initiator and the current analysis is REVIEW_REQUIRED. */
+            canReviewExtraction?: boolean;
         };
         /**
          * Format: date-time
@@ -1027,6 +1282,8 @@ export interface components {
             /** @description Current verified contractual document, or null when no document has been finalized. This is a backend-owned pointer; clients must not infer it from history or document status. */
             currentDocument: components["schemas"]["AvailableDealDocument"] | null;
             analysis: components["schemas"]["DealDocumentAnalysisSummary"];
+            /** @description Optional backend-owned current accepted rule-set summary. Null means no accepted rule-set currently backs this Deal; clients must not infer one from history. Its absence is tolerated for additive compatibility. */
+            currentRuleSet?: components["schemas"]["RuleSetVersionSummary"] | null;
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -1238,6 +1495,42 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description No current REVIEW_REQUIRED analysis is available for review; Problem Details code is DEAL_STATE_CONFLICT. */
+        DealReviewConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the visible Deal participant is not the immutable Deal initiator (DEAL_REVIEW_ACCEPTANCE_FORBIDDEN). Participant visibility never grants review acceptance authority. */
+        DealReviewAcceptanceForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied expectedVersion is stale (DEAL_STALE_VERSION), the target analysis is not the current REVIEW_REQUIRED analysis or has been superseded (DEAL_STATE_CONFLICT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        DealReviewAcceptanceConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The rule-set version does not exist, does not belong to the visible Deal, or the Deal is hidden from a non-participant; all cases use RULE_SET_VERSION_NOT_FOUND and do not disclose existence. */
+        RuleSetVersionNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
         /** @description The document does not exist, does not belong to a Deal visible to the active legal entity, or its owning Deal is hidden from a non-participant; all cases use DEAL_DOCUMENT_NOT_FOUND and do not disclose document existence. */
         DealDocumentNotFoundOrHidden: {
             headers: {
@@ -1349,6 +1642,8 @@ export interface components {
         InvitationId: string;
         /** @description Public UUID of the requested Deal document. */
         DocumentId: string;
+        /** @description Immutable RuleSetVersion identifier. */
+        RuleSetVersionId: string;
         /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
         IdempotencyKey: string;
         /** @description Optional exact Deal status filter. */
@@ -1940,6 +2235,139 @@ export interface operations {
             403: components["responses"]["DealAnalysisRequestForbidden"];
             404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
             409: components["responses"]["DealDocumentAnalysisRequestConflict"];
+        };
+    };
+    getDealExtractionReview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current review projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealExtractionReview"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["DealReviewConflict"];
+        };
+    };
+    acceptDealExtractionReview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptExtractionReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Immutable RuleSetVersion created; idempotent replay returns this original version. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the created immutable rule-set version. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetVersion"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealReviewAcceptanceForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["DealReviewAcceptanceConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listDealRuleSetVersions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable rule-set history visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetVersionHistory"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+        };
+    };
+    getDealRuleSetVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Immutable RuleSetVersion identifier. */
+                ruleSetVersionId: components["parameters"]["RuleSetVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable rule-set version visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetVersion"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["RuleSetVersionNotFoundOrHidden"];
         };
     };
     finalizeDocumentUpload: {

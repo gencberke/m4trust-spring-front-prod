@@ -15,6 +15,7 @@ import {
 } from "react-router";
 
 import { DealContractAnalysis } from "../features/analysis/DealContractAnalysis";
+import { DealReviewWorkspace } from "../features/review/DealReviewWorkspace";
 import {
   cancelDeal,
   updateDeal,
@@ -676,6 +677,8 @@ export function DealDetailPage() {
           deal={deal}
           legalEntityId={selectedLegalEntityId}
         />
+
+        <DealReviewWorkspace deal={deal} legalEntityId={selectedLegalEntityId} />
 
         <DealInvitationManagement
           deal={deal}

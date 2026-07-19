@@ -99,7 +99,8 @@ final class AnalysisResultConsumer {
     }
 
     private static boolean terminal(AnalysisJobStatus status) {
-        return status == AnalysisJobStatus.REVIEW_REQUIRED || status == AnalysisJobStatus.FAILED;
+        return status == AnalysisJobStatus.REVIEW_REQUIRED || status == AnalysisJobStatus.ACCEPTED
+                || status == AnalysisJobStatus.FAILED;
     }
 
     private static UUID uuid(JsonNode event, String name) { return UUID.fromString(event.get(name).asString()); }

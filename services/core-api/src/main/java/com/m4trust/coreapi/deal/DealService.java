@@ -326,7 +326,9 @@ class DealService {
                 && !analysisProjections.hasActiveJob(documentId);
         return new DealAvailableActions(base.canUpdate(), base.canCancel(),
                 base.canCreateInvitation(), base.canManageParties(),
-                base.canCreateDocumentUploadIntent(), allowed);
+                base.canCreateDocumentUploadIntent(), allowed,
+                operationPolicy.isInitiator(deal, context)
+                        && "REVIEW_REQUIRED".equals(analysisProjections.summary(documentId).status()));
     }
 
     private DealAnalysisProjectionPort.AnalysisSummary analysis(Deal deal) {

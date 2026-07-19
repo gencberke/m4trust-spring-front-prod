@@ -33,7 +33,7 @@ const PERCENT_FORMATTER = new Intl.NumberFormat("tr-TR", {
 });
 const MONEY_FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
 
-const STATUS_LABELS: Record<DealDocumentAnalysis["status"], string> = {
+const STATUS_LABELS: Readonly<Partial<Record<DealDocumentAnalysis["status"], string>>> = {
   NOT_REQUESTED: "Talep edilmedi",
   QUEUED: "Sırada",
   PROCESSING: "İşleniyor",
