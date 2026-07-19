@@ -34,11 +34,11 @@ class OperationContextService {
             }
         }
 
-        UUID tenantId = repository.findAuthorizedTenantId(
+        OrganizationRepository.ResolvedMembership membership = repository.findAuthorizedMembership(
                         authenticatedUserId, activeLegalEntityId)
                 .orElseThrow(LegalEntityNotFoundException::new);
-        return new OperationContext(authenticatedUserId, tenantId,
-                activeLegalEntityId, requestedOperation);
+        return new OperationContext(authenticatedUserId, membership.tenantId(),
+                activeLegalEntityId, membership.role(), requestedOperation);
     }
 
     private UUID parseAuthenticatedUserId(String value) {

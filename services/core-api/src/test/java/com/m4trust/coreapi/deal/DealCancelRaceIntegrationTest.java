@@ -103,6 +103,7 @@ class DealCancelRaceIntegrationTest {
                 VALUES (?, ?, 'Race Entity', 'RACE-DEAL-1')
                 """, legalEntityId, tenantId);
         cancelContext = new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_CANCEL);
         beforeUpdateStatusHook.set(null);
         updateStatusAttempts.set(0);
@@ -159,6 +160,7 @@ class DealCancelRaceIntegrationTest {
                 cancelContext.authenticatedUserId(),
                 cancelContext.tenantId(),
                 cancelContext.activeLegalEntityId(),
+                cancelContext.activeLegalEntityRole(),
                 RequestedOperation.DEAL_CREATE);
         return service.create(createContext,
                 new CreateDealRequest("Race Deal", null),

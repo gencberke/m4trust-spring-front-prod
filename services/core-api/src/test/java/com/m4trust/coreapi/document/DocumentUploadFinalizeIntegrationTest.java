@@ -560,23 +560,26 @@ class DocumentUploadFinalizeIntegrationTest {
 
     private OperationContext intentContext() {
         return new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_DOCUMENT_UPLOAD_INTENT_CREATE);
     }
 
     private OperationContext finalizeContext() {
         return new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DOCUMENT_UPLOAD_FINALIZE);
     }
 
     private OperationContext downloadContext() {
         return new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE);
     }
 
     private OperationContext withOperation(OperationContext context,
             RequestedOperation operation) {
         return new OperationContext(context.authenticatedUserId(), context.tenantId(),
-                context.activeLegalEntityId(), operation);
+                context.activeLegalEntityId(), context.activeLegalEntityRole(), operation);
     }
 
     private OperationContext outsiderContext() {
@@ -598,6 +601,7 @@ class DocumentUploadFinalizeIntegrationTest {
                 """, UUID.randomUUID(), tenantId, outsiderEntityId, outsiderUserId);
         // Deliberately no deal_participant row: this legal entity is a non-participant.
         return new OperationContext(outsiderUserId, tenantId, outsiderEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_DOCUMENT_LIST_READ);
     }
 
@@ -627,7 +631,8 @@ class DocumentUploadFinalizeIntegrationTest {
                     legal_entity_tenant_id)
                 VALUES (?, ?, ?, ?)
                 """, dealId, tenantId, participantEntityId, tenantId);
-        return new OperationContext(participantUserId, tenantId, participantEntityId, operation);
+        return new OperationContext(participantUserId, tenantId, participantEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN, operation);
     }
 
     @TestConfiguration

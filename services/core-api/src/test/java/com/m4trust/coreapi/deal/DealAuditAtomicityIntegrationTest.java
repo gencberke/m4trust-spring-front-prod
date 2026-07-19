@@ -103,6 +103,7 @@ class DealAuditAtomicityIntegrationTest {
                 ) VALUES (?, ?, ?, ?, 'ADMIN')
                 """, UUID.randomUUID(), tenantId, legalEntityId, userId);
         context = new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_CREATE);
         failAudit.set(true);
     }
@@ -173,7 +174,8 @@ class DealAuditAtomicityIntegrationTest {
         request.setSellerLegalEntityId(null);
         request.setExpectedVersion(0L);
         OperationContext partyContext = new OperationContext(userId, tenantId,
-                legalEntityId, RequestedOperation.DEAL_PARTIES_UPDATE);
+                legalEntityId, com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
+                RequestedOperation.DEAL_PARTIES_UPDATE);
 
         assertThrows(IllegalStateException.class,
                 () -> service.updateParties(partyContext, dealId, request,

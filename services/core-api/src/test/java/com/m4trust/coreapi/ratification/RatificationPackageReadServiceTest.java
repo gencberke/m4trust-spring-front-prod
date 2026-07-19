@@ -162,7 +162,8 @@ class RatificationPackageReadServiceTest {
     }
 
     private OperationContext context(UUID entityId, RequestedOperation operation) {
-        return new OperationContext(USER_ID, TENANT_ID, entityId, operation);
+        return new OperationContext(USER_ID, TENANT_ID, entityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN, operation);
     }
 
     private record Fixture(UUID dealId, UUID buyerId, UUID sellerId, UUID documentId, UUID ruleSetId,

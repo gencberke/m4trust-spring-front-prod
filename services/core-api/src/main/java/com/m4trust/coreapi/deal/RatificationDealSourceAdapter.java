@@ -55,6 +55,19 @@ class RatificationDealSourceAdapter implements RatificationSourcePorts.DealTarge
         deals.pointCurrentRatificationPackage(dealId, packageId, changedAt);
     }
 
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void activateCurrentPackage(UUID dealId, UUID packageId, Instant changedAt) {
+        Deal deal = deals.findByIdForUpdate(dealId).map(Deal::rehydrate)
+                .orElseThrow(IllegalStateException::new);
+        long version = deal.version();
+        deal.activateCurrentRatificationPackage(packageId, changedAt);
+        if (!deals.activateCurrentRatificationPackage(
+                dealId, packageId, version, changedAt)) {
+            throw new IllegalStateException("Deal activation was stale");
+        }
+    }
+
     private RatificationSourcePorts.Target target(OperationContext context, Deal deal) {
         Map<UUID, String> names = legalEntities.findLegalNames(assignedParties(deal));
         return new RatificationSourcePorts.Target(

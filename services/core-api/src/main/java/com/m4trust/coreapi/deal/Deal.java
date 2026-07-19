@@ -146,6 +146,16 @@ final class Deal {
     UUID currentDocumentId() {
         return currentDocumentId;
     }
+
+    void activateCurrentRatificationPackage(UUID packageId, Instant changedAt) {
+        if (status != DealStatus.DRAFT || !Objects.equals(currentRatificationPackageId, packageId)) {
+            throw new DealStateConflictException("Ratification package is not current on a DRAFT Deal");
+        }
+        status = status.activate();
+        updatedAt = Objects.requireNonNull(changedAt);
+        version++;
+    }
+
     UUID currentRuleSetVersionId() { return currentRuleSetVersionId; }
 
     UUID currentRatificationPackageId() { return currentRatificationPackageId; }

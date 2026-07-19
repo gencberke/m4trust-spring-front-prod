@@ -74,19 +74,19 @@ class OrganizationRepository {
                 """, this::mapMembership, userId);
     }
 
-    Optional<UUID> findAuthorizedTenantId(UUID userId, UUID legalEntityId) {
+    Optional<ResolvedMembership> findAuthorizedMembership(UUID userId, UUID legalEntityId) {
         return jdbcTemplate.query("""
-                        SELECT membership.tenant_id
+                        SELECT membership.tenant_id, membership.role
                         FROM legal_entity_membership membership
                         JOIN legal_entity
                           ON legal_entity.id = membership.legal_entity_id
                          AND legal_entity.tenant_id = membership.tenant_id
                         WHERE membership.user_id = ?
                           AND membership.legal_entity_id = ?
-                        """,
-                (resultSet, rowNumber) ->
-                        resultSet.getObject("tenant_id", UUID.class),
-                userId, legalEntityId).stream().findFirst();
+                        """, (resultSet, rowNumber) -> new ResolvedMembership(
+                resultSet.getObject("tenant_id", UUID.class),
+                LegalEntityRole.valueOf(resultSet.getString("role"))), userId, legalEntityId)
+                .stream().findFirst();
     }
 
     Optional<InvitationLegalEntityQueryPort.InvitationLegalEntityMembership>
@@ -168,5 +168,8 @@ class OrganizationRepository {
     }
 
     record MemberAssignment(UUID userId, LegalEntityRole role) {
+    }
+
+    record ResolvedMembership(UUID tenantId, LegalEntityRole role) {
     }
 }

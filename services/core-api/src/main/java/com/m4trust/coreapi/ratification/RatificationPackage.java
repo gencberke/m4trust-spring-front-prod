@@ -74,6 +74,20 @@ final class RatificationPackage {
         transition(expectedVersion, RatificationPackageStatus.RATIFIED);
     }
 
+    void approve(long expectedVersion) {
+        if (version != expectedVersion) {
+            throw new StaleVersion();
+        }
+        if (status != RatificationPackageStatus.PENDING) {
+            throw new StateConflict();
+        }
+        if (version == MAX_SAFE_INTEGER) {
+            throw new IllegalStateException(
+                    "Ratification package version exceeds the safe integer range");
+        }
+        version++;
+    }
+
     private void transition(long expectedVersion, RatificationPackageStatus nextStatus) {
         if (version != expectedVersion) {
             throw new StaleVersion();

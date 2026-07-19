@@ -39,6 +39,28 @@ class RatificationPackageTest {
                 () -> upperBound.supersede(RatificationPackage.MAX_SAFE_INTEGER));
     }
 
+    @Test
+    void approvalAdvancesVersionWithoutChangingPendingStatus() {
+        RatificationPackage packageState = pending();
+        assertThrows(RatificationPackage.StaleVersion.class,
+                () -> packageState.approve(1));
+        packageState.approve(0);
+        assertEquals(RatificationPackageStatus.PENDING, packageState.status());
+        assertEquals(1, packageState.version());
+
+        packageState.reject(1);
+        assertThrows(RatificationPackage.StateConflict.class,
+                () -> packageState.approve(2));
+
+        var record = new RatificationRepository.PackageRecord(UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), RatificationPackageStatus.PENDING, UUID.randomUUID(), UUID.randomUUID(),
+                1, "TRY", Instant.parse("2026-07-19T10:00:00Z"),
+                RatificationPackage.MAX_SAFE_INTEGER);
+        RatificationPackage upperBound = RatificationPackage.rehydrate(record);
+        assertThrows(IllegalStateException.class,
+                () -> upperBound.approve(RatificationPackage.MAX_SAFE_INTEGER));
+    }
+
     private static RatificationPackage pending() {
         return RatificationPackage.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), 1, "TRY", Instant.parse("2026-07-19T10:00:00Z"));

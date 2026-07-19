@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 class DealRepository {
 
-    private static final String SELECT_VISIBLE_DEALS = """
+    private static final String SELECT_DEAL = """
             SELECT
                 deal.id,
                 deal.tenant_id,
@@ -34,6 +34,8 @@ class DealRepository {
                 deal.updated_at,
                 deal.version
             FROM deal
+            """;
+    private static final String SELECT_VISIBLE_DEALS = SELECT_DEAL + """
             WHERE EXISTS (
                   SELECT 1
                   FROM deal_participant participant
@@ -147,6 +149,12 @@ class DealRepository {
                 """, documentId, Timestamp.from(changedAt), dealId) == 1;
     }
 
+    Optional<DealRecord> findByIdForUpdate(UUID dealId) {
+        return jdbcTemplate.query(
+                        SELECT_DEAL + " WHERE deal.id = ? FOR UPDATE", this::mapDeal, dealId)
+                .stream().findFirst();
+    }
+
     void setCurrentRuleSet(UUID dealId, UUID ruleSetVersionId, Instant changedAt) {
         if (jdbcTemplate.update("""
                 UPDATE deal SET current_rule_set_version_id = ?, updated_at = ?, version = version + 1
@@ -166,6 +174,14 @@ class DealRepository {
                 """, packageId, Timestamp.from(changedAt), dealId) != 1) {
             throw new IllegalStateException("Deal disappeared while setting current ratification package");
         }
+    }
+
+    boolean activateCurrentRatificationPackage(
+            UUID dealId, UUID packageId, long expectedVersion, Instant changedAt) {
+        return jdbcTemplate.update("""
+                UPDATE deal SET deal_status = 'ACTIVE', updated_at = ?, version = version + 1
+                WHERE id = ? AND deal_status = 'DRAFT' AND current_ratification_package_id = ? AND version = ?
+                """, Timestamp.from(changedAt), dealId, packageId, expectedVersion) == 1;
     }
 
     /**

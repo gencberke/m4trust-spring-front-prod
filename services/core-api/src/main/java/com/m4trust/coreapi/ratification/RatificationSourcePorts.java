@@ -18,6 +18,8 @@ public final class RatificationSourcePorts {
         Optional<Target> lockVisibleForCreate(OperationContext context, UUID dealId);
 
         void pointCurrentPackage(UUID dealId, UUID packageId, Instant changedAt);
+
+        void activateCurrentPackage(UUID dealId, UUID packageId, Instant changedAt);
     }
 
     public interface AvailableDocument {

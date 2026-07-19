@@ -354,7 +354,8 @@ class AnalysisRequestIntegrationTest {
     }
 
     private OperationContext context(UUID actorUserId, UUID entityId, RequestedOperation operation) {
-        return new OperationContext(actorUserId, tenantId, entityId, operation);
+        return new OperationContext(actorUserId, tenantId, entityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN, operation);
     }
 
     private void createParticipant(UUID participantUserId, UUID participantEntityId) {

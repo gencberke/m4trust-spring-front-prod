@@ -326,6 +326,37 @@ class DealRepositoryIntegrationTest {
         assertEquals(changedAt, pointed.updatedAt());
     }
 
+    @Test
+    void ratificationAdapterActivatesCurrentDraftPackageWithOneValidSqlVersionBump() {
+        Instant createdAt = Instant.parse("2026-07-19T10:00:00Z");
+        DealRecord deal = newDeal(UUID.randomUUID(), "Activation target", createdAt);
+        repository.insert(deal, tenantId);
+        UUID packageId = insertPackage(deal.id(), participantEntityId, otherEntityId, createdAt);
+        OperationContext context = context(tenantId, participantEntityId);
+        Instant pointedAt = createdAt.plusSeconds(30);
+        transactions.executeWithoutResult(status ->
+                ratificationDeals.pointCurrentPackage(deal.id(), packageId, pointedAt));
+        DealRecord pointed = repository.findVisibleById(
+                tenantId, participantEntityId, deal.id()).orElseThrow();
+        assertEquals(2, pointed.version());
+
+        Instant activatedAt = createdAt.plusSeconds(60);
+        transactions.executeWithoutResult(status -> {
+            assertTrue(ratificationDeals.lockVisibleForCreate(context, deal.id()).isPresent());
+            ratificationDeals.activateCurrentPackage(deal.id(), packageId, activatedAt);
+        });
+
+        DealRecord activated = repository.findVisibleById(
+                tenantId, participantEntityId, deal.id()).orElseThrow();
+        assertEquals(DealStatus.ACTIVE, activated.status());
+        assertEquals(packageId, activated.currentRatificationPackageId());
+        assertEquals(3, activated.version());
+        assertEquals(activatedAt, activated.updatedAt());
+        assertThrows(DealStateConflictException.class,
+                () -> transactions.executeWithoutResult(status ->
+                        ratificationDeals.activateCurrentPackage(deal.id(), packageId, activatedAt.plusSeconds(1))));
+    }
+
     private DealRecord newDeal(UUID dealId, String title, Instant createdAt) {
         return new DealRecord(
                 dealId,
@@ -371,6 +402,7 @@ class DealRepositoryIntegrationTest {
 
     private OperationContext context(UUID contextTenantId, UUID legalEntityId) {
         return new OperationContext(userId, contextTenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_DETAIL_READ);
     }
 

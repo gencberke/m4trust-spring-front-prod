@@ -31,6 +31,7 @@ class DocumentControllerTest {
 
         ResponseEntity<DocumentUploadIntent> response = controller.createUploadIntent(
                 new OperationContext(userId, tenantId, legalEntityId,
+                        com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                         RequestedOperation.DEAL_DOCUMENT_UPLOAD_INTENT_CREATE),
                 dealId.toString(), request(), UUID.randomUUID().toString());
 
@@ -42,7 +43,8 @@ class DocumentControllerTest {
         assertThrows(
                 DocumentExceptions.MalformedRequest.class,
                 () -> controller.finalizeUpload(new OperationContext(userId, tenantId,
-                        legalEntityId, RequestedOperation.DOCUMENT_UPLOAD_FINALIZE),
+                        legalEntityId, com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
+                        RequestedOperation.DOCUMENT_UPLOAD_FINALIZE),
                         documentId.toString(), null,
                         new FinalizeDocumentUploadRequest(12, SHA),
                         UUID.randomUUID().toString()));

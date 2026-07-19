@@ -50,6 +50,7 @@ class RatificationPackageCreateServiceTest {
     private final AuditAppendPort audit = mock(AuditAppendPort.class);
     private final TransactionTemplate transactions = mock(TransactionTemplate.class);
     private final OperationContext context = new OperationContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
             RequestedOperation.DEAL_RATIFICATION_PACKAGE_CREATE);
     private final RatificationPackageCreateService service = new RatificationPackageCreateService(deals, documents,
             ruleSets, packages, assembler, new CanonicalSnapshotHasher(), new ObjectMapper(), reads, idempotency,
