@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -62,6 +63,15 @@ class MessagingPersistenceIntegrationTest {
 
         assertEquals(0, count("tenant"));
         assertEquals(0, count("integration_outbox_event"));
+    }
+
+    @Test
+    void outboxAndInboxRequireTheOwningBusinessTransaction() {
+        assertThrows(IllegalTransactionStateException.class, () -> outbox.enqueue(
+                "ai.document-extraction.requested.v1", "m4trust.ai.commands",
+                "ai.document-extraction.requested.v1", "{}"));
+        assertThrows(IllegalTransactionStateException.class, () -> inbox.recordIfNew(
+                UUID.randomUUID(), "ai.document-extraction.completed.v1"));
     }
 
     @Test

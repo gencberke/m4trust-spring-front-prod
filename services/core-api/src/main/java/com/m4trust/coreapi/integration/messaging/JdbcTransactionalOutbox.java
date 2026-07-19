@@ -7,6 +7,8 @@ import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 class JdbcTransactionalOutbox implements TransactionalOutbox {
@@ -20,6 +22,7 @@ class JdbcTransactionalOutbox implements TransactionalOutbox {
     }
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public UUID enqueue(String eventType, String exchangeName, String routingKey, String payload) {
         requireText(eventType, "eventType");
         requireText(exchangeName, "exchangeName");

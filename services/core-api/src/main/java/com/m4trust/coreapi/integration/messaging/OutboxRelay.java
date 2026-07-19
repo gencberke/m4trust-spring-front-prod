@@ -41,7 +41,8 @@ class OutboxRelay {
 
     private void publishWithConfirm(OutboxClaim claim) {
         rabbitTemplate.invoke(operations -> {
-            operations.convertAndSend(claim.exchangeName(), claim.routingKey(), claim.payload());
+            operations.send(claim.exchangeName(), claim.routingKey(),
+                    OutboundJsonMessageFactory.from(claim.payload()));
             operations.waitForConfirmsOrDie(properties.confirmTimeout().toMillis());
             return null;
         });

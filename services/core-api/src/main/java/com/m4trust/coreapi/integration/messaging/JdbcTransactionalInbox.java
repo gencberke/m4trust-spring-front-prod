@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 class JdbcTransactionalInbox implements TransactionalInbox {
@@ -19,6 +21,7 @@ class JdbcTransactionalInbox implements TransactionalInbox {
     }
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public boolean recordIfNew(UUID eventId, String eventType) {
         Objects.requireNonNull(eventId, "eventId must not be null");
         if (eventType == null || eventType.isBlank()) {

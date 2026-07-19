@@ -4,7 +4,6 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:m4trust_local}
     password: ${RABBITMQ_PASSWORD:m4trust_local_password}
-    publisher-confirm-type: correlated
   flyway:
     enabled: true
   datasource:
