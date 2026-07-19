@@ -20,5 +20,5 @@ public interface DealAnalysisMutationPort {
             boolean initiator, boolean acceptsAnalysis) {
     }
     record ReviewTarget(UUID dealId, UUID owningTenantId, UUID currentDocumentId,
-            long version, boolean initiator) { }
+            long version, boolean initiator, boolean reviewEligible) { }
 }

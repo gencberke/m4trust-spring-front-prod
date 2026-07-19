@@ -1,70 +1,272 @@
 package com.m4trust.coreapi.contractintelligence;
 
-import com.m4trust.coreapi.audit.*;
-import com.m4trust.coreapi.deal.*;
-import com.m4trust.coreapi.idempotency.*;
-import com.m4trust.coreapi.organization.*;
-import java.time.*;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.*;
+import com.m4trust.coreapi.audit.AuditAppendPort;
+import com.m4trust.coreapi.audit.AuditRecord;
+import com.m4trust.coreapi.deal.DealAnalysisMutationPort;
+import com.m4trust.coreapi.deal.DealAnalysisReadPort;
+import com.m4trust.coreapi.deal.DealRuleSetProjectionPort;
+import com.m4trust.coreapi.idempotency.IdempotencyRequest;
+import com.m4trust.coreapi.idempotency.IdempotencyResultReference;
+import com.m4trust.coreapi.idempotency.IdempotencyService;
+import com.m4trust.coreapi.organization.OperationContext;
+import com.m4trust.coreapi.organization.RequestedOperation;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
-import tools.jackson.databind.*;
-import tools.jackson.databind.node.*;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 class ReviewService implements DealRuleSetProjectionPort {
-  private final AnalysisRepository analyses; private final RuleSetRepository rules; private final DealAnalysisReadPort reads; private final DealAnalysisMutationPort mutations; private final IdempotencyService idempotency; private final AuditAppendPort audit; private final TransactionTemplate tx; private final Clock clock; private final ObjectMapper json; private final ReviewAcceptanceRequestDecoder decoder = new ReviewAcceptanceRequestDecoder();
-  ReviewService(AnalysisRepository analyses,RuleSetRepository rules,DealAnalysisReadPort reads,DealAnalysisMutationPort mutations,IdempotencyService idempotency,AuditAppendPort audit,TransactionTemplate tx,Clock clock,ObjectMapper json){this.analyses=analyses;this.rules=rules;this.reads=reads;this.mutations=mutations;this.idempotency=idempotency;this.audit=audit;this.tx=tx;this.clock=clock;this.json=json;}
-  ReviewDtos.Review review(OperationContext c,UUID deal){ require(c,RequestedOperation.DEAL_EXTRACTION_REVIEW_READ); var v=reads.findAnalysisVisibility(c,deal).orElseThrow(AnalysisExceptions.DealNotFound::new); var job=analyses.findLatestForDocument(v.currentDocumentId()).filter(j->j.status()==AnalysisJobStatus.REVIEW_REQUIRED).orElseThrow(()->new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT")); return new ReviewDtos.Review(job.id(),job.documentId(),json.convertValue(resultRules(job.id()),List.class)); }
-  Object accept(OperationContext c,UUID deal,UUID key,UUID correlation,JsonNode request){ require(c,RequestedOperation.DEAL_EXTRACTION_REVIEW_ACCEPT); ReviewAcceptanceRequestDecoder.Request typed=decoder.decode(request); var ir=new IdempotencyRequest(c.authenticatedUserId(),c.tenantId(),"DEAL_EXTRACTION_REVIEW_ACCEPT",key,decoder.canonicalHash(c.activeLegalEntityId(),deal,typed)); var completed=idempotency.findCompleted(ir).orElse(null); if(completed!=null)return version(deal,completed.id()); return tx.execute(s->acceptLocked(c,deal,correlation,request,ir,typed.analysisId(),typed.expectedVersion())); }
-  ReviewDtos.History history(OperationContext c,UUID deal){ require(c,RequestedOperation.DEAL_RULE_SET_VERSION_READ); visible(c,deal); return new ReviewDtos.History(rules.list(deal).stream().map(this::summaryDto).toList()); }
-  ReviewDtos.Version version(OperationContext c,UUID deal,UUID id){ require(c,RequestedOperation.DEAL_RULE_SET_VERSION_READ); visible(c,deal); return versionDto(deal,id); }
-  @Override public Optional<DealRuleSetProjectionPort.CurrentRuleSet> findCurrent(UUID id) {
-    return rules.findAny(id).map(row -> new DealRuleSetProjectionPort.CurrentRuleSet(row.id(), row.version(), row.analysisId(), row.extractionId(), row.createdAt(), row.createdBy(), row.previousId(), ruleCount(row)));
-  }
-  private Object acceptLocked(OperationContext c,UUID deal,UUID correlation,JsonNode req,IdempotencyRequest ir,UUID analysisId,long expected){ var claim=idempotency.claim(ir); if(claim.isReplay())return version(deal,claim.resultReference().id()); var target=mutations.lockForReview(c,deal).orElseThrow(AnalysisExceptions.DealNotFound::new); if(!target.initiator())throw new AnalysisExceptions.RequestForbidden(); if(target.version()!=expected)throw new AnalysisExceptions.Conflict("DEAL_STALE_VERSION"); var job=analyses.findByIdForUpdate(analysisId).filter(j->j.dealId().equals(deal)&&j.documentId().equals(target.currentDocumentId())&&j.status()==AnalysisJobStatus.REVIEW_REQUIRED).orElseThrow(()->new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT")); UUID extraction=analyses.findResultId(job.id()).orElseThrow(()->new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT")); ArrayNode extracted=resultRules(job.id()); DecisionOutput out=decide(extracted,req.get("decisions")); UUID id=UUID.randomUUID(); Instant now=clock.instant(); var previous=rules.latest(deal).orElse(null); rules.insert(id,deal,previous==null?1:previous.version()+1,job.id(),extraction,c.authenticatedUserId(),now,previous==null?null:previous.id(),out.rules().toString(),out.excluded().toString()); analyses.accept(job); mutations.setCurrentRuleSet(deal,id,now); audit.append(new AuditRecord(UUID.randomUUID(),target.owningTenantId(),c.authenticatedUserId(),c.activeLegalEntityId(),"RULE_SET_VERSION",id,"EXTRACTION_REVIEW_ACCEPTED",correlation,null,now)); idempotency.recordResult(claim,new IdempotencyResultReference("RULE_SET_VERSION",id)); return version(deal,id); }
-  private DecisionOutput decide(ArrayNode extracted,JsonNode decisions){ if(decisions==null||!decisions.isArray())throw new AnalysisExceptions.MalformedRequest(); Map<String,JsonNode> byRef=new HashMap<>(); List<JsonNode> added=new ArrayList<>(); for(JsonNode d:decisions){String kind=d.path("decision").asText();if("ADDED".equals(kind)){if(!exactFields(d,Set.of("decision","category","title","description","structuredValue")))throw new AnalysisExceptions.MalformedRequest();added.add(d);continue;}String ref=d.path("ruleReference").asText();Set<String> fields="MODIFIED".equals(kind)?Set.of("decision","ruleReference","category","title","description","structuredValue"):Set.of("decision","ruleReference");if(!exactFields(d,fields)||ref.isBlank()||byRef.put(ref,d)!=null)throw new AnalysisExceptions.MalformedRequest();} if(byRef.size()!=extracted.size())throw new AnalysisExceptions.MalformedRequest(); ArrayNode finalRules=json.createArrayNode(), excluded=json.createArrayNode(); java.util.Set<String> seen=new java.util.HashSet<>(); for(JsonNode original:extracted){String ref=original.path("ruleReference").asText();if(ref.isBlank()||!seen.add(ref))throw new AnalysisExceptions.MalformedRequest();JsonNode d=byRef.remove(ref);if(d==null)throw new AnalysisExceptions.MalformedRequest();String kind=d.path("decision").asText();if(!Set.of("KEPT","MODIFIED","EXCLUDED").contains(kind))throw new AnalysisExceptions.MalformedRequest();if("EXCLUDED".equals(kind)){excluded.add(ref);continue;} if("KEPT".equals(kind))validateValue(original.path("structuredValue")); ObjectNode value=finalRule(kind,ref,"MODIFIED".equals(kind)?d:original,original.get("legalBasis"));finalRules.add(value);} int manual=1; for(JsonNode d:added){validateAdded(d);finalRules.add(finalRule("ADDED","manual-"+manual++,d,null));} return new DecisionOutput(finalRules,excluded); }
-  private void validateAdded(JsonNode node) { validateEditable(withNullReference(node)); }
-  private JsonNode withNullReference(JsonNode node) { ObjectNode copy=(ObjectNode)node.deepCopy();copy.putNull("ruleReference");return copy; }
-  private ObjectNode finalRule(String decision,String reference,JsonNode input,JsonNode legalBasis){if(!"KEPT".equals(decision))validateEditable(input);ObjectNode n=json.createObjectNode();n.put("ruleReference",reference);n.put("decision",decision);n.put("category",input.path("category").asText());n.put("title",input.path("title").asText());n.put("description",input.path("description").asText());n.set("structuredValue",input.get("structuredValue"));if(legalBasis==null)n.putNull("legalBasis");else n.set("legalBasis",legalBasis);n.put("legalBasisProvenance","KEPT".equals(decision)?"EXTRACTED":("MODIFIED".equals(decision)?"REVIEWER_MODIFIED":"MANUALLY_ADDED"));return n;}
-  private void validateEditable(JsonNode n) {
-    if (!n.isObject() || !exactFields(n, Set.of("decision", "ruleReference", "category", "title", "description", "structuredValue"))
-        || !n.path("category").isTextual() || !Set.of("PAYMENT","DELIVERY","QUALITY","PENALTY","TERMINATION","DISPUTE","OTHER","UNKNOWN").contains(n.path("category").asText())
-        || !n.path("title").isTextual() || n.path("title").asText().isBlank() || n.path("title").asText().length()>500
-        || !n.path("description").isTextual() || n.path("description").asText().isBlank() || n.path("description").asText().length()>4000) throw new AnalysisExceptions.MalformedRequest();
-    validateValue(n.path("structuredValue"));
-  }
-  private void validateValue(JsonNode value) {
-    if (!value.isObject() || !value.path("type").isTextual()) throw new AnalysisExceptions.MalformedRequest();
-    String type=value.path("type").asText(); Set<String> fields=switch(type) {
-      case "TEXT", "DATE", "BOOLEAN" -> Set.of("type","value");
-      case "MONEY" -> Set.of("type","amountMinor","currency");
-      case "PERCENTAGE" -> Set.of("type","basisPoints");
-      case "DURATION" -> Set.of("type","valueSeconds");
-      case "QUANTITY" -> Set.of("type","value","unit");
-      default -> throw new AnalysisExceptions.MalformedRequest(); };
-    if(!exactFields(value,fields)) throw new AnalysisExceptions.MalformedRequest();
-    switch(type) {
-      case "TEXT" -> { if(!value.path("value").isTextual()) throw new AnalysisExceptions.MalformedRequest(); }
-      case "MONEY" -> { if(!value.path("amountMinor").isIntegralNumber() || value.path("amountMinor").asLong()<0) throw new AnalysisExceptions.Validation("structuredValue.amountMinor"); if(!value.path("currency").isTextual())throw new AnalysisExceptions.MalformedRequest(); if(!value.path("currency").asText().matches("^[A-Z]{3}$"))throw new AnalysisExceptions.Validation("structuredValue.currency"); }
-      case "PERCENTAGE" -> { if(!value.path("basisPoints").isIntegralNumber())throw new AnalysisExceptions.MalformedRequest(); int v=value.path("basisPoints").asInt();if(v<0||v>10000)throw new AnalysisExceptions.Validation("structuredValue.basisPoints"); }
-      case "DURATION" -> { if(!value.path("valueSeconds").isIntegralNumber())throw new AnalysisExceptions.MalformedRequest(); if(value.path("valueSeconds").asLong()<0)throw new AnalysisExceptions.Validation("structuredValue.valueSeconds"); }
-      case "DATE" -> { if(!value.path("value").isTextual())throw new AnalysisExceptions.MalformedRequest(); try{java.time.LocalDate.parse(value.path("value").asText());}catch(Exception e){throw new AnalysisExceptions.Validation("structuredValue.value");} }
-      case "BOOLEAN" -> { if(!value.path("value").isBoolean())throw new AnalysisExceptions.MalformedRequest(); }
-      case "QUANTITY" -> { if(!value.path("value").isNumber() || !value.path("unit").isTextual())throw new AnalysisExceptions.MalformedRequest(); if(value.path("unit").asText().isBlank())throw new AnalysisExceptions.Validation("structuredValue.unit"); }
-      default -> throw new AnalysisExceptions.MalformedRequest(); }
-  }
-  private static boolean exactFields(JsonNode value, Set<String> expected) { java.util.Set<String> actual=new java.util.HashSet<>();value.properties().forEach(entry -> actual.add(entry.getKey()));return actual.equals(expected); }
-  private ArrayNode resultRules(UUID job){try{JsonNode n=json.readTree(analyses.findResult(job).orElseThrow(()->new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT")));return (ArrayNode)n.path("rules");}catch(Exception e){throw new IllegalStateException(e);}}
-  private Object version(UUID deal,UUID id){var r=rules.find(deal,id).orElseThrow(AnalysisExceptions.DealNotFound::new);try{return full(r);}catch(Exception e){throw new IllegalStateException(e);}}
-  private Object full(RuleSetRepository.Row r)throws Exception{Map<String,Object> m=base(r);JsonNode rulesNode=json.readTree(r.rules());m.put("ruleCount",rulesNode.size());m.put("rules",rulesNode);m.put("excludedRuleReferences",json.readTree(r.excluded()));return m;}
-  private ReviewDtos.Version versionDto(UUID deal, UUID id) { try { RuleSetRepository.Row r=rules.find(deal,id).orElseThrow(AnalysisExceptions.DealNotFound::new); JsonNode ruleNodes=json.readTree(r.rules()); return new ReviewDtos.Version(r.id(),r.version(),r.analysisId(),r.extractionId(),r.createdAt(),r.createdBy(),r.previousId(),ruleNodes.size(),json.convertValue(ruleNodes,List.class),json.convertValue(json.readTree(r.excluded()),List.class)); } catch (Exception exception) { throw new IllegalStateException(exception); } }
-  private ReviewDtos.Summary summaryDto(RuleSetRepository.Row r) { return new ReviewDtos.Summary(r.id(),r.version(),r.analysisId(),r.extractionId(),r.createdAt(),r.createdBy(),r.previousId(),ruleCount(r)); }
-  private Object summary(RuleSetRepository.Row r){try{Map<String,Object> m=base(r);m.put("ruleCount",json.readTree(r.rules()).size());return m;}catch(Exception e){throw new IllegalStateException(e);}}
-  private int ruleCount(RuleSetRepository.Row row) { try { return json.readTree(row.rules()).size(); } catch (Exception exception) { throw new IllegalStateException(exception); } }
-  private static Map<String,Object> base(RuleSetRepository.Row r){Map<String,Object> m=new LinkedHashMap<>();m.put("id",r.id());m.put("version",r.version());m.put("sourceAnalysisId",r.analysisId());m.put("sourceExtractionResultVersionId",r.extractionId());m.put("createdAt",r.createdAt());m.put("createdByUserId",r.createdBy());m.put("previousRuleSetVersionId",r.previousId());return m;}
-  private static String hash(UUID entity,UUID deal,JsonNode body){try{return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest((entity+"\n"+deal+"\n"+body).getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
-  private void visible(OperationContext c,UUID d){if(reads.findAnalysisVisibility(c,d).isEmpty())throw new AnalysisExceptions.DealNotFound();} private static UUID uuid(JsonNode n,String f){try{return UUID.fromString(n.path(f).asText());}catch(Exception e){throw new AnalysisExceptions.MalformedRequest();}} private static long number(JsonNode n,String f){if(!n.has(f)||!n.get(f).canConvertToLong()||n.get(f).asLong()<0)throw new AnalysisExceptions.MalformedRequest();return n.get(f).asLong();} private static void require(OperationContext c,RequestedOperation o){if(c.requestedOperation()!=o)throw new IllegalArgumentException("wrong operation");} record DecisionOutput(ArrayNode rules,ArrayNode excluded){}
+    private final AnalysisRepository analyses;
+    private final RuleSetRepository ruleSets;
+    private final DealAnalysisReadPort dealReads;
+    private final DealAnalysisMutationPort dealMutations;
+    private final IdempotencyService idempotency;
+    private final AuditAppendPort audit;
+    private final TransactionTemplate transaction;
+    private final Clock clock;
+    private final ObjectMapper json;
+    private final ReviewAcceptanceRequestDecoder decoder = new ReviewAcceptanceRequestDecoder();
+
+    ReviewService(AnalysisRepository analyses, RuleSetRepository ruleSets,
+            DealAnalysisReadPort dealReads, DealAnalysisMutationPort dealMutations,
+            IdempotencyService idempotency, AuditAppendPort audit,
+            TransactionTemplate transaction, Clock clock, ObjectMapper json) {
+        this.analyses = analyses;
+        this.ruleSets = ruleSets;
+        this.dealReads = dealReads;
+        this.dealMutations = dealMutations;
+        this.idempotency = idempotency;
+        this.audit = audit;
+        this.transaction = transaction;
+        this.clock = clock;
+        this.json = json;
+    }
+
+    ReviewDtos.Review review(OperationContext context, UUID dealId) {
+        require(context, RequestedOperation.DEAL_EXTRACTION_REVIEW_READ);
+        var visibility = dealReads.findAnalysisVisibility(context, dealId)
+                .orElseThrow(AnalysisExceptions.DealNotFound::new);
+        var job = analyses.findLatestForDocument(visibility.currentDocumentId())
+                .filter(candidate -> candidate.status() == AnalysisJobStatus.REVIEW_REQUIRED)
+                .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT"));
+        return new ReviewDtos.Review(job.id(), job.documentId(), extractedRules(job.id()));
+    }
+
+    ReviewDtos.Version accept(OperationContext context, UUID dealId, UUID idempotencyKey,
+            UUID correlationId, JsonNode requestBody) {
+        require(context, RequestedOperation.DEAL_EXTRACTION_REVIEW_ACCEPT);
+        ReviewAcceptanceRequestDecoder.Request request = decoder.decode(requestBody);
+        IdempotencyRequest idempotencyRequest = new IdempotencyRequest(
+                context.authenticatedUserId(), context.tenantId(), "DEAL_EXTRACTION_REVIEW_ACCEPT",
+                idempotencyKey, decoder.canonicalHash(context.activeLegalEntityId(), dealId, request));
+        var completed = idempotency.findCompleted(idempotencyRequest);
+        if (completed.isPresent()) {
+            return versionForDeal(dealId, completed.get().id());
+        }
+        return transaction.execute(status -> acceptLocked(context, dealId, correlationId,
+                idempotencyRequest, request));
+    }
+
+    ReviewDtos.History history(OperationContext context, UUID dealId) {
+        require(context, RequestedOperation.DEAL_RULE_SET_VERSION_READ);
+        requireVisible(context, dealId);
+        return new ReviewDtos.History(ruleSets.list(dealId).stream().map(this::summary).toList());
+    }
+
+    ReviewDtos.Version version(OperationContext context, UUID dealId, UUID versionId) {
+        require(context, RequestedOperation.DEAL_RULE_SET_VERSION_READ);
+        requireVisible(context, dealId);
+        return versionForDeal(dealId, versionId);
+    }
+
+    @Override
+    public Optional<CurrentRuleSet> findCurrent(UUID ruleSetVersionId) {
+        return ruleSets.findAny(ruleSetVersionId).map(row -> new CurrentRuleSet(row.id(), row.version(),
+                row.analysisId(), row.extractionId(), row.createdAt(), row.createdBy(), row.previousId(),
+                ruleCount(row)));
+    }
+
+    private ReviewDtos.Version acceptLocked(OperationContext context, UUID dealId, UUID correlationId,
+            IdempotencyRequest idempotencyRequest, ReviewAcceptanceRequestDecoder.Request request) {
+        var claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return versionForDeal(dealId, claim.resultReference().id());
+        }
+        var target = dealMutations.lockForReview(context, dealId)
+                .orElseThrow(AnalysisExceptions.DealNotFound::new);
+        if (!target.initiator()) {
+            throw new AnalysisExceptions.RequestForbidden();
+        }
+        if (!target.reviewEligible()) {
+            throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");
+        }
+        if (target.version() != request.expectedVersion()) {
+            throw new AnalysisExceptions.Conflict("DEAL_STALE_VERSION");
+        }
+        var job = analyses.findByIdForUpdate(request.analysisId())
+                .filter(candidate -> candidate.dealId().equals(dealId)
+                        && candidate.documentId().equals(target.currentDocumentId())
+                        && candidate.status() == AnalysisJobStatus.REVIEW_REQUIRED)
+                .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT"));
+        UUID extractionId = analyses.findResultId(job.id())
+                .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT"));
+        DecisionOutput output = new ReviewDecisionAssembler().assemble(extractedRules(job.id()), request.decisions());
+        UUID versionId = UUID.randomUUID();
+        Instant now = clock.instant();
+        var previous = ruleSets.latest(dealId).orElse(null);
+        ruleSets.insert(versionId, dealId, previous == null ? 1 : previous.version() + 1,
+                job.id(), extractionId, context.authenticatedUserId(), now,
+                previous == null ? null : previous.id(), write(output.rules()), write(output.excludedRuleReferences()));
+        analyses.accept(job);
+        dealMutations.setCurrentRuleSet(dealId, versionId, now);
+        audit.append(new AuditRecord(UUID.randomUUID(), target.owningTenantId(),
+                context.authenticatedUserId(), context.activeLegalEntityId(), "RULE_SET_VERSION", versionId,
+                "EXTRACTION_REVIEW_ACCEPTED", correlationId, null, now));
+        idempotency.recordResult(claim, new IdempotencyResultReference("RULE_SET_VERSION", versionId));
+        return versionForDeal(dealId, versionId);
+    }
+
+    private List<ReviewDtos.ExtractedRule> extractedRules(UUID analysisId) {
+        try {
+            JsonNode root = json.readTree(analyses.findResult(analysisId)
+                    .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT")));
+            if (!root.path("rules").isArray()) throw new IllegalStateException("Canonical extraction has no rules");
+            List<ReviewDtos.ExtractedRule> result = new ArrayList<>();
+            for (JsonNode rule : root.get("rules")) result.add(decoder.decodeExtractedRule(rule));
+            return List.copyOf(result);
+        } catch (AnalysisExceptions.Validation | AnalysisExceptions.MalformedRequest exception) {
+            throw new IllegalStateException("Canonical extraction is invalid", exception);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cannot read canonical extraction", exception);
+        }
+    }
+
+    private ReviewDtos.Version versionForDeal(UUID dealId, UUID versionId) {
+        RuleSetRepository.Row row = ruleSets.find(dealId, versionId)
+                .orElseThrow(AnalysisExceptions.DealNotFound::new);
+        try {
+            JsonNode rulesNode = json.readTree(row.rules());
+            List<ReviewDtos.RuleSetRule> finalRules = new ArrayList<>();
+            for (JsonNode rule : rulesNode) finalRules.add(decoder.decodeRuleSetRule(rule));
+            JsonNode excludedNode = json.readTree(row.excluded());
+            List<String> excluded = new ArrayList<>();
+            if (!excludedNode.isArray()) throw new IllegalStateException("Invalid excluded-rule history");
+            for (JsonNode reference : excludedNode) excluded.add(reference.asText());
+            return new ReviewDtos.Version(row.id(), row.version(), row.analysisId(), row.extractionId(),
+                    row.createdAt(), row.createdBy(), row.previousId(), finalRules.size(),
+                    List.copyOf(finalRules), List.copyOf(excluded));
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cannot read accepted rule set", exception);
+        }
+    }
+
+    private String write(Object value) {
+        try {
+            return json.writeValueAsString(value);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cannot serialize accepted rule set", exception);
+        }
+    }
+
+    private ReviewDtos.Summary summary(RuleSetRepository.Row row) {
+        return new ReviewDtos.Summary(row.id(), row.version(), row.analysisId(), row.extractionId(),
+                row.createdAt(), row.createdBy(), row.previousId(), ruleCount(row));
+    }
+
+    private int ruleCount(RuleSetRepository.Row row) {
+        try {
+            return json.readTree(row.rules()).size();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cannot count accepted rules", exception);
+        }
+    }
+
+    private void requireVisible(OperationContext context, UUID dealId) {
+        if (dealReads.findAnalysisVisibility(context, dealId).isEmpty()) {
+            throw new AnalysisExceptions.DealNotFound();
+        }
+    }
+
+    private static void require(OperationContext context, RequestedOperation operation) {
+        if (context.requestedOperation() != operation) {
+            throw new IllegalArgumentException("Operation context does not match review operation");
+        }
+    }
+
+    record DecisionOutput(List<ReviewDtos.RuleSetRule> rules, List<String> excludedRuleReferences) { }
+
+    /** Pure business transformation: all request and extraction data is already typed. */
+    static final class ReviewDecisionAssembler {
+        DecisionOutput assemble(List<ReviewDtos.ExtractedRule> extracted,
+                List<ReviewAcceptanceRequestDecoder.Decision> decisions) {
+            Map<String, ReviewAcceptanceRequestDecoder.Decision> byReference = new HashMap<>();
+            List<ReviewAcceptanceRequestDecoder.Added> added = new ArrayList<>();
+            for (ReviewAcceptanceRequestDecoder.Decision decision : decisions) {
+                if (decision instanceof ReviewAcceptanceRequestDecoder.Added manual) {
+                    added.add(manual);
+                } else {
+                    String reference = referenceOf(decision);
+                    if (byReference.put(reference, decision) != null) throw malformed();
+                }
+            }
+            Set<String> extractedReferences = new HashSet<>();
+            List<ReviewDtos.RuleSetRule> rules = new ArrayList<>();
+            List<String> excluded = new ArrayList<>();
+            for (ReviewDtos.ExtractedRule original : extracted) {
+                if (!extractedReferences.add(original.ruleReference())) throw malformed();
+                ReviewAcceptanceRequestDecoder.Decision decision = byReference.remove(original.ruleReference());
+                if (decision == null) throw malformed();
+                if (decision instanceof ReviewAcceptanceRequestDecoder.Kept) {
+                    ReviewAcceptanceRequestDecoder.validateFinalValue(original.structuredValue());
+                    rules.add(finalRule(original.ruleReference(), "KEPT", original.category(), original.title(),
+                            original.description(), original.structuredValue(), original.legalBasis(), "EXTRACTED"));
+                } else if (decision instanceof ReviewAcceptanceRequestDecoder.Modified modified) {
+                    var edited = modified.rule();
+                    rules.add(finalRule(original.ruleReference(), "MODIFIED", edited.category(), edited.title(),
+                            edited.description(), edited.structuredValue(), original.legalBasis(), "REVIEWER_MODIFIED"));
+                } else if (decision instanceof ReviewAcceptanceRequestDecoder.Excluded) {
+                    excluded.add(original.ruleReference());
+                } else {
+                    throw malformed();
+                }
+            }
+            if (!byReference.isEmpty()) throw malformed();
+            int manualNumber = 1;
+            for (ReviewAcceptanceRequestDecoder.Added manual : added) {
+                var edited = manual.rule();
+                rules.add(finalRule("manual-" + manualNumber++, "ADDED", edited.category(), edited.title(),
+                        edited.description(), edited.structuredValue(), null, "MANUALLY_ADDED"));
+            }
+            return new DecisionOutput(List.copyOf(rules), List.copyOf(excluded));
+        }
+
+        private static ReviewDtos.RuleSetRule finalRule(String reference, String decision,
+                String category, String title, String description, ReviewDtos.StructuredValue value,
+                ReviewDtos.LegalBasis legalBasis, String provenance) {
+            return new ReviewDtos.RuleSetRule(reference, decision, category, title, description, value,
+                    legalBasis, provenance);
+        }
+
+        private static String referenceOf(ReviewAcceptanceRequestDecoder.Decision decision) {
+            if (decision instanceof ReviewAcceptanceRequestDecoder.Kept kept) return kept.ruleReference();
+            if (decision instanceof ReviewAcceptanceRequestDecoder.Modified modified) return modified.ruleReference();
+            if (decision instanceof ReviewAcceptanceRequestDecoder.Excluded excluded) return excluded.ruleReference();
+            throw malformed();
+        }
+
+        private static AnalysisExceptions.MalformedRequest malformed() {
+            return new AnalysisExceptions.MalformedRequest();
+        }
+    }
 }

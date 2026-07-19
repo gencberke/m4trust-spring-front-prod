@@ -331,6 +331,8 @@ class DealService {
                 base.canCreateInvitation(), base.canManageParties(),
                 base.canCreateDocumentUploadIntent(), allowed,
                 operationPolicy.isInitiator(deal, context)
+                        && deal.status() == DealStatus.DRAFT
+                        && documentId != null
                         && "REVIEW_REQUIRED".equals(analysisProjections.summary(documentId).status()));
     }
 
