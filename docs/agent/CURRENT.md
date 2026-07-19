@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-18
+Last updated: 2026-07-19
 
 ## Phase
 
@@ -35,6 +35,13 @@ at the DB level, initiator-only mutation with participant read/download,
 history and short-lived download links, and the real two-browser acceptance
 flow (§7.1–7.8, initiator + participant) passed against real MinIO.
 
+Slice 8 AI Document Extraction is accepted under `docs/plan/done/`. The
+OpenAPI analysis surface, transactional outbox, idempotent inbox, RabbitMQ
+topology, contractintelligence flow, local-only Mock AI Worker, lifecycle
+projection and frontend analysis view are implemented. Real-browser acceptance
+§7.1–§7.8 passed with real RabbitMQ and the Compose worker; successful results
+always land at REVIEW_REQUIRED.
+
 ## Accepted foundations
 
 - ADR-001 through ADR-009 are accepted and remain authoritative.
@@ -47,6 +54,7 @@ flow (§7.1–7.8, initiator + participant) passed against real MinIO.
 - Slice 5 Deal parties and activation readiness is accepted under
   `docs/plan/done/`.
 - Slice 6 Document upload is accepted under `docs/plan/done/`.
+- Slice 8 AI Document Extraction is accepted under `docs/plan/done/`.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
 - The system direction remains Vite/React/TypeScript + Spring Boot modular
@@ -80,9 +88,10 @@ flow (§7.1–7.8, initiator + participant) passed against real MinIO.
   participants),
   session-expiry handling, and logout against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
-  with health checks, persistent volumes, and PowerShell reset/seed entrypoints.
-- `contracts/`: the reviewed Slice 5 public OpenAPI surface and existing
-  Spring–AI contract foundations.
+  with health checks, persistent volumes, optional Mock AI Worker profile, and
+  PowerShell reset/seed entrypoints.
+- `contracts/`: reviewed Core API OpenAPI and AI extraction AsyncAPI/JSON Schema
+  contracts, fixtures and validators.
 
 ## Validation state
 
@@ -96,16 +105,24 @@ flow (§7.1–7.8, initiator + participant) passed against real MinIO.
   objectVersion pinning, participant read-only + non-initiator mutation 403,
   non-participant non-disclosing 404, and CANCELLED-deal upload block.
 
+- Slice 8 real-browser acceptance passed on 2026-07-19 with real RabbitMQ and
+  the Compose Mock AI Worker, including queued recovery, duplicate delivery
+  idempotency, retry, supersede, authorization and Slice 6 regression.
+- Core API tests pass 105/105, Mock AI Worker tests pass 14/14, the contract
+  validator passes 21 schemas and 13 fixtures, and frontend typecheck/build pass.
+
 ## Not yet stable or accepted
 
-- FastAPI AI service skeleton and Mock AI Worker implementation
+- FastAPI AI service skeleton
 - Railway service configuration
 
 ## Active work
 
-Slice 6 document upload is accepted. The next approved implementation plan is
-Slice 7 staging deployment under `docs/plan/ready/`. The Slice 6 branch lineage
-(`codex/slice-6-*`) is not yet merged into `main`.
+Slice 8 AI Document Extraction is accepted on
+`codex/slice-8-e2e-acceptance` and awaits PR/merge. Slice 7 Railway staging is
+being executed independently and in parallel on
+`codex/slice7-staging-deployment`; its deployment acceptance remains separate
+from the Slice 8 implementation lineage.
 
 ## Known blockers
 
@@ -113,7 +130,8 @@ No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Slice 7 staging deployment, then AI document extraction.
+Slice 9 manual review and immutable RuleSetVersion after explicit human plan
+approval. Slice 7 Railway staging continues in parallel.
 
 ## Update rule
 

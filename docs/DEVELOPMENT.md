@@ -8,7 +8,7 @@ Bu rehber mevcut monorepo yerleşimini ve Windows/PowerShell başlangıç sıras
 ```text
 frontend/                  Vite + React istemcisi
 services/core-api/         Spring Boot Core API
-tools/mock-ai-worker/      Yalnız gelecekteki geliştirme/test worker'ı için yer tutucu
+tools/mock-ai-worker/      Yerel contract-valid document extraction test worker'ı
 contracts/                 OpenAPI, AsyncAPI, JSON Schema ve örnekler
 infra/                     Yerel PostgreSQL, RabbitMQ ve MinIO Compose tanımı
 scripts/                   Yerel reset ve seed giriş noktaları
@@ -22,7 +22,7 @@ Bileşen rehberleri:
 - [Core API](../services/core-api/README.md)
 - [Frontend](../frontend/README.md)
 - [Contract'lar](../contracts/README.md)
-- [Mock AI Worker yer tutucusu](../tools/mock-ai-worker/README.md)
+- [Mock AI Worker](../tools/mock-ai-worker/README.md)
 - [Tamamlanmış Slice 0 planı](plan/done/00-platform-foundation.md)
 - [Tamamlanmış Slice 1 planı](plan/done/01-authentication.md)
 - [Tamamlanmış Slice 2 planı](plan/done/02-organization-and-membership.md)
@@ -30,7 +30,64 @@ Bileşen rehberleri:
 - [Tamamlanmış Slice 3.9 hardening planı](plan/done/03.9-hardening-and-decisions.md)
 - [Tamamlanmış Slice 4 planı](plan/done/04-deal-invitations-and-participation.md)
 - [Tamamlanmış Slice 5 planı](plan/done/05-deal-parties-and-activation.md)
-- [Sıradaki onaylı Slice 6 planı](plan/ready/06-document-upload.md)
+- [Tamamlanmış Slice 6 planı](plan/done/06-document-upload.md)
+- [Tamamlanmış Slice 8 planı](plan/done/08-ai-document-extraction.md)
+- [Paralel yürütülen Slice 7 staging planı](plan/ready/07-staging-deployment.md)
+
+## Slice 8 yerel analiz akışı
+
+PostgreSQL, RabbitMQ, MinIO ve local-only Mock AI Worker'ı repository kökünden
+başlatın:
+
+```powershell
+docker compose --project-name m4trust-local --file .\infra\compose.yaml --profile mock-ai up --detach --build --wait
+```
+
+Core API'yi ayrı bir terminalde çalıştırın:
+
+```powershell
+Set-Location .\services\core-api
+$env:SPRING_PROFILES_ACTIVE = "local"
+.\mvnw.cmd spring-boot:run
+```
+
+Frontend'i ayrı bir terminalde çalıştırın:
+
+```powershell
+Set-Location .\frontend
+npm ci
+npm run generate:api
+npm run dev
+```
+
+Mock worker yalnız `--profile mock-ai` ile açılır. Profil kapalıyken gönderilen
+analiz talebi `QUEUED` kalır ve worker yeniden açıldığında işlenir. Deterministik
+başarı, retryable failure ve duplicate senaryoları ile yerel presigned-download
+köprüsünün ayrıntıları [Mock AI Worker rehberindedir](../tools/mock-ai-worker/README.md).
+
+Slice 8 doğrulama komutları:
+
+```powershell
+python contracts/scripts/validate_contracts.py
+
+Set-Location .\services\core-api
+.\mvnw.cmd verify
+
+Set-Location ..\..\frontend
+npm run typecheck
+npm run build
+
+Set-Location ..
+$env:PYTHONPATH = "tools/mock-ai-worker/src"
+python -m pytest tools/mock-ai-worker/tests
+```
+
+## Paralel Slice 7 notu
+
+Railway staging hazırlığı Slice 7 kapsamında ayrı dalda ve Slice 8'den bağımsız
+olarak yürütülmektedir. Aşağıdaki bölüm staging config-as-code ve operatör
+akışını belgeler; Slice 8'in yerel kabulü Railway deployment kabulü anlamına
+gelmez.
 
 ## Railway staging hazırlığı
 
