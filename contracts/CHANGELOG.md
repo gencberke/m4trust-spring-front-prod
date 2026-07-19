@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added the optional advisory `legalBasis` object (`source` closed enum of Turkish
+  legislation identifiers + `articleNo`) to document-extraction `result.rules[]`
+  items. Backward-compatible additive change within schema 1.0.0 (ADR-002 §15.3);
+  the field may be omitted entirely when legal retrieval is unavailable, carries
+  no article text, and must never drive Spring business decisions.
+
 - Added the Slice 6 public Deal document contract: JSON upload intents for direct
   private-storage PUTs, idempotent verified finalize, retained document history,
   short-lived direct download links, and no Spring binary upload proxy.
