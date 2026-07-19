@@ -369,8 +369,12 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
     },
   });
   const fieldErrors = getReviewFieldErrors(accept.error);
-  const update = (reference: string, next: Partial<Draft>) => {
+  const markRequestChanged = () => {
     requestKey.current = undefined;
+    accept.reset();
+  };
+  const update = (reference: string, next: Partial<Draft>) => {
+    markRequestChanged();
     setDrafts((current) => ({
       ...current,
       [reference]: {
@@ -385,7 +389,7 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
     }));
   };
   const updateAdded = (index: number, next: Partial<Draft>) => {
-    requestKey.current = undefined;
+    markRequestChanged();
     setAdded((items) =>
       items.map((item, itemIndex) =>
         itemIndex === index ? { ...item, ...next } : item,
@@ -393,7 +397,7 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
     );
   };
   const restore = (reference: string) => {
-    requestKey.current = undefined;
+    markRequestChanged();
     setDrafts((current) => {
       const { [reference]: _discarded, ...remaining } = current;
       return remaining;
@@ -480,7 +484,7 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
                     idPrefix={`review-manual-${index}`}
                     onChange={(next) => updateAdded(index, next)}
                     onRemove={() => {
-                      requestKey.current = undefined;
+                      markRequestChanged();
                       setAdded((items) =>
                         items.filter((_, itemIndex) => itemIndex !== index),
                       );
@@ -491,7 +495,7 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
                   className="secondary-button"
                   type="button"
                   onClick={() => {
-                    requestKey.current = undefined;
+                    markRequestChanged();
                     setAdded((items) => [
                       ...items,
                       {
