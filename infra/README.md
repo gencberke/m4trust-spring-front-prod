@@ -33,6 +33,29 @@ object versioning'i açar. MinIO, `http://localhost:5173` için direct browser
 PUT/GET CORS kurallarını server seviyesinde uygular. Bucket ve object listing
 public değildir.
 
+## Mock AI Worker profili
+
+AI document extraction akışını gerçek RabbitMQ sınırıyla çalıştırmak için
+opsiyonel Mock AI Worker profilini açın:
+
+```powershell
+docker compose --project-name m4trust-local --file .\infra\compose.yaml --profile mock-ai up --detach --build --wait
+```
+
+Profil verilmezse worker kapalı kalır; PostgreSQL, RabbitMQ ve MinIO normal şekilde
+çalışmaya devam eder. Bu davranış, analiz talebinin worker yokken `QUEUED` kalıp
+worker açıldığında işlenmesini doğrulamak için de kullanılır.
+
+`M4TRUST_MOCK_AI_SCENARIO` değeri `auto` (varsayılan), `success`,
+`retryable_failure` veya `duplicate` olabilir. `auto` modunda senaryo dosya
+adından seçilir; production event contract'ına test alanı eklenmez. Ayrıntılı
+senaryo adları ve doğrulama komutları `tools/mock-ai-worker/README.md` içindedir.
+
+Core API'nin tarayıcı için ürettiği `localhost` presigned URL'leri container
+içinden `host.docker.internal` üzerinden indirilir ve imzalanmış `Host` başlığı
+korunur. Bu yalnızca yerel transport köprüsüdür; event içindeki URL yeniden
+yazılmaz.
+
 ## Seed
 
 ```powershell
