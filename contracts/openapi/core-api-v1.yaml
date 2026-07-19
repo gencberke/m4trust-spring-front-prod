@@ -2373,6 +2373,58 @@ components:
             type: {const: QUANTITY}
             value: {type: number}
             unit: {type: string, minLength: 1}
+    RuleSetStructuredValue:
+      description: >
+        Closed reviewed/final structured-value union for Slice 9. Unlike advisory
+        extraction output, money cannot be negative at this business-rule boundary;
+        KEPT extracted values are semantically checked against this boundary during
+        acceptance and an invalid amount is rejected with 422. Money and percentage
+        are integer minor units and basis points, never floating-point values.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, value]
+          properties:
+            type: {const: TEXT}
+            value: {type: string}
+        - type: object
+          additionalProperties: false
+          required: [type, amountMinor, currency]
+          properties:
+            type: {const: MONEY}
+            amountMinor: {type: integer, minimum: 0}
+            currency: {type: string, pattern: '^[A-Z]{3}$'}
+        - type: object
+          additionalProperties: false
+          required: [type, basisPoints]
+          properties:
+            type: {const: PERCENTAGE}
+            basisPoints: {type: integer, minimum: 0, maximum: 10000}
+        - type: object
+          additionalProperties: false
+          required: [type, valueSeconds]
+          properties:
+            type: {const: DURATION}
+            valueSeconds: {type: integer, minimum: 0}
+        - type: object
+          additionalProperties: false
+          required: [type, value]
+          properties:
+            type: {const: DATE}
+            value: {type: string, format: date}
+        - type: object
+          additionalProperties: false
+          required: [type, value]
+          properties:
+            type: {const: BOOLEAN}
+            value: {type: boolean}
+        - type: object
+          additionalProperties: false
+          required: [type, value, unit]
+          properties:
+            type: {const: QUANTITY}
+            value: {type: number}
+            unit: {type: string, minLength: 1}
     AdvisoryLegalBasis:
       type: object
       additionalProperties: false
@@ -2579,7 +2631,7 @@ components:
           minLength: 1
           maxLength: 4000
         structuredValue:
-          $ref: '#/components/schemas/ExtractedRuleValue'
+          $ref: '#/components/schemas/RuleSetStructuredValue'
     ExcludedRuleDecision:
       type: object
       additionalProperties: false
@@ -2607,7 +2659,7 @@ components:
           minLength: 1
           maxLength: 4000
         structuredValue:
-          $ref: '#/components/schemas/ExtractedRuleValue'
+          $ref: '#/components/schemas/RuleSetStructuredValue'
     AcceptExtractionReviewRequest:
       type: object
       additionalProperties: false
@@ -2663,7 +2715,7 @@ components:
           minLength: 1
           maxLength: 4000
         structuredValue:
-          $ref: '#/components/schemas/ExtractedRuleValue'
+          $ref: '#/components/schemas/RuleSetStructuredValue'
         legalBasis:
           description: >
             Advisory legal reference copied from the target extraction for KEPT and

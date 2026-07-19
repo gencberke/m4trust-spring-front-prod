@@ -423,7 +423,7 @@ REQUIRED_CORE_API_SCHEMAS = {
     "FinalizeDocumentUploadRequest", "DocumentAvailableActions", "PendingDealDocument",
     "AvailableDealDocument", "HistoricalDealDocument", "DealDocumentHistory", "DocumentUploadIntent", "DocumentDownloadLink",
     "DocumentAnalysisStatus", "DocumentAnalysisFailureSummary", "DealDocumentAnalysisSummary",
-    "ExtractionSourceReference", "ExtractedParty", "ExtractedRuleValue", "AdvisoryLegalBasis",
+    "ExtractionSourceReference", "ExtractedParty", "ExtractedRuleValue", "RuleSetStructuredValue", "AdvisoryLegalBasis",
     "ExtractedRule", "ExtractedDeliveryRequirement", "DocumentAnalysisResultSummary",
     "DocumentAnalysisResult", "DealDocumentAnalysis",
     "DealExtractionReview", "ReviewRuleDecision", "KeptRuleDecision", "ModifiedRuleDecision", "ExcludedRuleDecision", "AddedRuleDecision", "AcceptExtractionReviewRequest",
@@ -724,6 +724,9 @@ def validate_contract_documents(failures: list[str]) -> None:
         review_decision = core_components.get("schemas", {}).get("ReviewRuleDecision", {})
         modified_decision = core_components.get("schemas", {}).get("ModifiedRuleDecision", {})
         added_decision = core_components.get("schemas", {}).get("AddedRuleDecision", {})
+        rule_set_rule = core_components.get("schemas", {}).get("RuleSetRule", {})
+        rule_set_value = core_components.get("schemas", {}).get("RuleSetStructuredValue", {})
+        extracted_rule_value = core_components.get("schemas", {}).get("ExtractedRuleValue", {})
         rule_set_summary = core_components.get("schemas", {}).get("RuleSetVersionSummary", {})
         rule_set = core_components.get("schemas", {}).get("RuleSetVersion", {})
         review_conflict = core_components.get("responses", {}).get("DealReviewAcceptanceConflict", {})
@@ -739,6 +742,13 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or set(review_decision.get("discriminator", {}).get("mapping", {})) != {"KEPT", "MODIFIED", "EXCLUDED", "ADDED"}
                 or set(modified_decision.get("properties", {})) != {"decision", "ruleReference", "category", "title", "description", "structuredValue"}
                 or set(added_decision.get("properties", {})) != {"decision", "category", "title", "description", "structuredValue"}
+                or modified_decision.get("properties", {}).get("structuredValue", {}).get("$ref") != "#/components/schemas/RuleSetStructuredValue"
+                or added_decision.get("properties", {}).get("structuredValue", {}).get("$ref") != "#/components/schemas/RuleSetStructuredValue"
+                or rule_set_rule.get("properties", {}).get("structuredValue", {}).get("$ref") != "#/components/schemas/RuleSetStructuredValue"
+                or len(rule_set_value.get("oneOf", [])) != 7
+                or rule_set_value.get("oneOf", [None, None])[1].get("properties", {}).get("amountMinor") != {"type": "integer", "minimum": 0}
+                or rule_set_value.get("oneOf", [None, None, None])[2].get("properties", {}).get("basisPoints") != {"type": "integer", "minimum": 0, "maximum": 10000}
+                or extracted_rule_value.get("oneOf", [None, None])[1].get("properties", {}).get("amountMinor") != {"type": "integer"}
                 or set(rule_set_summary.get("required", [])) != {"id", "version", "sourceAnalysisId", "sourceExtractionResultVersionId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount"}
                 or set(rule_set_summary.get("properties", {})) != {"id", "version", "sourceAnalysisId", "sourceExtractionResultVersionId", "createdAt", "createdByUserId", "previousRuleSetVersionId", "ruleCount"}
                 or rule_set_summary.get("properties", {}).get("sourceExtractionResultVersionId", {}).get("format") != "uuid"
