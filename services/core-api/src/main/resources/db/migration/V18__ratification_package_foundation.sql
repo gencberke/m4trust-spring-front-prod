@@ -38,7 +38,7 @@ CREATE TABLE ratification_package_approval (
     id UUID PRIMARY KEY,
     package_id UUID NOT NULL REFERENCES ratification_package(id),
     legal_entity_id UUID NOT NULL,
-    approved_by_user_id UUID NOT NULL,
+    approved_by_user_id UUID NOT NULL REFERENCES identity_user(id),
     approved_at TIMESTAMPTZ NOT NULL,
     CONSTRAINT ratification_package_approval_package_entity_uk UNIQUE (package_id, legal_entity_id)
 );
@@ -60,3 +60,19 @@ END; $$;
 CREATE TRIGGER ratification_approval_no_mutation
   BEFORE UPDATE OR DELETE ON ratification_package_approval
   FOR EACH ROW EXECUTE FUNCTION ratification_approval_immutable();
+
+CREATE OR REPLACE FUNCTION ratification_approval_requires_package_party()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NOT EXISTS (
+      SELECT 1 FROM ratification_package package
+      WHERE package.id = NEW.package_id
+        AND NEW.legal_entity_id IN (package.buyer_legal_entity_id, package.seller_legal_entity_id)
+  ) THEN
+    RAISE EXCEPTION 'ratification approval entity must be a package buyer or seller';
+  END IF;
+  RETURN NEW;
+END; $$;
+CREATE TRIGGER ratification_approval_party_only
+  BEFORE INSERT ON ratification_package_approval
+  FOR EACH ROW EXECUTE FUNCTION ratification_approval_requires_package_party();
