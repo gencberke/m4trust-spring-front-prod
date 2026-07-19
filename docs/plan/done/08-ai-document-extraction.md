@@ -1,6 +1,6 @@
 # Slice 8 — AI Document Extraction (Mock AI Worker ile)
 
-- Durum: ready
+- Durum: done
 - Slice sırası: ADR-004 §24 → "AI Document Extraction with Mock AI Worker"
   (bölünmüş yol haritasında 08)
 - Öncül: 06-document-upload
@@ -193,15 +193,28 @@ kabulü sayılmaz).
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI analysis yüzeyi implementasyondan önce tasarlandı
-- [ ] Outbox + inbox migration'ları ve mekanizmaları kuruldu; atomicity testli
-- [ ] RabbitMQ topolojisi AsyncAPI ile birebir; DLQ bağlı
-- [ ] contractintelligence modülü §18.2 validation ve REVIEW_REQUIRED akışıyla
+- [x] OpenAPI analysis yüzeyi implementasyondan önce tasarlandı
+- [x] Outbox + inbox migration'ları ve mekanizmaları kuruldu; atomicity testli
+- [x] RabbitMQ topolojisi AsyncAPI ile birebir; DLQ bağlı
+- [x] contractintelligence modülü §18.2 validation ve REVIEW_REQUIRED akışıyla
       çalışıyor; ExtractionResultVersion saklanıyor
-- [ ] Mock AI Worker contract-valid event üretiyor; senaryolar production
+- [x] Mock AI Worker contract-valid event üretiyor; senaryolar production
       contract'ını kirletmiyor
-- [ ] Lifecycle projection CONTRACT_ANALYSIS/MANUAL_REVIEW üretiyor; frontend
+- [x] Lifecycle projection CONTRACT_ANALYSIS/MANUAL_REVIEW üretiyor; frontend
       hesaplamıyor
-- [ ] §8 invariant testleri geçiyor; audit aynı transaction'da
-- [ ] §7 gerçek tarayıcı + gerçek broker + mock worker akışı tamamlandı
-- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
+- [x] §8 invariant testleri geçiyor; audit aynı transaction'da
+- [x] §7 gerçek tarayıcı + gerçek broker + mock worker akışı tamamlandı
+- [x] Contract validator, backend verify ve frontend typecheck/build yeşil
+
+## 11. Kabul kaydı
+
+- §7.1–§7.8 gerçek tarayıcı akışı, gerçek RabbitMQ ve Compose Mock AI Worker ile
+  tamamlandı.
+- Worker kapalıyken QUEUED kalma ve yeniden açıldığında işleme, duplicate teslim
+  idempotency'si, retry sonrası başarı, aktif job 409'u ve yeni dokümanda
+  SUPERSEDED davranışı doğrulandı.
+- Contract-invalid payload integration hatası olarak ele alındı; business
+  rejection veya FAILED sonucu üretilmedi.
+- Backend testleri 105/105, Mock AI Worker testleri 14/14 geçti; contract
+  validator 21 schema ve 13 fixture doğruladı.
+- Frontend typecheck ve production build başarılı tamamlandı.
