@@ -43,6 +43,7 @@ class DocumentService {
     private final AuditAppendPort auditAppender;
     private final TransactionTemplate transactions;
     private final Clock clock;
+    private final DocumentAnalysisSupersedePort analysisSupersedes;
     private final long maxUploadSizeBytes;
 
     DocumentService(DocumentRepository repository,
@@ -50,7 +51,7 @@ class DocumentService {
             DealDocumentReadPort dealReads,
             DocumentObjectStorage storage, IdempotencyService idempotency,
             AuditAppendPort auditAppender, TransactionTemplate transactions,
-            Clock clock,
+            Clock clock, DocumentAnalysisSupersedePort analysisSupersedes,
             @Value("${app.object-storage.max-upload-size-bytes}") long maxUploadSizeBytes) {
         this.repository = repository;
         this.dealMutations = dealMutations;
@@ -60,6 +61,7 @@ class DocumentService {
         this.auditAppender = auditAppender;
         this.transactions = transactions;
         this.clock = clock;
+        this.analysisSupersedes = analysisSupersedes;
         this.maxUploadSizeBytes = maxUploadSizeBytes;
     }
 
@@ -163,6 +165,8 @@ class DocumentService {
             if (!repository.update(previous.toRecord(), previousVersion)) {
                 throw new DocumentExceptions.UploadStateConflict();
             }
+            analysisSupersedes.supersedeForDocument(previousCurrentDocumentId, target.tenantId(),
+                    context.authenticatedUserId(), context.activeLegalEntityId(), correlationId, now);
         }
         auditAppender.append(new AuditRecord(UUID.randomUUID(), target.tenantId(),
                 context.authenticatedUserId(), context.activeLegalEntityId(),

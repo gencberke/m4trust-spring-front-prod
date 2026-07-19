@@ -15,6 +15,10 @@ server:
 spring:
   application:
     name: m4trust-core-api
+  rabbitmq:
+    # The relay requires broker confirms before an outbox row can be marked published.
+    # Connection credentials remain environment-specific.
+    publisher-confirm-type: ${RABBITMQ_PUBLISHER_CONFIRM_TYPE:correlated}
   datasource:
     url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}
     username: ${DATABASE_USER}
@@ -43,6 +47,8 @@ app:
   version: ${APP_VERSION:unknown}
   git-commit-sha: ${GIT_COMMIT_SHA:unknown}
   build-time: ${BUILD_TIME:unknown}
+  ai:
+    producer-version: ${AI_PRODUCER_VERSION:1.0.0}
   security:
     session:
       absolute-timeout: ${SESSION_ABSOLUTE_TIMEOUT:8h}
@@ -54,7 +60,17 @@ app:
     secret-key: ${OBJECT_STORAGE_SECRET_KEY}
     upload-ttl: ${OBJECT_STORAGE_UPLOAD_TTL}
     download-ttl: ${OBJECT_STORAGE_DOWNLOAD_TTL}
+    ai-download-ttl: ${OBJECT_STORAGE_AI_DOWNLOAD_TTL:15m}
     max-upload-size-bytes: ${OBJECT_STORAGE_MAX_UPLOAD_SIZE_BYTES}
+  messaging:
+    topology:
+      enabled: ${MESSAGING_TOPOLOGY_ENABLED:false}
+    relay:
+      enabled: ${MESSAGING_RELAY_ENABLED:false}
+      fixed-delay: ${MESSAGING_RELAY_FIXED_DELAY:5s}
+      claim-timeout: ${MESSAGING_RELAY_CLAIM_TIMEOUT:1m}
+      batch-size: ${MESSAGING_RELAY_BATCH_SIZE:20}
+      confirm-timeout: ${MESSAGING_RELAY_CONFIRM_TIMEOUT:10s}
 
 logging:
   structured:

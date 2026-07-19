@@ -1,6 +1,6 @@
 # Slice 8 — AI Document Extraction (Mock AI Worker ile)
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: ADR-004 §24 → "AI Document Extraction with Mock AI Worker"
   (bölünmüş yol haritasında 08)
 - Öncül: 06-document-upload
@@ -38,7 +38,7 @@ Kapsam:
   `m4trust.ai.document-extraction.v1` ve `m4trust.core.ai-results.v1` queue'ları)
 - ADR-003 §18.2 contract validation ve minimal §18.3 business-acceptance
   (sonuç her zaman REVIEW_REQUIRED'a düşer; otomatik ACCEPTED yolu yok)
-- `tools/mock-ai-worker/` gerçek implementasyonu
+- `../../../tools/mock-ai-worker` gerçek implementasyonu
 - DealLifecycleProjection'a CONTRACT_ANALYSIS / MANUAL_REVIEW girdileri
 - Analysis request action + sonuç/durum read yüzeyleri; audit aynı transaction
 
@@ -117,7 +117,7 @@ Sabit davranışlar:
 - Yeni doküman finalize'ı önceki analiz zincirini SUPERSEDED yapar; bu bağ
   document modülüne dar bir port/event ile kurulur, repository paylaşımı yok.
 
-### Mock AI Worker (`tools/mock-ai-worker/`)
+### Mock AI Worker (`../../../tools/mock-ai-worker`)
 
 - Contract fixture'larından türetilmiş completed/failed event'leri üretir;
   ürettiği her mesaj `validate_contracts.py` şemalarına uygundur.

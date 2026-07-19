@@ -71,7 +71,8 @@ class DocumentUploadFinalizeIntegrationTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute("""
-                TRUNCATE TABLE http_idempotency_record, deal_invitation,
+                TRUNCATE TABLE contract_intelligence_extraction_result_version,
+                    contract_intelligence_analysis_job, http_idempotency_record, deal_invitation,
                     deal_participant, document, deal, audit_record,
                     legal_entity_membership, legal_entity, tenant_user, tenant,
                     identity_user

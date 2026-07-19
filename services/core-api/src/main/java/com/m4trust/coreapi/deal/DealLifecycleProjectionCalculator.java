@@ -15,12 +15,25 @@ final class DealLifecycleProjectionCalculator {
      * separate lifecycle field.
      */
     static DealLifecycleProjection calculate(DealStatus dealStatus) {
+        return calculate(dealStatus, "NOT_REQUESTED", false);
+    }
+
+    static DealLifecycleProjection calculate(DealStatus dealStatus,
+            String analysisStatus, boolean currentDocumentExists) {
         Objects.requireNonNull(dealStatus, "dealStatus must not be null");
+        Objects.requireNonNull(analysisStatus, "analysisStatus must not be null");
         return switch (dealStatus) {
             case ARCHIVED -> DealLifecycleProjection.ARCHIVED;
             case CANCELLED -> DealLifecycleProjection.CANCELLED;
             case COMPLETED -> DealLifecycleProjection.COMPLETED;
-            case DRAFT, ACTIVE -> DealLifecycleProjection.DRAFT;
+            case DRAFT, ACTIVE -> !currentDocumentExists ? DealLifecycleProjection.DRAFT
+                    : switch (analysisStatus) {
+                        case "QUEUED", "PROCESSING", "FAILED", "NOT_REQUESTED",
+                                "SUPERSEDED" -> DealLifecycleProjection.CONTRACT_ANALYSIS;
+                        case "REVIEW_REQUIRED" -> DealLifecycleProjection.MANUAL_REVIEW;
+                        default -> throw new IllegalArgumentException(
+                                "Unknown analysis status: " + analysisStatus);
+                    };
         };
     }
 }

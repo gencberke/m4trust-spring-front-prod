@@ -1,4 +1,9 @@
 spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:m4trust_local}
+    password: ${RABBITMQ_PASSWORD:m4trust_local_password}
   flyway:
     enabled: true
   datasource:
@@ -15,6 +20,11 @@ server:
         secure: ${SESSION_COOKIE_SECURE:false}
 
 app:
+  messaging:
+    topology:
+      enabled: ${MESSAGING_TOPOLOGY_ENABLED:true}
+    relay:
+      enabled: ${MESSAGING_RELAY_ENABLED:true}
   object-storage:
     endpoint: ${OBJECT_STORAGE_ENDPOINT:http://127.0.0.1:9000}
     region: ${OBJECT_STORAGE_REGION:us-east-1}
@@ -23,4 +33,5 @@ app:
     secret-key: ${OBJECT_STORAGE_SECRET_KEY:m4trust_local_password}
     upload-ttl: ${OBJECT_STORAGE_UPLOAD_TTL:10m}
     download-ttl: ${OBJECT_STORAGE_DOWNLOAD_TTL:5m}
+    ai-download-ttl: ${OBJECT_STORAGE_AI_DOWNLOAD_TTL:15m}
     max-upload-size-bytes: ${OBJECT_STORAGE_MAX_UPLOAD_SIZE_BYTES:52428800}

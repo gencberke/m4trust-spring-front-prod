@@ -72,6 +72,6 @@ class S3DocumentObjectStorageTest {
     private static ObjectStorageProperties properties() {
         return new ObjectStorageProperties(URI.create("http://127.0.0.1:9000"), "us-east-1",
                 "m4trust-documents", "access", "secret", Duration.ofMinutes(10),
-                Duration.ofMinutes(5), 52_428_800);
+                Duration.ofMinutes(5), Duration.ofMinutes(15), 52_428_800);
     }
 }

@@ -26,6 +26,7 @@ class DealService {
     private final DealOperationPolicy operationPolicy;
     private final InvitationLegalEntityQueryPort legalEntityQueries;
     private final DealCurrentDocumentQueryPort currentDocumentQueries;
+    private final DealAnalysisProjectionPort analysisProjections;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
@@ -33,11 +34,13 @@ class DealService {
             DealOperationPolicy operationPolicy,
             InvitationLegalEntityQueryPort legalEntityQueries,
             DealCurrentDocumentQueryPort currentDocumentQueries,
+            DealAnalysisProjectionPort analysisProjections,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
         this.legalEntityQueries = legalEntityQueries;
         this.currentDocumentQueries = currentDocumentQueries;
+        this.analysisProjections = analysisProjections;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -274,15 +277,15 @@ class DealService {
                 deal.title(),
                 deal.description(),
                 deal.status(),
-                DealLifecycleProjectionCalculator.calculate(deal.status()),
+                lifecycle(deal),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actions(deal, context),
+                actionsWithAnalysis(deal, context),
                 party(deal.buyerLegalEntityId(), participantProjections),
                 party(deal.sellerLegalEntityId(), participantProjections),
                 participantProjections,
-                currentDocument(deal));
+                currentDocument(deal), analysis(deal));
     }
 
     private DealCurrentDocumentQueryPort.CurrentDealDocument currentDocument(Deal deal) {
@@ -301,7 +304,7 @@ class DealService {
                 deal.reference(),
                 deal.title(),
                 deal.status(),
-                DealLifecycleProjectionCalculator.calculate(deal.status()),
+                lifecycle(deal),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
@@ -310,6 +313,35 @@ class DealService {
 
     private DealAvailableActions actions(Deal deal, OperationContext context) {
         return operationPolicy.availableActions(deal, context);
+    }
+
+    private DealAvailableActions actionsWithAnalysis(Deal deal,
+            OperationContext context) {
+        DealAvailableActions base = actions(deal, context);
+        UUID documentId = deal.currentDocumentId();
+        boolean allowed = operationPolicy.isInitiator(deal, context)
+                && deal.status().allowsDocumentUpload()
+                && documentId != null
+                && currentDocumentQueries.findAvailable(documentId).isPresent()
+                && !analysisProjections.hasActiveJob(documentId);
+        return new DealAvailableActions(base.canUpdate(), base.canCancel(),
+                base.canCreateInvitation(), base.canManageParties(),
+                base.canCreateDocumentUploadIntent(), allowed);
+    }
+
+    private DealAnalysisProjectionPort.AnalysisSummary analysis(Deal deal) {
+        UUID documentId = deal.currentDocumentId();
+        return documentId == null
+                ? new DealAnalysisProjectionPort.AnalysisSummary(null, "NOT_REQUESTED",
+                        null, null, null, null, null)
+                : analysisProjections.summary(documentId);
+    }
+
+    private DealLifecycleProjection lifecycle(Deal deal) {
+        UUID documentId = deal.currentDocumentId();
+        boolean current = documentId != null && currentDocumentQueries.findAvailable(documentId).isPresent();
+        String status = current ? analysisProjections.summary(documentId).status() : "NOT_REQUESTED";
+        return DealLifecycleProjectionCalculator.calculate(deal.status(), status, current);
     }
 
     private List<DealParticipant> participants(Deal deal) {

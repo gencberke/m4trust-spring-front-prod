@@ -67,6 +67,8 @@ class DealIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    contract_intelligence_extraction_result_version,
+                    contract_intelligence_analysis_job,
                     http_idempotency_record,
                     deal_invitation,
                     deal_participant,
@@ -104,7 +106,7 @@ class DealIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(header().string("Location",
                         matchesPattern("/api/v1/deals/[0-9a-f-]{36}")))
-                .andExpect(jsonPath("$.*", hasSize(14)))
+                .andExpect(jsonPath("$.*", hasSize(15)))
                 .andExpect(jsonPath("$.reference")
                         .value(matchesPattern("DL-[0-9]{10}")))
                 .andExpect(jsonPath("$.title").value("Equipment Purchase"))
@@ -116,6 +118,7 @@ class DealIntegrationTest {
                         .value(true))
                 .andExpect(jsonPath("$.availableActions.canCancel")
                         .value(true))
+                .andExpect(jsonPath("$.analysis.status").value("NOT_REQUESTED"))
                 .andExpect(jsonPath("$.availableActions.canCreateInvitation")
                         .value(true))
                 .andExpect(jsonPath("$.availableActions.canManageParties")
