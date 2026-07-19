@@ -9,7 +9,10 @@ import tools.jackson.databind.JsonNode;
 /** Consumer-owned contracts; source modules implement these without ratification reading their repositories. */
 public final class RatificationSourcePorts {
     private RatificationSourcePorts() { }
-    public interface DealTarget { Optional<Target> findVisibleForCreate(OperationContext context, UUID dealId); }
+    public interface DealTarget {
+        Optional<Target> findVisible(OperationContext context, UUID dealId);
+        Optional<Target> lockVisibleForCreate(OperationContext context, UUID dealId);
+    }
     public interface AvailableDocument { Optional<Document> find(UUID documentId); }
     public interface AcceptedRuleSet { Optional<RuleSet> find(UUID ruleSetId); }
     public record Target(UUID dealId, UUID tenantId, String status, long version, String reference, String title,
