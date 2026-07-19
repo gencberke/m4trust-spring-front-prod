@@ -33,13 +33,22 @@ const PERCENT_FORMATTER = new Intl.NumberFormat("tr-TR", {
 });
 const MONEY_FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
 
-const STATUS_LABELS: Readonly<Partial<Record<DealDocumentAnalysis["status"], string>>> = {
+const STATUS_LABELS: Readonly<
+  Partial<Record<DealDocumentAnalysis["status"], string>>
+> = {
   NOT_REQUESTED: "Talep edilmedi",
   QUEUED: "Sırada",
   PROCESSING: "İşleniyor",
   REVIEW_REQUIRED: "İnceleme bekliyor",
+  ACCEPTED: "Kabul edildi",
   FAILED: "Tamamlanamadı",
 };
+
+function isKnownAnalysisStatus(
+  status: string,
+): status is DealDocumentAnalysis["status"] {
+  return Object.prototype.hasOwnProperty.call(STATUS_LABELS, status);
+}
 
 const LEGAL_BASIS_LABELS: Readonly<Record<string, string>> = {
   "tbk-6098": "TBK 6098",
@@ -109,8 +118,9 @@ function formatRuleValue(value: ExtractedRuleValue): string {
         : `${NUMBER_FORMATTER.format(value.valueSeconds)} saniye`;
     }
     case "DATE":
-      return new Intl.DateTimeFormat("tr-TR", { dateStyle: "long" })
-        .format(new Date(`${value.value}T00:00:00Z`));
+      return new Intl.DateTimeFormat("tr-TR", { dateStyle: "long" }).format(
+        new Date(`${value.value}T00:00:00Z`),
+      );
     case "BOOLEAN":
       return value.value ? "Evet" : "Hayır";
     case "QUANTITY":
@@ -119,9 +129,12 @@ function formatRuleValue(value: ExtractedRuleValue): string {
 }
 
 function formatSourcePages(references: ExtractionSourceReference[]): string {
-  const pages = [...new Set(references.map((reference) => reference.page))]
-    .sort((left, right) => left - right);
-  return pages.length ? `Kaynak: sayfa ${pages.join(", ")}` : "Kaynak sayfa belirtilmedi";
+  const pages = [
+    ...new Set(references.map((reference) => reference.page)),
+  ].sort((left, right) => left - right);
+  return pages.length
+    ? `Kaynak: sayfa ${pages.join(", ")}`
+    : "Kaynak sayfa belirtilmedi";
 }
 
 interface DealContractAnalysisProps {
@@ -144,11 +157,11 @@ export function DealContractAnalysis({
     const nextStatus = analysisQuery.data?.status;
     previousStatusRef.current = nextStatus;
     if (
-      previousStatus
-      && (previousStatus === "QUEUED" || previousStatus === "PROCESSING")
-      && nextStatus
-      && nextStatus !== "QUEUED"
-      && nextStatus !== "PROCESSING"
+      previousStatus &&
+      (previousStatus === "QUEUED" || previousStatus === "PROCESSING") &&
+      nextStatus &&
+      nextStatus !== "QUEUED" &&
+      nextStatus !== "PROCESSING"
     ) {
       void queryClient.invalidateQueries({
         queryKey: dealDetailQueryKey(legalEntityId, deal.id),
@@ -157,11 +170,8 @@ export function DealContractAnalysis({
   }, [analysisQuery.data?.status, deal.id, legalEntityId, queryClient]);
 
   const requestMutation = useMutation({
-    mutationFn: () => requestDealDocumentAnalysis(
-      legalEntityId,
-      deal.id,
-      crypto.randomUUID(),
-    ),
+    mutationFn: () =>
+      requestDealDocumentAnalysis(legalEntityId, deal.id, crypto.randomUUID()),
     onSuccess: async (analysis) => {
       queryClient.setQueryData(
         dealDocumentAnalysisQueryKey(legalEntityId, deal.id),
@@ -186,11 +196,19 @@ export function DealContractAnalysis({
   });
 
   const analysis = analysisQuery.data;
+  // A newer server may return an additive status before this client is deployed.
+  // Keep it visible but never derive a mutable UI from an unknown value.
+  const knownStatus = analysis ? isKnownAnalysisStatus(analysis.status) : false;
   const requestedAt = formatDate(analysis?.requestedAt ?? null);
-  const completedAt = formatDate(analysis?.completedAt ?? analysis?.failedAt ?? null);
+  const completedAt = formatDate(
+    analysis?.completedAt ?? analysis?.failedAt ?? null,
+  );
 
   return (
-    <section className="workspace-panel analysis-panel" aria-labelledby="contract-analysis-title">
+    <section
+      className="workspace-panel analysis-panel"
+      aria-labelledby="contract-analysis-title"
+    >
       <div className="analysis-heading">
         <div className="panel-heading">
           <span className="section-kicker">Yapay zekâ destekli çıkarım</span>
@@ -202,7 +220,7 @@ export function DealContractAnalysis({
         </div>
         {analysis ? (
           <span className="analysis-status-badge" data-status={analysis.status}>
-            {STATUS_LABELS[analysis.status]}
+            {knownStatus ? STATUS_LABELS[analysis.status] : "Bilinmeyen durum"}
           </span>
         ) : null}
       </div>
@@ -230,7 +248,16 @@ export function DealContractAnalysis({
 
       {analysis ? (
         <>
-          {(requestedAt || completedAt) ? (
+          {!knownStatus ? (
+            <div className="analysis-failure" role="status">
+              <h3>Bu analiz durumu bu istemci tarafından desteklenmiyor</h3>
+              <p>
+                Bilgiler salt okunur gösteriliyor; güvenli bir işlem yapmak için
+                sayfayı güncelleyin.
+              </p>
+            </div>
+          ) : null}
+          {requestedAt || completedAt ? (
             <dl className="analysis-timeline">
               {requestedAt ? (
                 <div>
@@ -240,7 +267,9 @@ export function DealContractAnalysis({
               ) : null}
               {completedAt ? (
                 <div>
-                  <dt>{analysis.status === "FAILED" ? "Son deneme" : "Sonuç"}</dt>
+                  <dt>
+                    {analysis.status === "FAILED" ? "Son deneme" : "Sonuç"}
+                  </dt>
                   <dd>{completedAt}</dd>
                 </div>
               ) : null}
@@ -272,11 +301,15 @@ export function DealContractAnalysis({
 
           {analysis.status === "FAILED" && analysis.failure ? (
             <div className="analysis-failure" role="alert">
-              <span className="analysis-failure-code">{analysis.failure.code}</span>
+              <span className="analysis-failure-code">
+                {analysis.failure.code}
+              </span>
               <h3>Analiz tamamlanamadı</h3>
               <p>{getAnalysisFailureMessage(analysis.failure.code)}</p>
               {analysis.failure.retryRecommended ? (
-                <p className="analysis-advisory">Yeni talep ayrı bir analiz işi oluşturur.</p>
+                <p className="analysis-advisory">
+                  Yeni talep ayrı bir analiz işi oluşturur.
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -286,12 +319,15 @@ export function DealContractAnalysis({
           ) : null}
 
           {requestMutation.isError ? (
-            <p className="form-alert panel-alert analysis-request-alert" role="alert">
+            <p
+              className="form-alert panel-alert analysis-request-alert"
+              role="alert"
+            >
               {getAnalysisRequestErrorMessage(requestMutation.error)}
             </p>
           ) : null}
 
-          {deal.availableActions.canRequestAnalysis ? (
+          {knownStatus && deal.availableActions.canRequestAnalysis === true ? (
             <div className="analysis-action-row">
               <button
                 className="primary-button"
@@ -326,12 +362,19 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
       <div className="analysis-review-notice" role="status">
         <span>İnceleme bekliyor</span>
         <div>
-          <strong>Teknik çıkarım tamamlandı; sonuç henüz kabul edilmedi.</strong>
-          <p>Taraflar, kurallar ve gereksinimler insan incelemesinden geçmelidir.</p>
+          <strong>
+            Teknik çıkarım tamamlandı; sonuç henüz kabul edilmedi.
+          </strong>
+          <p>
+            Taraflar, kurallar ve gereksinimler insan incelemesinden geçmelidir.
+          </p>
         </div>
       </div>
 
-      <section className="analysis-result-section" aria-labelledby="analysis-parties-title">
+      <section
+        className="analysis-result-section"
+        aria-labelledby="analysis-parties-title"
+      >
         <div className="analysis-section-heading">
           <h3 id="analysis-parties-title">Çıkarılan taraflar</h3>
           <span>{result.parties.length} kayıt</span>
@@ -345,12 +388,14 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
                   <span>{PARTY_ROLE_LABELS[party.role] ?? party.role}</span>
                 </div>
                 <p>
-                  Güven {PERCENT_FORMATTER.format(party.legalName.confidence)} · {formatSourcePages(party.sourceReferences)}
+                  Güven {PERCENT_FORMATTER.format(party.legalName.confidence)} ·{" "}
+                  {formatSourcePages(party.sourceReferences)}
                 </p>
                 <p>
-                  Vergi kimliği: {party.taxIdentifier.masked
+                  Vergi kimliği:{" "}
+                  {party.taxIdentifier.masked
                     ? "Maskelenmiş"
-                    : party.taxIdentifier.value ?? "Belirtilmedi"}
+                    : (party.taxIdentifier.value ?? "Belirtilmedi")}
                 </p>
               </li>
             ))}
@@ -360,7 +405,10 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
         )}
       </section>
 
-      <section className="analysis-result-section" aria-labelledby="analysis-rules-title">
+      <section
+        className="analysis-result-section"
+        aria-labelledby="analysis-rules-title"
+      >
         <div className="analysis-section-heading">
           <h3 id="analysis-rules-title">Çıkarılan kurallar</h3>
           <span>{result.rules.length} kayıt</span>
@@ -381,14 +429,21 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
                   <dt>Yapılandırılmış değer</dt>
                   <dd>{formatRuleValue(rule.structuredValue)}</dd>
                 </dl>
-                <p className="analysis-source-copy">{formatSourcePages(rule.sourceReferences)}</p>
+                <p className="analysis-source-copy">
+                  {formatSourcePages(rule.sourceReferences)}
+                </p>
                 {rule.legalBasis ? (
                   <div className="analysis-legal-basis">
                     <span>
-                      {LEGAL_BASIS_LABELS[rule.legalBasis.source] ?? rule.legalBasis.source}
-                      {" · Md. "}{rule.legalBasis.articleNo}
+                      {LEGAL_BASIS_LABELS[rule.legalBasis.source] ??
+                        rule.legalBasis.source}
+                      {" · Md. "}
+                      {rule.legalBasis.articleNo}
                     </span>
-                    <p>Bilgilendirme amaçlı mevzuat referansıdır; hukuki onay değildir.</p>
+                    <p>
+                      Bilgilendirme amaçlı mevzuat referansıdır; hukuki onay
+                      değildir.
+                    </p>
                   </div>
                 ) : null}
               </li>
@@ -399,7 +454,10 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
         )}
       </section>
 
-      <section className="analysis-result-section" aria-labelledby="analysis-delivery-title">
+      <section
+        className="analysis-result-section"
+        aria-labelledby="analysis-delivery-title"
+      >
         <div className="analysis-section-heading">
           <h3 id="analysis-delivery-title">Teslimat gereksinimleri</h3>
           <span>{result.deliveryRequirements.length} kayıt</span>
@@ -409,11 +467,17 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
             {result.deliveryRequirements.map((requirement) => (
               <li key={requirement.requirementReference}>
                 <div>
-                  <strong>{EVIDENCE_TYPE_LABELS[requirement.evidenceType] ?? requirement.evidenceType}</strong>
-                  <span>{requirement.required ? "Zorunlu" : "İsteğe bağlı"}</span>
+                  <strong>
+                    {EVIDENCE_TYPE_LABELS[requirement.evidenceType] ??
+                      requirement.evidenceType}
+                  </strong>
+                  <span>
+                    {requirement.required ? "Zorunlu" : "İsteğe bağlı"}
+                  </span>
                 </div>
                 <p>
-                  Güven {PERCENT_FORMATTER.format(requirement.confidence)} · {formatSourcePages(requirement.sourceReferences)}
+                  Güven {PERCENT_FORMATTER.format(requirement.confidence)} ·{" "}
+                  {formatSourcePages(requirement.sourceReferences)}
                 </p>
               </li>
             ))}
@@ -423,7 +487,10 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
         )}
       </section>
 
-      <section className="analysis-result-section analysis-summary" aria-labelledby="analysis-summary-title">
+      <section
+        className="analysis-result-section analysis-summary"
+        aria-labelledby="analysis-summary-title"
+      >
         <div className="analysis-section-heading">
           <h3 id="analysis-summary-title">İnceleme özeti</h3>
         </div>
