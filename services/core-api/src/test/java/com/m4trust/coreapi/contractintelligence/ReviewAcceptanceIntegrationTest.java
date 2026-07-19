@@ -42,7 +42,7 @@ class ReviewAcceptanceIntegrationTest {
     UUID user, tenant, entity, deal, document, analysis, extraction;
 
     @BeforeEach void setUp() {
-        jdbc.execute("TRUNCATE TABLE integration_outbox_event, integration_inbox_event, contract_intelligence_rule_set_version, contract_intelligence_extraction_result_version, contract_intelligence_analysis_job, http_idempotency_record, audit_record, deal_participant, document, deal, legal_entity_membership, legal_entity, tenant_user, tenant, identity_user CASCADE");
+        jdbc.execute("TRUNCATE TABLE integration_outbox_event, integration_inbox_event, contract_intelligence_rule_set_version, contract_intelligence_extraction_result_version, contract_intelligence_analysis_job, http_idempotency_record, audit_record, deal_invitation, deal_participant, document, ratification_package_approval, ratification_package, ratification_package_snapshot, deal, legal_entity_membership, legal_entity, tenant_user, tenant, identity_user");
         user=UUID.randomUUID(); tenant=UUID.randomUUID(); entity=UUID.randomUUID(); deal=UUID.randomUUID(); document=UUID.randomUUID();
         seedActor(user, entity, "initiator"); seedDeal(); seedAnalysis(rules()); failAudit.set(false);
     }
