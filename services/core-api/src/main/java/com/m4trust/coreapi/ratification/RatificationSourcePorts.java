@@ -19,7 +19,7 @@ public final class RatificationSourcePorts {
             boolean initiator, Party buyer, Party seller, UUID currentDocumentId, UUID currentRuleSetId, UUID currentPackageId) { }
     public record Party(UUID legalEntityId, String legalName) { }
     public record Document(UUID documentId, UUID dealId, String objectVersion, String sha256) { }
-    public record RuleSet(UUID ruleSetVersionId, long version, List<Rule> rules) { public RuleSet { rules=List.copyOf(rules); } }
+    public record RuleSet(UUID ruleSetVersionId, UUID dealId, long version, List<Rule> rules) { public RuleSet { rules=List.copyOf(rules); } }
     public record Rule(String ruleReference, String decision, String category, String title, String description,
             JsonNode structuredValue, JsonNode legalBasis, String legalBasisProvenance) { }
 }
