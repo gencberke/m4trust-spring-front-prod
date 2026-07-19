@@ -65,6 +65,12 @@ Deal katılımının tenant sınırları arasındaki semantiğini tanımlar: par
 
 Davet kabulü ile ticari rızayı ayırır; initiator'ın taslak koordinatörü olduğunu, ACTIVE geçişinin buyer ve seller'ın aynı immutable package sürümünü onaylamasına bağlı olduğunu ve ACTIVE Deal'in tek taraflı iptal edilemeyeceğini tanımlar.
 
+### ADR-010 — Ratification Commercial Terms and Funding Foundation
+
+Ratification package V1 commercial terms alanlarını ve provider-bağımsız tek
+unit funding foundation'ın state machine, polling, idempotency, crash recovery,
+authorization ve gerçek-provider sınırlarını tanımlar.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:

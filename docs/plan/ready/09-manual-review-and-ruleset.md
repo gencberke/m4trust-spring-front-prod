@@ -1,11 +1,16 @@
 # Slice 9 — Manual Review ve RuleSetVersion
 
-- Durum: planning
+- Durum: ready
 - Slice sırası: ADR-004 §24 → "Manual Review and RuleSetVersion"
   (bölünmüş yol haritasında 09)
 - Öncül: 08-ai-document-extraction
 - Ardıl: 10-ratification (ratification bu slice'ın kabul edilmiş rule-set
   versiyonuna dayanır)
+- **İnsan onayı:** 19 Temmuz 2026. Bu onay planda açıkça tarif edilen public
+  OpenAPI yüzeyi ile onu kilitleyen `contracts/scripts/validate_contracts.py`,
+  `contracts/README.md` ve `contracts/CHANGELOG.md` additive güncellemelerini
+  kapsar. AI JSON Schema/fixture, AsyncAPI veya AI-internal OpenAPI değişikliği
+  gerekmez; bunlardan biri gerekirse eskalasyondur.
 
 ## 1. Amaç ve kullanıcı sonucu
 
@@ -16,9 +21,10 @@ oluşur, AnalysisStatus ACCEPTED olur ve Deal'in current rule-set pointer'ı bu
 versiyona işaret eder. Geçmiş hiçbir zaman silinmez veya değiştirilmez
 (ADR-003 §19).
 
-Yeni bir doküman versiyonu yüklendiğinde önceki analiz/kabul zinciri SUPERSEDED
-olur; yeni extraction → yeni review → yeni RuleSetVersion zinciri kurulur ve
-önceki versiyonlar tarihçede kalır.
+Yeni bir doküman versiyonu current olduğunda önceki analiz/kabul zinciri
+SUPERSEDED olur ve Deal current rule-set pointer'ı aynı finalize transaction'ında
+temizlenir. Pointer, yeni extraction → yeni review → yeni RuleSetVersion kabulü
+tamamlanana kadar `null` kalır; önceki versiyonlar yalnız tarihçede okunur.
 
 Bu kabul, AI çıktısının business veriye dönüştüğü TEK kapıdır; ratification'a
 bağlanan hiçbir ticari onay anlamı taşımaz (ADR-009 §2.1 ayrımı).
@@ -34,6 +40,9 @@ Kapsam:
   zaman, önceki versiyon referansı (ADR-003 §19)
 - AnalysisStatus REVIEW_REQUIRED → ACCEPTED geçişi + Deal current rule-set
   pointer güncellemesi + audit — tek transaction
+- Yeni current document finalize edildiğinde eski analysis/rule-set zincirinin
+  SUPERSEDED edilmesi ve Deal current rule-set pointer'ının aynı transaction'da
+  temizlenmesi
 - Rule-set tarihçesinin read yüzeyi (versiyon listesi + içerik)
 - Superseded extraction'ın kabul edilememesi
 - `legalBasis` provenance kuralı (bkz. §5)
@@ -60,10 +69,24 @@ Kapsam dışı:
 Implementasyondan önce OpenAPI tasarlanır:
 
 - Review projection: extraction kuralları + mevcut düzeltme durumu
-- Review kabul action'ı: kural kararları (kept/modified/excluded/added) +
-  `expectedVersion`; başarıda oluşan RuleSetVersion referansını döner
+- Review kabul action'ı: target analysis id + kural kararları
+  (kept/modified/excluded/added) + Deal `expectedVersion`; başarıda oluşan
+  RuleSetVersion referansını döner
 - Rule-set tarihçesi: versiyon listesi ve tekil versiyon içeriği
 - Deal detail'e current rule-set özeti + actor-aware `canReviewExtraction`
+
+Additive compatibility kuralları:
+
+- Mevcut closed `DealDetail` ve `DealAvailableActions` şemalarına eklenecek
+  current rule-set özeti ve review action alanları **optional response member**
+  olur; mevcut `required` listeleri veya alan anlamları değiştirilmez.
+- Closed `DocumentAnalysisStatus` enum'una `ACCEPTED` eklenmesi aynı slice'ta
+  generated frontend type/switch güncellemesi ve bilinmeyen-değer read-only
+  fallback'i ile birlikte rollout edilir. Eski/eksik action alanı frontend
+  tarafından `false` kabul edilir; mutation tahmin edilmez.
+- Yeni path/operation/schema ve enum beklentileri
+  `contracts/scripts/validate_contracts.py` exact allowlist/field kontrollerine
+  aynı contract commit'inde eklenir; contracts README/CHANGELOG güncellenir.
 
 Sabit davranışlar:
 
@@ -74,6 +97,8 @@ Sabit davranışlar:
 - Stale `expectedVersion` → 409; kabul action'ı `Idempotency-Key` ister
   (çift tıklama iki versiyon üretmemeli)
 - Read yüzeyleri tüm participant'lara açık; kabul yalnız initiator tarafına
+- Nonparticipant veya gizli Deal → non-disclosing 404; Deal'i görebilen fakat
+  initiator olmayan participant'ın kabul denemesi → 403
 
 ## 5. Backend yönlendirmesi
 
@@ -97,7 +122,15 @@ Sabit davranışlar:
   aynısı: composite FK).
 - **Transaction:** kabul tek transaction'dır — RuleSetVersion insert +
   AnalysisStatus ACCEPTED + Deal pointer + audit + idempotency sonucu.
-  Eşzamanlı kabul denemeleri serialize edilir; tek versiyon oluşur.
+  Deal bu action'ın primary concurrency aggregate'idir; request'teki
+  `expectedVersion` Deal version'ıdır. Bütün document/review mutation'ları önce
+  Deal satırını, sonra current analysis satırını lock eder. Target analysis'in
+  hâlâ current document'a ait REVIEW_REQUIRED kayıt olduğu lock altında tekrar
+  doğrulanır; eşzamanlı kabul/finalize denemelerinde tek geçerli sonuç oluşur.
+- **Supersede aralığı:** yeni document finalize transaction'ı Deal lock'u
+  altında eski analysis'i SUPERSEDED eder, current rule-set pointer'ını `null`
+  yapar ve ratification readiness'i düşürür. Eski RuleSetVersion silinmez veya
+  current gibi sunulmaz; yeni AI sonucu tek başına pointer kuramaz.
 - **Yetki:** kabul, initiator legal entity adına çalışan kullanıcıya açıktır
   (DRAFT koordinasyonu: ADMIN + MEMBER — ADR-009 §2.6 yalnız
   ratification/cancellation onayını ADMIN'e kilitler, review'u değil).
@@ -115,6 +148,9 @@ Sabit davranışlar:
   tarihçede kalır.
 - Buton görünürlüğü yalnız backend action projection'ından; stale-version ve
   409 akışları mevcut desenle.
+- `DocumentAnalysisStatus` additive olarak `ACCEPTED` alırken generated type ve
+  UI switch'leri aynı committe güncellenir; bilinmeyen status güvenli read-only
+  fallback gösterir ve mutation açmaz.
 
 ## 7. Kabul testi (tarayıcı akışı)
 
@@ -125,9 +161,10 @@ Sabit davranışlar:
    görmez, zorlanan istek reddedilir.
 4. Kabul action'ının aynı Idempotency-Key ile tekrarı ikinci versiyon üretmez;
    iki tab'dan eşzamanlı kabul tek versiyonla sonuçlanır (stale akışı görünür).
-5. Yeni doküman versiyonu yüklenir → analiz zinciri SUPERSEDED; eski
-   RuleSetVersion tarihçede okunur kalır; yeni zincir v2 üretir ve pointer
-   v2'ye geçer.
+5. Yeni doküman versiyonu yüklenir → analiz zinciri SUPERSEDED ve current
+   rule-set pointer'ı boşalır; yeni review kabul edilene kadar ratification
+   READY değildir. Eski RuleSetVersion tarihçede okunur kalır; yeni zincir v2
+   üretince pointer v2'ye geçer.
 6. Superseded extraction üzerinde kabul denemesi 409 üretir.
 7. Geçersiz değer (negatif tutar, 10000 üstü basis point) 422 field hatası
    üretir ve ekranda alan bazında görünür.
@@ -143,22 +180,32 @@ Sabit davranışlar:
 - Superseded extraction kabul reddi
 - Non-initiator kabul reddi; nonparticipant read reddi
 - Para/yüzde alanlarının integer olarak persist edildiği
+- AI completed event/result persistence'ının tek başına RuleSetVersion veya
+  current rule-set pointer üretmediği
+- Yeni current document finalize'i ile analysis supersede + pointer clear +
+  audit'in atomik olduğu; arada eski rules + yeni document READY görünmediği
+- Deal → current analysis lock sırasının accept ↔ document-finalize yarışında
+  deadlock veya çift-current sonuç üretmediği
 
-## 9. Açık sorular / karar noktaları
+## 9. V1 kararları
 
-- Elle eklenen kural için `ruleReference` üretim biçimi (öneri: `manual-N`
-  önekli, versiyon içinde unique)
-- EXCLUDED kuralların RuleSetVersion içeriğinde işaretli mi taşınacağı yoksa
-  yalnız review kaydında mı kalacağı (öneri: review kaydında; RuleSetVersion
-  yalnız geçerli kuralları taşır — ratification package'ı sadeleşir)
-- Review kabulünde toplu tek action mı (önerilen ve §4'te varsayılan) yoksa
-  kural bazlı kaydet + ayrı finalize mi
-- `canonicalHash` alanının bu slice'ta mı yoksa Slice 10 package hash'iyle
-  birlikte mi ekleneceği (öneri: Slice 10 — YAGNI)
+- Elle eklenen kuralın `ruleReference` değeri `manual-N` önekli ve aynı
+  RuleSetVersion içinde unique üretilir.
+- EXCLUDED kurallar review karar geçmişinde kalır; RuleSetVersion yalnız nihai
+  geçerli kuralları taşır.
+- Review kabulü bütün kararları taşıyan tek toplu action'dır; ayrı draft-save
+  veya kural bazlı finalize yoktur.
+- RuleSetVersion için ayrı `canonicalHash` bu slice'ta eklenmez. Canonical
+  package hash'i Slice 10'un sorumluluğudur.
 
 ## 10. Done tanımı
 
 - [ ] OpenAPI review/rule-set yüzeyi implementasyondan önce tasarlandı
+- [ ] OpenAPI path/schema değişiklikleriyle birlikte contract validator exact
+      beklentileri ve contracts README/CHANGELOG güncellendi; AI contract'ları
+      değişmedi
+- [ ] Yeni Deal response/action alanları optional; mevcut required listeler ve
+      alan anlamları korunuyor; frontend eksik/bilinmeyen değerde read-only
 - [ ] RuleSetVersion migration'ı immutable/insert-only ve pointer bütünlüğü
       DB seviyesinde
 - [ ] Kabul akışı tek transaction; idempotent; eşzamanlılık testli
@@ -167,5 +214,6 @@ Sabit davranışlar:
       bağlı değil
 - [ ] Yetki merkezi policy'den; review ticari onay olarak sunulmuyor
 - [ ] §8 invariant testleri geçiyor; audit aynı transaction'da
+- [ ] `ModuleArchitectureTest` contractintelligence ownership'ini kapsıyor
 - [ ] §7 iki-browser kabul akışı tamamlandı; Slice 8 akışı regresyonsuz
 - [ ] Contract validator, backend verify ve frontend typecheck/build yeşil

@@ -44,7 +44,7 @@ always land at REVIEW_REQUIRED.
 
 ## Accepted foundations
 
-- ADR-001 through ADR-009 are accepted and remain authoritative.
+- ADR-001 through ADR-010 are accepted and remain authoritative.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
 - Slice 2 organization and membership is accepted under `docs/plan/done/`.
@@ -124,14 +124,18 @@ being executed independently and in parallel on
 `codex/slice7-staging-deployment`; its deployment acceptance remains separate
 from the Slice 8 implementation lineage.
 
+Slice 9–11 plans have explicit human approval and are under
+`docs/plan/ready/`. ADR-010 closes the V1 ratification commercial-terms and
+provider-independent funding-foundation decisions needed by Slices 10–11.
+
 ## Known blockers
 
 No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Slice 9 manual review and immutable RuleSetVersion after explicit human plan
-approval. Slice 7 Railway staging continues in parallel.
+Execute approved Slices 9, 10 and 11 in dependency order. Slice 7 Railway
+staging continues independently in parallel.
 
 ## Update rule
 

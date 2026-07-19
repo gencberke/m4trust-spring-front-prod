@@ -147,14 +147,16 @@ No pool-specific Java sample; the same JSON POST pattern presumably applies.
   at funding time — fits the single-charge-per-deal / single FundingUnit v1.
 - Release on fulfillment = `DoApprovePoolPayment` keyed by our
   `OtherTrxCode` (set to our internal operation id for idempotent lookups).
-- Cancellation is TWO distinct paths and the ADR must model both:
-  pre-approval cancel (`UndoApprovePoolPayment`, settlement-cutoff bound) vs
-  post-approval refund (`DoCreateRefundRequest`, next-day-or-later only).
-  There is no single uniform refund call.
-- Our system is the source of truth for pool/release state: Moka exposes no
-  pool status enum, so our own ledger (a recorded successful approve call)
-  defines the state; Moka's transaction-detail endpoint is reconciliation
-  only.
+- Cancellation cannot be collapsed into one operation. `UndoApprovePoolPayment`
+  is NOT a pre-approval cancel: it reverses an approval that already succeeded
+  and is settlement-cutoff bound (`PaymentNotApprovedYet` proves the payment
+  must first be approved). The cancellation/refund path for a pooled but still
+  unapproved payment is undocumented. Post-settlement return uses the separate
+  refund flow.
+- Our ledger is the source of the INTERNAL pool/release business projection,
+  not an oracle for external money state. Moka exposes no pool status enum, so
+  ambiguous external outcomes remain UNKNOWN/UNCONFIRMED until reconciliation;
+  an internal recorded intent cannot manufacture provider truth.
 - Result channel: POLLING-first design. Only the initial 3D charge has a
   browser-redirect push, which is a UX signal, not a reliable state trigger.
   A reconciliation job polls `GetDealerPaymentTrxDetailList` by `OtherTrxCode`
@@ -167,9 +169,10 @@ No pool-specific Java sample; the same JSON POST pattern presumably applies.
 
 ## Gap handling — self-reliant strategy (no direct Moka contact available)
 
-Decision (2026-07-19): the gaps above cannot be resolved by asking Moka; the
-payment design ADR adopts defensive assumptions and empirical verification
-instead. Binding principles:
+Decision (2026-07-19): the gaps above cannot currently be resolved by asking
+Moka. Slice 11B planning adopts fail-closed assumptions and empirical
+verification instead. These are risk controls, not evidence of undocumented
+production behavior:
 
 1. Never depend on undocumented behavior; assume the worst case; verify
    empirically against the Moka test environment.
@@ -177,12 +180,14 @@ instead. Binding principles:
    that exercises the full pool flow (charge → status → approve → undo →
    refund attempts) against the test environment. Probe results are recorded
    as evidence in the ADR; assumptions are upgraded only with probe proof.
-3. Gap #1 (no pool status enum): our ledger is the sole source of truth for
-   pool/release state; the Moka status endpoint is reconciliation-only.
-4. Gap #2 (pre-approval refund unknown): ASSUME not possible. Money-return
-   before release is modeled as approve → next-day refund (funds transit the
-   statement for one day; accounting note required). If probes show direct
-   void/refund works on pooled state, relax the ADR.
+3. Gap #1 (no pool status enum): our ledger owns the internal business
+   projection only. A clean approve/undo response may advance that projection;
+   timeout or ambiguous response remains UNCONFIRMED. The Moka status endpoint
+   is reconciliation input but cannot prove undocumented pool state.
+4. Gap #2 (pooled-unapproved cancellation/refund unknown): ASSUME no safe
+   automated path. Do not approve merely to unlock a later refund. Keep the
+   operation fail-closed for manual/provider/legal resolution until probes
+   prove a direct void/refund path and its settlement consequences.
 5. Gap #3 (pool holding limit unknown): aged-pool monitoring with alerting on
    operations pooled longer than a configured threshold; release-timing policy
    approves promptly after fulfillment acceptance; the unknown maximum stays
@@ -190,14 +195,18 @@ instead. Binding principles:
 6. Gap #4 (redirect hash unverified): 3D redirect is UX-only; NO state
    transition is driven by redirect data; every outcome is confirmed via
    status polling.
-7. Gaps #5/#9 (sub-dealer split/KYC): v1 target is the marketplace
-   (sub-dealer) pool model — platform-held funds with manual EFT payout risks
-   unlicensed payment-institution exposure under Law 6493 and is rejected as
-   default. Requires explicit legal review; sub-dealer onboarding is probed
-   empirically in 11B.
-8. Gap #6 (charge idempotency unknown): charges are never blindly retried.
-   Intent record → on unclear outcome, status query by OtherTrxCode → only a
-   confirmed-absent charge may be retried, and only with a NEW OtherTrxCode.
+7. Gaps #5/#9 (sub-dealer split/KYC): v1 candidate is the marketplace
+   (sub-dealer) pool model. A platform-controlled manual payout model may create
+   licensing/regulatory exposure under Law 6493 and is rejected as an
+   engineering default, not as a legal conclusion. Explicit legal review and
+   empirical sub-dealer onboarding evidence are required in 11B.
+8. Gap #6 (charge idempotency unknown): real charges are never blindly retried.
+   Intent record → on unclear outcome, status query by OtherTrxCode → remain
+   UNCONFIRMED when the query is absent or inconclusive. An absent query result
+   is not proof that no charge occurred. A new OtherTrxCode is permitted only
+   after the provider's consistency/idempotency behavior is proven by the probe
+   suite or an authoritative provider guarantee; sandbox-only retries do not
+   establish production safety.
 9. Gap #10 (no same-day refund after approve): release timing waits for the
    fulfillment-acceptance gate; approval is not granted while a dispute
    window is open.

@@ -20,6 +20,8 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Uzun AI işlemini kullanıcı HTTP request'i içinde bekletmek | ADR-001 §20; ADR-006 §39 |
 | AI teknik hatasını otomatik business rejection olarak yorumlamak | ADR-001 §14, §20; ADR-002 §12.3 |
 | AI sonucunun doğrudan Deal state'ine uygulanması / deterministik validasyonun atlanması | ADR-001 §20; ADR-003 §17, §31 |
+| Manual acceptance olmadan AI sonucundan RuleSetVersion veya Deal current rule-set pointer üretmek | ADR-003 §17–§19; ADR-010 §1 |
+| Yeni current document'a geçerken eski RuleSetVersion'ı current/ratification-ready bırakmak | ADR-003 §18–§20 |
 | Video/AI sonucunun otomatik fulfillment completion, dispute veya payment release üretmesi | ADR-002 §10.1; ADR-003 §22 |
 | Broker mesajında provider-specific payload, raw doküman/video, secret, credential, session token taşımak | ADR-001 §20; ADR-002 §29 |
 | Contract'ı tek taraflı değiştirmek (FastAPI model gerekçesiyle, Spring yeni required alan dayatarak) | ADR-001 §9; ADR-002 §28 |
@@ -44,8 +46,15 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Sessiz last-write-wins (optimistic lock conflict'i yutmak) | ADR-003 §25 |
 | Full event sourcing ile başlamak | ADR-003 §26, §31 |
 | Ratified package'ı mutation ile güncellemek (yeni version yerine) | ADR-003 §20, §31; ADR-009 §2.4 |
+| Ratification `contentHash` girdisine mutable status/approval/action, actor-specific görünürlük veya audit metadata'sı dahil etmek | ADR-003 §20; ADR-010 §2.1 |
 | Kabul edilmiş extraction/rule-set geçmişini silmek veya değiştirmek | ADR-003 §19 |
 | Provider timeout'u otomatik payment failure kabul etmek | ADR-003 §21, §31 |
+| UNCONFIRMED payment varken yeni provider key ile otomatik charge retry etmek | ADR-010 §2.3–§2.4 |
+| Async payment initiate/reconcile HTTP request'i içinde provider sonucunu beklemek | ADR-006 §35, §54; ADR-010 §2.4–§2.5 |
+| Browser redirect sonucunu provider doğrulaması olmadan FUNDED kabul etmek | ADR-010 §2.5 |
+| Belirsiz pool/refund davranışını çözmek için otomatik approve-then-refund yapmak | ADR-010 §2.7 |
+| Kart verisi, provider credential veya raw provider payload'ını domain/audit/public API'ye taşımak | ADR-007 §19–§20, §33; ADR-010 §2.6 |
+| Payment sandbox adapter'ını production profile'da açmak veya production API'ye scenario test-control alanı/yüzeyi eklemek | ADR-004 §19; ADR-010 §2.2, §2.6 |
 | Query edilen temel domain alanlarını (money, status, party, authorization) JSONB'ye gömmek | ADR-003 §27 |
 | Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5; ADR-008 §2.4 |
 | `deal.tenant_id` (veya çağıranın tenant'ı) eşleşmesini Deal görünürlük/erişim koşulu olarak kullanmak | ADR-008 §2.2, §4 |

@@ -40,6 +40,12 @@ Her plan aynı bölümleri içerir:
 - Plan ile ADR çelişirse **ADR kazanır**; çelişkiyi implementasyona gömmek yerine plana not düş ve insana bildir.
 - Plandaki "öneri" ifadeleri serbestlik derecesidir; "karar" ifadeleri bağlayıcıdır.
 - Public API yüzeyi implementasyondan **önce** `core-api-v1.yaml` dosyasına tasarlanır (ADR-006 §42–43 hibrit akış).
+- Onaylı bir public OpenAPI yüzeyinin zorunlu contract deltasına
+  `contracts/scripts/validate_contracts.py` exact beklentileri ile
+  `contracts/README.md` ve `contracts/CHANGELOG.md` güncellemeleri de dahildir.
+  Bunlar OpenAPI değişikliğiyle aynı review/validation birimidir; ilgili plan
+  aksini söylemedikçe AI JSON Schema/fixture, AsyncAPI ve AI-internal OpenAPI
+  değişiklikleri bu kapsama girmez.
 
 ## Sabitlenmiş teknoloji kararları (tüm slice'lar için)
 
