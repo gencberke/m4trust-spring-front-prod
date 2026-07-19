@@ -31,4 +31,21 @@ class DealAnalysisMutationService implements DealAnalysisMutationPort {
                         deal.currentDocumentId(), operationPolicy.isInitiator(deal, context),
                         deal.status().allowsDocumentUpload()));
     }
+
+    @Override @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<ReviewTarget> lockForReview(OperationContext context, UUID dealId) {
+        return repository.findVisibleByIdForUpdate(context.tenantId(), context.activeLegalEntityId(), dealId)
+                .map(Deal::rehydrate).map(deal -> new ReviewTarget(deal.id(), deal.toRecord().tenantId(),
+                        deal.currentDocumentId(), deal.version(), operationPolicy.isInitiator(deal, context)));
+    }
+
+    @Override @Transactional(propagation = Propagation.MANDATORY)
+    public void setCurrentRuleSet(UUID dealId, UUID ruleSetVersionId, java.time.Instant changedAt) {
+        repository.setCurrentRuleSet(dealId, ruleSetVersionId, changedAt);
+    }
+
+    @Override @Transactional(propagation = Propagation.MANDATORY)
+    public void clearCurrentRuleSet(UUID dealId, java.time.Instant changedAt) {
+        repository.setCurrentRuleSet(dealId, null, changedAt);
+    }
 }

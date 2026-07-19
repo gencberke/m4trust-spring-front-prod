@@ -171,12 +171,15 @@ class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSup
     }
 
     @Override
-    public void supersedeForDocument(UUID documentId, UUID tenantId, UUID actorUserId,
+    public void supersedeForDocument(UUID dealId, UUID documentId, UUID tenantId, UUID actorUserId,
             UUID legalEntityId, UUID correlationId, Instant occurredAt) {
         repository.lockAndSupersedeDocument(documentId).forEach(job -> auditAppender.append(
                 new AuditRecord(UUID.randomUUID(), tenantId, actorUserId, legalEntityId,
                         AUDIT_SUBJECT, job.id(), "DOCUMENT_ANALYSIS_SUPERSEDED",
                         correlationId, null, occurredAt)));
+        // Document finalization owns the Deal lock. Clearing here keeps the stale
+        // chain and its historical rule versions readable without presenting it current.
+        dealMutations.clearCurrentRuleSet(dealId, occurredAt);
     }
 
     private DealDocumentAnalysis currentProjection(UUID currentDocumentId) {

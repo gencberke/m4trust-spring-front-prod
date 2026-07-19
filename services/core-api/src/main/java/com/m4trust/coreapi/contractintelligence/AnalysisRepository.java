@@ -90,6 +90,20 @@ class AnalysisRepository {
         if (changed != 1) throw new IllegalStateException("Analysis job changed while failing");
     }
 
+    void accept(AnalysisJob job) {
+        if (jdbcTemplate.update("""
+                UPDATE contract_intelligence_analysis_job SET status = 'ACCEPTED', version = version + 1
+                WHERE id = ? AND version = ? AND status = 'REVIEW_REQUIRED'
+                """, job.id(), job.version()) != 1) {
+            throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");
+        }
+    }
+
+    Optional<UUID> findResultId(UUID jobId) {
+        return jdbcTemplate.query("SELECT id FROM contract_intelligence_extraction_result_version WHERE analysis_job_id = ?",
+                (rs, row) -> rs.getObject(1, UUID.class), jobId).stream().findFirst();
+    }
+
     void insertResult(UUID resultId, UUID jobId, String schemaVersion, String canonicalResult,
             Instant createdAt) {
         jdbcTemplate.update("""

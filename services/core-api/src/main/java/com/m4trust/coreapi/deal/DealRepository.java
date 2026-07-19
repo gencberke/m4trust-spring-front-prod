@@ -145,6 +145,15 @@ class DealRepository {
                 """, documentId, Timestamp.from(changedAt), dealId) == 1;
     }
 
+    void setCurrentRuleSet(UUID dealId, UUID ruleSetVersionId, Instant changedAt) {
+        if (jdbcTemplate.update("""
+                UPDATE deal SET current_rule_set_version_id = ?, updated_at = ?, version = version + 1
+                WHERE id = ?
+                """, ruleSetVersionId, Timestamp.from(changedAt), dealId) != 1) {
+            throw new IllegalStateException("Deal disappeared while setting current rule set");
+        }
+    }
+
     List<DealRecord> findVisiblePage(
             UUID legalEntityTenantId,
             UUID legalEntityId,

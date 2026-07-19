@@ -165,7 +165,7 @@ class DocumentService {
             if (!repository.update(previous.toRecord(), previousVersion)) {
                 throw new DocumentExceptions.UploadStateConflict();
             }
-            analysisSupersedes.supersedeForDocument(previousCurrentDocumentId, target.tenantId(),
+            analysisSupersedes.supersedeForDocument(target.dealId(), previousCurrentDocumentId, target.tenantId(),
                     context.authenticatedUserId(), context.activeLegalEntityId(), correlationId, now);
         }
         auditAppender.append(new AuditRecord(UUID.randomUUID(), target.tenantId(),
