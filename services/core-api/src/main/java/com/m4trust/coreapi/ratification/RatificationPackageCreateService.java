@@ -101,7 +101,7 @@ class RatificationPackageCreateService {
             if (!packages.updateStatus(previous.toRecord(), previousVersion)) {
                 throw new RatificationPackage.StaleVersion();
             }
-            audit.append(audit(context, target.tenantId(), current.id(), AUDIT_SUPERSEDED, correlationId, now));
+            audit.append(audit(context, current.id(), AUDIT_SUPERSEDED, correlationId, now));
         }
         UUID snapshotId = UUID.randomUUID();
         RatificationPackage created = RatificationPackage.create(UUID.randomUUID(), dealId, snapshotId,
@@ -112,7 +112,7 @@ class RatificationPackageCreateService {
         RatificationRepository.PackageRecord createdRecord = created.toRecord();
         packages.insert(snapshotRecord, createdRecord);
         deals.pointCurrentPackage(dealId, created.id(), now);
-        audit.append(audit(context, target.tenantId(), created.id(), AUDIT_CREATED, correlationId, now));
+        audit.append(audit(context, created.id(), AUDIT_CREATED, correlationId, now));
         idempotency.recordResult(claim, new IdempotencyResultReference(IDEMPOTENCY_RESULT, created.id()));
         return reads.project(context, target, withSnapshot(createdRecord, snapshot));
     }
@@ -146,9 +146,9 @@ class RatificationPackageCreateService {
                 || request.currency() == null || !request.currency().matches("[A-Z]{3}")) throw new InvalidTerms();
     }
 
-    private AuditRecord audit(OperationContext context, UUID tenantId, UUID packageId, String action,
+    private AuditRecord audit(OperationContext context, UUID packageId, String action,
             UUID correlationId, Instant now) {
-        return new AuditRecord(UUID.randomUUID(), tenantId, context.authenticatedUserId(),
+        return new AuditRecord(UUID.randomUUID(), context.tenantId(), context.authenticatedUserId(),
                 context.activeLegalEntityId(), AUDIT_SUBJECT, packageId, action, correlationId, null, now);
     }
 
