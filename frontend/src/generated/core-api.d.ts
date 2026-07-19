@@ -296,6 +296,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/document-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the current document analysis projection for a Deal
+         * @description Returns the analysis projection for the Deal's current AVAILABLE document to every Deal participant. The projection is backend-derived and never exposes storage bytes, provider metadata, raw failure messages, or a business acceptance decision. When no current AVAILABLE document exists, status is NOT_REQUESTED and currentDocumentId is null.
+         */
+        get: operations["getDealDocumentAnalysis"];
+        put?: never;
+        /**
+         * Request asynchronous analysis of a Deal's current AVAILABLE document
+         * @description Performs the explicit initiator-only analysis request action for the Deal's current AVAILABLE document. Idempotency-Key is required: retrying this same action with the same key returns the original accepted projection, while key reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. The operation only accepts the job asynchronously; it never waits for AI work. The backend re-authorizes the initiator and current-document eligibility even when canRequestAnalysis was previously true.
+         */
+        post: operations["requestDealDocumentAnalysis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/documents/{documentId}/finalize": {
         parameters: {
             query?: never;
@@ -785,6 +809,148 @@ export interface components {
          * @enum {string}
          */
         DealLifecycleProjection: "DRAFT" | "CONTRACT_ANALYSIS" | "MANUAL_REVIEW" | "RATIFICATION" | "FUNDING" | "FULFILLMENT" | "SETTLEMENT" | "DISPUTE" | "COMPLETED" | "CANCELLED" | "ARCHIVED";
+        /**
+         * @description Current-document analysis state owned by the analysis state machine. REVIEW_REQUIRED is a technical extraction completion requiring human review, not business acceptance.
+         * @enum {string}
+         */
+        DocumentAnalysisStatus: "NOT_REQUESTED" | "QUEUED" | "PROCESSING" | "REVIEW_REQUIRED" | "FAILED";
+        /** @description Safe terminal failure projection. It deliberately excludes provider messages, stack traces, technical metadata, and raw worker error details. */
+        DocumentAnalysisFailureSummary: {
+            /** @description Stable canonical AI technical or invalid-input failure code. */
+            code: string;
+            /** @description Advisory retry eligibility from the canonical failure result; a retry always creates a new job. */
+            retryRecommended: boolean;
+        };
+        /** @description Backend-derived analysis summary for the Deal's current document. Collections are not applicable at this summary level; use the analysis read projection for canonical result contents. */
+        DealDocumentAnalysisSummary: {
+            /**
+             * Format: uuid
+             * @description Current AVAILABLE document identity, or null when none exists.
+             */
+            currentDocumentId: string | null;
+            status: components["schemas"]["DocumentAnalysisStatus"];
+            requestedAt: components["schemas"]["UtcTimestamp"] | null;
+            processingStartedAt: components["schemas"]["UtcTimestamp"] | null;
+            completedAt: components["schemas"]["UtcTimestamp"] | null;
+            failedAt: components["schemas"]["UtcTimestamp"] | null;
+            failure: components["schemas"]["DocumentAnalysisFailureSummary"] | null;
+        };
+        ExtractionSourceReference: {
+            page: number;
+            startOffset: number;
+            /** @description End offset after startOffset; semantic ordering is validated by the backend. */
+            endOffset: number;
+        };
+        ExtractedLegalName: {
+            value: string;
+            confidence: number;
+        };
+        ExtractedTaxIdentifier: {
+            value: string | null;
+            masked: boolean;
+            confidence: number;
+        };
+        ExtractedParty: {
+            partyReference: string;
+            /** @enum {string} */
+            role: "BUYER" | "SELLER" | "OTHER" | "UNKNOWN";
+            legalName: components["schemas"]["ExtractedLegalName"];
+            taxIdentifier: components["schemas"]["ExtractedTaxIdentifier"];
+            /** @description Canonical source references; never null. */
+            sourceReferences: components["schemas"]["ExtractionSourceReference"][];
+        };
+        /** @description Closed canonical structured-value union for an extracted rule. */
+        ExtractedRuleValue: {
+            /** @constant */
+            type: "TEXT";
+            value: string;
+        } | {
+            /** @constant */
+            type: "MONEY";
+            amountMinor: number;
+            currency: string;
+        } | {
+            /** @constant */
+            type: "PERCENTAGE";
+            basisPoints: number;
+        } | {
+            /** @constant */
+            type: "DURATION";
+            valueSeconds: number;
+        } | {
+            /** @constant */
+            type: "DATE";
+            /** Format: date */
+            value: string;
+        } | {
+            /** @constant */
+            type: "BOOLEAN";
+            value: boolean;
+        } | {
+            /** @constant */
+            type: "QUANTITY";
+            value: number;
+            unit: string;
+        };
+        /** @description Advisory legal reference only; it cannot authorize a business decision. */
+        AdvisoryLegalBasis: {
+            /** @enum {string} */
+            source: "tbk-6098" | "kvkk-6698" | "odeme-hizmetleri-6493" | "aml-5549" | "odeme-hizmetleri-yonetmelik" | "odeme-hizmetleri-tebligi";
+            articleNo: string;
+        };
+        ExtractedRule: {
+            ruleReference: string;
+            /** @enum {string} */
+            category: "PAYMENT" | "DELIVERY" | "QUALITY" | "PENALTY" | "TERMINATION" | "DISPUTE" | "OTHER" | "UNKNOWN";
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["ExtractedRuleValue"];
+            confidence: number;
+            /** @description Canonical source references; never null. */
+            sourceReferences: components["schemas"]["ExtractionSourceReference"][];
+            /** @description Optional advisory legal reference; null when legal retrieval was unavailable. */
+            legalBasis?: components["schemas"]["AdvisoryLegalBasis"] | null;
+        };
+        ExtractedDeliveryRequirement: {
+            requirementReference: string;
+            /** @enum {string} */
+            evidenceType: "DELIVERY_NOTE" | "INVOICE" | "VIDEO" | "PHOTO" | "SIGNED_DOCUMENT" | "OTHER" | "UNKNOWN";
+            required: boolean;
+            confidence: number;
+            /** @description Canonical source references; never null. */
+            sourceReferences: components["schemas"]["ExtractionSourceReference"][];
+        };
+        DocumentAnalysisResultSummary: {
+            /** @description Advisory extraction output only; it is not a business acceptance decision. */
+            requiresManualReview: boolean;
+            /** @description Canonical review reasons; never null. */
+            reviewReasons: string[];
+        };
+        /** @description Immutable canonical extraction result for a REVIEW_REQUIRED current-document analysis. */
+        DocumentAnalysisResult: {
+            /** @description Canonical extracted parties; never null. */
+            parties: components["schemas"]["ExtractedParty"][];
+            /** @description Canonical extracted rules; never null. */
+            rules: components["schemas"]["ExtractedRule"][];
+            /** @description Canonical extracted delivery requirements; never null. */
+            deliveryRequirements: components["schemas"]["ExtractedDeliveryRequirement"][];
+            summary: components["schemas"]["DocumentAnalysisResultSummary"];
+        };
+        DealDocumentAnalysis: {
+            /**
+             * Format: uuid
+             * @description Current AVAILABLE document identity, or null when none exists.
+             */
+            currentDocumentId: string | null;
+            status: components["schemas"]["DocumentAnalysisStatus"];
+            requestedAt: components["schemas"]["UtcTimestamp"] | null;
+            processingStartedAt: components["schemas"]["UtcTimestamp"] | null;
+            completedAt: components["schemas"]["UtcTimestamp"] | null;
+            failedAt: components["schemas"]["UtcTimestamp"] | null;
+            failure: components["schemas"]["DocumentAnalysisFailureSummary"] | null;
+            /** @description Canonical result when extraction completed; null before completion or after FAILED. */
+            result: components["schemas"]["DocumentAnalysisResult"] | null;
+        };
         /** @description Backend-derived action availability for the current user and active legal entity. Clients use this projection for presentation but the backend always re-authorizes mutations. */
         DealAvailableActions: {
             canUpdate: boolean;
@@ -795,6 +961,8 @@ export interface components {
             canManageParties: boolean;
             /** @description Backend-derived document upload availability. True only for the Deal initiator when its current lifecycle permits a new upload intent; participant visibility does not imply this authority. */
             canCreateDocumentUploadIntent: boolean;
+            /** @description Backend-derived analysis-request availability. True only for the Deal initiator when the Deal is non-terminal, its current document is AVAILABLE, and no analysis job is QUEUED or PROCESSING for that document. */
+            canRequestAnalysis: boolean;
         };
         /**
          * Format: date-time
@@ -814,6 +982,7 @@ export interface components {
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
             availableActions: components["schemas"]["DealAvailableActions"];
+            analysis: components["schemas"]["DealDocumentAnalysisSummary"];
         };
         /** @description Deal visibility participant projection. partyRoles describes the current buyer/seller assignment only; participation and a party role convey no contractual consent or lifecycle authority. */
         DealParticipant: {
@@ -858,6 +1027,7 @@ export interface components {
             participants: components["schemas"]["DealParticipant"][];
             /** @description Current verified contractual document, or null when no document has been finalized. This is a backend-owned pointer; clients must not infer it from history or document status. */
             currentDocument: components["schemas"]["AvailableDealDocument"] | null;
+            analysis: components["schemas"]["DealDocumentAnalysisSummary"];
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -1044,6 +1214,24 @@ export interface components {
         };
         /** @description The Deal is terminal and cannot accept an upload intent; Problem Details code is DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED. */
         DealDocumentIntentConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the visible Deal participant is not the Deal's immutable initiator (DEAL_ANALYSIS_REQUEST_FORBIDDEN). A syntactically valid but nonexistent or hidden legal entity returns 404 LEGAL_ENTITY_NOT_FOUND instead. */
+        DealAnalysisRequestForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The Deal is terminal (DEAL_STATE_CONFLICT), no current AVAILABLE document can be analyzed (DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE), an analysis job is already QUEUED or PROCESSING for that current document (DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        DealDocumentAnalysisRequestConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1688,6 +1876,71 @@ export interface operations {
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["LegalEntityAccessDenied"];
             404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+        };
+    };
+    getDealDocumentAnalysis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current-document analysis projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDocumentAnalysis"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+        };
+    };
+    requestDealDocumentAnalysis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Analysis request accepted and queued; idempotent replay returns this original projection. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of the current-document analysis projection. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDocumentAnalysis"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealAnalysisRequestForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["DealDocumentAnalysisRequestConflict"];
         };
     };
     finalizeDocumentUpload: {

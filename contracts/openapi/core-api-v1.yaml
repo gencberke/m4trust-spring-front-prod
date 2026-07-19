@@ -19,6 +19,8 @@ tags:
     description: Cross-entity Deal invitation and participation operations.
   - name: Deal Documents
     description: Direct-to-private-storage contractual document upload and participant read operations.
+  - name: Deal Analysis
+    description: Initiator-requested asynchronous analysis of a Deal's current AVAILABLE document and participant read projections.
 paths:
   /auth/register:
     post:
@@ -578,6 +580,79 @@ paths:
           $ref: '#/components/responses/LegalEntityAccessDenied'
         '404':
           $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+  /deals/{dealId}/document-analysis:
+    get:
+      operationId: getDealDocumentAnalysis
+      tags: [Deal Analysis]
+      summary: Get the current document analysis projection for a Deal
+      description: >
+        Returns the analysis projection for the Deal's current AVAILABLE document to
+        every Deal participant. The projection is backend-derived and never exposes
+        storage bytes, provider metadata, raw failure messages, or a business
+        acceptance decision. When no current AVAILABLE document exists, status is
+        NOT_REQUESTED and currentDocumentId is null.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Current-document analysis projection visible to the active Deal participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDocumentAnalysis'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/LegalEntityAccessDenied'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+    post:
+      operationId: requestDealDocumentAnalysis
+      tags: [Deal Analysis]
+      summary: Request asynchronous analysis of a Deal's current AVAILABLE document
+      description: >
+        Performs the explicit initiator-only analysis request action for the Deal's
+        current AVAILABLE document. Idempotency-Key is required: retrying this same
+        action with the same key returns the original accepted projection, while key
+        reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. The
+        operation only accepts the job asynchronously; it never waits for AI work.
+        The backend re-authorizes the initiator and current-document eligibility even
+        when canRequestAnalysis was previously true.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Analysis request accepted and queued; idempotent replay returns this original projection.
+          headers:
+            Location:
+              description: Same-origin path of the current-document analysis projection.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealDocumentAnalysis'
+        '400':
+          $ref: '#/components/responses/MalformedRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/DealAnalysisRequestForbidden'
+        '404':
+          $ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'
+        '409':
+          $ref: '#/components/responses/DealDocumentAnalysisRequestConflict'
   /documents/{documentId}/finalize:
     post:
       operationId: finalizeDocumentUpload
@@ -1141,6 +1216,28 @@ components:
       description: >
         The Deal is terminal and cannot accept an upload intent; Problem Details code
         is DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealAnalysisRequestForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity
+        context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the visible
+        Deal participant is not the Deal's immutable initiator
+        (DEAL_ANALYSIS_REQUEST_FORBIDDEN). A syntactically valid but nonexistent or
+        hidden legal entity returns 404 LEGAL_ENTITY_NOT_FOUND instead.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    DealDocumentAnalysisRequestConflict:
+      description: >
+        The Deal is terminal (DEAL_STATE_CONFLICT), no current AVAILABLE document can
+        be analyzed (DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE), an analysis job
+        is already QUEUED or PROCESSING for that current document
+        (DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS), or Idempotency-Key was reused for
+        a different request (IDEMPOTENCY_KEY_REUSED).
       content:
         application/problem+json:
           schema:
@@ -1925,6 +2022,311 @@ components:
         - COMPLETED
         - CANCELLED
         - ARCHIVED
+    DocumentAnalysisStatus:
+      type: string
+      description: >
+        Current-document analysis state owned by the analysis state machine. REVIEW_REQUIRED
+        is a technical extraction completion requiring human review, not business acceptance.
+      enum: [NOT_REQUESTED, QUEUED, PROCESSING, REVIEW_REQUIRED, FAILED]
+    DocumentAnalysisFailureSummary:
+      type: object
+      additionalProperties: false
+      description: >
+        Safe terminal failure projection. It deliberately excludes provider messages,
+        stack traces, technical metadata, and raw worker error details.
+      required: [code, retryRecommended]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Stable canonical AI technical or invalid-input failure code.
+        retryRecommended:
+          type: boolean
+          description: Advisory retry eligibility from the canonical failure result; a retry always creates a new job.
+    DealDocumentAnalysisSummary:
+      type: object
+      additionalProperties: false
+      description: >
+        Backend-derived analysis summary for the Deal's current document. Collections
+        are not applicable at this summary level; use the analysis read projection for
+        canonical result contents.
+      required: [currentDocumentId, status, requestedAt, processingStartedAt, completedAt, failedAt, failure]
+      properties:
+        currentDocumentId:
+          type: [string, 'null']
+          format: uuid
+          description: Current AVAILABLE document identity, or null when none exists.
+        status:
+          $ref: '#/components/schemas/DocumentAnalysisStatus'
+        requestedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        processingStartedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        completedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        failedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        failure:
+          anyOf:
+            - $ref: '#/components/schemas/DocumentAnalysisFailureSummary'
+            - type: 'null'
+    ExtractionSourceReference:
+      type: object
+      additionalProperties: false
+      required: [page, startOffset, endOffset]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        startOffset:
+          type: integer
+          minimum: 0
+        endOffset:
+          type: integer
+          minimum: 0
+          description: End offset after startOffset; semantic ordering is validated by the backend.
+    ExtractedLegalName:
+      type: object
+      additionalProperties: false
+      required: [value, confidence]
+      properties:
+        value:
+          type: string
+          minLength: 1
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+    ExtractedTaxIdentifier:
+      type: object
+      additionalProperties: false
+      required: [value, masked, confidence]
+      properties:
+        value:
+          type: [string, 'null']
+        masked:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+    ExtractedParty:
+      type: object
+      additionalProperties: false
+      required: [partyReference, role, legalName, taxIdentifier, sourceReferences]
+      properties:
+        partyReference:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [BUYER, SELLER, OTHER, UNKNOWN]
+        legalName:
+          $ref: '#/components/schemas/ExtractedLegalName'
+        taxIdentifier:
+          $ref: '#/components/schemas/ExtractedTaxIdentifier'
+        sourceReferences:
+          type: array
+          description: Canonical source references; never null.
+          items:
+            $ref: '#/components/schemas/ExtractionSourceReference'
+    ExtractedRuleValue:
+      description: Closed canonical structured-value union for an extracted rule.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, value]
+          properties:
+            type: {const: TEXT}
+            value: {type: string}
+        - type: object
+          additionalProperties: false
+          required: [type, amountMinor, currency]
+          properties:
+            type: {const: MONEY}
+            amountMinor: {type: integer}
+            currency: {type: string, pattern: '^[A-Z]{3}$'}
+        - type: object
+          additionalProperties: false
+          required: [type, basisPoints]
+          properties:
+            type: {const: PERCENTAGE}
+            basisPoints: {type: integer, minimum: 0, maximum: 10000}
+        - type: object
+          additionalProperties: false
+          required: [type, valueSeconds]
+          properties:
+            type: {const: DURATION}
+            valueSeconds: {type: integer, minimum: 0}
+        - type: object
+          additionalProperties: false
+          required: [type, value]
+          properties:
+            type: {const: DATE}
+            value: {type: string, format: date}
+        - type: object
+          additionalProperties: false
+          required: [type, value]
+          properties:
+            type: {const: BOOLEAN}
+            value: {type: boolean}
+        - type: object
+          additionalProperties: false
+          required: [type, value, unit]
+          properties:
+            type: {const: QUANTITY}
+            value: {type: number}
+            unit: {type: string, minLength: 1}
+    AdvisoryLegalBasis:
+      type: object
+      additionalProperties: false
+      description: Advisory legal reference only; it cannot authorize a business decision.
+      required: [source, articleNo]
+      properties:
+        source:
+          type: string
+          enum: [tbk-6098, kvkk-6698, odeme-hizmetleri-6493, aml-5549, odeme-hizmetleri-yonetmelik, odeme-hizmetleri-tebligi]
+        articleNo:
+          type: string
+          minLength: 1
+          maxLength: 32
+    ExtractedRule:
+      type: object
+      additionalProperties: false
+      required: [ruleReference, category, title, description, structuredValue, confidence, sourceReferences]
+      properties:
+        ruleReference:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          enum: [PAYMENT, DELIVERY, QUALITY, PENALTY, TERMINATION, DISPUTE, OTHER, UNKNOWN]
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        structuredValue:
+          $ref: '#/components/schemas/ExtractedRuleValue'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        sourceReferences:
+          type: array
+          description: Canonical source references; never null.
+          items:
+            $ref: '#/components/schemas/ExtractionSourceReference'
+        legalBasis:
+          description: Optional advisory legal reference; null when legal retrieval was unavailable.
+          anyOf:
+            - $ref: '#/components/schemas/AdvisoryLegalBasis'
+            - type: 'null'
+    ExtractedDeliveryRequirement:
+      type: object
+      additionalProperties: false
+      required: [requirementReference, evidenceType, required, confidence, sourceReferences]
+      properties:
+        requirementReference:
+          type: string
+          minLength: 1
+        evidenceType:
+          type: string
+          enum: [DELIVERY_NOTE, INVOICE, VIDEO, PHOTO, SIGNED_DOCUMENT, OTHER, UNKNOWN]
+        required:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        sourceReferences:
+          type: array
+          description: Canonical source references; never null.
+          items:
+            $ref: '#/components/schemas/ExtractionSourceReference'
+    DocumentAnalysisResultSummary:
+      type: object
+      additionalProperties: false
+      required: [requiresManualReview, reviewReasons]
+      properties:
+        requiresManualReview:
+          type: boolean
+          description: Advisory extraction output only; it is not a business acceptance decision.
+        reviewReasons:
+          type: array
+          description: Canonical review reasons; never null.
+          items:
+            type: string
+            minLength: 1
+    DocumentAnalysisResult:
+      type: object
+      additionalProperties: false
+      description: Immutable canonical extraction result for a REVIEW_REQUIRED current-document analysis.
+      required: [parties, rules, deliveryRequirements, summary]
+      properties:
+        parties:
+          type: array
+          description: Canonical extracted parties; never null.
+          items:
+            $ref: '#/components/schemas/ExtractedParty'
+        rules:
+          type: array
+          description: Canonical extracted rules; never null.
+          items:
+            $ref: '#/components/schemas/ExtractedRule'
+        deliveryRequirements:
+          type: array
+          description: Canonical extracted delivery requirements; never null.
+          items:
+            $ref: '#/components/schemas/ExtractedDeliveryRequirement'
+        summary:
+          $ref: '#/components/schemas/DocumentAnalysisResultSummary'
+    DealDocumentAnalysis:
+      type: object
+      additionalProperties: false
+      required: [currentDocumentId, status, requestedAt, processingStartedAt, completedAt, failedAt, failure, result]
+      properties:
+        currentDocumentId:
+          type: [string, 'null']
+          format: uuid
+          description: Current AVAILABLE document identity, or null when none exists.
+        status:
+          $ref: '#/components/schemas/DocumentAnalysisStatus'
+        requestedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        processingStartedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        completedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        failedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        failure:
+          anyOf:
+            - $ref: '#/components/schemas/DocumentAnalysisFailureSummary'
+            - type: 'null'
+        result:
+          description: Canonical result when extraction completed; null before completion or after FAILED.
+          anyOf:
+            - $ref: '#/components/schemas/DocumentAnalysisResult'
+            - type: 'null'
     DealAvailableActions:
       type: object
       additionalProperties: false
@@ -1932,7 +2334,7 @@ components:
         Backend-derived action availability for the current user and active legal
         entity. Clients use this projection for presentation but the backend always
         re-authorizes mutations.
-      required: [canUpdate, canCancel, canCreateInvitation, canManageParties, canCreateDocumentUploadIntent]
+      required: [canUpdate, canCancel, canCreateInvitation, canManageParties, canCreateDocumentUploadIntent, canRequestAnalysis]
       properties:
         canUpdate:
           type: boolean
@@ -1955,6 +2357,12 @@ components:
             Backend-derived document upload availability. True only for the Deal
             initiator when its current lifecycle permits a new upload intent;
             participant visibility does not imply this authority.
+        canRequestAnalysis:
+          type: boolean
+          description: >
+            Backend-derived analysis-request availability. True only for the Deal
+            initiator when the Deal is non-terminal, its current document is AVAILABLE,
+            and no analysis job is QUEUED or PROCESSING for that document.
     UtcTimestamp:
       type: string
       format: date-time
@@ -1973,6 +2381,7 @@ components:
         - createdAt
         - updatedAt
         - availableActions
+        - analysis
       properties:
         id:
           type: string
@@ -2000,6 +2409,8 @@ components:
           $ref: '#/components/schemas/UtcTimestamp'
         availableActions:
           $ref: '#/components/schemas/DealAvailableActions'
+        analysis:
+          $ref: '#/components/schemas/DealDocumentAnalysisSummary'
     DealParticipant:
       type: object
       additionalProperties: false
@@ -2067,6 +2478,7 @@ components:
         - seller
         - participants
         - currentDocument
+        - analysis
       properties:
         id:
           type: string
@@ -2129,6 +2541,8 @@ components:
           anyOf:
             - $ref: '#/components/schemas/AvailableDealDocument'
             - type: 'null'
+        analysis:
+          $ref: '#/components/schemas/DealDocumentAnalysisSummary'
     DealPage:
       type: object
       additionalProperties: false

@@ -152,6 +152,16 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404"},
         "security": [{"SessionCookie": []}],
     },
+    ("/deals/{dealId}/document-analysis", "get"): {
+        "operationId": "getDealDocumentAnalysis",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/document-analysis", "post"): {
+        "operationId": "requestDealDocumentAnalysis",
+        "responses": {"202", "400", "401", "403", "404", "409"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
     ("/documents/{documentId}/finalize", "post"): {
         "operationId": "finalizeDocumentUpload",
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
@@ -224,6 +234,8 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}/parties", "patch", "200"): "#/components/schemas/DealDetail",
     ("/deals/{dealId}/documents/upload-intents", "post", "201"): "#/components/schemas/DocumentUploadIntent",
     ("/deals/{dealId}/documents", "get", "200"): "#/components/schemas/DealDocumentHistory",
+    ("/deals/{dealId}/document-analysis", "get", "200"): "#/components/schemas/DealDocumentAnalysis",
+    ("/deals/{dealId}/document-analysis", "post", "202"): "#/components/schemas/DealDocumentAnalysis",
     ("/documents/{documentId}/finalize", "post", "200"): "#/components/schemas/AvailableDealDocument",
     ("/documents/{documentId}/download-link", "post", "200"): "#/components/schemas/DocumentDownloadLink",
     ("/deals/{dealId}/invitations", "post", "201"): "#/components/schemas/DealInvitation",
@@ -299,6 +311,15 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/documents", "get", "401"): "SessionRequired",
     ("/deals/{dealId}/documents", "get", "403"): "LegalEntityAccessDenied",
     ("/deals/{dealId}/documents", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/document-analysis", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/document-analysis", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/document-analysis", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/document-analysis", "get", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/document-analysis", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/document-analysis", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/document-analysis", "post", "403"): "DealAnalysisRequestForbidden",
+    ("/deals/{dealId}/document-analysis", "post", "404"): "DealOrLegalEntityNotFoundOrHidden",
+    ("/deals/{dealId}/document-analysis", "post", "409"): "DealDocumentAnalysisRequestConflict",
     ("/documents/{documentId}/finalize", "post", "400"): "MalformedRequest",
     ("/documents/{documentId}/finalize", "post", "401"): "SessionRequired",
     ("/documents/{documentId}/finalize", "post", "403"): "DealDocumentMutationForbidden",
@@ -357,6 +378,10 @@ REQUIRED_CORE_API_SCHEMAS = {
     "DocumentMediaType", "DocumentStatus", "Sha256", "CreateDocumentUploadIntentRequest",
     "FinalizeDocumentUploadRequest", "DocumentAvailableActions", "PendingDealDocument",
     "AvailableDealDocument", "HistoricalDealDocument", "DealDocumentHistory", "DocumentUploadIntent", "DocumentDownloadLink",
+    "DocumentAnalysisStatus", "DocumentAnalysisFailureSummary", "DealDocumentAnalysisSummary",
+    "ExtractionSourceReference", "ExtractedParty", "ExtractedRuleValue", "AdvisoryLegalBasis",
+    "ExtractedRule", "ExtractedDeliveryRequirement", "DocumentAnalysisResultSummary",
+    "DocumentAnalysisResult", "DealDocumentAnalysis",
 }
 
 
@@ -464,7 +489,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         core_paths = core_openapi.get("paths", {})
         expected_core_paths = {path for path, _ in EXPECTED_CORE_API_OPERATIONS}
         if set(core_paths) != expected_core_paths:
-            failures.append("FAIL Core API OpenAPI paths: accepted Slice 1 through Slice 4 endpoint set changed")
+            failures.append("FAIL Core API OpenAPI paths: accepted public endpoint set changed")
         for (path, method), expected in EXPECTED_CORE_API_OPERATIONS.items():
             operation = core_paths.get(path, {}).get(method)
             if not isinstance(operation, dict):
@@ -573,19 +598,19 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "COMPLETED", "CANCELLED", "ARCHIVED"]:
             failures.append("FAIL Core API DealLifecycleProjection: ADR projection set changed")
         actions = core_components.get("schemas", {}).get("DealAvailableActions", {})
-        if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent"}
-                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent"}
+        if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
+                or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
                 or actions.get("additionalProperties") is not False
                 or any(
                     actions.get("properties", {}).get(name, {}).get("type") != "boolean"
-                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent")
+                    for name in ("canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis")
                 )):
             failures.append("FAIL Core API DealAvailableActions: backend-derived action set changed")
         summary = core_components.get("schemas", {}).get("DealSummary", {})
         detail = core_components.get("schemas", {}).get("DealDetail", {})
         common_deal_fields = {
             "id", "reference", "title", "status", "lifecycle", "version",
-            "createdAt", "updatedAt", "availableActions",
+            "createdAt", "updatedAt", "availableActions", "analysis",
         }
         if (set(summary.get("required", [])) != common_deal_fields
                 or set(summary.get("properties", {})) != common_deal_fields
@@ -616,13 +641,13 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
             failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
-        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument"}
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
         detail_buyer = detail.get("properties", {}).get("buyer", {})
         detail_seller = detail.get("properties", {}).get("seller", {})
         nullable_party = [{"$ref": "#/components/schemas/DealParty"}, {"type": "null"}]
-        if (set(detail.get("required", [])) != common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument"}
+        if (set(detail.get("required", [])) != common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis"}
                 or set(detail.get("properties", {})) != detail_fields
                 or detail.get("additionalProperties") is not False
                 or detail_description.get("type") != ["string", "null"]
@@ -633,6 +658,19 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or detail_participants.get("items", {}).get("$ref")
                 != "#/components/schemas/DealParticipant"):
             failures.append("FAIL Core API DealDetail: party and participant-role projection changed")
+
+        analysis_status = core_components.get("schemas", {}).get("DocumentAnalysisStatus", {})
+        analysis_summary = core_components.get("schemas", {}).get("DealDocumentAnalysisSummary", {})
+        analysis = core_components.get("schemas", {}).get("DealDocumentAnalysis", {})
+        analysis_conflict = core_components.get("responses", {}).get("DealDocumentAnalysisRequestConflict", {})
+        if (analysis_status.get("enum") != ["NOT_REQUESTED", "QUEUED", "PROCESSING", "REVIEW_REQUIRED", "FAILED"]
+                or set(analysis_summary.get("required", [])) != {"currentDocumentId", "status", "requestedAt", "processingStartedAt", "completedAt", "failedAt", "failure"}
+                or analysis.get("properties", {}).get("result", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/DocumentAnalysisResult"}, {"type": "null"}]
+                or "DEAL_STATE_CONFLICT" not in analysis_conflict.get("description", "")
+                or "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE" not in analysis_conflict.get("description", "")
+                or "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS" not in analysis_conflict.get("description", "")):
+            failures.append("FAIL Core API document analysis: state, result, or stable conflict codes changed")
 
         create_document_intent = core_components.get("schemas", {}).get("CreateDocumentUploadIntentRequest", {})
         finalize_document = core_components.get("schemas", {}).get("FinalizeDocumentUploadRequest", {})
@@ -816,6 +854,15 @@ def validate_contract_documents(failures: list[str]) -> None:
             ("/deals/{dealId}/documents", "get"): {
                 "#/components/parameters/DealId",
                 "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/document-analysis", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/document-analysis", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
             },
             ("/documents/{documentId}/finalize", "post"): {
                 "#/components/parameters/DocumentId",
