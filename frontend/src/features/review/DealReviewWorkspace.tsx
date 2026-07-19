@@ -352,6 +352,7 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
       ]);
     },
     onError: async (error) => {
+      setConfirmationOpen(false);
       if (shouldResetReviewIdempotencyKey(error))
         requestKey.current = undefined;
       if (shouldRefetchReview(error))
@@ -446,6 +447,11 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
           </button>
         </p>
       ) : null}
+      {accept.isError ? (
+        <p className="form-alert" role="alert">
+          {getReviewErrorMessage(accept.error)}
+        </p>
+      ) : null}
       {reviewEnabled && review.data ? (
         <div className="review-workspace">
           <div className="review-notice" role="status">
@@ -516,11 +522,6 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
                   Kural ekle
                 </button>
               </div>
-              {accept.isError ? (
-                <p className="form-alert" role="alert">
-                  {getReviewErrorMessage(accept.error)}
-                </p>
-              ) : null}
               <button
                 className="primary-button"
                 type="button"
