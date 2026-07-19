@@ -34,7 +34,7 @@ class RatificationSnapshotAssemblerTest {
     }
 
     @Test void rejectsPointersAndSafeBounds() throws Exception {
-        var wrong=target(); wrong=new RatificationSourcePorts.Target(wrong.dealId(),wrong.tenantId(),wrong.status(),wrong.version(),wrong.reference(),wrong.title(),wrong.initiator(),wrong.buyer(),wrong.seller(),UUID.randomUUID(),wrong.currentRuleSetId(),null);
+        var original=target(); var wrong=new RatificationSourcePorts.Target(original.dealId(),original.tenantId(),original.status(),original.version(),original.reference(),original.title(),original.initiator(),original.buyer(),original.seller(),UUID.randomUUID(),original.currentRuleSetId(),null);
         assertThrows(IllegalArgumentException.class,()->assembler.assemble(wrong,document(),rules(List.of(rule("a",(ObjectNode)json.readTree("{}"),null))),1,"TRY"));
         assertThrows(IllegalArgumentException.class,()->assembler.assemble(target(),document(),new RatificationSourcePorts.RuleSet(RULES,UUID.randomUUID(),1,List.of(rule("a",(ObjectNode)json.readTree("{}"),null))),1,"TRY"));
         assertThrows(IllegalArgumentException.class,()->assembler.assemble(target(),document(),rules(List.of(rule("a",(ObjectNode)json.readTree("{}"),null))),0,"TRY"));
