@@ -87,6 +87,7 @@ class AnalysisRequestIntegrationTest {
     void setUp() {
         jdbcTemplate.execute("""
                 TRUNCATE TABLE integration_outbox_event,
+                    contract_intelligence_rule_set_version,
                     contract_intelligence_extraction_result_version,
                     contract_intelligence_analysis_job,
                     http_idempotency_record, audit_record, deal_participant, document, deal,

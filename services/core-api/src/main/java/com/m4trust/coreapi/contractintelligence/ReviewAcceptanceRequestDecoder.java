@@ -162,7 +162,7 @@ final class ReviewAcceptanceRequestDecoder {
                 requireObjectWith(value, Set.of("type", "basisPoints"));
                 long basisPoints = integer(value.get("basisPoints"), "structuredValue.basisPoints");
                 if (finalBoundary && (basisPoints < 0 || basisPoints > 10_000)) throw validation("structuredValue.basisPoints");
-                yield new ReviewDtos.PercentageValue("PERCENTAGE", (int) basisPoints);
+                yield new ReviewDtos.PercentageValue("PERCENTAGE", basisPoints);
             }
             case "DURATION" -> {
                 requireObjectWith(value, Set.of("type", "valueSeconds"));
@@ -260,6 +260,15 @@ final class ReviewAcceptanceRequestDecoder {
         } else if (value instanceof ReviewDtos.QuantityValue quantity && quantity.unit().isBlank()) {
             throw validation("structuredValue.unit");
         }
+    }
+
+    static void validateFinalRule(ReviewDtos.ExtractedRule rule) {
+        if (!CATEGORIES.contains(rule.category())) throw validation("category");
+        if (rule.title().isBlank() || rule.title().length() > 500) throw validation("title");
+        if (rule.description().isBlank() || rule.description().length() > 4000) {
+            throw validation("description");
+        }
+        validateFinalValue(rule.structuredValue());
     }
 
     private static void writeDecision(CanonicalWriter writer, Decision decision) {

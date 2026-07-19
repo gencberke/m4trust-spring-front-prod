@@ -1,8 +1,10 @@
 package com.m4trust.coreapi.contractintelligence;
 
 import java.net.URI;
+import java.util.List;
 
 import com.m4trust.coreapi.api.CorrelationIdFilter;
+import com.m4trust.coreapi.api.FieldValidationError;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -47,13 +49,29 @@ class AnalysisExceptionHandler {
                 exception.code());
     }
 
+    @ExceptionHandler(AnalysisExceptions.ReviewAcceptanceForbidden.class)
+    ResponseEntity<ProblemDetail> reviewAcceptanceForbidden(HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN, "deal-review-acceptance-forbidden",
+                "Deal review acceptance forbidden",
+                "The active legal entity cannot accept review for this Deal.",
+                "DEAL_REVIEW_ACCEPTANCE_FORBIDDEN");
+    }
+
+    @ExceptionHandler(AnalysisExceptions.RuleSetVersionNotFound.class)
+    ResponseEntity<ProblemDetail> ruleSetVersionNotFound(HttpServletRequest request) {
+        return response(request, HttpStatus.NOT_FOUND, "rule-set-version-not-found",
+                "Rule-set version not found", "The RuleSetVersion was not found.",
+                "RULE_SET_VERSION_NOT_FOUND");
+    }
+
     @ExceptionHandler(AnalysisExceptions.Validation.class)
     ResponseEntity<ProblemDetail> validation(AnalysisExceptions.Validation exception,
             HttpServletRequest request) {
         ProblemDetail problem = response(request, HttpStatus.UNPROCESSABLE_ENTITY,
                 "review-validation-failed", "Review validation failed",
                 "A reviewed rule value is invalid.", "VALIDATION_FAILED").getBody();
-        problem.setProperty("fieldErrors", java.util.Map.of(exception.field(), "INVALID"));
+        problem.setProperty("errors", List.of(new FieldValidationError(exception.field(), "INVALID",
+                "The value is invalid.")));
         return ResponseEntity.unprocessableEntity().contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(problem);
     }

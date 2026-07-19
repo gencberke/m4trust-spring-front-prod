@@ -77,7 +77,7 @@ class DealRepository {
                     updated_at,
                     version
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 deal.id(),
                 deal.tenantId(),

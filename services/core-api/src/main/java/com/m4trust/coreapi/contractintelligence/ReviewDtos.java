@@ -26,7 +26,7 @@ final class ReviewDtos {
 
     record TextValue(String type, String value) implements StructuredValue { }
     record MoneyValue(String type, long amountMinor, String currency) implements StructuredValue { }
-    record PercentageValue(String type, int basisPoints) implements StructuredValue { }
+    record PercentageValue(String type, long basisPoints) implements StructuredValue { }
     record DurationValue(String type, long valueSeconds) implements StructuredValue { }
     record DateValue(String type, String value) implements StructuredValue { }
     record BooleanValue(String type, boolean value) implements StructuredValue { }

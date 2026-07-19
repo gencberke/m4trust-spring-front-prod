@@ -61,6 +61,19 @@ class ReviewAcceptanceRequestDecoderTest {
     }
 
     @Test
+    void preservesLongPercentageUntilFinalValidationRejectsOutOfRangeValue() throws Exception {
+        long advisoryBasisPoints = Long.MAX_VALUE;
+        var value = decoder.decodeExtractedRule(json.readTree(json(
+                "{'ruleReference':'r-1','category':'OTHER','title':'x','description':'y',"
+                        + "'structuredValue':{'type':'PERCENTAGE','basisPoints':" + advisoryBasisPoints + "},"
+                        + "'confidence':0.5,'sourceReferences':[],'legalBasis':null}"))).structuredValue();
+        assertEquals(advisoryBasisPoints, ((ReviewDtos.PercentageValue) value).basisPoints());
+        AnalysisExceptions.Validation validation = assertThrows(AnalysisExceptions.Validation.class,
+                () -> ReviewAcceptanceRequestDecoder.validateFinalValue(value));
+        assertEquals("structuredValue.basisPoints", validation.field());
+    }
+
+    @Test
     void rejectsExtraOrMissingDecisionProperties() throws Exception {
         UUID analysis = UUID.randomUUID();
         assertThrows(AnalysisExceptions.MalformedRequest.class, () -> decoder.decode(json.readTree("{\"analysisId\":\"" + analysis + "\",\"expectedVersion\":0,\"decisions\":[{\"decision\":\"KEPT\",\"ruleReference\":\"r\",\"extra\":true}]}")));

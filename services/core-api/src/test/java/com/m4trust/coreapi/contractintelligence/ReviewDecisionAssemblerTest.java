@@ -32,6 +32,26 @@ class ReviewDecisionAssemblerTest {
         assertEquals(0, assembler.assemble(List.of(), List.of()).rules().size());
     }
 
+    @Test
+    void keptRulesMustSatisfyEveryFinalRuleSetBoundary() {
+        assertKeptInvalid(new ReviewDtos.ExtractedRule("r-1", "INVALID", "title", "description",
+                new ReviewDtos.TextValue("TEXT", "value"), null, List.of(), null), "category");
+        assertKeptInvalid(new ReviewDtos.ExtractedRule("r-1", "OTHER", " ", "description",
+                new ReviewDtos.TextValue("TEXT", "value"), null, List.of(), null), "title");
+        assertKeptInvalid(new ReviewDtos.ExtractedRule("r-1", "OTHER", "title", " ",
+                new ReviewDtos.TextValue("TEXT", "value"), null, List.of(), null), "description");
+        assertKeptInvalid(new ReviewDtos.ExtractedRule("r-1", "OTHER", "x".repeat(501), "description",
+                new ReviewDtos.TextValue("TEXT", "value"), null, List.of(), null), "title");
+        assertKeptInvalid(new ReviewDtos.ExtractedRule("r-1", "OTHER", "title", "x".repeat(4001),
+                new ReviewDtos.TextValue("TEXT", "value"), null, List.of(), null), "description");
+    }
+
+    private void assertKeptInvalid(ReviewDtos.ExtractedRule invalid, String expectedField) {
+        AnalysisExceptions.Validation exception = assertThrows(AnalysisExceptions.Validation.class,
+                () -> assembler.assemble(List.of(invalid), List.of(new ReviewAcceptanceRequestDecoder.Kept("r-1"))));
+        assertEquals(expectedField, exception.field());
+    }
+
     private ReviewAcceptanceRequestDecoder.EditableRule editable(String title) {
         return new ReviewAcceptanceRequestDecoder.EditableRule("OTHER", title, "description",
                 new ReviewDtos.TextValue("TEXT", "value"));

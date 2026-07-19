@@ -106,7 +106,7 @@ class ReviewService implements DealRuleSetProjectionPort {
         var target = dealMutations.lockForReview(context, dealId)
                 .orElseThrow(AnalysisExceptions.DealNotFound::new);
         if (!target.initiator()) {
-            throw new AnalysisExceptions.RequestForbidden();
+            throw new AnalysisExceptions.ReviewAcceptanceForbidden();
         }
         if (!target.reviewEligible()) {
             throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");
@@ -154,7 +154,7 @@ class ReviewService implements DealRuleSetProjectionPort {
 
     private ReviewDtos.Version versionForDeal(UUID dealId, UUID versionId) {
         RuleSetRepository.Row row = ruleSets.find(dealId, versionId)
-                .orElseThrow(AnalysisExceptions.DealNotFound::new);
+                .orElseThrow(AnalysisExceptions.RuleSetVersionNotFound::new);
         try {
             JsonNode rulesNode = json.readTree(row.rules());
             List<ReviewDtos.RuleSetRule> finalRules = new ArrayList<>();
@@ -228,7 +228,7 @@ class ReviewService implements DealRuleSetProjectionPort {
                 ReviewAcceptanceRequestDecoder.Decision decision = byReference.remove(original.ruleReference());
                 if (decision == null) throw malformed();
                 if (decision instanceof ReviewAcceptanceRequestDecoder.Kept) {
-                    ReviewAcceptanceRequestDecoder.validateFinalValue(original.structuredValue());
+                    ReviewAcceptanceRequestDecoder.validateFinalRule(original);
                     rules.add(finalRule(original.ruleReference(), "KEPT", original.category(), original.title(),
                             original.description(), original.structuredValue(), original.legalBasis(), "EXTRACTED"));
                 } else if (decision instanceof ReviewAcceptanceRequestDecoder.Modified modified) {

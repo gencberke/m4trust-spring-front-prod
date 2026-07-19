@@ -14,6 +14,12 @@ final class AnalysisExceptions {
     static final class RequestForbidden extends RuntimeException {
     }
 
+    static final class ReviewAcceptanceForbidden extends RuntimeException {
+    }
+
+    static final class RuleSetVersionNotFound extends RuntimeException {
+    }
+
     static final class Conflict extends RuntimeException {
         private final String code;
 

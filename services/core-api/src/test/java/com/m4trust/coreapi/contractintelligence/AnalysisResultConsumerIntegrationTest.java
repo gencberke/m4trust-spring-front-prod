@@ -49,7 +49,7 @@ class AnalysisResultConsumerIntegrationTest {
     UUID tenant, deal, document, job, user, entity;
 
     @BeforeEach void setup() {
-        jdbc.execute("TRUNCATE TABLE integration_inbox_event, contract_intelligence_extraction_result_version, contract_intelligence_analysis_job, audit_record, deal_participant, document, deal, legal_entity_membership, legal_entity, tenant_user, tenant, identity_user CASCADE");
+        jdbc.execute("TRUNCATE TABLE integration_inbox_event, contract_intelligence_rule_set_version, contract_intelligence_extraction_result_version, contract_intelligence_analysis_job, audit_record, deal_participant, document, deal, legal_entity_membership, legal_entity, tenant_user, tenant, identity_user CASCADE");
         tenant=UUID.randomUUID(); deal=UUID.randomUUID(); document=UUID.randomUUID(); job=UUID.randomUUID();
         user=UUID.randomUUID(); entity=UUID.randomUUID();
         jdbc.update("INSERT INTO identity_user(id,email,password_hash,display_name,enabled) VALUES(?,?,'x','x',true)",user,user+"@t");
