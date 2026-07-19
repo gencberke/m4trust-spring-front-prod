@@ -4,8 +4,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.erdtman.jcs.JsonCanonicalizer;
+import org.springframework.stereotype.Component;
 
 /** RFC 8785 canonical JSON (JCS), followed by UTF-8 SHA-256 lowercase hex. */
+@Component
 final class CanonicalSnapshotHasher {
     String hash(String closedSnapshotJson) {
         try {
