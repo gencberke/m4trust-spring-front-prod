@@ -115,6 +115,10 @@ class ReviewAcceptanceIntegrationTest {
         UUID otherDeal = UUID.randomUUID();
         jdbc.update("insert into deal(id,tenant_id,reference,title,deal_status,initiator_legal_entity_id,created_by) values(?,?, 'DL-0000000002','other','DRAFT',?,?)", otherDeal, tenant, entity, user);
         assertThrows(Exception.class, () -> jdbc.update("update deal set current_rule_set_version_id=? where id=?", id, otherDeal));
+        var predecessorFailure = assertThrows(Exception.class,
+                () -> insertRuleSetWithCrossDealPredecessor(otherDeal, id));
+        assertTrue(rootCauseMessage(predecessorFailure)
+                .contains("contract_intelligence_rule_set_previous_same_deal_fk"));
     }
 
     @Test void rejectsStaleWrongNonCurrentSupersededAndTerminalAcceptancesWithoutWrites() throws Exception {
@@ -170,6 +174,20 @@ class ReviewAcceptanceIntegrationTest {
         jdbc.update("insert into contract_intelligence_analysis_job(id,tenant_id,deal_id,document_id,object_version,input_sha256,status,requested_at,processing_started_at,completed_at,version) values(?,?,?,?,?,'"+SHA+"','REVIEW_REQUIRED',current_timestamp,current_timestamp,current_timestamp,0)", nonCurrentAnalysis, tenant, deal, nonCurrentDocument, "v2");
         jdbc.update("insert into contract_intelligence_extraction_result_version(id,analysis_job_id,schema_version,canonical_result,created_at) values(?,?,'1.0.0',cast(? as jsonb),current_timestamp)", nonCurrentExtraction, nonCurrentAnalysis, rules());
         return nonCurrentAnalysis;
+    }
+    private void insertRuleSetWithCrossDealPredecessor(UUID otherDeal, UUID firstDealVersion) {
+        UUID otherDocument = UUID.randomUUID();
+        UUID otherAnalysis = UUID.randomUUID();
+        UUID otherExtraction = UUID.randomUUID();
+        jdbc.update("insert into document(id,deal_id,file_name,media_type,document_status,object_key,declared_size_bytes,declared_sha256,upload_expires_at,verified_size_bytes,verified_sha256,object_version,created_at,available_at,updated_at) values(?,?, 'cross.pdf','application/pdf','AVAILABLE',?,1,?,current_timestamp + interval '1 hour',1,?,'cross-v',current_timestamp,current_timestamp,current_timestamp)", otherDocument, otherDeal, "d/" + otherDocument, SHA, SHA);
+        jdbc.update("insert into contract_intelligence_analysis_job(id,tenant_id,deal_id,document_id,object_version,input_sha256,status,requested_at,processing_started_at,completed_at,version) values(?,?,?,?,?,'" + SHA + "','REVIEW_REQUIRED',current_timestamp,current_timestamp,current_timestamp,0)", otherAnalysis, tenant, otherDeal, otherDocument, "cross-v");
+        jdbc.update("insert into contract_intelligence_extraction_result_version(id,analysis_job_id,schema_version,canonical_result,created_at) values(?,?,'1.0.0',cast(? as jsonb),current_timestamp)", otherExtraction, otherAnalysis, rules());
+        jdbc.update("insert into contract_intelligence_rule_set_version(id,deal_id,version,source_analysis_id,source_extraction_result_version_id,created_by_user_id,created_at,previous_rule_set_version_id,previous_rule_set_deal_id,rules,excluded_rule_references) values(?,?,1,?,?,?,current_timestamp,?,?,cast('[]' as jsonb),cast('[]' as jsonb))", UUID.randomUUID(), otherDeal, otherAnalysis, otherExtraction, user, firstDealVersion, otherDeal);
+    }
+    private String rootCauseMessage(Exception exception) {
+        Throwable cause = exception;
+        while (cause.getCause() != null) cause = cause.getCause();
+        return cause.getMessage();
     }
     private String rules(){return "{\"parties\":[],\"rules\":[{\"ruleReference\":\"keep\",\"category\":\"OTHER\",\"title\":\"Keep\",\"description\":\"keep\",\"structuredValue\":{\"type\":\"TEXT\",\"value\":\"ok\"},\"confidence\":0.9,\"sourceReferences\":[],\"legalBasis\":{\"source\":\"tbk-6098\",\"articleNo\":\"1\"}},{\"ruleReference\":\"modify\",\"category\":\"PAYMENT\",\"title\":\"Modify\",\"description\":\"modify\",\"structuredValue\":{\"type\":\"MONEY\",\"amountMinor\":100,\"currency\":\"TRY\"},\"confidence\":0.8,\"sourceReferences\":[],\"legalBasis\":{\"source\":\"tbk-6098\",\"articleNo\":\"2\"}},{\"ruleReference\":\"exclude\",\"category\":\"OTHER\",\"title\":\"Exclude\",\"description\":\"exclude\",\"structuredValue\":{\"type\":\"TEXT\",\"value\":\"no\"},\"confidence\":0.7,\"sourceReferences\":[],\"legalBasis\":null}],\"deliveryRequirements\":[],\"summary\":{\"requiresManualReview\":false,\"reviewReasons\":[]}}";}
     @TestConfiguration(proxyBeanMethods=false) static class Fakes { @Bean AtomicBoolean failAudit(){return new AtomicBoolean();} @Bean @Primary AuditAppendPort auditAppendPort(JdbcTemplate j,AtomicBoolean f){return r->{if(f.get())throw new IllegalStateException("forced");j.update("insert into audit_record(id,tenant_id,actor_user_id,legal_entity_id,subject_type,subject_id,action,correlation_id,causation_id,occurred_at) values(?,?,?,?,?,?,?,?,?,?)",r.id(),r.tenantId(),r.actorUserId(),r.legalEntityId(),r.subjectType(),r.subjectId(),r.action(),r.correlationId(),r.causationId(),Timestamp.from(r.occurredAt()));};}}
