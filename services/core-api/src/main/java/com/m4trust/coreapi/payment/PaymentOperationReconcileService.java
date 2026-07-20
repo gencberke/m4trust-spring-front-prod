@@ -82,7 +82,7 @@ class PaymentOperationReconcileService {
             throw new PaymentExceptions.FundingMutationForbidden();
         }
         PaymentOperation operation = PaymentOperation.rehydrate(lookup.operation());
-        if (operation.terminal()) {
+        if (operation.status() != PaymentOperationStatus.UNCONFIRMED) {
             throw new PaymentExceptions.PaymentOperationStateConflict();
         }
         if (operation.version() != expectedVersion) {

@@ -34,6 +34,7 @@ public final class FundingSourcePorts {
             long version,
             UUID buyerLegalEntityId,
             UUID sellerLegalEntityId,
+            UUID ratifiedPackageId,
             Long ratifiedAmountMinor,
             String ratifiedCurrency) { }
 }

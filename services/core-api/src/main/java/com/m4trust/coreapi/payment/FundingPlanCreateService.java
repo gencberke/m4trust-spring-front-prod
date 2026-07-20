@@ -70,7 +70,7 @@ class FundingPlanCreateService {
                 .orElseThrow(PaymentExceptions.DealNotFound::new);
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
         if (claim.isReplay()) {
-            return replay(target, claim.resultReference());
+            return replay(context, target, claim.resultReference());
         }
         if (!FundingProjection.isBuyerAdmin(context, target)) {
             throw new PaymentExceptions.FundingMutationForbidden();
@@ -84,11 +84,13 @@ class FundingPlanCreateService {
         if (funding.findPlanByDeal(dealId).isPresent()) {
             throw new PaymentExceptions.FundingPlanAlreadyExists();
         }
-        if (target.ratifiedAmountMinor() == null || target.ratifiedCurrency() == null) {
+        if (target.ratifiedPackageId() == null
+                || target.ratifiedAmountMinor() == null
+                || target.ratifiedCurrency() == null) {
             throw new IllegalStateException("ACTIVE Deal has no ratified funding terms");
         }
         Instant now = clock.instant();
-        FundingPlan plan = FundingPlan.create(UUID.randomUUID(), dealId, target.tenantId(),
+        FundingPlan plan = FundingPlan.create(UUID.randomUUID(), dealId, target.ratifiedPackageId(), target.tenantId(),
                 target.ratifiedAmountMinor(), target.ratifiedCurrency(), now);
         FundingUnit unit = FundingUnit.create(UUID.randomUUID(), plan.id(), target.ratifiedAmountMinor(),
                 target.ratifiedCurrency(), now);
@@ -103,7 +105,7 @@ class FundingPlanCreateService {
         return FundingProjection.plan(plan.toRecord(), unit.toRecord(), null, buyerAdmin, true);
     }
 
-    private FundingReadDtos.FundingPlanDetailView replay(FundingSourcePorts.Target target,
+    private FundingReadDtos.FundingPlanDetailView replay(OperationContext context, FundingSourcePorts.Target target,
             IdempotencyResultReference reference) {
         if (!IDEMPOTENCY_RESULT.equals(reference.type())) {
             throw new IllegalStateException("Unexpected idempotency result type");
@@ -114,7 +116,7 @@ class FundingPlanCreateService {
         FundingRepository.UnitRecord unit = funding.findUnitByPlan(plan.id())
                 .orElseThrow(() -> new IllegalStateException("Funding plan is missing its funding unit"));
         FundingRepository.OperationRecord currentOperation = funding.findCurrentOperation(unit.id()).orElse(null);
-        boolean buyerAdmin = target.buyerLegalEntityId() != null;
+        boolean buyerAdmin = FundingProjection.isBuyerAdmin(context, target);
         return FundingProjection.plan(plan, unit, currentOperation, buyerAdmin, "ACTIVE".equals(target.status()));
     }
 

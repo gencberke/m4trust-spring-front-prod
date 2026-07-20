@@ -46,6 +46,7 @@ class FundingDealSourceAdapter implements FundingSourcePorts.DealTarget {
     }
 
     private FundingSourcePorts.Target target(OperationContext context, Deal deal) {
+        UUID ratifiedPackageId = null;
         Long ratifiedAmountMinor = null;
         String ratifiedCurrency = null;
         UUID currentPackageId = deal.currentRatificationPackageId();
@@ -54,12 +55,13 @@ class FundingDealSourceAdapter implements FundingSourcePorts.DealTarget {
                     .findCurrentPackage(context, deal.id(), deal.status().name(), currentPackageId)
                     .orElse(null);
             if (current != null && "RATIFIED".equals(current.status())) {
+                ratifiedPackageId = currentPackageId;
                 ratifiedAmountMinor = current.snapshot().commercialTerms().amountMinor();
                 ratifiedCurrency = current.snapshot().commercialTerms().currency();
             }
         }
         return new FundingSourcePorts.Target(deal.id(), deal.toRecord().tenantId(), deal.status().name(),
                 deal.version(), deal.buyerLegalEntityId(), deal.sellerLegalEntityId(),
-                ratifiedAmountMinor, ratifiedCurrency);
+                ratifiedPackageId, ratifiedAmountMinor, ratifiedCurrency);
     }
 }

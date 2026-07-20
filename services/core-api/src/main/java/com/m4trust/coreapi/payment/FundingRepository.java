@@ -38,9 +38,11 @@ class FundingRepository {
         try {
             jdbc.update("""
                     INSERT INTO funding_plan (
-                        id, deal_id, tenant_id, amount_minor, currency, version, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, plan.id(), plan.dealId(), plan.tenantId(), plan.amountMinor(), plan.currency(),
+                        id, deal_id, ratification_package_id, tenant_id, amount_minor, currency,
+                        version, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, plan.id(), plan.dealId(), plan.ratificationPackageId(), plan.tenantId(),
+                    plan.amountMinor(), plan.currency(),
                     plan.version(), Timestamp.from(plan.createdAt()), Timestamp.from(plan.updatedAt()));
         } catch (DataIntegrityViolationException conflict) {
             return false;
@@ -57,7 +59,8 @@ class FundingRepository {
 
     Optional<PlanRecord> findPlanByDeal(UUID dealId) {
         return jdbc.query("""
-                SELECT id, deal_id, tenant_id, amount_minor, currency, created_at, updated_at, version
+                SELECT id, deal_id, ratification_package_id, tenant_id, amount_minor, currency,
+                    created_at, updated_at, version
                 FROM funding_plan WHERE deal_id = ?
                 """, this::mapPlan, dealId).stream().findFirst();
     }
@@ -164,6 +167,7 @@ class FundingRepository {
         return new PlanRecord(
                 resultSet.getObject("id", UUID.class),
                 resultSet.getObject("deal_id", UUID.class),
+                resultSet.getObject("ratification_package_id", UUID.class),
                 resultSet.getObject("tenant_id", UUID.class),
                 resultSet.getLong("amount_minor"),
                 resultSet.getString("currency"),
@@ -209,7 +213,8 @@ class FundingRepository {
                 resultSet.getLong("unit_amount_minor"), resultSet.getString("unit_currency"));
     }
 
-    record PlanRecord(UUID id, UUID dealId, UUID tenantId, long amountMinor, String currency,
+    record PlanRecord(UUID id, UUID dealId, UUID ratificationPackageId, UUID tenantId,
+            long amountMinor, String currency,
             Instant createdAt, Instant updatedAt, long version) { }
 
     record UnitRecord(UUID id, UUID fundingPlanId, int sequenceNo, long amountMinor, String currency,

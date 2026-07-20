@@ -1,6 +1,10 @@
 # Slice 11 — Funding Foundation (Provider-Bağımsız Sandbox)
 
-- Durum: ready
+- Durum: done
+- Tamamlanma tarihi: 20 Temmuz 2026
+- Kapsam sapması: Yok. Kabul hardening'i UNCONFIRMED-only reconcile,
+  ratification-package provenance snapshot'ı ve FUNDED sonrası FULFILLMENT
+  lifecycle projection'ını plan/ADR sınırları içinde netleştirdi.
 - Slice sırası: ADR-004 §24 → "Funding and Payment" (bölünmüş yol haritasında 11)
 - Öncül: 10-ratification (funding yalnız ACTIVE Deal'de anlam taşır; funding
   tutarı Slice 10 package'ının structured commercial terms alanından gelir)
@@ -282,29 +286,29 @@ senaryoları §7 akışıyla doğrulanır.
 
 ## 10. Done tanımı
 
-- [ ] ADR-010 state machine, crash recovery, polling-first ve yetki kararları
+- [x] ADR-010 state machine, crash recovery, polling-first ve yetki kararları
       eksiksiz uygulandı
-- [ ] OpenAPI funding yüzeyi implementasyondan önce tasarlandı
-- [ ] OpenAPI path/schema değişiklikleriyle birlikte contract validator exact
+- [x] OpenAPI funding yüzeyi implementasyondan önce tasarlandı
+- [x] OpenAPI path/schema değişiklikleriyle birlikte contract validator exact
       beklentileri ve contracts README/CHANGELOG güncellendi; AI contract'ları
       değişmedi
-- [ ] Initiate/reconcile `202 + Location + CREATED/current operation` contract'ı
+- [x] Initiate/reconcile `202 + Location + CREATED/current operation` contract'ı
       ve optional Deal projection/action rollout'u validator ile kilitlendi
-- [ ] V1 tek FundingUnit sınırı korunuyor; PARTIALLY_FUNDED yüzeyde yok
-- [ ] Sandbox senaryo seçimi business tutarından bağımsız; production API'ye
+- [x] V1 tek FundingUnit sınırı korunuyor; PARTIALLY_FUNDED yüzeyde yok
+- [x] Sandbox senaryo seçimi business tutarından bağımsız; production API'ye
       senaryo alanı/test-control yüzeyi sızmıyor; yalnız startup config sırası
       kullanılıyor ve production sandbox seçimiyle açılmıyor
-- [ ] FundingPlan/FundingUnit/PaymentOperation migration'ları para
+- [x] FundingPlan/FundingUnit/PaymentOperation migration'ları para
       invariant'larını DB seviyesinde taşıyor
-- [ ] Provider port + sandbox adapter çalışıyor; provider çağrıları TX dışında
-- [ ] İki katmanlı idempotency (HTTP + provider key) testli
-- [ ] Timeout/UNCONFIRMED/reconciliation akışı çalışıyor; timeout hiçbir yerde
+- [x] Provider port + sandbox adapter çalışıyor; provider çağrıları TX dışında
+- [x] İki katmanlı idempotency (HTTP + provider key) testli
+- [x] Timeout/UNCONFIRMED/reconciliation akışı çalışıyor; timeout hiçbir yerde
       otomatik failure değil
-- [ ] Crash pencereleri durable dispatch ve aynı-key query-first recovery ile
+- [x] Crash pencereleri durable dispatch ve aynı-key query-first recovery ile
       testli; UNCONFIRMED'da yeni charge bloklu
-- [ ] FundingStatus + lifecycle projection doğru; frontend hesaplamıyor
-- [ ] `ModuleArchitectureTest` payment ownership'ini kapsıyor
-- [ ] §8 invariant testleri geçiyor; audit aynı transaction'da
-- [ ] §7 üç-context kabul akışı sandbox provider ile tamamlandı; önceki
+- [x] FundingStatus + lifecycle projection doğru; frontend hesaplamıyor
+- [x] `ModuleArchitectureTest` payment ownership'ini kapsıyor
+- [x] §8 invariant testleri geçiyor; audit aynı transaction'da
+- [x] §7 üç-context kabul akışı sandbox provider ile tamamlandı; önceki
       slice akışları regresyonsuz
-- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
+- [x] Contract validator, backend verify ve frontend typecheck/build yeşil

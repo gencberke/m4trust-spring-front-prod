@@ -14,9 +14,10 @@
   returning `202 Accepted` with the `CREATED` `PaymentOperation` projection and a
   `Location` at `/payment-operations/{paymentOperationId}`, `GET
   /payment-operations/{paymentOperationId}` for polling, and `POST
-  /payment-operations/{paymentOperationId}/reconcile` returning `202` with the same
-  operation `Location`. Initiate and reconcile never call the provider in-request;
-  only a durable dispatch/audit/idempotency record is committed before the response.
+  /payment-operations/{paymentOperationId}/reconcile`, which accepts only an
+  `UNCONFIRMED` operation and returns `202` with the same operation `Location`.
+  Initiate and reconcile never call the provider in-request; only a durable
+  dispatch/audit/idempotency record is committed before the response.
 - Added closed `FundingStatus` (`NOT_CONFIGURED`/`PLANNED`/`PENDING`/
   `PARTIALLY_FUNDED`/`FUNDED`, with `PARTIALLY_FUNDED` documented unreachable in V1),
   `FundingUnitStatus` (`PLANNED`/`PENDING`/`FUNDED`/`FAILED`), and

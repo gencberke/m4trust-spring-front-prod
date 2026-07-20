@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Phase
 
@@ -48,6 +48,18 @@ rules, immutable version history, atomic acceptance, document supersession,
 participant read-only visibility and real two-session concurrency acceptance
 passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
 
+Slice 10 Ratification is accepted under `docs/plan/done/`. Immutable canonical
+package snapshots, RFC 8785/JCS content hashing, structured commercial terms,
+entity-scoped ADMIN approvals, rejection/supersession, atomic RATIFIED+ACTIVE
+and the real two-browser race matrix passed.
+
+Slice 11 Funding Foundation is accepted under `docs/plan/done/`. Explicit
+single-plan/single-unit funding, ratification-package provenance, durable
+dispatch, two-layer idempotency, query-first reconciliation, local-sandbox
+SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS flows and FUNDING→FULFILLMENT projection
+passed. Release, payout, refund, settlement and a real provider remain out of
+scope.
+
 ## Accepted foundations
 
 - ADR-001 through ADR-010 are accepted and remain authoritative.
@@ -63,6 +75,10 @@ passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
 - Slice 8 AI Document Extraction is accepted under `docs/plan/done/`.
 - Slice 9 Manual Review and RuleSetVersion is accepted under
   `docs/plan/done/`.
+- Slice 10 Ratification is accepted under `docs/plan/done/`.
+- Slice 11 Funding Foundation is accepted under `docs/plan/done/`.
+- V15–V19 migrations are frozen accepted history; future database changes use
+  new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
 - The system direction remains Vite/React/TypeScript + Spring Boot modular
@@ -80,7 +96,9 @@ passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
   presign/verify outside DB transactions, atomic finalize with same-Deal
   current-document pointer integrity, immutable object versioning, initiator-only
   mutation via a narrow deal port with participant read/download, history and
-  short-lived download links),
+  short-lived download links), immutable ratification packages and approvals,
+  atomic Deal activation, provider-independent funding plans/units/payment
+  operations, durable payment dispatch and query-first reconciliation,
   append-only audit, centralized legal-entity authorization, Problem Details,
   structured logging, health probes, and module-cycle checks.
 - `frontend`: generated OpenAPI types, TanStack Query-backed authentication and
@@ -93,7 +111,8 @@ passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
   a Deal document management view (select → client SHA-256 → intent → direct PUT
   → finalize with progress/retry/expired-intent recovery, current document and
   SUPERSEDED history, download links, and a read-only card for non-initiator
-  participants),
+  participants), ratification package creation/approve/reject/history and
+  actor-aware funding/payment/reconciliation panels,
   session-expiry handling, and logout against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
   with health checks, persistent volumes, optional Mock AI Worker profile, and
@@ -103,8 +122,10 @@ passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
 
 ## Validation state
 
-- Contract validation passes for the committed Slice 9 OpenAPI.
-- Core API `mvn verify` passes against Testcontainers PostgreSQL.
+- Contract validation passes for the Slice 10–11 OpenAPI: 21 schemas, 13 valid
+  fixtures and all expected-invalid checks.
+- Core API `mvn verify` passes 230/230 against Testcontainers PostgreSQL,
+  including module architecture and ratification/payment concurrency tests.
 - Frontend `npm run typecheck` and production `npm run build` pass.
 - Slice 4 invitation/participation regression and Slice 5 real two-browser
   acceptance passed on 2026-07-18.
@@ -119,8 +140,13 @@ passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
 - Slice 9 real-browser acceptance passed on 2026-07-19 with initiator and
   participant sessions, field-level 422 recovery, immutable history,
   supersession, a real concurrent acceptance race and responsive read-only UI.
-- Core API tests pass 129/129, Mock AI Worker tests pass 14/14, the contract
-  validator passes 21 schemas and 13 fixtures, and frontend typecheck/build pass.
+- Slice 10–11 real-browser acceptance passed on 2026-07-20 with buyer ADMIN,
+  second buyer ADMIN, buyer MEMBER and seller ADMIN sessions. MONEY suggestion,
+  immutable hash, approve/reject/supersede/withdraw races, ACTIVE mutation
+  closure, SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS, retry/reconcile and actor
+  visibility flows passed. Evidence:
+  `docs/agent/slice-10-11-acceptance-2026-07-20.md`.
+- Mock AI Worker tests remain 14/14; frontend typecheck/build pass.
 
 ## Not yet stable or accepted
 
@@ -129,11 +155,9 @@ passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
 
 ## Active work
 
-Slice 9 is accepted on `codex/slice-9-11`; Slice 10 Ratification is the active
-approved slice. Slice 7 Railway staging remains separate from this implementation
-lineage. Slice 10–11 plans retain explicit human approval under
-`docs/plan/ready/`; ADR-010 closes their V1 commercial-terms and
-provider-independent funding-foundation decisions.
+Slices 9–11 are accepted on `codex/slice-9-11`; Slice 10–11 plans are archived
+under `docs/plan/done/`. Final commit/merge into `main` remains a Git delivery
+step. Slice 7 Railway staging remains a separate approved implementation line.
 
 ## Known blockers
 
@@ -141,8 +165,8 @@ No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Execute approved Slices 10 and 11 in dependency order. Slice 7 Railway staging
-continues independently.
+Plan the next content slice from the accepted Slice 11 foundation; Slice 7
+Railway staging continues independently.
 
 ## Update rule
 

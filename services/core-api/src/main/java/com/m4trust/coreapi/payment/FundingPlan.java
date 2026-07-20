@@ -10,6 +10,7 @@ final class FundingPlan {
 
     private final UUID id;
     private final UUID dealId;
+    private final UUID ratificationPackageId;
     private final UUID tenantId;
     private final long amountMinor;
     private final String currency;
@@ -17,10 +18,12 @@ final class FundingPlan {
     private final Instant updatedAt;
     private final long version;
 
-    private FundingPlan(UUID id, UUID dealId, UUID tenantId, long amountMinor, String currency,
+    private FundingPlan(UUID id, UUID dealId, UUID ratificationPackageId, UUID tenantId,
+            long amountMinor, String currency,
             Instant createdAt, Instant updatedAt, long version) {
         this.id = Objects.requireNonNull(id);
         this.dealId = Objects.requireNonNull(dealId);
+        this.ratificationPackageId = Objects.requireNonNull(ratificationPackageId);
         this.tenantId = Objects.requireNonNull(tenantId);
         this.amountMinor = amountMinor;
         this.currency = Objects.requireNonNull(currency);
@@ -32,22 +35,24 @@ final class FundingPlan {
         }
     }
 
-    static FundingPlan create(UUID id, UUID dealId, UUID tenantId, long amountMinor, String currency, Instant now) {
-        return new FundingPlan(id, dealId, tenantId, amountMinor, currency, now, now, 0);
+    static FundingPlan create(UUID id, UUID dealId, UUID ratificationPackageId, UUID tenantId,
+            long amountMinor, String currency, Instant now) {
+        return new FundingPlan(id, dealId, ratificationPackageId, tenantId, amountMinor, currency, now, now, 0);
     }
 
     static FundingPlan rehydrate(FundingRepository.PlanRecord record) {
-        return new FundingPlan(record.id(), record.dealId(), record.tenantId(), record.amountMinor(),
-                record.currency(), record.createdAt(), record.updatedAt(), record.version());
+        return new FundingPlan(record.id(), record.dealId(), record.ratificationPackageId(), record.tenantId(),
+                record.amountMinor(), record.currency(), record.createdAt(), record.updatedAt(), record.version());
     }
 
     FundingRepository.PlanRecord toRecord() {
-        return new FundingRepository.PlanRecord(id, dealId, tenantId, amountMinor, currency, createdAt, updatedAt,
-                version);
+        return new FundingRepository.PlanRecord(id, dealId, ratificationPackageId, tenantId, amountMinor, currency,
+                createdAt, updatedAt, version);
     }
 
     UUID id() { return id; }
     UUID dealId() { return dealId; }
+    UUID ratificationPackageId() { return ratificationPackageId; }
     UUID tenantId() { return tenantId; }
     long amountMinor() { return amountMinor; }
     String currency() { return currency; }

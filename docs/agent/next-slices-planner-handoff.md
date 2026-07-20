@@ -36,16 +36,15 @@ Bağlayıcı süreç kuralları:
   mutation'ları her zaman eskalasyon konusudur; yalnız insan-onaylı bir ready
   planın açıkça tanımladığı sınırlar içinde planlanabilir.
 
-## 2. Güncel durum — CURRENT.md'nin kapsamadığı delta
+## 2. Güncel durum
 
-`docs/agent/CURRENT.md` Slice 0-9 kabulünü anlatır. Ondan SONRA olan ve henüz
-oraya işlenmemiş durum:
+`docs/agent/CURRENT.md` 20 Temmuz 2026 itibarıyla Slice 0–11 kabulünü kapsar.
 
-- **Slice 10 (Ratification) ve Slice 11 (Funding Foundation) implementasyonu
-  tamamlandı, fakat KABUL EDİLMEDİ.** İş `codex/slice-9-11` branch'indedir ve
-  main'e merge edilmemiştir. Planları hâlâ `docs/plan/ready/10-ratification.md`
-  ve `docs/plan/ready/11-funding-and-payment.md` konumundadır.
-- Teknik envanter (hepsi branch'te commit'li):
+- **Slice 10 (Ratification) ve Slice 11 (Funding Foundation) kabul edildi.**
+  İş `codex/slice-9-11` branch'indedir ve main'e merge edilmeye hazırdır.
+  Planları `docs/plan/done/10-ratification.md` ve
+  `docs/plan/done/11-funding-and-payment.md` altında arşivlidir.
+- Teknik envanter (branch çalışma ağacındaki kabul edilmiş kaynak durumu):
   - `services/core-api` yeni modüller: `ratification` (immutable package +
     RFC 8785/JCS canonical hash + approve/reject + atomik RATIFIED→ACTIVE +
     supersession) ve `payment` (FundingPlan/FundingUnit/PaymentOperation,
@@ -63,27 +62,24 @@ oraya işlenmemiş durum:
     `DealDetail.ratification` / `DealDetail.funding` optional projection'ları,
     yeni availableActions üyeleri — hepsi additive, validator kilitli.
 - Doğrulama durumu: contract validator (21 şema, 13 fixture), backend
-  `mvn verify` (228 test, 59 sınıf) ve frontend typecheck/build **yeşil**.
+  `mvn verify` (230 test), frontend typecheck/build ve gerçek browser kabulü
+  **yeşil**.
 - Tarafsız mimari review (ADR-001..010 + contract denetimi) yapıldı: yapısal
-  ihlal yok; bulgular §3'teki borç listesine işlendi.
+  ihlal yok. Kabul kanıtı:
+  `docs/agent/slice-10-11-acceptance-2026-07-20.md`.
 
-## 3. ÖNKOŞUL — acceptance debt (yeni içerik slice'ı başlamadan kapanmalı)
+## 3. ÖNKOŞUL — acceptance debt kapandı
 
-Planlayacağın ilk iş paketi, aşağıdaki borcu kapatan bir **kabul/hardening
-görev listesi** olmalıdır; bunlar kapanmadan Slice 10-11 "done" sayılamaz
-(ADR-004 gerçek tarayıcı kabulünü ana kapı yapar):
+Yeni içerik slice'ı planlama önkoşulları tamamlandı:
 
-1. **Slice 10 §7 tarayıcı kabulü** — iki browser + üç kullanıcı (initiator/buyer
-   ADMIN, seller ADMIN, MEMBER), plandaki 14 adım (yarışlar dahil).
-2. **Slice 11 §7 tarayıcı kabulü** — üç context, `local-sandbox` profili,
-   SUCCESS / DECLINE / TIMEOUT_THEN_SUCCESS senaryoları.
-3. **Reconcile sıkılaştırma**: contract "UNCONFIRMED payment operation" derken
-   `PaymentOperationReconcileService` terminal-olmayan her operation'ı (CREATED
-   dahil) kabul ediyor; server UNCONFIRMED-only'ye çekilmeli (küçük iş).
-4. Kabul + merge sonrası: V15-V19 migration'ları **donar** (ADR-007 §21);
-   `docs/agent/CURRENT.md` güncellenir; plan dosyaları `done/`'a taşınır
-   (tamamlanma tarihi + varsa kapsam sapması notuyla).
-5. Plana not düşülecek bilinçli V1 sınırları (şimdi iş değil, kayıt):
+1. Slice 10 §7 iki-browser/üç-kullanıcı ve 14 adımlı yarış matrisi geçti.
+2. Slice 11 §7 üç-context `local-sandbox`
+   SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS matrisi geçti.
+3. Reconcile server ve contract birlikte UNCONFIRMED-only'ye sıkılaştırıldı.
+4. `CURRENT.md` güncellendi, planlar `done/`'a taşındı ve V15–V19 kabul edilmiş
+   migration history olarak donduruldu. Branch merge edildiğinde bu dosyalar
+   kabul durumunu main'e taşır; V15–V19 üzerinde yeni edit yapılmaz.
+5. Sonraki planlara gerektiğinde taşınacak bilinçli V1 sınırları:
    - Frontend para gösterimi tüm currency'lerde 2 ondalık varsayar
      (`frontend/src/app/money.ts`); JPY/KWD tipi kurlar V1 dışı.
    - Sandbox adapter state'i in-memory; restart sonrası aynı key yeni senaryo
@@ -109,8 +105,8 @@ ADR-004 §24 sırası (bölünmüş numaralandırmayla) ve mevcut adaylar:
 Senden istenen üç çıktı:
 
 - **Görev A — Sıralama önerisi:** Yukarıdaki adayların bağımlılık/risk analizi
-  ve gerekçeli önerilen sıra. §3'teki acceptance-debt paketini sıfırıncı madde
-  olarak içer. İnsan onayına sunulacak kısa bir karar dokümanı olarak yaz
+  ve gerekçeli önerilen sıra. §3'teki kapanmış kabul kapısını başlangıç kabulü
+  olarak kaydet. İnsan onayına sunulacak kısa bir karar dokümanı olarak yaz
   (`docs/plan/planning/next-slices-sequencing.md`).
 - **Görev B — İlk slice taslağı:** Önerdiğin ilk içerik slice'ı için
   `docs/plan/README.md` formatında (10 bölümlü) tam taslak plan →

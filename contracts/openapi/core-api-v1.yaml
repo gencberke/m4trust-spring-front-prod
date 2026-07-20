@@ -2008,8 +2008,9 @@ components:
     PaymentOperationReconcileConflict:
       description: >
         The supplied PaymentOperation expectedVersion is stale
-        (PAYMENT_OPERATION_STALE_VERSION), the operation already reached a terminal
-        SUCCEEDED or DECLINED result and cannot be reconciled
+        (PAYMENT_OPERATION_STALE_VERSION), the operation is not UNCONFIRMED
+        (CREATED has not completed its initial dispatch, or SUCCEEDED/DECLINED is terminal)
+        and therefore cannot be reconciled
         (PAYMENT_OPERATION_STATE_CONFLICT), or Idempotency-Key was reused for a
         different canonical request (IDEMPOTENCY_KEY_REUSED).
       content:

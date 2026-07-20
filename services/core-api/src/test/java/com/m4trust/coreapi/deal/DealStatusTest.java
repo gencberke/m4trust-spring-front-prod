@@ -76,4 +76,14 @@ class DealStatusTest {
                 DealLifecycleProjectionCalculator.calculate(
                         DealStatus.DRAFT, "ACCEPTED", true));
     }
+
+    @Test
+    void fundedActiveDealsAdvanceToFulfillment() {
+        assertEquals(DealLifecycleProjection.FULFILLMENT,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED"));
+        assertEquals(DealLifecycleProjection.FUNDING,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "PENDING"));
+    }
 }

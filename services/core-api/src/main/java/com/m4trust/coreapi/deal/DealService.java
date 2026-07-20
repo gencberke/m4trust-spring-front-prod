@@ -304,7 +304,7 @@ class DealService {
                 deal.title(),
                 deal.description(),
                 deal.status(),
-                lifecycle(deal),
+                lifecycle(deal, fundingSummary.fundingStatus()),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
@@ -355,12 +355,14 @@ class DealService {
     }
 
     private DealSummary toSummary(Deal deal, OperationContext context) {
+        FundingProjectionPort.Summary fundingSummary = fundingProjections.summarize(
+                deal.id(), deal.status() == DealStatus.ACTIVE, false);
         return new DealSummary(
                 deal.id(),
                 deal.reference(),
                 deal.title(),
                 deal.status(),
-                lifecycle(deal),
+                lifecycle(deal, fundingSummary.fundingStatus()),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
@@ -414,11 +416,11 @@ class DealService {
                 .orElseThrow(() -> new IllegalStateException("Deal rule-set pointer is unavailable"));
     }
 
-    private DealLifecycleProjection lifecycle(Deal deal) {
+    private DealLifecycleProjection lifecycle(Deal deal, String fundingStatus) {
         UUID documentId = deal.currentDocumentId();
         boolean current = documentId != null && currentDocumentQueries.findAvailable(documentId).isPresent();
         String status = current ? analysisProjections.summary(documentId).status() : "NOT_REQUESTED";
-        return DealLifecycleProjectionCalculator.calculate(deal.status(), status, current);
+        return DealLifecycleProjectionCalculator.calculate(deal.status(), status, current, fundingStatus);
     }
 
     private List<DealParticipant> participants(Deal deal) {

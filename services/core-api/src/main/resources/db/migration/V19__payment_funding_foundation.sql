@@ -7,12 +7,16 @@
 CREATE TABLE funding_plan (
     id UUID PRIMARY KEY,
     deal_id UUID NOT NULL UNIQUE REFERENCES deal(id),
+    ratification_package_id UUID NOT NULL,
     tenant_id UUID NOT NULL,
     amount_minor BIGINT NOT NULL CHECK (amount_minor BETWEEN 1 AND 9007199254740991),
     currency CHAR(3) NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
     version BIGINT NOT NULL DEFAULT 0 CHECK (version BETWEEN 0 AND 9007199254740991),
     created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL
+    updated_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT funding_plan_ratification_package_fk
+        FOREIGN KEY (deal_id, ratification_package_id)
+        REFERENCES ratification_package(deal_id, id)
 );
 
 CREATE TABLE funding_unit (
@@ -68,6 +72,7 @@ BEGIN
     RAISE EXCEPTION 'funding plans are retained';
   END IF;
   IF OLD.deal_id IS DISTINCT FROM NEW.deal_id
+      OR OLD.ratification_package_id IS DISTINCT FROM NEW.ratification_package_id
       OR OLD.amount_minor IS DISTINCT FROM NEW.amount_minor
       OR OLD.currency IS DISTINCT FROM NEW.currency
       OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN

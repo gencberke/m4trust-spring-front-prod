@@ -15,22 +15,30 @@ final class DealLifecycleProjectionCalculator {
      * separate lifecycle field.
      */
     static DealLifecycleProjection calculate(DealStatus dealStatus) {
-        return calculate(dealStatus, "NOT_REQUESTED", false);
+        return calculate(dealStatus, "NOT_REQUESTED", false, "NOT_CONFIGURED");
     }
 
     static DealLifecycleProjection calculate(DealStatus dealStatus,
             String analysisStatus, boolean currentDocumentExists) {
+        return calculate(dealStatus, analysisStatus, currentDocumentExists, "NOT_CONFIGURED");
+    }
+
+    static DealLifecycleProjection calculate(DealStatus dealStatus,
+            String analysisStatus, boolean currentDocumentExists, String fundingStatus) {
         Objects.requireNonNull(dealStatus, "dealStatus must not be null");
         Objects.requireNonNull(analysisStatus, "analysisStatus must not be null");
+        Objects.requireNonNull(fundingStatus, "fundingStatus must not be null");
         return switch (dealStatus) {
             case ARCHIVED -> DealLifecycleProjection.ARCHIVED;
             case CANCELLED -> DealLifecycleProjection.CANCELLED;
             case COMPLETED -> DealLifecycleProjection.COMPLETED;
-            // ACTIVE is reachable only through atomic ratification, which
-            // requires an accepted rule-set and current document; the Deal's
-            // display lifecycle moves on to the next (Slice 11) stage rather
-            // than remaining pinned at RATIFICATION.
-            case ACTIVE -> DealLifecycleProjection.FUNDING;
+            case ACTIVE -> switch (fundingStatus) {
+                case "NOT_CONFIGURED", "PLANNED", "PENDING", "PARTIALLY_FUNDED" ->
+                        DealLifecycleProjection.FUNDING;
+                case "FUNDED" -> DealLifecycleProjection.FULFILLMENT;
+                default -> throw new IllegalArgumentException(
+                        "Unknown funding status: " + fundingStatus);
+            };
             case DRAFT -> !currentDocumentExists ? DealLifecycleProjection.DRAFT
                     : switch (analysisStatus) {
                         case "QUEUED", "PROCESSING", "FAILED", "NOT_REQUESTED",

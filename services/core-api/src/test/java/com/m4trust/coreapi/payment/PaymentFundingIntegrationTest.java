@@ -129,6 +129,11 @@ class PaymentFundingIntegrationTest {
                 .andReturn();
         UUID unitId = UUID.fromString(JsonPath.read(
                 planResult.getResponse().getContentAsString(), "$.fundingUnit.id"));
+        assertEquals(
+                jdbc.queryForObject("SELECT current_ratification_package_id FROM deal WHERE id = ?",
+                        UUID.class, dealId),
+                jdbc.queryForObject("SELECT ratification_package_id FROM funding_plan WHERE deal_id = ?",
+                        UUID.class, dealId));
 
         MvcResult initiateResult = initiate(unitId, 0)
                 .andExpect(status().isAccepted())
@@ -164,6 +169,7 @@ class PaymentFundingIntegrationTest {
                         .with(user(buyerAdmin.userId.toString()))
                         .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"))
                 .andExpect(jsonPath("$.funding.fundingStatus").value("FUNDED"))
                 .andExpect(jsonPath("$.funding.amountMinor").value(5000));
 
@@ -241,6 +247,23 @@ class PaymentFundingIntegrationTest {
                 "SELECT status FROM funding_unit WHERE id = ?", String.class, unitId));
         // Exactly one initiate call ever reached the provider for this key.
         assertEquals(1, provider.initiateCallCount(key));
+    }
+
+    @Test
+    void createdOperationCannotBeReconciledBeforeItsInitialDispatch() throws Exception {
+        UUID dealId = createActiveDeal(2_600, "TRY");
+        UUID unitId = planUnitId(createPlan(dealId, 3).andExpect(status().isCreated()).andReturn());
+        UUID operationId = operationId(initiate(unitId, 0).andExpect(status().isAccepted()).andReturn());
+
+        reconcile(operationId, 0)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PAYMENT_OPERATION_STATE_CONFLICT"));
+
+        assertEquals(1, (int) jdbc.queryForObject(
+                "SELECT count(*) FROM payment_dispatch WHERE payment_operation_id = ?",
+                Integer.class, operationId));
+        assertEquals("CREATED", jdbc.queryForObject(
+                "SELECT status FROM payment_operation WHERE id = ?", String.class, operationId));
     }
 
     @Test
@@ -363,12 +386,16 @@ class PaymentFundingIntegrationTest {
     }
 
     @Test
-    void negativeAmountIsRejectedAtTheDatabaseLevel() {
+    void negativeAmountIsRejectedAtTheDatabaseLevel() throws Exception {
+        UUID dealId = createActiveDeal(100, "TRY");
+        UUID packageId = jdbc.queryForObject(
+                "SELECT current_ratification_package_id FROM deal WHERE id = ?", UUID.class, dealId);
         assertThrowsDataIntegrityViolation(() -> jdbc.update("""
-                INSERT INTO funding_plan (id, deal_id, tenant_id, amount_minor, currency, version,
-                    created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'TRY', 0, now(), now())
-                """, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), -100));
+                INSERT INTO funding_plan (
+                    id, deal_id, ratification_package_id, tenant_id, amount_minor, currency,
+                    version, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'TRY', 0, now(), now())
+                """, UUID.randomUUID(), dealId, packageId, buyerAdmin.tenantId, -100));
     }
 
     @Test
