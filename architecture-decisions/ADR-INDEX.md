@@ -123,6 +123,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | money / percentage | ADR-003 §21, §27; ADR-006 §28–29 | integer |
 | payment / funding | ADR-003 §12, §21; ADR-010 | Onaylı Slice 11 sandbox scope'u bağlayıcı; gerçek provider/sapma ESKALASYON |
 | fulfillment / evidence | ADR-003 §13, §22; ADR-011 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review |
+| video analysis V1 | ADR-002 §9–§10; ADR-003 §22; ADR-012 (Proposed) | Subject/actor/retry/history/review etkisi; insan kabulünden önce implementasyon yok |
 | object storage | ADR-001 §6; ADR-007 §14 | Private, presigned |
 | document upload | ADR-001 §6; ADR-006 §49–50 | Spring upload binary proxy'si değil |
 | RabbitMQ / schema | ADR-002 §5–6, §15, §25 | Contract süreci |
@@ -173,6 +174,10 @@ ilerler; kapsam sapması yine eskalasyondur.
 5. İhtiyaç FORBIDDEN listesine takılıyorsa.
 6. Index ile ADR arasında tutarsızlık varsa.
 
+`ADR-012` şu anda `Proposed` durumundadır. Video Analysis V1'in actor, trigger,
+job/history veya review etkisi için implementasyon yetkisi vermez; önce insan
+kabulü gerekir.
+
 ---
 
 ## Sözlük
@@ -206,6 +211,7 @@ ilerler; kapsam sapması yine eskalasyondur.
 | ADR-009 | Deal initiator, commitment, mutual ratification ve ACTIVE cancellation consent |
 | ADR-010 | Ratification commercial terms ve provider-bağımsız funding/payment foundation |
 | ADR-011 | Fulfillment V1 actor, evidence, state ve completion sınırı |
+| ADR-012 | Proposed Video Analysis V1 subject, actor, job/result ve advisory sınırı |
 
 ## Reading rules
 
