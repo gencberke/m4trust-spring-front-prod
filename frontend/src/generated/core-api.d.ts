@@ -478,6 +478,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/funding-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the participant-readable funding plan, unit, and current operation projection
+         * @description Returns the Deal's single FundingPlan with its single FundingUnit, the unit's current PaymentOperation when one exists, and the Deal-level FundingStatus business projection. Returns 404 until a plan has been created. All Deal participants may read; only buyer entity ADMIN may mutate.
+         */
+        get: operations["getFundingPlan"];
+        put?: never;
+        /**
+         * Explicitly create the Deal's single funding plan from the ratified package
+         * @description Buyer entity ADMIN-only, idempotent action. The request carries only the Deal expectedVersion; amount and currency are never client-supplied and are copied server-side from the current RATIFIED package structured commercial terms. The Deal must be ACTIVE. Exactly one FundingPlan and one FundingUnit exist per Deal; a concurrent or repeated create races under the same database unique invariant and a second attempt returns 409. Idempotency-Key replays the original plan for the same canonical request; reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED.
+         */
+        post: operations["createFundingPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/funding-units/{fundingUnitId}/payment-operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Initiate a payment operation on a funding unit without awaiting the provider
+         * @description Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries the target FundingUnit expectedVersion. The durable intent, dispatch/outbox record, audit entry, and HTTP idempotency result are committed in one short transaction before this response is returned; the provider is never called within the request or its transaction. Returns 202 with the CREATED operation projection. A CREATED or UNCONFIRMED operation is the unit's only in-flight operation: replaying the same Idempotency-Key returns the same operation, a different key returns 409, and a FUNDED unit rejects any new operation with 409.
+         */
+        post: operations["initiatePaymentOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payment-operations/{paymentOperationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one payment operation projection for polling
+         * @description Participant-readable safe operation projection: status, explicit reconciliation-required indication, and an opaque non-PII provider reference. Raw provider payloads, card data, credentials, and other PII are never returned.
+         */
+        get: operations["getPaymentOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payment-operations/{paymentOperationId}/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispatch query-first reconciliation for an UNCONFIRMED payment operation
+         * @description Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries the target PaymentOperation expectedVersion. This command never calls the provider within the request: it commits a durable reconciliation dispatch/audit/ idempotency record in one short transaction and returns 202 with the same operation Location. A relay later queries the same operation using its unchanged provider key and applies a definitive result in a separate transaction. Replaying the same Idempotency-Key returns the same result and Location; a different request with the same key returns 409.
+         */
+        post: operations["reconcilePaymentOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/documents/{documentId}/finalize": {
         parameters: {
             query?: never;
@@ -1401,6 +1485,105 @@ export interface components {
         RatificationPackageActionRequest: {
             expectedPackageVersion: number;
         };
+        /**
+         * @description Closed Deal-level funding business projection (ADR-003 §12 axis). V1 exposes only the single-FundingUnit progression NOT_CONFIGURED -> PLANNED -> PENDING -> FUNDED. PARTIALLY_FUNDED remains part of the closed axis for forward multi-unit compatibility but is unreachable in V1 because exactly one FundingUnit exists per Deal.
+         * @enum {string}
+         */
+        FundingStatus: "NOT_CONFIGURED" | "PLANNED" | "PENDING" | "PARTIALLY_FUNDED" | "FUNDED";
+        /**
+         * @description Closed FundingUnit state set. Allowed transitions are PLANNED -> PENDING, PENDING -> FUNDED, PENDING -> FAILED (only a definitive provider decline), and FAILED -> PENDING when a new PaymentOperation starts.
+         * @enum {string}
+         */
+        FundingUnitStatus: "PLANNED" | "PENDING" | "FUNDED" | "FAILED";
+        /**
+         * @description Closed PaymentOperation state set. Allowed transitions are CREATED -> SUCCEEDED | DECLINED | UNCONFIRMED and UNCONFIRMED -> SUCCEEDED | DECLINED after reconciliation; no other transition exists. UNCONFIRMED means the provider outcome is unknown after a timeout, crash, or ambiguous response; it is never treated as failure and only query-first reconciliation resolves it to a definitive terminal state.
+         * @enum {string}
+         */
+        PaymentOperationStatus: "CREATED" | "SUCCEEDED" | "DECLINED" | "UNCONFIRMED";
+        /** @description Backend-derived action availability for this FundingUnit and actor context. */
+        FundingUnitAvailableActions: {
+            /** @description True only for buyer entity ADMIN while the unit is not FUNDED and has no CREATED or UNCONFIRMED in-flight PaymentOperation. */
+            canInitiatePayment: boolean;
+        };
+        /** @description Backend-derived action availability for this PaymentOperation and actor context. */
+        PaymentOperationAvailableActions: {
+            /** @description True only for buyer entity ADMIN while the operation status is UNCONFIRMED. */
+            canReconcile: boolean;
+        };
+        /** @description Safe non-raw PaymentOperation projection. Raw provider payloads, card data, credentials, and other PII are never included. */
+        PaymentOperation: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fundingUnitId: string;
+            status: components["schemas"]["PaymentOperationStatus"];
+            /** @description Explicit backend-derived indication that is true only while status is UNCONFIRMED; clients must not infer it by parsing status themselves. */
+            reconciliationRequired: boolean;
+            /** @description Opaque non-PII provider correlation reference, or null before the provider has issued one. Never a raw provider payload, card datum, or credential. */
+            providerReference: string | null;
+            /** Format: int64 */
+            version: number;
+            availableActions: components["schemas"]["PaymentOperationAvailableActions"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        FundingUnit: {
+            /** Format: uuid */
+            id: string;
+            /** @description V1 is always 1; exactly one FundingUnit exists per FundingPlan. */
+            sequenceNo: number;
+            /** @description Positive I-JSON-safe minor-unit amount snapshot copied from the ratified package. */
+            amountMinor: number;
+            /** @description Uppercase ISO 4217 currency code snapshot copied from the ratified package. */
+            currency: string;
+            status: components["schemas"]["FundingUnitStatus"];
+            /** Format: int64 */
+            version: number;
+            /** @description Most recent PaymentOperation for this unit, or null when no payment has been initiated yet. */
+            currentOperation: components["schemas"]["PaymentOperation"] | null;
+            availableActions: components["schemas"]["FundingUnitAvailableActions"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        /** @description Deal-scoped funding plan projection. Amount and currency are immutable once created and are never client-supplied; they are copied server-side from the RATIFIED package structured commercial terms. */
+        FundingPlanDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            /** @description Positive I-JSON-safe minor-unit amount snapshot copied from the ratified package. */
+            amountMinor: number;
+            /** @description Uppercase ISO 4217 currency code snapshot copied from the ratified package. */
+            currency: string;
+            fundingStatus: components["schemas"]["FundingStatus"];
+            /** Format: int64 */
+            version: number;
+            fundingUnit: components["schemas"]["FundingUnit"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        /** @description Optional backend-owned Deal funding summary; independent of the full plan/unit/operation projection. */
+        DealFundingSummary: {
+            fundingStatus: components["schemas"]["FundingStatus"];
+            /** @description Current FundingPlan id, or null when fundingStatus is NOT_CONFIGURED. */
+            fundingPlanId: string | null;
+            /** @description Ratified funding amount snapshot, or null when fundingStatus is NOT_CONFIGURED. */
+            amountMinor: number | null;
+            /** @description Ratified funding currency snapshot, or null when fundingStatus is NOT_CONFIGURED. */
+            currency: string | null;
+        };
+        /** @description Carries only the Deal expectedVersion; amount and currency are never client-supplied and are always copied server-side from the current RATIFIED package. */
+        CreateFundingPlanRequest: {
+            expectedVersion: number;
+        };
+        InitiatePaymentOperationRequest: {
+            /** @description Expected FundingUnit version. */
+            expectedVersion: number;
+        };
+        ReconcilePaymentOperationRequest: {
+            /** @description Expected PaymentOperation version. */
+            expectedVersion: number;
+        };
         /** @description Backend-derived action availability for the current user and active legal entity. Clients use this projection for presentation but the backend always re-authorizes mutations. */
         DealAvailableActions: {
             canUpdate: boolean;
@@ -1421,6 +1604,12 @@ export interface components {
             canApproveRatification?: boolean;
             /** @description Optional actor-aware availability; absent or unknown means false/read-only. */
             canRejectRatification?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN while the Deal is ACTIVE and no FundingPlan exists yet. Absent or unknown means false/read-only. */
+            canCreateFundingPlan?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the Deal's single FundingUnit accepts a new payment operation (not FUNDED and no CREATED or UNCONFIRMED in-flight operation). Absent or unknown means false/read-only. */
+            canInitiateFunding?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the Deal's current PaymentOperation is UNCONFIRMED. Absent or unknown means false/read-only. */
+            canReconcilePaymentOperation?: boolean;
         };
         /**
          * Format: date-time
@@ -1489,6 +1678,8 @@ export interface components {
             currentRuleSet?: components["schemas"]["RuleSetVersionSummary"] | null;
             /** @description Optional backend-owned ratification readiness and current-package projection. */
             ratification?: components["schemas"]["RatificationProjection"] | null;
+            /** @description Optional backend-owned funding summary. Null-tolerant: null means funding is not currently projected for this Deal (for example before it is ever ACTIVE); absence is tolerated for additive compatibility with clients predating Slice 11. */
+            funding?: components["schemas"]["DealFundingSummary"] | null;
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -1880,6 +2071,69 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the buyer entity, or the caller is not an ADMIN of the buyer entity (FUNDING_MUTATION_FORBIDDEN). Buyer MEMBER membership, seller participation, and other participant visibility never grant funding-plan create, payment-operation initiate, or reconcile authority. */
+        FundingMutationForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is not ACTIVE (DEAL_STATE_CONFLICT), a FundingPlan already exists for the Deal (FUNDING_PLAN_ALREADY_EXISTS), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        FundingPlanCreateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is hidden because the authorized active legal entity is not a participant (DEAL_NOT_FOUND), or the visible Deal has no FundingPlan yet (FUNDING_PLAN_NOT_FOUND). All cases return 404 and preserve non-disclosure at their respective authorization boundary. */
+        FundingPlanNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), or the FundingUnit does not exist, or its owning Deal is hidden because the authorized active legal entity is not a participant; the latter cases both use FUNDING_UNIT_NOT_FOUND and do not disclose existence. */
+        FundingUnitNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied FundingUnit expectedVersion is stale (FUNDING_UNIT_STALE_VERSION), the Deal is not ACTIVE (DEAL_STATE_CONFLICT), the FundingUnit is already FUNDED (FUNDING_UNIT_ALREADY_FUNDED), a CREATED or UNCONFIRMED operation is already the unit's in-flight operation (PAYMENT_OPERATION_IN_FLIGHT), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        PaymentOperationInitiateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), or the PaymentOperation does not exist, or its owning Deal is hidden because the authorized active legal entity is not a participant; the latter cases both use PAYMENT_OPERATION_NOT_FOUND and do not disclose existence. */
+        PaymentOperationNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied PaymentOperation expectedVersion is stale (PAYMENT_OPERATION_STALE_VERSION), the operation already reached a terminal SUCCEEDED or DECLINED result and cannot be reconciled (PAYMENT_OPERATION_STATE_CONFLICT), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        PaymentOperationReconcileConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
     };
     parameters: {
         /** @description Public UUID of the requested legal entity. */
@@ -1896,6 +2150,10 @@ export interface components {
         RuleSetVersionId: string;
         /** @description Immutable ratification package identifier. */
         RatificationPackageId: string;
+        /** @description Public UUID of the requested FundingUnit. */
+        FundingUnitId: string;
+        /** @description Public UUID of the requested PaymentOperation. */
+        PaymentOperationId: string;
         /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
         IdempotencyKey: string;
         /** @description Optional exact Deal status filter. */
@@ -2801,6 +3059,186 @@ export interface operations {
             403: components["responses"]["RatificationPackageActionForbidden"];
             404: components["responses"]["RatificationPackageNotFoundOrHidden"];
             409: components["responses"]["RatificationPackageActionConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getFundingPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Funding plan projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundingPlanDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["FundingPlanNotFoundOrHidden"];
+        };
+    };
+    createFundingPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFundingPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Created funding plan and its single funding unit; idempotent replay returns the original plan. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the Deal's single funding plan. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundingPlanDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["FundingMutationForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["FundingPlanCreateConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    initiatePaymentOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested FundingUnit. */
+                fundingUnitId: components["parameters"]["FundingUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InitiatePaymentOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Durable CREATED payment operation accepted for dispatch; the provider result is resolved later and observed only through polling reads. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of the created payment operation. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["FundingMutationForbidden"];
+            404: components["responses"]["FundingUnitNotFoundOrHidden"];
+            409: components["responses"]["PaymentOperationInitiateConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getPaymentOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested PaymentOperation. */
+                paymentOperationId: components["parameters"]["PaymentOperationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payment operation projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["PaymentOperationNotFoundOrHidden"];
+        };
+    };
+    reconcilePaymentOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested PaymentOperation. */
+                paymentOperationId: components["parameters"]["PaymentOperationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcilePaymentOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Durable reconciliation dispatch accepted; the provider query result is resolved later and observed only through polling reads of the same operation. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of the target payment operation. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["FundingMutationForbidden"];
+            404: components["responses"]["PaymentOperationNotFoundOrHidden"];
+            409: components["responses"]["PaymentOperationReconcileConflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };

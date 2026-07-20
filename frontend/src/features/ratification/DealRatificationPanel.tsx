@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 
 import type { components } from "../../generated/core-api";
+import { decimalFromMinor, decimalToMinor } from "../../app/money";
 import type { DealDetail } from "../deals/dealApi";
 import { dealDetailQueryKey } from "../deals/dealQueries";
 import { getRuleSetVersion } from "../review/reviewApi";
@@ -42,23 +43,6 @@ const PACKAGE_STATUS_LABELS: Record<string, string> = {
 
 function packageStatusLabel(status: string): string {
   return PACKAGE_STATUS_LABELS[status] ?? status;
-}
-
-/** Converts amountMinor (integer minor units) to a decimal display string; no binary float involved. */
-function decimalFromMinor(amountMinor: number): string {
-  const digits = String(amountMinor).padStart(3, "0");
-  return `${digits.slice(0, -2)}.${digits.slice(-2)}`;
-}
-
-/** Converts decimal text to a positive integer minor-unit amount using BigInt; float never touches the wire. */
-function decimalToMinor(text: string): number | undefined {
-  const normalized = text.trim().replace(",", ".");
-  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return undefined;
-  const [wholeRaw, fractionRaw = ""] = normalized.split(".");
-  if (fractionRaw.length > 2) return undefined;
-  const integer = BigInt(`${wholeRaw}${fractionRaw.padEnd(2, "0")}`);
-  if (integer < 1n || integer > BigInt(Number.MAX_SAFE_INTEGER)) return undefined;
-  return Number(integer);
 }
 
 function formatStructuredValue(value: StructuredValue): string {

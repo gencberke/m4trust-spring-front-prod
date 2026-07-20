@@ -2484,6 +2484,158 @@ a:hover {
   font-size: 0.8rem;
 }
 
+.funding-panel {
+  margin-top: 24px;
+}
+
+.funding-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.funding-status-badge,
+.funding-unit-status-badge,
+.funding-operation-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #edf1f5;
+  color: #34425a;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.funding-status-badge[data-status="PLANNED"],
+.funding-unit-status-badge[data-status="PLANNED"] {
+  background: var(--color-notice);
+  color: #234c83;
+}
+
+.funding-status-badge[data-status="PENDING"],
+.funding-unit-status-badge[data-status="PENDING"],
+.funding-operation-status-badge[data-status="CREATED"],
+.funding-operation-status-badge[data-status="UNCONFIRMED"] {
+  background: #fff5d9;
+  color: #745000;
+}
+
+.funding-status-badge[data-status="FUNDED"],
+.funding-unit-status-badge[data-status="FUNDED"],
+.funding-operation-status-badge[data-status="SUCCEEDED"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+
+.funding-status-badge[data-status="PARTIALLY_FUNDED"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+
+.funding-unit-status-badge[data-status="FAILED"],
+.funding-operation-status-badge[data-status="DECLINED"] {
+  background: #fff0f1;
+  color: #8d2632;
+}
+
+.funding-not-configured {
+  margin-top: 20px;
+}
+
+.funding-not-configured .primary-button {
+  margin-top: 14px;
+}
+
+.funding-plan-card {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--color-rule);
+  border-radius: 7px;
+  background: var(--color-surface);
+}
+
+.funding-summary-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 0;
+}
+
+.funding-summary-list dt {
+  color: var(--color-copy);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.funding-summary-list dd {
+  margin: 4px 0 0;
+  color: var(--color-ink);
+}
+
+.funding-summary-list code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #edf1f5;
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.funding-unit-card {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-rule);
+}
+
+.funding-unit-heading,
+.funding-operation-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-ink);
+  font-weight: 750;
+}
+
+.funding-operation-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.funding-operation-card .funding-summary-list {
+  margin-top: 14px;
+}
+
+.funding-reconciliation-notice {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-notice);
+  color: #234c83;
+  font-size: 0.85rem;
+}
+
+.funding-unit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
 @media (max-width: 900px) {
   .auth-main {
     grid-template-columns: 1fr;
@@ -2635,7 +2787,8 @@ a:hover {
   .party-assignment-list,
   .party-management-fields,
   .ratification-summary-list,
-  .ratification-create-form {
+  .ratification-create-form,
+  .funding-summary-list {
     grid-template-columns: 1fr;
   }
 
