@@ -1,6 +1,7 @@
 package com.m4trust.coreapi.integration.storage;
 
 import com.m4trust.coreapi.document.DocumentObjectStorage;
+import com.m4trust.coreapi.fulfillment.FulfillmentObjectStorage;
 import java.net.URI;
 import java.time.Clock;
 
@@ -37,6 +38,12 @@ class S3ObjectStorageConfiguration {
     DocumentObjectStorage documentObjectStorage(S3Client client, S3Presigner presigner,
             ObjectStorageProperties properties, Clock clock) {
         return new S3DocumentObjectStorage(client, presigner, properties, clock);
+    }
+
+    @Bean
+    FulfillmentObjectStorage fulfillmentObjectStorage(S3Client client, S3Presigner presigner,
+            ObjectStorageProperties properties, Clock clock) {
+        return new S3FulfillmentObjectStorage(client, presigner, properties, clock);
     }
 
     private static StaticCredentialsProvider credentials(ObjectStorageProperties properties) {

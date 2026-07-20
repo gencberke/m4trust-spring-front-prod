@@ -272,6 +272,41 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/fulfillment", "post"): {
+        "operationId": "startFulfillment",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/fulfillment", "get"): {
+        "operationId": "getFulfillment",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/fulfillment/evidence/upload-intents", "post"): {
+        "operationId": "createEvidenceUploadIntent",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post"): {
+        "operationId": "finalizeEvidenceUpload",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link", "post"): {
+        "operationId": "createEvidenceDownloadLink",
+        "responses": {"200", "400", "401", "403", "404", "409"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post"): {
+        "operationId": "acceptEvidence",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post"): {
+        "operationId": "rejectEvidence",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
 }
 EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
@@ -293,6 +328,11 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deals/{dealId}/funding-plan", "post"): "#/components/schemas/CreateFundingPlanRequest",
     ("/funding-units/{fundingUnitId}/payment-operations", "post"): "#/components/schemas/InitiatePaymentOperationRequest",
     ("/payment-operations/{paymentOperationId}/reconcile", "post"): "#/components/schemas/ReconcilePaymentOperationRequest",
+    ("/deals/{dealId}/fulfillment", "post"): "#/components/schemas/StartFulfillmentRequest",
+    ("/deals/{dealId}/fulfillment/evidence/upload-intents", "post"): "#/components/schemas/CreateEvidenceUploadIntentRequest",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post"): "#/components/schemas/FinalizeEvidenceUploadRequest",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post"): "#/components/schemas/AcceptEvidenceRequest",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post"): "#/components/schemas/RejectEvidenceRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
@@ -335,6 +375,13 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/funding-units/{fundingUnitId}/payment-operations", "post", "202"): "#/components/schemas/PaymentOperation",
     ("/payment-operations/{paymentOperationId}", "get", "200"): "#/components/schemas/PaymentOperation",
     ("/payment-operations/{paymentOperationId}/reconcile", "post", "202"): "#/components/schemas/PaymentOperation",
+    ("/deals/{dealId}/fulfillment", "post", "201"): "#/components/schemas/FulfillmentDetail",
+    ("/deals/{dealId}/fulfillment", "get", "200"): "#/components/schemas/FulfillmentDetail",
+    ("/deals/{dealId}/fulfillment/evidence/upload-intents", "post", "201"): "#/components/schemas/EvidenceUploadIntent",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post", "200"): "#/components/schemas/SubmittedEvidenceSubmission",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link", "post", "200"): "#/components/schemas/EvidenceDownloadLink",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post", "200"): "#/components/schemas/AcceptedEvidenceSubmission",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "200"): "#/components/schemas/RejectedEvidenceSubmission",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -525,6 +572,22 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/payment-operations/{paymentOperationId}/reconcile", "post", "404"): "PaymentOperationNotFoundOrHidden",
     ("/payment-operations/{paymentOperationId}/reconcile", "post", "409"): "PaymentOperationReconcileConflict",
     ("/payment-operations/{paymentOperationId}/reconcile", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/fulfillment", "post", "403"): "FulfillmentStartForbidden",
+    ("/deals/{dealId}/fulfillment", "post", "409"): "FulfillmentStartConflict",
+    ("/deals/{dealId}/fulfillment", "get", "404"): "FulfillmentNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/evidence/upload-intents", "post", "403"): "EvidenceUploadForbidden",
+    ("/deals/{dealId}/fulfillment/evidence/upload-intents", "post", "409"): "EvidenceUploadConflict",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post", "403"): "EvidenceUploadForbidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post", "404"): "EvidenceNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post", "409"): "EvidenceFinalizeConflict",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link", "post", "404"): "EvidenceNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link", "post", "409"): "EvidenceDownloadConflict",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post", "403"): "EvidenceReviewForbidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post", "404"): "EvidenceNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post", "409"): "EvidenceReviewConflict",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "403"): "EvidenceReviewForbidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "404"): "EvidenceNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "409"): "EvidenceReviewConflict",
 }
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
@@ -551,6 +614,14 @@ REQUIRED_CORE_API_SCHEMAS = {
     "PaymentOperationAvailableActions", "PaymentOperation", "FundingUnit", "FundingPlanDetail",
     "DealFundingSummary", "CreateFundingPlanRequest", "InitiatePaymentOperationRequest",
     "ReconcilePaymentOperationRequest",
+    "FulfillmentStatus", "EvidenceType", "EvidenceMediaType", "EvidenceSubmissionStatus",
+    "StartFulfillmentRequest", "CreateEvidenceUploadIntentRequest", "FinalizeEvidenceUploadRequest",
+    "AcceptEvidenceRequest", "RejectEvidenceRequest",
+    "EvidenceAvailableActions", "MilestoneAvailableActions", "FulfillmentAvailableActions",
+    "MilestoneRuleReference", "FulfillmentMilestone",
+    "PendingEvidenceSubmission", "SubmittedEvidenceSubmission", "AcceptedEvidenceSubmission",
+    "RejectedEvidenceSubmission", "EvidenceSubmission", "EvidenceUploadIntent", "EvidenceDownloadLink",
+    "DealFulfillmentSummary", "FulfillmentDetail",
 }
 
 
@@ -770,6 +841,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         optional_deal_actions = (
             "canReviewExtraction", "canCreateRatificationPackage", "canApproveRatification", "canRejectRatification",
             "canCreateFundingPlan", "canInitiateFunding", "canReconcilePaymentOperation",
+            "canStartFulfillment", "canUploadEvidence", "canAcceptEvidence", "canRejectEvidence",
         )
         if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
                 or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"} | set(optional_deal_actions)
@@ -814,7 +886,7 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
             failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
-        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet", "ratification", "funding"}
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet", "ratification", "funding", "fulfillment"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
         detail_buyer = detail.get("properties", {}).get("buyer", {})
@@ -1323,6 +1395,42 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/DocumentId",
                 "#/components/parameters/LegalEntityContext",
             },
+            ("/deals/{dealId}/fulfillment", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/fulfillment", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/fulfillment/evidence/upload-intents", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/EvidenceSubmissionId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/EvidenceSubmissionId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/EvidenceSubmissionId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/EvidenceSubmissionId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
             ("/deals/{dealId}/invitations", "post"): {
                 "#/components/parameters/DealId",
                 "#/components/parameters/LegalEntityContext",
@@ -1408,6 +1516,10 @@ def validate_contract_documents(failures: list[str]) -> None:
         if ((payment_operation_id.get("name"), payment_operation_id.get("in"), payment_operation_id.get("required"),
                 payment_operation_id.get("schema", {}).get("format")) != ("paymentOperationId", "path", True, "uuid")):
             failures.append("FAIL Core API PaymentOperationId: required UUID path contract changed")
+        evidence_submission_id = core_parameters.get("EvidenceSubmissionId", {})
+        if ((evidence_submission_id.get("name"), evidence_submission_id.get("in"), evidence_submission_id.get("required"),
+                evidence_submission_id.get("schema", {}).get("format")) != ("evidenceSubmissionId", "path", True, "uuid")):
+            failures.append("FAIL Core API EvidenceSubmissionId: required UUID path contract changed")
         funding_plan_create_location = (core_paths.get("/deals/{dealId}/funding-plan", {}).get("post", {}).get("responses", {})
                 .get("201", {}).get("headers", {}).get("Location", {}))
         if funding_plan_create_location.get("schema", {}).get("format") != "uri-reference":
@@ -1443,6 +1555,75 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or "current REVIEW_REQUIRED analysis" not in review_accept_description
                 or review_accept_location.get("schema", {}).get("format") != "uri-reference"):
             failures.append("FAIL Core API review acceptance: idempotency, target-state, or 201 Location contract changed")
+
+        fulfillment_status = core_components.get("schemas", {}).get("FulfillmentStatus", {})
+        evidence_type = core_components.get("schemas", {}).get("EvidenceType", {})
+        evidence_media_type = core_components.get("schemas", {}).get("EvidenceMediaType", {})
+        evidence_submission_status = core_components.get("schemas", {}).get("EvidenceSubmissionStatus", {})
+        if (fulfillment_status.get("enum") != ["NOT_STARTED", "IN_PROGRESS", "EVIDENCE_REQUIRED", "REVIEW_REQUIRED", "COMPLETED", "CANCELLED"]
+                or evidence_type.get("enum") != ["DELIVERY_NOTE", "INVOICE", "VIDEO", "PHOTO", "SIGNED_DOCUMENT", "OTHER"]
+                or evidence_media_type.get("enum") != [
+                    "application/pdf",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "image/jpeg",
+                    "image/png",
+                    "video/mp4",
+                ]
+                or evidence_submission_status.get("enum") != ["PENDING_UPLOAD", "SUBMITTED", "ACCEPTED", "REJECTED"]):
+            failures.append("FAIL Core API Slice 12 fulfillment: closed status/type/media enums changed")
+        fulfillment_closed_fields = {
+            "StartFulfillmentRequest": {"expectedVersion"},
+            "CreateEvidenceUploadIntentRequest": {"evidenceType", "mediaType", "fileName", "sizeBytes", "sha256"},
+            "FinalizeEvidenceUploadRequest": {"sizeBytes", "sha256"},
+            "AcceptEvidenceRequest": {"expectedVersion", "expectedEvidenceVersion"},
+            "RejectEvidenceRequest": {"expectedVersion", "expectedEvidenceVersion", "reason"},
+            "EvidenceAvailableActions": {"canDownload"},
+            "MilestoneAvailableActions": {"canUpload"},
+            "FulfillmentAvailableActions": {"canStart", "canAccept", "canReject"},
+            "DealFulfillmentSummary": {"status", "fulfillmentId", "currentEvidenceSubmissionId"},
+            "FulfillmentDetail": {"id", "dealId", "status", "sourcePackageId", "milestone", "currentEvidence", "history", "availableActions", "version", "createdAt", "updatedAt"},
+            "FulfillmentMilestone": {"id", "title", "description", "ruleReferences", "availableActions", "version"},
+            "MilestoneRuleReference": {"ruleReference", "category"},
+            "EvidenceUploadIntent": {"evidence", "uploadUrl", "uploadHeaders", "expiresAt"},
+            "EvidenceDownloadLink": {"evidenceSubmissionId", "objectVersion", "downloadUrl", "expiresAt"},
+        }
+        for schema_name, expected_fields in fulfillment_closed_fields.items():
+            schema = core_components.get("schemas", {}).get(schema_name, {})
+            if (schema.get("additionalProperties") is not False
+                    or set(schema.get("properties", {})) != expected_fields
+                    or set(schema.get("required", [])) != expected_fields):
+                failures.append(f"FAIL Core API Slice 12 {schema_name}: closed field set changed")
+        evidence_submission = core_components.get("schemas", {}).get("EvidenceSubmission", {})
+        if (evidence_submission.get("discriminator", {}).get("propertyName") != "status"
+                or set(evidence_submission.get("discriminator", {}).get("mapping", {})) != {
+                    "PENDING_UPLOAD", "SUBMITTED", "ACCEPTED", "REJECTED"}):
+            failures.append("FAIL Core API Slice 12 EvidenceSubmission: discriminator mapping changed")
+        start_fulfillment_location = (core_paths.get("/deals/{dealId}/fulfillment", {}).get("post", {}).get("responses", {})
+                .get("201", {}).get("headers", {}).get("Location", {}))
+        if start_fulfillment_location.get("schema", {}).get("format") != "uri-reference":
+            failures.append("FAIL Core API start fulfillment: 201 Location header is required")
+        evidence_upload_intent_location = (core_paths.get("/deals/{dealId}/fulfillment/evidence/upload-intents", {}).get("post", {}).get("responses", {})
+                .get("201", {}).get("headers", {}).get("Location", {}))
+        if evidence_upload_intent_location.get("schema", {}).get("format") != "uri-reference":
+            failures.append("FAIL Core API create evidence upload intent: 201 Location header is required")
+        fulfillment_start_conflict = core_components.get("responses", {}).get("FulfillmentStartConflict", {})
+        evidence_finalize_conflict = core_components.get("responses", {}).get("EvidenceFinalizeConflict", {})
+        evidence_review_conflict = core_components.get("responses", {}).get("EvidenceReviewConflict", {})
+        if ("DEAL_STALE_VERSION" not in fulfillment_start_conflict.get("description", "")
+                or "DEAL_STATE_CONFLICT" not in fulfillment_start_conflict.get("description", "")
+                or "FULFILLMENT_ALREADY_EXISTS" not in fulfillment_start_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in fulfillment_start_conflict.get("description", "")):
+            failures.append("FAIL Core API Slice 12 start fulfillment: stable conflict codes changed")
+        if ("EVIDENCE_UPLOAD_EXPIRED" not in evidence_finalize_conflict.get("description", "")
+                or "EVIDENCE_VERIFICATION_FAILED" not in evidence_finalize_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in evidence_finalize_conflict.get("description", "")):
+            failures.append("FAIL Core API Slice 12 evidence finalize: stable conflict codes changed")
+        if ("DEAL_STALE_VERSION" not in evidence_review_conflict.get("description", "")
+                or "EVIDENCE_STALE_VERSION" not in evidence_review_conflict.get("description", "")
+                or "EVIDENCE_STATE_CONFLICT" not in evidence_review_conflict.get("description", "")
+                or "FULFILLMENT_COMPLETED" not in evidence_review_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in evidence_review_conflict.get("description", "")):
+            failures.append("FAIL Core API Slice 12 evidence review: stable conflict codes changed")
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})

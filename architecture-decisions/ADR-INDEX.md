@@ -57,6 +57,8 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Ratification commercial terms | `amountMinor` + `currency`, explicit teyit, dedicated immutable snapshot, RFC 8785 hash | ADR-010 §2.1 |
 | Funding V1 | ACTIVE Deal, tek plan/unit, buyer ADMIN, sandbox/polling-first, async `202 + Location` | ADR-010 §2.2–§2.5 |
 | Unknown payment | Failure veya yeni charge değil; aynı operation için reconciliation | ADR-003 §21; ADR-010 §2.3–§2.4 |
+| Fulfillment V1 | `ACTIVE + FUNDED`, tek fulfillment/primary milestone; seller ADMIN/MEMBER submit, buyer ADMIN review | ADR-011 §2.1–§2.3 |
+| Fulfillment completion | Manual buyer ADMIN kararı; Deal ACTIVE kalır, release/settlement/provider side effect yok | ADR-011 §2.5 |
 | Transaction | Mutation + audit + outbox aynı PostgreSQL transaction | ADR-003 §24 |
 | External çağrı | DB transaction açıkken yapılmaz | ADR-003 §24 |
 | Concurrency | Mutable aggregate `version`; sessiz last-write-wins yasak | ADR-003 §25 |
@@ -120,6 +122,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | error / Problem Details | ADR-006 §13–20 | Stable code |
 | money / percentage | ADR-003 §21, §27; ADR-006 §28–29 | integer |
 | payment / funding | ADR-003 §12, §21; ADR-010 | Onaylı Slice 11 sandbox scope'u bağlayıcı; gerçek provider/sapma ESKALASYON |
+| fulfillment / evidence | ADR-003 §13, §22; ADR-011 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review |
 | object storage | ADR-001 §6; ADR-007 §14 | Private, presigned |
 | document upload | ADR-001 §6; ADR-006 §49–50 | Spring upload binary proxy'si değil |
 | RabbitMQ / schema | ADR-002 §5–6, §15, §25 | Contract süreci |
@@ -202,6 +205,7 @@ ilerler; kapsam sapması yine eskalasyondur.
 | ADR-008 | Cross-tenant participant tenant/visibility modeli |
 | ADR-009 | Deal initiator, commitment, mutual ratification ve ACTIVE cancellation consent |
 | ADR-010 | Ratification commercial terms ve provider-bağımsız funding/payment foundation |
+| ADR-011 | Fulfillment V1 actor, evidence, state ve completion sınırı |
 
 ## Reading rules
 

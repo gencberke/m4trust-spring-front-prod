@@ -71,6 +71,12 @@ Ratification package V1 commercial terms alanlarını ve provider-bağımsız te
 unit funding foundation'ın state machine, polling, idempotency, crash recovery,
 authorization ve gerçek-provider sınırlarını tanımlar.
 
+### ADR-011 — Fulfillment and Evidence V1
+
+Fulfillment V1 actor modelini, tek primary milestone/evidence akışını,
+direct-storage bütünlüğünü, manual buyer acceptance'ı ve fulfillment
+completion'ın Deal/payment/settlement üzerindeki fail-closed sınırını tanımlar.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:
