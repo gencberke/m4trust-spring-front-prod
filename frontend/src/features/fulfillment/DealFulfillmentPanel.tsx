@@ -27,6 +27,7 @@ import {
   fulfillmentDetailQueryKey,
   fulfillmentDetailQueryOptions,
 } from "./fulfillmentQueries";
+import { EvidenceVideoAnalysisPanel } from "../videoAnalysis/EvidenceVideoAnalysisPanel";
 import {
   ACCEPTED_EVIDENCE_FILE_INPUT_ACCEPT,
   computeSha256Hex,
@@ -601,6 +602,15 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
             <div className="current-evidence">
               <h4>Mevcut evidence</h4>
               <EvidenceSummary submission={currentEvidence} />
+              {currentEvidence.evidenceType === "VIDEO"
+                && currentEvidence.mediaType === "video/mp4" && (
+                <EvidenceVideoAnalysisPanel
+                  legalEntityId={legalEntityId}
+                  dealId={deal.id}
+                  evidenceSubmissionId={currentEvidence.id}
+                  expectedEvidenceVersion={currentEvidence.version}
+                />
+              )}
               {canAccept && (
                 <div className="review-actions">
                   {reviewError && (

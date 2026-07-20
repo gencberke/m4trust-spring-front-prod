@@ -25,6 +25,8 @@ class VideoAnalysisMigrationIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
     static JdbcTemplate jdbc;
+    private static final java.util.concurrent.atomic.AtomicLong NEXT_DEAL_REFERENCE =
+            new java.util.concurrent.atomic.AtomicLong(1_000_000_000L);
 
     @BeforeAll
     static void migrate() {
@@ -92,6 +94,23 @@ class VideoAnalysisMigrationIntegrationTest {
                 () -> queuedJob(UUID.randomUUID(), fixture.tenant(), fixture.dealId(), fulfillmentId,
                         milestoneId, otherEvidence, sha256, null),
                 "video analysis jobs must belong to the same Deal as their evidence");
+    }
+
+    @Test
+    void rejectsJobTenantMismatchAgainstDealHostingTenant() {
+        Fixture fixture = fixture();
+        UUID fulfillmentId = fulfillment(fixture.dealId(), fixture.tenant(), UUID.randomUUID(), "REVIEW_REQUIRED", 0L);
+        UUID milestoneId = milestone(fulfillmentId, fixture.dealId(), "Primary", "REVIEW_REQUIRED", 0L);
+        String sha256 = "c".repeat(64);
+        UUID evidenceId = videoEvidence(UUID.randomUUID(), fixture.dealId(), milestoneId, fulfillmentId,
+                "SUBMITTED", sha256, 1L);
+        UUID foreignTenant = UUID.randomUUID();
+        jdbc.update("INSERT INTO tenant(id) VALUES (?)", foreignTenant);
+
+        assertThrows(DataAccessException.class,
+                () -> queuedJob(UUID.randomUUID(), foreignTenant, fixture.dealId(), fulfillmentId,
+                        milestoneId, evidenceId, sha256, null),
+                "video analysis job tenant must match Deal hosting tenant");
     }
 
     private static void markFailed(UUID jobId) {
@@ -200,8 +219,8 @@ class VideoAnalysisMigrationIntegrationTest {
                     UUID.randomUUID(), tenant, entity, user);
         }
 
-        deal(deal, tenant, buyer, user, "DL-0000000001");
-        deal(otherDeal, tenant, buyer, user, "DL-0000000002");
+        deal(deal, tenant, buyer, user, nextDealReference());
+        deal(otherDeal, tenant, buyer, user, nextDealReference());
 
         for (UUID dealId : java.util.List.of(deal, otherDeal)) {
             for (UUID entity : java.util.List.of(buyer, seller)) {
@@ -211,6 +230,10 @@ class VideoAnalysisMigrationIntegrationTest {
         }
 
         return new Fixture(tenant, deal, otherDeal);
+    }
+
+    private static String nextDealReference() {
+        return String.format("DL-%010d", NEXT_DEAL_REFERENCE.getAndIncrement() % 10_000_000_000L);
     }
 
     private static void deal(UUID id, UUID tenant, UUID entity, UUID user, String reference) {

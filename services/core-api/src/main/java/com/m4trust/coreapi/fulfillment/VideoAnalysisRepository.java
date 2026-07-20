@@ -32,6 +32,17 @@ class VideoAnalysisRepository {
                 """, this::mapJob, evidenceSubmissionId).stream().findFirst();
     }
 
+    Optional<VideoAnalysisJobRecord> findById(UUID jobId) {
+        return jdbcTemplate.query("""
+                SELECT id, tenant_id, deal_id, fulfillment_id, milestone_id, evidence_submission_id,
+                       object_version, input_sha256, input_size_bytes, input_media_type, input_file_name,
+                       status, predecessor_job_id, requested_at, completed_at, failed_at,
+                       failure_code, retry_recommended, version
+                FROM fulfillment_video_analysis_job
+                WHERE id = ?
+                """, this::mapJob, jobId).stream().findFirst();
+    }
+
     Optional<VideoAnalysisJobRecord> findByIdForUpdate(UUID jobId) {
         return jdbcTemplate.query("""
                 SELECT id, tenant_id, deal_id, fulfillment_id, milestone_id, evidence_submission_id,

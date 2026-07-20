@@ -73,6 +73,15 @@ public class FulfillmentExceptionHandler {
                 "The active legal entity is not authorized to review evidence.");
     }
 
+    @ExceptionHandler(FulfillmentExceptions.RequestForbidden.class)
+    ResponseEntity<ProblemDetail> handleVideoAnalysisRequestForbidden(HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN,
+                "https://problems.m4trust.internal/video-analysis-request-forbidden",
+                "Video analysis request forbidden",
+                "VIDEO_ANALYSIS_REQUEST_FORBIDDEN",
+                "The active legal entity is not authorized to request video analysis.");
+    }
+
     @ExceptionHandler(FulfillmentExceptions.Conflict.class)
     ResponseEntity<ProblemDetail> handleConflict(FulfillmentExceptions.Conflict exception,
             HttpServletRequest request) {
