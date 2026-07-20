@@ -49,7 +49,7 @@ class AnalysisResultConsumerIntegrationTest {
     UUID tenant, deal, document, job, user, entity;
 
     @BeforeEach void setup() {
-        jdbc.execute("TRUNCATE TABLE integration_inbox_event, contract_intelligence_extraction_result_version, contract_intelligence_analysis_job, audit_record, deal_participant, document, deal, legal_entity_membership, legal_entity, tenant_user, tenant, identity_user CASCADE");
+        jdbc.execute("TRUNCATE TABLE integration_inbox_event, payment_dispatch, payment_operation, funding_unit, funding_plan, contract_intelligence_rule_set_version, contract_intelligence_extraction_result_version, contract_intelligence_analysis_job, http_idempotency_record, audit_record, deal_invitation, deal_participant, document, ratification_package_approval, ratification_package, ratification_package_snapshot, deal, legal_entity_membership, legal_entity, tenant_user, tenant, identity_user");
         tenant=UUID.randomUUID(); deal=UUID.randomUUID(); document=UUID.randomUUID(); job=UUID.randomUUID();
         user=UUID.randomUUID(); entity=UUID.randomUUID();
         jdbc.update("INSERT INTO identity_user(id,email,password_hash,display_name,enabled) VALUES(?,?,'x','x',true)",user,user+"@t");
@@ -127,6 +127,32 @@ class AnalysisResultConsumerIntegrationTest {
         assertThrows(AnalysisResultConsumer.IntegrationViolation.class,()->consumer.consume(json(completed(UUID.randomUUID(),third,"b".repeat(64)))));
         assertEquals("QUEUED",jdbc.queryForObject("SELECT status FROM contract_intelligence_analysis_job WHERE id=?",String.class,third));
         assertEquals(3,count("integration_inbox_event"));
+    }
+
+    @Test void lateCompletedEventForAcceptedAnalysisIsInboxedAndIgnoredWithoutCreatingRules() throws Exception {
+        consumer.consume(json(completed(UUID.randomUUID(), job, SHA)));
+        jdbc.update("UPDATE contract_intelligence_analysis_job SET status = 'ACCEPTED' WHERE id = ?", job);
+        String resultBefore = jdbc.queryForObject("""
+                SELECT canonical_result::text FROM contract_intelligence_extraction_result_version
+                WHERE analysis_job_id = ?
+                """, String.class, job);
+
+        consumer.consume(json(completed(UUID.randomUUID(), job, SHA)));
+
+        assertEquals("ACCEPTED", jobStatus());
+        assertEquals(resultBefore, jdbc.queryForObject("""
+                SELECT canonical_result::text FROM contract_intelligence_extraction_result_version
+                WHERE analysis_job_id = ?
+                """, String.class, job));
+        assertEquals(1, count("contract_intelligence_extraction_result_version"));
+        assertEquals(0, count("contract_intelligence_rule_set_version"));
+        assertEquals(0, jdbc.queryForObject("""
+                SELECT count(*) FROM deal WHERE id = ? AND current_rule_set_version_id IS NOT NULL
+                """, Integer.class, deal));
+        assertEquals(2, count("integration_inbox_event"));
+        assertEquals(1, jdbc.queryForObject("""
+                SELECT count(*) FROM audit_record WHERE action = 'AI_ANALYSIS_TERMINAL_EVENT_IGNORED'
+                """, Integer.class));
     }
 
     @Test void failedAndAuditFailureAreAtomic() throws Exception {

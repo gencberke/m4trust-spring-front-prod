@@ -59,12 +59,20 @@ class DealAuditAtomicityIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    payment_dispatch,
+                    payment_operation,
+                    funding_unit,
+                    funding_plan,
+                    contract_intelligence_rule_set_version,
                     contract_intelligence_extraction_result_version,
                     contract_intelligence_analysis_job,
                     http_idempotency_record,
                     deal_invitation,
                     deal_participant,
                     document,
+                    ratification_package_approval,
+                    ratification_package,
+                    ratification_package_snapshot,
                     deal,
                     audit_record,
                     legal_entity_membership,
@@ -99,6 +107,7 @@ class DealAuditAtomicityIntegrationTest {
                 ) VALUES (?, ?, ?, ?, 'ADMIN')
                 """, UUID.randomUUID(), tenantId, legalEntityId, userId);
         context = new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_CREATE);
         failAudit.set(true);
     }
@@ -169,7 +178,8 @@ class DealAuditAtomicityIntegrationTest {
         request.setSellerLegalEntityId(null);
         request.setExpectedVersion(0L);
         OperationContext partyContext = new OperationContext(userId, tenantId,
-                legalEntityId, RequestedOperation.DEAL_PARTIES_UPDATE);
+                legalEntityId, com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
+                RequestedOperation.DEAL_PARTIES_UPDATE);
 
         assertThrows(IllegalStateException.class,
                 () -> service.updateParties(partyContext, dealId, request,

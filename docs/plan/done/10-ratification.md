@@ -1,6 +1,9 @@
 # Slice 10 — Ratification ve Deal Activation
 
-- Durum: ready
+- Durum: done
+- Tamamlanma tarihi: 20 Temmuz 2026
+- Kapsam sapması: Yok. Kabul hardening'i mevcut ADR ve plan kararlarını
+  sıkılaştırdı; yeni public yüzey veya business kapsamı eklenmedi.
 - Slice sırası: ADR-004 §24 → "Ratification" (bölünmüş yol haritasında 10)
 - Öncül: 05-deal-parties-and-activation, 09-manual-review-and-ruleset
 - Ardıl: funding/payment slice'ı (bu planın kapsamı dışında)
@@ -257,23 +260,23 @@ Sabit davranışlar:
 
 ## 10. Done tanımı
 
-- [ ] §9 package içeriği ve commercial terms ADR-010'a göre uygulandı
-- [ ] OpenAPI ratification yüzeyi implementasyondan önce tasarlandı
-- [ ] OpenAPI path/schema değişiklikleriyle birlikte contract validator exact
+- [x] §9 package içeriği ve commercial terms ADR-010'a göre uygulandı
+- [x] OpenAPI ratification yüzeyi implementasyondan önce tasarlandı
+- [x] OpenAPI path/schema değişiklikleriyle birlikte contract validator exact
       beklentileri ve contracts README/CHANGELOG güncellendi; AI contract'ları
       değişmedi
-- [ ] Dedicated immutable `RatificationPackageSnapshot` hash sınırı wrapper'ın
+- [x] Dedicated immutable `RatificationPackageSnapshot` hash sınırı wrapper'ın
       mutable/actor-specific alanlarından ayrıldı; yeni Deal alanları optional
-- [ ] Package snapshot + contentHash + append-only approvals migration'ları
+- [x] Package snapshot + contentHash + append-only approvals migration'ları
       DB kısıtlarıyla kuruldu
-- [ ] Structured commercial terms package'ta yapılandırılmış ve initiator
+- [x] Structured commercial terms package'ta yapılandırılmış ve initiator
       teyitli olarak taşınıyor; Slice 11'in tutar kaynağı hazır
-- [ ] Atomik RATIFIED+ACTIVE geçişi ve yarış serileştirmesi testli çalışıyor
-- [ ] Supersede tetikleri ilgili modüllerden dar port'larla bağlandı
-- [ ] ADMIN-only onay ve entity-başına-tek-onay uygulanıyor
-- [ ] ACTIVE sonrası mutation yüzeyleri kapalı; lifecycle projection doğru
-- [ ] `ModuleArchitectureTest` ratification ownership'ini kapsıyor
-- [ ] §8 invariant testleri geçiyor; audit aynı transaction'da
-- [ ] §7 çok-kullanıcılı gerçek tarayıcı akışı tamamlandı; önceki slice
+- [x] Atomik RATIFIED+ACTIVE geçişi ve yarış serileştirmesi testli çalışıyor
+- [x] Supersede tetikleri ilgili modüllerden dar port'larla bağlandı
+- [x] ADMIN-only onay ve entity-başına-tek-onay uygulanıyor
+- [x] ACTIVE sonrası mutation yüzeyleri kapalı; lifecycle projection doğru
+- [x] `ModuleArchitectureTest` ratification ownership'ini kapsıyor
+- [x] §8 invariant testleri geçiyor; audit aynı transaction'da
+- [x] §7 çok-kullanıcılı gerçek tarayıcı akışı tamamlandı; önceki slice
       akışları regresyonsuz
-- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
+- [x] Contract validator, backend verify ve frontend typecheck/build yeşil

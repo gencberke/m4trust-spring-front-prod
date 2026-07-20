@@ -15,6 +15,7 @@ import {
 } from "react-router";
 
 import { DealContractAnalysis } from "../features/analysis/DealContractAnalysis";
+import { DealReviewWorkspace } from "../features/review/DealReviewWorkspace";
 import {
   cancelDeal,
   updateDeal,
@@ -34,7 +35,9 @@ import {
   dealDetailQueryOptions,
 } from "../features/deals/dealQueries";
 import { DealDocumentManagement } from "../features/documents/DealDocumentManagement";
+import { DealFundingPanel } from "../features/funding/DealFundingPanel";
 import { DealInvitationManagement } from "../features/invitations/DealInvitationManagement";
+import { DealRatificationPanel } from "../features/ratification/DealRatificationPanel";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
 import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
 import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
@@ -676,6 +679,12 @@ export function DealDetailPage() {
           deal={deal}
           legalEntityId={selectedLegalEntityId}
         />
+
+        <DealReviewWorkspace deal={deal} legalEntityId={selectedLegalEntityId} />
+
+        <DealRatificationPanel deal={deal} legalEntityId={selectedLegalEntityId} />
+
+        <DealFundingPanel deal={deal} legalEntityId={selectedLegalEntityId} />
 
         <DealInvitationManagement
           deal={deal}

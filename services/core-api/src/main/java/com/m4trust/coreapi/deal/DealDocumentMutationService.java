@@ -30,8 +30,9 @@ class DealDocumentMutationService implements DealDocumentMutationPort {
                         context.activeLegalEntityId(), dealId)
                 .map(Deal::rehydrate)
                 .map(deal -> new LockedDealDocumentTarget(deal.id(), context.tenantId(),
-                deal.currentDocumentId(), operationPolicy.isInitiator(deal, context),
-                deal.status().allowsDocumentUpload()));
+                        deal.currentDocumentId(), deal.currentRatificationPackageId(),
+                        operationPolicy.isInitiator(deal, context),
+                        deal.status().allowsDocumentUpload()));
     }
 
     @Override

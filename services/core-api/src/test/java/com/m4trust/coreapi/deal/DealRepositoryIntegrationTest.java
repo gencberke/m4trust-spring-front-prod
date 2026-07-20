@@ -12,13 +12,18 @@ import java.util.UUID;
 
 import com.m4trust.coreapi.deal.DealRepository.DealRecord;
 import com.m4trust.coreapi.deal.DealRepository.DealSort;
+import com.m4trust.coreapi.organization.OperationContext;
+import com.m4trust.coreapi.organization.RequestedOperation;
+import com.m4trust.coreapi.ratification.RatificationSourcePorts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -40,6 +45,12 @@ class DealRepositoryIntegrationTest {
     @Autowired
     private DealRepository repository;
 
+    @Autowired
+    private RatificationDealSourceAdapter ratificationDeals;
+
+    @Autowired
+    private TransactionTemplate transactions;
+
     private UUID tenantId;
     private UUID userId;
     private UUID participantEntityId;
@@ -51,6 +62,14 @@ class DealRepositoryIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    payment_dispatch,
+                    payment_operation,
+                    funding_unit,
+                    funding_plan,
+                    ratification_package_approval,
+                    ratification_package,
+                    ratification_package_snapshot,
+                    contract_intelligence_rule_set_version,
                     contract_intelligence_extraction_result_version,
                     contract_intelligence_analysis_job,
                     http_idempotency_record,
@@ -256,6 +275,92 @@ class DealRepositoryIntegrationTest {
         assertEquals(assigned, Deal.rehydrate(assigned).toRecord());
     }
 
+    @Test
+    void ratificationTargetUsesParticipantVisibilityAndImmutablePartyNames() {
+        Instant now = Instant.parse("2026-07-19T10:00:00Z");
+        DealRecord deal = newDeal(UUID.randomUUID(), "Ratification target", now);
+        repository.insert(deal, tenantId);
+        UUID participantTenantId = UUID.randomUUID();
+        UUID participantId = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO tenant (id) VALUES (?)", participantTenantId);
+        jdbcTemplate.update("""
+                INSERT INTO legal_entity (id, tenant_id, legal_name, registration_number)
+                VALUES (?, ?, ?, ?)
+                """, participantId, participantTenantId, "Cross Tenant Seller", "CROSS-1");
+        jdbcTemplate.update("""
+                INSERT INTO deal_participant (
+                    deal_id, tenant_id, legal_entity_id, legal_entity_tenant_id, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """, deal.id(), tenantId, participantId, participantTenantId,
+                java.sql.Timestamp.from(now));
+        assertTrue(repository.updateParties(tenantId, participantEntityId, deal.id(), 0,
+                participantEntityId, participantId, now.plusSeconds(1)));
+
+        OperationContext participantContext = context(participantTenantId, participantId);
+        RatificationSourcePorts.Target target = ratificationDeals.findVisible(participantContext, deal.id())
+                .orElseThrow();
+
+        assertEquals(tenantId, target.tenantId());
+        assertEquals(deal.id(), target.dealId());
+        assertFalse(target.initiator());
+        assertEquals(new RatificationSourcePorts.Party(participantEntityId, "Participant Entity"), target.buyer());
+        assertEquals(new RatificationSourcePorts.Party(participantId, "Cross Tenant Seller"), target.seller());
+        assertTrue(ratificationDeals.findVisible(context(tenantId, otherEntityId), deal.id()).isEmpty());
+    }
+
+    @Test
+    void ratificationLockRequiresTransactionAndCurrentPackagePointerBumpsDealOnce() {
+        Instant createdAt = Instant.parse("2026-07-19T10:00:00Z");
+        DealRecord deal = newDeal(UUID.randomUUID(), "Pointer target", createdAt);
+        repository.insert(deal, tenantId);
+        UUID packageId = insertPackage(deal.id(), participantEntityId, otherEntityId, createdAt);
+        OperationContext context = context(tenantId, participantEntityId);
+
+        assertThrows(IllegalTransactionStateException.class,
+                () -> ratificationDeals.lockVisibleForCreate(context, deal.id()));
+        Instant changedAt = createdAt.plusSeconds(60);
+        transactions.executeWithoutResult(status -> {
+            assertTrue(ratificationDeals.lockVisibleForCreate(context, deal.id()).isPresent());
+            ratificationDeals.pointCurrentPackage(deal.id(), packageId, changedAt);
+        });
+
+        DealRecord pointed = repository.findVisibleById(tenantId, participantEntityId, deal.id()).orElseThrow();
+        assertEquals(packageId, pointed.currentRatificationPackageId());
+        assertEquals(2, pointed.version());
+        assertEquals(changedAt, pointed.updatedAt());
+    }
+
+    @Test
+    void ratificationAdapterActivatesCurrentDraftPackageWithOneValidSqlVersionBump() {
+        Instant createdAt = Instant.parse("2026-07-19T10:00:00Z");
+        DealRecord deal = newDeal(UUID.randomUUID(), "Activation target", createdAt);
+        repository.insert(deal, tenantId);
+        UUID packageId = insertPackage(deal.id(), participantEntityId, otherEntityId, createdAt);
+        OperationContext context = context(tenantId, participantEntityId);
+        Instant pointedAt = createdAt.plusSeconds(30);
+        transactions.executeWithoutResult(status ->
+                ratificationDeals.pointCurrentPackage(deal.id(), packageId, pointedAt));
+        DealRecord pointed = repository.findVisibleById(
+                tenantId, participantEntityId, deal.id()).orElseThrow();
+        assertEquals(2, pointed.version());
+
+        Instant activatedAt = createdAt.plusSeconds(60);
+        transactions.executeWithoutResult(status -> {
+            assertTrue(ratificationDeals.lockVisibleForCreate(context, deal.id()).isPresent());
+            ratificationDeals.activateCurrentPackage(deal.id(), packageId, activatedAt);
+        });
+
+        DealRecord activated = repository.findVisibleById(
+                tenantId, participantEntityId, deal.id()).orElseThrow();
+        assertEquals(DealStatus.ACTIVE, activated.status());
+        assertEquals(packageId, activated.currentRatificationPackageId());
+        assertEquals(3, activated.version());
+        assertEquals(activatedAt, activated.updatedAt());
+        assertThrows(DealStateConflictException.class,
+                () -> transactions.executeWithoutResult(status ->
+                        ratificationDeals.activateCurrentPackage(deal.id(), packageId, activatedAt.plusSeconds(1))));
+    }
+
     private DealRecord newDeal(UUID dealId, String title, Instant createdAt) {
         return new DealRecord(
                 dealId,
@@ -272,6 +377,37 @@ class DealRepositoryIntegrationTest {
                 createdAt,
                 createdAt,
                 0);
+    }
+
+    private UUID insertPackage(UUID dealId, UUID buyerId, UUID sellerId, Instant createdAt) {
+        jdbcTemplate.update("""
+                INSERT INTO deal_participant (
+                    deal_id, tenant_id, legal_entity_id, legal_entity_tenant_id, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """, dealId, tenantId, sellerId, tenantId, java.sql.Timestamp.from(createdAt));
+        assertTrue(repository.updateParties(tenantId, buyerId, dealId, 0, buyerId, sellerId, createdAt));
+        UUID snapshotId = UUID.randomUUID();
+        UUID packageId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO ratification_package_snapshot (
+                    id, schema_version, canonical_snapshot, content_hash, created_at
+                ) VALUES (?, 1, '{}'::jsonb, ?, ?)
+                """, snapshotId, "a".repeat(64), java.sql.Timestamp.from(createdAt));
+        jdbcTemplate.update("""
+                INSERT INTO ratification_package (
+                    id, deal_id, snapshot_id, version, status,
+                    buyer_legal_entity_id, seller_legal_entity_id,
+                    amount_minor, currency, created_at
+                ) VALUES (?, ?, ?, 0, 'PENDING', ?, ?, 1, 'TRY', ?)
+                """, packageId, dealId, snapshotId, buyerId, sellerId,
+                java.sql.Timestamp.from(createdAt));
+        return packageId;
+    }
+
+    private OperationContext context(UUID contextTenantId, UUID legalEntityId) {
+        return new OperationContext(userId, contextTenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
+                RequestedOperation.DEAL_DETAIL_READ);
     }
 
     private void insertLegalEntity(

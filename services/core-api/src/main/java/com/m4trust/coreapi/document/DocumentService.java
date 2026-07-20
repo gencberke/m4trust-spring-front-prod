@@ -22,6 +22,7 @@ import com.m4trust.coreapi.idempotency.IdempotencyResultReference;
 import com.m4trust.coreapi.idempotency.IdempotencyService;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
+import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -44,6 +45,7 @@ class DocumentService {
     private final TransactionTemplate transactions;
     private final Clock clock;
     private final DocumentAnalysisSupersedePort analysisSupersedes;
+    private final RatificationSupersessionPort ratificationSupersessions;
     private final long maxUploadSizeBytes;
 
     DocumentService(DocumentRepository repository,
@@ -52,6 +54,7 @@ class DocumentService {
             DocumentObjectStorage storage, IdempotencyService idempotency,
             AuditAppendPort auditAppender, TransactionTemplate transactions,
             Clock clock, DocumentAnalysisSupersedePort analysisSupersedes,
+            RatificationSupersessionPort ratificationSupersessions,
             @Value("${app.object-storage.max-upload-size-bytes}") long maxUploadSizeBytes) {
         this.repository = repository;
         this.dealMutations = dealMutations;
@@ -62,6 +65,7 @@ class DocumentService {
         this.transactions = transactions;
         this.clock = clock;
         this.analysisSupersedes = analysisSupersedes;
+        this.ratificationSupersessions = ratificationSupersessions;
         this.maxUploadSizeBytes = maxUploadSizeBytes;
     }
 
@@ -114,14 +118,17 @@ class DocumentService {
             UUID documentId, FinalizeDocumentUploadRequest request,
             IdempotencyRequest idempotencyRequest, UUID correlationId,
             DocumentObjectStorage.VerifiedObject verified) {
-        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
-        if (claim.isReplay()) {
-            return replayAvailable(claim.resultReference());
-        }
         DocumentRepository.DocumentRecord current = repository.findById(documentId)
                 .orElseThrow(DocumentExceptions.NotFound::new);
         LockedDealDocumentTarget target = requireFinalizeMutationTarget(
                 lockedTarget(context, current.dealId()));
+        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return replayAvailable(claim.resultReference());
+        }
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        ratificationSupersessions.supersedePending(
+                context, target.dealId(), target.currentPackageId(), correlationId, now);
         Document document = repository.findByIdForUpdate(documentId)
                 .map(Document::rehydrate)
                 .orElseThrow(DocumentExceptions.NotFound::new);
@@ -131,7 +138,6 @@ class DocumentService {
         if (document.status() != DocumentStatus.PENDING_UPLOAD) {
             throw new DocumentExceptions.UploadStateConflict();
         }
-        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         if (!now.isBefore(document.uploadExpiresAt())) {
             throw new DocumentExceptions.UploadExpired();
         }
@@ -165,7 +171,7 @@ class DocumentService {
             if (!repository.update(previous.toRecord(), previousVersion)) {
                 throw new DocumentExceptions.UploadStateConflict();
             }
-            analysisSupersedes.supersedeForDocument(previousCurrentDocumentId, target.tenantId(),
+            analysisSupersedes.supersedeForDocument(target.dealId(), previousCurrentDocumentId, target.tenantId(),
                     context.authenticatedUserId(), context.activeLegalEntityId(), correlationId, now);
         }
         auditAppender.append(new AuditRecord(UUID.randomUUID(), target.tenantId(),

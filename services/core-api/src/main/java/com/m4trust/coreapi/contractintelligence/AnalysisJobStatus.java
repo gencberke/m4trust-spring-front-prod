@@ -5,6 +5,7 @@ public enum AnalysisJobStatus {
     QUEUED,
     PROCESSING,
     REVIEW_REQUIRED,
+    ACCEPTED,
     FAILED,
     SUPERSEDED
 }

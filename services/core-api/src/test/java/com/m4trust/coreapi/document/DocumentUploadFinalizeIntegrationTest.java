@@ -4,11 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -32,6 +37,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -40,6 +47,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("local")
 @Testcontainers
+@AutoConfigureMockMvc
 @Import({DocumentUploadFinalizeIntegrationTest.FakeStorageConfiguration.class,
         DocumentUploadFinalizeIntegrationTest.FailingAuditConfiguration.class})
 class DocumentUploadFinalizeIntegrationTest {
@@ -63,6 +71,9 @@ class DocumentUploadFinalizeIntegrationTest {
     @Autowired
     private AtomicBoolean failAudit;
 
+    @Autowired
+    private MockMvc mockMvc;
+
     private UUID userId;
     private UUID tenantId;
     private UUID legalEntityId;
@@ -71,9 +82,12 @@ class DocumentUploadFinalizeIntegrationTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute("""
-                TRUNCATE TABLE contract_intelligence_extraction_result_version,
+                TRUNCATE TABLE payment_dispatch, payment_operation, funding_unit, funding_plan,
+                    contract_intelligence_rule_set_version,
+                    contract_intelligence_extraction_result_version,
                     contract_intelligence_analysis_job, http_idempotency_record, deal_invitation,
-                    deal_participant, document, deal, audit_record,
+                    deal_participant, document, ratification_package_approval,
+                    ratification_package, ratification_package_snapshot, deal, audit_record,
                     legal_entity_membership, legal_entity, tenant_user, tenant,
                     identity_user
                 """);
@@ -258,6 +272,119 @@ class DocumentUploadFinalizeIntegrationTest {
     }
 
     @Test
+    void replacementWithNoRuleSetPointerStillAdvancesTheDealExactlyOnce() {
+        UUID first = createIntent();
+        finalizeDocument(first, UUID.randomUUID());
+        long versionBeforeReplacement = dealVersion();
+        UUID replacement = createIntent();
+
+        finalizeDocument(replacement, UUID.randomUUID());
+
+        assertEquals(versionBeforeReplacement + 1, dealVersion());
+        assertEquals(replacement, currentDocument());
+        assertEquals("SUPERSEDED", documentStatus(first));
+    }
+
+    @Test
+    void finalizingAfterAcceptedReviewSupersedesTheWholeChainWithOneDealVersionAdvance()
+            throws Exception {
+        UUID oldDocument = createIntent();
+        finalizeDocument(oldDocument, UUID.randomUUID());
+        UUID analysisId = seedReviewRequiredAnalysis(oldDocument);
+        UUID ruleSetId = acceptReview(analysisId, 1);
+        long versionBeforeFinalize = dealVersion();
+
+        UUID replacement = createIntent();
+        finalizeDocument(replacement, UUID.randomUUID());
+
+        assertEquals(versionBeforeFinalize + 1, dealVersion());
+        assertEquals("AVAILABLE", documentStatus(replacement));
+        assertEquals("SUPERSEDED", documentStatus(oldDocument));
+        assertEquals("SUPERSEDED", analysisStatus(analysisId));
+        assertEquals(replacement, currentDocument());
+        assertEquals(0, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM deal
+                WHERE id = ? AND current_rule_set_version_id IS NOT NULL
+                """, Integer.class, dealId));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM contract_intelligence_rule_set_version WHERE id = ?
+                """, Integer.class, ruleSetId));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM audit_record WHERE action = 'DOCUMENT_ANALYSIS_SUPERSEDED'
+                """, Integer.class));
+    }
+
+    @Test
+    void acceptedChainFinalizeRollsBackWhenItsAuditAppendFails() throws Exception {
+        UUID oldDocument = createIntent();
+        finalizeDocument(oldDocument, UUID.randomUUID());
+        UUID analysisId = seedReviewRequiredAnalysis(oldDocument);
+        UUID ruleSetId = acceptReview(analysisId, 1);
+        long versionBeforeFinalize = dealVersion();
+        int auditBeforeFinalize = count("audit_record");
+        int idempotencyBeforeFinalize = count("http_idempotency_record");
+        UUID replacement = createIntent();
+        failAudit.set(true);
+
+        assertThrows(IllegalStateException.class,
+                () -> finalizeDocument(replacement, UUID.randomUUID()));
+
+        assertEquals("PENDING_UPLOAD", documentStatus(replacement));
+        assertEquals("AVAILABLE", documentStatus(oldDocument));
+        assertEquals("ACCEPTED", analysisStatus(analysisId));
+        assertEquals(oldDocument, currentDocument());
+        assertEquals(ruleSetId, jdbcTemplate.queryForObject(
+                "SELECT current_rule_set_version_id FROM deal WHERE id = ?", UUID.class, dealId));
+        assertEquals(versionBeforeFinalize, dealVersion());
+        assertEquals(auditBeforeFinalize, count("audit_record"));
+        assertEquals(idempotencyBeforeFinalize, count("http_idempotency_record"));
+    }
+
+    @Test
+    void acceptingAndFinalizingAtTheSameTimeLeavesOnlyACoherentCurrentChain()
+            throws Exception {
+        UUID oldDocument = createIntent();
+        finalizeDocument(oldDocument, UUID.randomUUID());
+        UUID analysisId = seedReviewRequiredAnalysis(oldDocument);
+        UUID replacement = createIntent();
+        CountDownLatch start = new CountDownLatch(1);
+
+        int acceptanceStatus;
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Integer> acceptance = executor.submit(() -> {
+                start.await();
+                return acceptReviewStatus(analysisId, 1);
+            });
+            Future<AvailableDealDocument> finalization = executor.submit(() -> {
+                start.await();
+                return finalizeDocument(replacement, UUID.randomUUID());
+            });
+            start.countDown();
+
+            acceptanceStatus = acceptance.get(10, TimeUnit.SECONDS);
+            finalization.get(10, TimeUnit.SECONDS);
+        }
+
+        assertEquals(replacement, currentDocument());
+        assertEquals("AVAILABLE", documentStatus(replacement));
+        assertEquals("SUPERSEDED", documentStatus(oldDocument));
+        assertEquals("SUPERSEDED", analysisStatus(analysisId));
+        assertEquals(0, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM deal WHERE id = ? AND current_rule_set_version_id IS NOT NULL
+                """, Integer.class, dealId));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM document WHERE deal_id = ? AND document_status = 'AVAILABLE'
+                """, Integer.class, dealId));
+        if (acceptanceStatus == 201) {
+            assertEquals(1, count("contract_intelligence_rule_set_version"));
+        }
+        else {
+            assertEquals(409, acceptanceStatus);
+            assertEquals(0, count("contract_intelligence_rule_set_version"));
+        }
+    }
+
+    @Test
     void nonParticipantListAndDownloadAreRejectedAsNotFound() {
         UUID documentId = createIntent();
         AvailableDealDocument available = finalizeDocument(documentId, UUID.randomUUID());
@@ -358,25 +485,102 @@ class DocumentUploadFinalizeIntegrationTest {
                 new FinalizeDocumentUploadRequest(12, SHA), key, UUID.randomUUID());
     }
 
+    private UUID seedReviewRequiredAnalysis(UUID documentId) {
+        UUID analysisId = UUID.randomUUID();
+        UUID extractionId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO contract_intelligence_analysis_job (id, tenant_id, deal_id, document_id,
+                    object_version, input_sha256, status, requested_at, processing_started_at,
+                    completed_at, version)
+                VALUES (?, ?, ?, ?, 'immutable-version', ?, 'REVIEW_REQUIRED',
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+                """, analysisId, tenantId, dealId, documentId, SHA);
+        jdbcTemplate.update("""
+                INSERT INTO contract_intelligence_extraction_result_version
+                    (id, analysis_job_id, schema_version, canonical_result, created_at)
+                VALUES (?, ?, '1.0.0', CAST(? AS jsonb), CURRENT_TIMESTAMP)
+                """, extractionId, analysisId, extractionResult());
+        return analysisId;
+    }
+
+    private UUID acceptReview(UUID analysisId, long expectedVersion) throws Exception {
+        assertEquals(201, acceptReviewStatus(analysisId, expectedVersion));
+        return jdbcTemplate.queryForObject("""
+                SELECT id FROM contract_intelligence_rule_set_version WHERE source_analysis_id = ?
+                """, UUID.class, analysisId);
+    }
+
+    private int acceptReviewStatus(UUID analysisId, long expectedVersion) throws Exception {
+        String body = """
+                {"analysisId":"%s","expectedVersion":%d,"decisions":[
+                  {"decision":"KEPT","ruleReference":"payment"}
+                ]}
+                """.formatted(analysisId, expectedVersion);
+        return mockMvc.perform(post("/api/v1/deals/" + dealId + "/extraction-review/accept")
+                        .with(user(userId.toString()))
+                        .with(csrf())
+                        .header("X-M4Trust-Legal-Entity-Id", legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType("application/json")
+                        .content(body))
+                .andReturn().getResponse().getStatus();
+    }
+
+    private String extractionResult() {
+        return """
+                {"parties":[],"rules":[{"ruleReference":"payment","category":"PAYMENT",
+                "title":"Payment","description":"Payment term",
+                "structuredValue":{"type":"MONEY","amountMinor":100,"currency":"TRY"},
+                "confidence":0.9,"sourceReferences":[],"legalBasis":null}],
+                "deliveryRequirements":[],"summary":{"requiresManualReview":false,"reviewReasons":[]}}
+                """;
+    }
+
+    private long dealVersion() {
+        return jdbcTemplate.queryForObject("SELECT version FROM deal WHERE id = ?", Long.class, dealId);
+    }
+
+    private UUID currentDocument() {
+        return jdbcTemplate.queryForObject("SELECT current_document_id FROM deal WHERE id = ?",
+                UUID.class, dealId);
+    }
+
+    private String documentStatus(UUID documentId) {
+        return jdbcTemplate.queryForObject("SELECT document_status FROM document WHERE id = ?",
+                String.class, documentId);
+    }
+
+    private String analysisStatus(UUID analysisId) {
+        return jdbcTemplate.queryForObject("SELECT status FROM contract_intelligence_analysis_job WHERE id = ?",
+                String.class, analysisId);
+    }
+
+    private int count(String table) {
+        return jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Integer.class);
+    }
+
     private OperationContext intentContext() {
         return new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_DOCUMENT_UPLOAD_INTENT_CREATE);
     }
 
     private OperationContext finalizeContext() {
         return new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DOCUMENT_UPLOAD_FINALIZE);
     }
 
     private OperationContext downloadContext() {
         return new OperationContext(userId, tenantId, legalEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE);
     }
 
     private OperationContext withOperation(OperationContext context,
             RequestedOperation operation) {
         return new OperationContext(context.authenticatedUserId(), context.tenantId(),
-                context.activeLegalEntityId(), operation);
+                context.activeLegalEntityId(), context.activeLegalEntityRole(), operation);
     }
 
     private OperationContext outsiderContext() {
@@ -398,6 +602,7 @@ class DocumentUploadFinalizeIntegrationTest {
                 """, UUID.randomUUID(), tenantId, outsiderEntityId, outsiderUserId);
         // Deliberately no deal_participant row: this legal entity is a non-participant.
         return new OperationContext(outsiderUserId, tenantId, outsiderEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_DOCUMENT_LIST_READ);
     }
 
@@ -427,7 +632,8 @@ class DocumentUploadFinalizeIntegrationTest {
                     legal_entity_tenant_id)
                 VALUES (?, ?, ?, ?)
                 """, dealId, tenantId, participantEntityId, tenantId);
-        return new OperationContext(participantUserId, tenantId, participantEntityId, operation);
+        return new OperationContext(participantUserId, tenantId, participantEntityId,
+                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN, operation);
     }
 
     @TestConfiguration

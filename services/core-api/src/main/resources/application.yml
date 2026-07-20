@@ -71,6 +71,16 @@ app:
       claim-timeout: ${MESSAGING_RELAY_CLAIM_TIMEOUT:1m}
       batch-size: ${MESSAGING_RELAY_BATCH_SIZE:20}
       confirm-timeout: ${MESSAGING_RELAY_CONFIRM_TIMEOUT:10s}
+  payment:
+    dispatch:
+      relay:
+        # Slice 11B has not added a real provider adapter yet, so this stays
+        # off by default everywhere; only local-sandbox test/dev setups that
+        # also select the sandbox PaymentProviderPort enable it explicitly.
+        enabled: ${PAYMENT_DISPATCH_RELAY_ENABLED:false}
+        fixed-delay: ${PAYMENT_DISPATCH_RELAY_FIXED_DELAY:5m}
+        claim-timeout: ${PAYMENT_DISPATCH_RELAY_CLAIM_TIMEOUT:1m}
+        batch-size: ${PAYMENT_DISPATCH_RELAY_BATCH_SIZE:20}
 
 logging:
   structured:

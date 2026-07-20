@@ -12,12 +12,14 @@ public record OperationContext(
         UUID authenticatedUserId,
         UUID tenantId,
         UUID activeLegalEntityId,
+        LegalEntityRole activeLegalEntityRole,
         RequestedOperation requestedOperation) {
 
     public OperationContext {
         Objects.requireNonNull(authenticatedUserId);
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(activeLegalEntityId);
+        Objects.requireNonNull(activeLegalEntityRole);
         Objects.requireNonNull(requestedOperation);
     }
 }

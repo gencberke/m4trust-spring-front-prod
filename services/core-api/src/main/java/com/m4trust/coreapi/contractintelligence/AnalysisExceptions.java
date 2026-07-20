@@ -14,6 +14,12 @@ final class AnalysisExceptions {
     static final class RequestForbidden extends RuntimeException {
     }
 
+    static final class ReviewAcceptanceForbidden extends RuntimeException {
+    }
+
+    static final class RuleSetVersionNotFound extends RuntimeException {
+    }
+
     static final class Conflict extends RuntimeException {
         private final String code;
 
@@ -24,5 +30,11 @@ final class AnalysisExceptions {
         String code() {
             return code;
         }
+    }
+
+    static final class Validation extends RuntimeException {
+        private final String field;
+        Validation(String field) { this.field = field; }
+        String field() { return field; }
     }
 }

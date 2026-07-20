@@ -1,6 +1,6 @@
 # Slice 9 — Manual Review ve RuleSetVersion
 
-- Durum: ready
+- Durum: done
 - Slice sırası: ADR-004 §24 → "Manual Review and RuleSetVersion"
   (bölünmüş yol haritasında 09)
 - Öncül: 08-ai-document-extraction
@@ -200,20 +200,20 @@ Sabit davranışlar:
 
 ## 10. Done tanımı
 
-- [ ] OpenAPI review/rule-set yüzeyi implementasyondan önce tasarlandı
-- [ ] OpenAPI path/schema değişiklikleriyle birlikte contract validator exact
+- [x] OpenAPI review/rule-set yüzeyi implementasyondan önce tasarlandı
+- [x] OpenAPI path/schema değişiklikleriyle birlikte contract validator exact
       beklentileri ve contracts README/CHANGELOG güncellendi; AI contract'ları
       değişmedi
-- [ ] Yeni Deal response/action alanları optional; mevcut required listeler ve
+- [x] Yeni Deal response/action alanları optional; mevcut required listeler ve
       alan anlamları korunuyor; frontend eksik/bilinmeyen değerde read-only
-- [ ] RuleSetVersion migration'ı immutable/insert-only ve pointer bütünlüğü
+- [x] RuleSetVersion migration'ı immutable/insert-only ve pointer bütünlüğü
       DB seviyesinde
-- [ ] Kabul akışı tek transaction; idempotent; eşzamanlılık testli
-- [ ] AnalysisStatus ACCEPTED geçişi ve SUPERSEDED zinciri çalışıyor
-- [ ] legalBasis provenance kuralları uygulanıyor; hiçbir business karar ona
+- [x] Kabul akışı tek transaction; idempotent; eşzamanlılık testli
+- [x] AnalysisStatus ACCEPTED geçişi ve SUPERSEDED zinciri çalışıyor
+- [x] legalBasis provenance kuralları uygulanıyor; hiçbir business karar ona
       bağlı değil
-- [ ] Yetki merkezi policy'den; review ticari onay olarak sunulmuyor
-- [ ] §8 invariant testleri geçiyor; audit aynı transaction'da
-- [ ] `ModuleArchitectureTest` contractintelligence ownership'ini kapsıyor
-- [ ] §7 iki-browser kabul akışı tamamlandı; Slice 8 akışı regresyonsuz
-- [ ] Contract validator, backend verify ve frontend typecheck/build yeşil
+- [x] Yetki merkezi policy'den; review ticari onay olarak sunulmuyor
+- [x] §8 invariant testleri geçiyor; audit aynı transaction'da
+- [x] `ModuleArchitectureTest` contractintelligence ownership'ini kapsıyor
+- [x] §7 iki-browser kabul akışı tamamlandı; Slice 8 akışı regresyonsuz
+- [x] Contract validator, backend verify ve frontend typecheck/build yeşil

@@ -320,6 +320,248 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/extraction-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the participant-readable current extraction review projection
+         * @description Returns the canonical extracted rules and their review input for the current REVIEW_REQUIRED analysis to every Deal participant. This is review material, not ratification or contractual consent. A visible Deal without a current reviewable analysis returns 409 DEAL_STATE_CONFLICT; a hidden Deal remains non-disclosing.
+         */
+        get: operations["getDealExtractionReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/extraction-review/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a reviewed extraction as an immutable rule-set version
+         * @description Initiator-only bulk review action. The required target analysisId must still be the current REVIEW_REQUIRED analysis for the current document under the Deal lock. Idempotency-Key is required: replaying the same canonical request returns the originally created RuleSetVersion, while reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. A successful action atomically creates one immutable RuleSetVersion, marks the analysis ACCEPTED, and moves the Deal current rule-set pointer. It is not ratification or commercial consent.
+         */
+        post: operations["acceptDealExtractionReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/rule-set-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List immutable rule-set version history
+         * @description Returns all immutable accepted rule-set versions for the Deal to every participant, including superseded historical versions. No version may be edited, deleted, or inferred as current from position in this list.
+         */
+        get: operations["listDealRuleSetVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/rule-set-versions/{ruleSetVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one immutable rule-set version */
+        get: operations["getDealRuleSetVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/ratification-packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List retained ratification package history
+         * @description Returns immutable package snapshots with their current mutable status and approval projection to Deal participants. History is not a current-package inference mechanism; use DealDetail.ratification for the current projection.
+         */
+        get: operations["listRatificationPackages"];
+        put?: never;
+        /**
+         * Create an immutable ratification package
+         * @description Initiator-only DRAFT action. The request always carries the exact commercial terms to ratify; accepted MONEY rules are suggestions only and the server never selects terms silently. Parties, a current accepted rule-set, and a current AVAILABLE document are required. Creating with different terms supersedes a current PENDING package under the Deal lock. Idempotency-Key replays the original package for the same canonical request; reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED.
+         */
+        post: operations["createRatificationPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/ratification-packages/{ratificationPackageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one immutable ratification package and approval projection */
+        get: operations["getRatificationPackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/ratification-packages/{ratificationPackageId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a ratification package for the active buyer or seller entity
+         * @description Only an ADMIN of the package buyer or seller legal entity may approve. The target package version is checked under lock. One effective approval per entity exists; another ADMIN of that entity receives the idempotent current result without increasing approval count. The second required approval atomically changes the package to RATIFIED and the Deal to ACTIVE.
+         */
+        post: operations["approveRatificationPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/ratification-packages/{ratificationPackageId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a pending ratification package for the active buyer or seller entity
+         * @description Only an ADMIN of the package buyer or seller legal entity may reject. The target package version is checked under lock. A successful rejection changes the package to REJECTED; creating a new package is required to continue.
+         */
+        post: operations["rejectRatificationPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/funding-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the participant-readable funding plan, unit, and current operation projection
+         * @description Returns the Deal's single FundingPlan with its single FundingUnit, the unit's current PaymentOperation when one exists, and the Deal-level FundingStatus business projection. Returns 404 until a plan has been created. All Deal participants may read; only buyer entity ADMIN may mutate.
+         */
+        get: operations["getFundingPlan"];
+        put?: never;
+        /**
+         * Explicitly create the Deal's single funding plan from the ratified package
+         * @description Buyer entity ADMIN-only, idempotent action. The request carries only the Deal expectedVersion; amount and currency are never client-supplied and are copied server-side from the current RATIFIED package structured commercial terms. The Deal must be ACTIVE. Exactly one FundingPlan and one FundingUnit exist per Deal; a concurrent or repeated create races under the same database unique invariant and a second attempt returns 409. Idempotency-Key replays the original plan for the same canonical request; reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED.
+         */
+        post: operations["createFundingPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/funding-units/{fundingUnitId}/payment-operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Initiate a payment operation on a funding unit without awaiting the provider
+         * @description Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries the target FundingUnit expectedVersion. The durable intent, dispatch/outbox record, audit entry, and HTTP idempotency result are committed in one short transaction before this response is returned; the provider is never called within the request or its transaction. Returns 202 with the CREATED operation projection. A CREATED or UNCONFIRMED operation is the unit's only in-flight operation: replaying the same Idempotency-Key returns the same operation, a different key returns 409, and a FUNDED unit rejects any new operation with 409.
+         */
+        post: operations["initiatePaymentOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payment-operations/{paymentOperationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one payment operation projection for polling
+         * @description Participant-readable safe operation projection: status, explicit reconciliation-required indication, and an opaque non-PII provider reference. Raw provider payloads, card data, credentials, and other PII are never returned.
+         */
+        get: operations["getPaymentOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payment-operations/{paymentOperationId}/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispatch query-first reconciliation for an UNCONFIRMED payment operation
+         * @description Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries the target PaymentOperation expectedVersion. This command never calls the provider within the request: it commits a durable reconciliation dispatch/audit/ idempotency record in one short transaction and returns 202 with the same operation Location. A relay later queries the same operation using its unchanged provider key and applies a definitive result in a separate transaction. Replaying the same Idempotency-Key returns the same result and Location; a different request with the same key returns 409.
+         */
+        post: operations["reconcilePaymentOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/documents/{documentId}/finalize": {
         parameters: {
             query?: never;
@@ -813,7 +1055,7 @@ export interface components {
          * @description Current-document analysis state owned by the analysis state machine. REVIEW_REQUIRED is a technical extraction completion requiring human review, not business acceptance.
          * @enum {string}
          */
-        DocumentAnalysisStatus: "NOT_REQUESTED" | "QUEUED" | "PROCESSING" | "REVIEW_REQUIRED" | "FAILED";
+        DocumentAnalysisStatus: "NOT_REQUESTED" | "QUEUED" | "PROCESSING" | "REVIEW_REQUIRED" | "ACCEPTED" | "FAILED";
         /** @description Safe terminal failure projection. It deliberately excludes provider messages, stack traces, technical metadata, and raw worker error details. */
         DocumentAnalysisFailureSummary: {
             /** @description Stable canonical AI technical or invalid-input failure code. */
@@ -861,6 +1103,39 @@ export interface components {
         };
         /** @description Closed canonical structured-value union for an extracted rule. */
         ExtractedRuleValue: {
+            /** @constant */
+            type: "TEXT";
+            value: string;
+        } | {
+            /** @constant */
+            type: "MONEY";
+            amountMinor: number;
+            currency: string;
+        } | {
+            /** @constant */
+            type: "PERCENTAGE";
+            basisPoints: number;
+        } | {
+            /** @constant */
+            type: "DURATION";
+            valueSeconds: number;
+        } | {
+            /** @constant */
+            type: "DATE";
+            /** Format: date */
+            value: string;
+        } | {
+            /** @constant */
+            type: "BOOLEAN";
+            value: boolean;
+        } | {
+            /** @constant */
+            type: "QUANTITY";
+            value: number;
+            unit: string;
+        };
+        /** @description Closed reviewed/final structured-value union for Slice 9. Unlike advisory extraction output, money cannot be negative at this business-rule boundary; KEPT extracted values are semantically checked against this boundary during acceptance and an invalid amount is rejected with 422. Money and percentage are integer minor units and basis points, never floating-point values. */
+        RuleSetStructuredValue: {
             /** @constant */
             type: "TEXT";
             value: string;
@@ -951,6 +1226,364 @@ export interface components {
             /** @description Canonical result when extraction completed; null before completion or after FAILED. */
             result: components["schemas"]["DocumentAnalysisResult"] | null;
         };
+        /** @description Participant-readable, immutable review input for the current REVIEW_REQUIRED extraction. It does not persist a draft and does not represent ratification. */
+        DealExtractionReview: {
+            /**
+             * Format: uuid
+             * @description Target analysis identity required by the acceptance action.
+             */
+            analysisId: string;
+            /** Format: uuid */
+            documentId: string;
+            /** @description Canonical extracted rules to decide in the acceptance action; never null. */
+            rules: components["schemas"]["ExtractedRule"][];
+        };
+        /** @description Exactly one disposition for an extracted rule, or one manually added rule. */
+        ReviewRuleDecision: components["schemas"]["KeptRuleDecision"] | components["schemas"]["ModifiedRuleDecision"] | components["schemas"]["ExcludedRuleDecision"] | components["schemas"]["AddedRuleDecision"];
+        KeptRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "KEPT";
+            /** @description ruleReference from the target extraction. */
+            ruleReference: string;
+        };
+        ModifiedRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "MODIFIED";
+            /** @description ruleReference from the target extraction. */
+            ruleReference: string;
+            category: components["schemas"]["RuleCategory"];
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["RuleSetStructuredValue"];
+        };
+        ExcludedRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "EXCLUDED";
+            /** @description ruleReference from the target extraction; retained only in immutable decision history. */
+            ruleReference: string;
+        };
+        AddedRuleDecision: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            decision: "ADDED";
+            category: components["schemas"]["RuleCategory"];
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["RuleSetStructuredValue"];
+        };
+        AcceptExtractionReviewRequest: {
+            /**
+             * Format: uuid
+             * @description Current REVIEW_REQUIRED analysis being accepted.
+             */
+            analysisId: string;
+            /**
+             * Format: int64
+             * @description Current Deal optimistic-lock version.
+             */
+            expectedVersion: number;
+            /** @description Complete bulk review decisions. The backend requires exactly one decision for every extracted rule and semantic validation allows an empty array when the target extraction contains no rules. The backend assigns unique manual-N rule references to ADDED decisions within the created RuleSetVersion. */
+            decisions: components["schemas"]["ReviewRuleDecision"][];
+        };
+        /** @enum {string} */
+        RuleCategory: "PAYMENT" | "DELIVERY" | "QUALITY" | "PENALTY" | "TERMINATION" | "DISPUTE" | "OTHER" | "UNKNOWN";
+        /**
+         * @description Advisory legal-basis origin only; no business rule may depend on it.
+         * @enum {string}
+         */
+        RuleLegalBasisProvenance: "EXTRACTED" | "REVIEWER_MODIFIED" | "MANUALLY_ADDED";
+        /** @description Immutable final rule contained in an accepted RuleSetVersion. */
+        RuleSetRule: {
+            /** @description Extracted reference, or unique server-assigned manual-N reference for an added rule. */
+            ruleReference: string;
+            /** @enum {string} */
+            decision: "KEPT" | "MODIFIED" | "ADDED";
+            category: components["schemas"]["RuleCategory"];
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["RuleSetStructuredValue"];
+            /** @description Advisory legal reference copied from the target extraction for KEPT and MODIFIED rules. ADDED rules always expose null. It never authorizes a business decision. */
+            legalBasis: components["schemas"]["AdvisoryLegalBasis"] | null;
+            legalBasisProvenance: components["schemas"]["RuleLegalBasisProvenance"];
+        };
+        RuleSetVersionSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            version: number;
+            /**
+             * Format: uuid
+             * @description Target analysis identity accepted to create this immutable version.
+             */
+            sourceAnalysisId: string;
+            /**
+             * Format: uuid
+             * @description Immutable canonical ExtractionResultVersion from which this rule set was accepted.
+             */
+            sourceExtractionResultVersionId: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            /** Format: uuid */
+            createdByUserId: string;
+            /** Format: uuid */
+            previousRuleSetVersionId: string | null;
+            ruleCount: number;
+        };
+        RuleSetVersion: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            version: number;
+            /**
+             * Format: uuid
+             * @description Target analysis identity accepted to create this immutable version.
+             */
+            sourceAnalysisId: string;
+            /**
+             * Format: uuid
+             * @description Immutable canonical ExtractionResultVersion from which this rule set was accepted.
+             */
+            sourceExtractionResultVersionId: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            /** Format: uuid */
+            createdByUserId: string;
+            /** Format: uuid */
+            previousRuleSetVersionId: string | null;
+            ruleCount: number;
+            /** @description Final valid immutable rules only; EXCLUDED rules are absent. */
+            rules: components["schemas"]["RuleSetRule"][];
+            /** @description Immutable review-decision history for excluded extracted rules; never null. */
+            excludedRuleReferences: string[];
+        };
+        RuleSetVersionHistory: {
+            /** @description Immutable accepted rule-set versions, including superseded history; never null. */
+            items: components["schemas"]["RuleSetVersionSummary"][];
+        };
+        /**
+         * @description Backend-derived ratification readiness; READY is not a persisted package state.
+         * @enum {string}
+         */
+        RatificationReadiness: "NOT_READY" | "READY";
+        /**
+         * @description Closed persisted ratification package state set. EXPIRED is not used in Slice 10.
+         * @enum {string}
+         */
+        RatificationPackageStatus: "PENDING" | "RATIFIED" | "REJECTED" | "SUPERSEDED";
+        /** @description Exact structured commercial terms that both parties ratify; never inferred from MONEY suggestions. */
+        RatificationCommercialTerms: {
+            /** @description Positive I-JSON-safe minor-unit amount; floats and values outside the safe integer range are invalid. */
+            amountMinor: number;
+            /** @description Uppercase ISO 4217 currency code. */
+            currency: string;
+        };
+        RatificationSnapshotParty: {
+            /**
+             * Format: uuid
+             * @description Lowercase canonical UUID string.
+             */
+            legalEntityId: string;
+            legalName: string;
+        };
+        /** @description Immutable accepted rule copied into the package snapshot. */
+        RatificationSnapshotRule: {
+            ruleReference: string;
+            /** @enum {string} */
+            decision: "KEPT" | "MODIFIED" | "ADDED";
+            category: components["schemas"]["RuleCategory"];
+            title: string;
+            description: string;
+            structuredValue: components["schemas"]["RuleSetStructuredValue"];
+            legalBasis: components["schemas"]["AdvisoryLegalBasis"] | null;
+            legalBasisProvenance: components["schemas"]["RuleLegalBasisProvenance"];
+        };
+        RatificationSnapshotRuleSet: {
+            /**
+             * Format: uuid
+             * @description Lowercase canonical UUID string.
+             */
+            ruleSetVersionId: string;
+            version: number;
+            /** @description Unique rules sorted ascending by ruleReference using UTF-8 bytewise order before JCS hashing. */
+            rules: components["schemas"]["RatificationSnapshotRule"][];
+        };
+        RatificationSnapshotDocument: {
+            /**
+             * Format: uuid
+             * @description Lowercase canonical UUID string.
+             */
+            documentId: string;
+            objectVersion: string;
+            /** @description Lowercase hex SHA-256 of the immutable document object. */
+            sha256: string;
+        };
+        /** @description The sole contentHash input: this closed immutable JSON object is canonicalized with RFC 8785 JCS, encoded as UTF-8 bytes, then SHA-256 hashed to lowercase hexadecimal. It excludes package id/version/status/contentHash, approvals, approver or actor visibility, available actions, timestamps, audit, and all detail-wrapper metadata. UUID strings are lowercase; currency is uppercase. V1 rules are unique by ruleReference and sorted by its UTF-8 bytewise ascending value. Any future snapshot array requires an explicit contract ordering rule. */
+        RatificationPackageSnapshot: {
+            /** @constant */
+            schemaVersion: 1;
+            /**
+             * Format: uuid
+             * @description Lowercase canonical UUID string.
+             */
+            dealId: string;
+            dealReference: string;
+            dealTitle: string;
+            buyer: components["schemas"]["RatificationSnapshotParty"];
+            seller: components["schemas"]["RatificationSnapshotParty"];
+            ruleSet: components["schemas"]["RatificationSnapshotRuleSet"];
+            commercialTerms: components["schemas"]["RatificationCommercialTerms"];
+            document: components["schemas"]["RatificationSnapshotDocument"];
+        };
+        RatificationApproval: {
+            /** Format: uuid */
+            legalEntityId: string;
+            legalName: string;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED";
+            approvedAt: components["schemas"]["UtcTimestamp"] | null;
+            /** @description Visible only to authorized users of the same legal entity; otherwise null. */
+            approverUserId: string | null;
+        };
+        RatificationPackageAvailableActions: {
+            canApprove: boolean;
+            canReject: boolean;
+        };
+        RatificationPackageDetail: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+            status: components["schemas"]["RatificationPackageStatus"];
+            /** @description Lowercase SHA-256 hex of the UTF-8 RFC 8785 JCS RatificationPackageSnapshot only. */
+            contentHash: string;
+            snapshot: components["schemas"]["RatificationPackageSnapshot"];
+            /** @description Buyer and seller approval projections; never null and excluded from contentHash input. */
+            approvals: components["schemas"]["RatificationApproval"][];
+            availableActions: components["schemas"]["RatificationPackageAvailableActions"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+        };
+        RatificationPackageHistory: {
+            /** @description Retained immutable package history; never null. */
+            items: components["schemas"]["RatificationPackageDetail"][];
+        };
+        RatificationProjection: {
+            readiness: components["schemas"]["RatificationReadiness"];
+            currentPackage: components["schemas"]["RatificationPackageDetail"] | null;
+        };
+        CreateRatificationPackageRequest: {
+            expectedVersion: number;
+            commercialTerms: components["schemas"]["RatificationCommercialTerms"];
+        };
+        RatificationPackageActionRequest: {
+            expectedPackageVersion: number;
+        };
+        /**
+         * @description Closed Deal-level funding business projection (ADR-003 §12 axis). V1 exposes only the single-FundingUnit progression NOT_CONFIGURED -> PLANNED -> PENDING -> FUNDED. PARTIALLY_FUNDED remains part of the closed axis for forward multi-unit compatibility but is unreachable in V1 because exactly one FundingUnit exists per Deal.
+         * @enum {string}
+         */
+        FundingStatus: "NOT_CONFIGURED" | "PLANNED" | "PENDING" | "PARTIALLY_FUNDED" | "FUNDED";
+        /**
+         * @description Closed FundingUnit state set. Allowed transitions are PLANNED -> PENDING, PENDING -> FUNDED, PENDING -> FAILED (only a definitive provider decline), and FAILED -> PENDING when a new PaymentOperation starts.
+         * @enum {string}
+         */
+        FundingUnitStatus: "PLANNED" | "PENDING" | "FUNDED" | "FAILED";
+        /**
+         * @description Closed PaymentOperation state set. Allowed transitions are CREATED -> SUCCEEDED | DECLINED | UNCONFIRMED and UNCONFIRMED -> SUCCEEDED | DECLINED after reconciliation; no other transition exists. UNCONFIRMED means the provider outcome is unknown after a timeout, crash, or ambiguous response; it is never treated as failure and only query-first reconciliation resolves it to a definitive terminal state.
+         * @enum {string}
+         */
+        PaymentOperationStatus: "CREATED" | "SUCCEEDED" | "DECLINED" | "UNCONFIRMED";
+        /** @description Backend-derived action availability for this FundingUnit and actor context. */
+        FundingUnitAvailableActions: {
+            /** @description True only for buyer entity ADMIN while the unit is not FUNDED and has no CREATED or UNCONFIRMED in-flight PaymentOperation. */
+            canInitiatePayment: boolean;
+        };
+        /** @description Backend-derived action availability for this PaymentOperation and actor context. */
+        PaymentOperationAvailableActions: {
+            /** @description True only for buyer entity ADMIN while the operation status is UNCONFIRMED. */
+            canReconcile: boolean;
+        };
+        /** @description Safe non-raw PaymentOperation projection. Raw provider payloads, card data, credentials, and other PII are never included. */
+        PaymentOperation: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fundingUnitId: string;
+            status: components["schemas"]["PaymentOperationStatus"];
+            /** @description Explicit backend-derived indication that is true only while status is UNCONFIRMED; clients must not infer it by parsing status themselves. */
+            reconciliationRequired: boolean;
+            /** @description Opaque non-PII provider correlation reference, or null before the provider has issued one. Never a raw provider payload, card datum, or credential. */
+            providerReference: string | null;
+            /** Format: int64 */
+            version: number;
+            availableActions: components["schemas"]["PaymentOperationAvailableActions"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        FundingUnit: {
+            /** Format: uuid */
+            id: string;
+            /** @description V1 is always 1; exactly one FundingUnit exists per FundingPlan. */
+            sequenceNo: number;
+            /** @description Positive I-JSON-safe minor-unit amount snapshot copied from the ratified package. */
+            amountMinor: number;
+            /** @description Uppercase ISO 4217 currency code snapshot copied from the ratified package. */
+            currency: string;
+            status: components["schemas"]["FundingUnitStatus"];
+            /** Format: int64 */
+            version: number;
+            /** @description Most recent PaymentOperation for this unit, or null when no payment has been initiated yet. */
+            currentOperation: components["schemas"]["PaymentOperation"] | null;
+            availableActions: components["schemas"]["FundingUnitAvailableActions"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        /** @description Deal-scoped funding plan projection. Amount and currency are immutable once created and are never client-supplied; they are copied server-side from the RATIFIED package structured commercial terms. */
+        FundingPlanDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            /** @description Positive I-JSON-safe minor-unit amount snapshot copied from the ratified package. */
+            amountMinor: number;
+            /** @description Uppercase ISO 4217 currency code snapshot copied from the ratified package. */
+            currency: string;
+            fundingStatus: components["schemas"]["FundingStatus"];
+            /** Format: int64 */
+            version: number;
+            fundingUnit: components["schemas"]["FundingUnit"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        /** @description Optional backend-owned Deal funding summary; independent of the full plan/unit/operation projection. */
+        DealFundingSummary: {
+            fundingStatus: components["schemas"]["FundingStatus"];
+            /** @description Current FundingPlan id, or null when fundingStatus is NOT_CONFIGURED. */
+            fundingPlanId: string | null;
+            /** @description Ratified funding amount snapshot, or null when fundingStatus is NOT_CONFIGURED. */
+            amountMinor: number | null;
+            /** @description Ratified funding currency snapshot, or null when fundingStatus is NOT_CONFIGURED. */
+            currency: string | null;
+        };
+        /** @description Carries only the Deal expectedVersion; amount and currency are never client-supplied and are always copied server-side from the current RATIFIED package. */
+        CreateFundingPlanRequest: {
+            expectedVersion: number;
+        };
+        InitiatePaymentOperationRequest: {
+            /** @description Expected FundingUnit version. */
+            expectedVersion: number;
+        };
+        ReconcilePaymentOperationRequest: {
+            /** @description Expected PaymentOperation version. */
+            expectedVersion: number;
+        };
         /** @description Backend-derived action availability for the current user and active legal entity. Clients use this projection for presentation but the backend always re-authorizes mutations. */
         DealAvailableActions: {
             canUpdate: boolean;
@@ -963,6 +1596,20 @@ export interface components {
             canCreateDocumentUploadIntent: boolean;
             /** @description Backend-derived analysis-request availability. True only for the Deal initiator when the Deal is non-terminal, its current document is AVAILABLE, and no analysis job is QUEUED or PROCESSING for that document. */
             canRequestAnalysis: boolean;
+            /** @description Optional backend-derived review-acceptance availability. When absent or unknown, clients must treat it as false and remain read-only. When true, the active user is authorized for the Deal initiator and the current analysis is REVIEW_REQUIRED. */
+            canReviewExtraction?: boolean;
+            /** @description Optional actor-aware availability; absent or unknown means false/read-only. */
+            canCreateRatificationPackage?: boolean;
+            /** @description Optional actor-aware availability; absent or unknown means false/read-only. */
+            canApproveRatification?: boolean;
+            /** @description Optional actor-aware availability; absent or unknown means false/read-only. */
+            canRejectRatification?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN while the Deal is ACTIVE and no FundingPlan exists yet. Absent or unknown means false/read-only. */
+            canCreateFundingPlan?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the Deal's single FundingUnit accepts a new payment operation (not FUNDED and no CREATED or UNCONFIRMED in-flight operation). Absent or unknown means false/read-only. */
+            canInitiateFunding?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the Deal's current PaymentOperation is UNCONFIRMED. Absent or unknown means false/read-only. */
+            canReconcilePaymentOperation?: boolean;
         };
         /**
          * Format: date-time
@@ -1027,6 +1674,12 @@ export interface components {
             /** @description Current verified contractual document, or null when no document has been finalized. This is a backend-owned pointer; clients must not infer it from history or document status. */
             currentDocument: components["schemas"]["AvailableDealDocument"] | null;
             analysis: components["schemas"]["DealDocumentAnalysisSummary"];
+            /** @description Optional backend-owned current accepted rule-set summary. Null means no accepted rule-set currently backs this Deal; clients must not infer one from history. Its absence is tolerated for additive compatibility. */
+            currentRuleSet?: components["schemas"]["RuleSetVersionSummary"] | null;
+            /** @description Optional backend-owned ratification readiness and current-package projection. */
+            ratification?: components["schemas"]["RatificationProjection"] | null;
+            /** @description Optional backend-owned funding summary. Null-tolerant: null means funding is not currently projected for this Deal (for example before it is ever ACTIVE); absence is tolerated for additive compatibility with clients predating Slice 11. */
+            funding?: components["schemas"]["DealFundingSummary"] | null;
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -1238,6 +1891,42 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description No current REVIEW_REQUIRED analysis is available for review; Problem Details code is DEAL_STATE_CONFLICT. */
+        DealReviewConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the required active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the visible Deal participant is not the immutable Deal initiator (DEAL_REVIEW_ACCEPTANCE_FORBIDDEN). Participant visibility never grants review acceptance authority. */
+        DealReviewAcceptanceForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied expectedVersion is stale (DEAL_STALE_VERSION), the target analysis is not the current REVIEW_REQUIRED analysis or has been superseded (DEAL_STATE_CONFLICT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        DealReviewAcceptanceConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The rule-set version does not exist, does not belong to the visible Deal, or the Deal is hidden from a non-participant; all cases use RULE_SET_VERSION_NOT_FOUND and do not disclose existence. */
+        RuleSetVersionNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
         /** @description The document does not exist, does not belong to a Deal visible to the active legal entity, or its owning Deal is hidden from a non-participant; all cases use DEAL_DOCUMENT_NOT_FOUND and do not disclose document existence. */
         DealDocumentNotFoundOrHidden: {
             headers: {
@@ -1337,6 +2026,114 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the visible Deal participant is not its immutable initiator (RATIFICATION_PACKAGE_CREATE_FORBIDDEN). */
+        RatificationPackageCreateForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is not DRAFT (DEAL_STATE_CONFLICT), required parties/rule-set/document are not ready (RATIFICATION_NOT_READY), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        RatificationPackageCreateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The package does not exist, does not belong to the visible Deal, or the Deal is hidden from a non-participant; all cases use RATIFICATION_PACKAGE_NOT_FOUND and do not disclose existence. */
+        RatificationPackageNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active entity is not the package buyer/seller or the caller is not an ADMIN (RATIFICATION_APPROVAL_FORBIDDEN). Participant visibility alone, and MEMBER membership, never grant approval or rejection authority. */
+        RatificationPackageActionForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied package version is stale (RATIFICATION_STALE_PACKAGE), the package is RATIFIED, REJECTED, or SUPERSEDED and cannot be acted on (RATIFICATION_PACKAGE_STATE_CONFLICT), the Deal is no longer DRAFT (DEAL_STATE_CONFLICT), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        RatificationPackageActionConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the buyer entity, or the caller is not an ADMIN of the buyer entity (FUNDING_MUTATION_FORBIDDEN). Buyer MEMBER membership, seller participation, and other participant visibility never grant funding-plan create, payment-operation initiate, or reconcile authority. */
+        FundingMutationForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is not ACTIVE (DEAL_STATE_CONFLICT), a FundingPlan already exists for the Deal (FUNDING_PLAN_ALREADY_EXISTS), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        FundingPlanCreateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is hidden because the authorized active legal entity is not a participant (DEAL_NOT_FOUND), or the visible Deal has no FundingPlan yet (FUNDING_PLAN_NOT_FOUND). All cases return 404 and preserve non-disclosure at their respective authorization boundary. */
+        FundingPlanNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), or the FundingUnit does not exist, or its owning Deal is hidden because the authorized active legal entity is not a participant; the latter cases both use FUNDING_UNIT_NOT_FOUND and do not disclose existence. */
+        FundingUnitNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied FundingUnit expectedVersion is stale (FUNDING_UNIT_STALE_VERSION), the Deal is not ACTIVE (DEAL_STATE_CONFLICT), the FundingUnit is already FUNDED (FUNDING_UNIT_ALREADY_FUNDED), a CREATED or UNCONFIRMED operation is already the unit's in-flight operation (PAYMENT_OPERATION_IN_FLIGHT), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        PaymentOperationInitiateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), or the PaymentOperation does not exist, or its owning Deal is hidden because the authorized active legal entity is not a participant; the latter cases both use PAYMENT_OPERATION_NOT_FOUND and do not disclose existence. */
+        PaymentOperationNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied PaymentOperation expectedVersion is stale (PAYMENT_OPERATION_STALE_VERSION), the operation is not UNCONFIRMED (CREATED has not completed its initial dispatch, or SUCCEEDED/DECLINED is terminal) and therefore cannot be reconciled (PAYMENT_OPERATION_STATE_CONFLICT), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        PaymentOperationReconcileConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
     };
     parameters: {
         /** @description Public UUID of the requested legal entity. */
@@ -1349,6 +2146,14 @@ export interface components {
         InvitationId: string;
         /** @description Public UUID of the requested Deal document. */
         DocumentId: string;
+        /** @description Immutable RuleSetVersion identifier. */
+        RuleSetVersionId: string;
+        /** @description Immutable ratification package identifier. */
+        RatificationPackageId: string;
+        /** @description Public UUID of the requested FundingUnit. */
+        FundingUnitId: string;
+        /** @description Public UUID of the requested PaymentOperation. */
+        PaymentOperationId: string;
         /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
         IdempotencyKey: string;
         /** @description Optional exact Deal status filter. */
@@ -1940,6 +2745,501 @@ export interface operations {
             403: components["responses"]["DealAnalysisRequestForbidden"];
             404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
             409: components["responses"]["DealDocumentAnalysisRequestConflict"];
+        };
+    };
+    getDealExtractionReview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current review projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealExtractionReview"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["DealReviewConflict"];
+        };
+    };
+    acceptDealExtractionReview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptExtractionReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Immutable RuleSetVersion created; idempotent replay returns this original version. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the created immutable rule-set version. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetVersion"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DealReviewAcceptanceForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["DealReviewAcceptanceConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listDealRuleSetVersions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable rule-set history visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetVersionHistory"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+        };
+    };
+    getDealRuleSetVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Immutable RuleSetVersion identifier. */
+                ruleSetVersionId: components["parameters"]["RuleSetVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable rule-set version visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetVersion"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["RuleSetVersionNotFoundOrHidden"];
+        };
+    };
+    listRatificationPackages: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Retained package history visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatificationPackageHistory"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+        };
+    };
+    createRatificationPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRatificationPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description Created immutable package; idempotent replay returns the original package. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the created ratification package. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatificationPackageDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["RatificationPackageCreateForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["RatificationPackageCreateConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getRatificationPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Immutable ratification package identifier. */
+                ratificationPackageId: components["parameters"]["RatificationPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Package detail visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatificationPackageDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["RatificationPackageNotFoundOrHidden"];
+        };
+    };
+    approveRatificationPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Immutable ratification package identifier. */
+                ratificationPackageId: components["parameters"]["RatificationPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatificationPackageActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Current package detail after the effective or idempotent approval. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatificationPackageDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["RatificationPackageActionForbidden"];
+            404: components["responses"]["RatificationPackageNotFoundOrHidden"];
+            409: components["responses"]["RatificationPackageActionConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    rejectRatificationPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Immutable ratification package identifier. */
+                ratificationPackageId: components["parameters"]["RatificationPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatificationPackageActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Current package detail after the rejection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatificationPackageDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["RatificationPackageActionForbidden"];
+            404: components["responses"]["RatificationPackageNotFoundOrHidden"];
+            409: components["responses"]["RatificationPackageActionConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getFundingPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Funding plan projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundingPlanDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["FundingPlanNotFoundOrHidden"];
+        };
+    };
+    createFundingPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFundingPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Created funding plan and its single funding unit; idempotent replay returns the original plan. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the Deal's single funding plan. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundingPlanDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["FundingMutationForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["FundingPlanCreateConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    initiatePaymentOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested FundingUnit. */
+                fundingUnitId: components["parameters"]["FundingUnitId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InitiatePaymentOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Durable CREATED payment operation accepted for dispatch; the provider result is resolved later and observed only through polling reads. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of the created payment operation. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["FundingMutationForbidden"];
+            404: components["responses"]["FundingUnitNotFoundOrHidden"];
+            409: components["responses"]["PaymentOperationInitiateConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getPaymentOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested PaymentOperation. */
+                paymentOperationId: components["parameters"]["PaymentOperationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payment operation projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["PaymentOperationNotFoundOrHidden"];
+        };
+    };
+    reconcilePaymentOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested PaymentOperation. */
+                paymentOperationId: components["parameters"]["PaymentOperationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcilePaymentOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Durable reconciliation dispatch accepted; the provider query result is resolved later and observed only through polling reads of the same operation. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of the target payment operation. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["FundingMutationForbidden"];
+            404: components["responses"]["PaymentOperationNotFoundOrHidden"];
+            409: components["responses"]["PaymentOperationReconcileConflict"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     finalizeDocumentUpload: {

@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 class DealRepository {
 
-    private static final String SELECT_VISIBLE_DEALS = """
+    private static final String SELECT_DEAL = """
             SELECT
                 deal.id,
                 deal.tenant_id,
@@ -26,12 +26,16 @@ class DealRepository {
                 deal.buyer_legal_entity_id,
                 deal.seller_legal_entity_id,
                 deal.current_document_id,
+                deal.current_rule_set_version_id,
+                deal.current_ratification_package_id,
                 deal.initiator_legal_entity_id,
                 deal.created_by,
                 deal.created_at,
                 deal.updated_at,
                 deal.version
             FROM deal
+            """;
+    private static final String SELECT_VISIBLE_DEALS = SELECT_DEAL + """
             WHERE EXISTS (
                   SELECT 1
                   FROM deal_participant participant
@@ -69,14 +73,14 @@ class DealRepository {
                     deal_status,
                     buyer_legal_entity_id,
                     seller_legal_entity_id,
-                    current_document_id,
+                    current_document_id, current_rule_set_version_id, current_ratification_package_id,
                     initiator_legal_entity_id,
                     created_by,
                     created_at,
                     updated_at,
                     version
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 deal.id(),
                 deal.tenantId(),
@@ -86,7 +90,7 @@ class DealRepository {
                 deal.status().name(),
                 deal.buyerLegalEntityId(),
                 deal.sellerLegalEntityId(),
-                deal.currentDocumentId(),
+                deal.currentDocumentId(), deal.currentRuleSetVersionId(), deal.currentRatificationPackageId(),
                 deal.initiatorLegalEntityId(),
                 deal.createdBy(),
                 Timestamp.from(deal.createdAt()),
@@ -143,6 +147,55 @@ class DealRepository {
                     version = version + 1
                 WHERE id = ?
                 """, documentId, Timestamp.from(changedAt), dealId) == 1;
+    }
+
+    Optional<DealRecord> findByIdForUpdate(UUID dealId) {
+        return jdbcTemplate.query(
+                        SELECT_DEAL + " WHERE deal.id = ? FOR UPDATE", this::mapDeal, dealId)
+                .stream().findFirst();
+    }
+
+    void setCurrentRuleSet(UUID dealId, UUID ruleSetVersionId, Instant changedAt) {
+        if (jdbcTemplate.update("""
+                UPDATE deal SET current_rule_set_version_id = ?, updated_at = ?, version = version + 1
+                WHERE id = ?
+                """, ruleSetVersionId, Timestamp.from(changedAt), dealId) != 1) {
+            throw new IllegalStateException("Deal disappeared while setting current rule set");
+        }
+    }
+
+    void pointCurrentRatificationPackage(UUID dealId, UUID packageId, Instant changedAt) {
+        if (jdbcTemplate.update("""
+                UPDATE deal
+                SET current_ratification_package_id = ?,
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                """, packageId, Timestamp.from(changedAt), dealId) != 1) {
+            throw new IllegalStateException("Deal disappeared while setting current ratification package");
+        }
+    }
+
+    boolean activateCurrentRatificationPackage(
+            UUID dealId, UUID packageId, long expectedVersion, Instant changedAt) {
+        return jdbcTemplate.update("""
+                UPDATE deal SET deal_status = 'ACTIVE', updated_at = ?, version = version + 1
+                WHERE id = ? AND deal_status = 'DRAFT' AND current_ratification_package_id = ? AND version = ?
+                """, Timestamp.from(changedAt), dealId, packageId, expectedVersion) == 1;
+    }
+
+    /**
+     * Document finalization already advances the Deal aggregate when it repoints the
+     * current document.  Clearing a stale rule-set is part of that same mutation,
+     * so it deliberately does not advance the version or timestamp a second time.
+     */
+    void clearCurrentRuleSetForDocumentSupersession(UUID dealId) {
+        jdbcTemplate.update("""
+                UPDATE deal
+                SET current_rule_set_version_id = NULL
+                WHERE id = ?
+                  AND current_rule_set_version_id IS NOT NULL
+                """, dealId);
     }
 
     List<DealRecord> findVisiblePage(
@@ -228,7 +281,7 @@ class DealRepository {
                     version = version + 1
                 WHERE id = ?
                   AND version = ?
-                  AND deal_status IN ('DRAFT', 'ACTIVE')
+                  AND deal_status = 'DRAFT'
                   AND initiator_legal_entity_id = ?
                   AND EXISTS (
                       SELECT 1
@@ -299,6 +352,7 @@ class DealRepository {
                     version = version + 1
                 WHERE id = ?
                   AND deal_status = ?
+                  AND deal_status = 'DRAFT'
                   AND version = ?
                   AND initiator_legal_entity_id = ?
                   AND EXISTS (
@@ -331,6 +385,8 @@ class DealRepository {
                 resultSet.getObject("buyer_legal_entity_id", UUID.class),
                 resultSet.getObject("seller_legal_entity_id", UUID.class),
                 resultSet.getObject("current_document_id", UUID.class),
+                resultSet.getObject("current_rule_set_version_id", UUID.class),
+                resultSet.getObject("current_ratification_package_id", UUID.class),
                 resultSet.getObject("initiator_legal_entity_id", UUID.class),
                 resultSet.getObject("created_by", UUID.class),
                 resultSet.getTimestamp("created_at").toInstant(),
@@ -361,11 +417,31 @@ class DealRepository {
             UUID buyerLegalEntityId,
             UUID sellerLegalEntityId,
             UUID currentDocumentId,
+            UUID currentRuleSetVersionId,
+            UUID currentRatificationPackageId,
             UUID initiatorLegalEntityId,
             UUID createdBy,
             Instant createdAt,
             Instant updatedAt,
             long version) {
+        DealRecord(UUID id, UUID tenantId, String reference, String title, String description,
+                DealStatus status, UUID buyerLegalEntityId, UUID sellerLegalEntityId,
+                UUID currentDocumentId, UUID initiatorLegalEntityId, UUID createdBy,
+                Instant createdAt, Instant updatedAt, long version) {
+            this(id, tenantId, reference, title, description, status, buyerLegalEntityId,
+                    sellerLegalEntityId, currentDocumentId, null, null, initiatorLegalEntityId,
+                    createdBy, createdAt, updatedAt, version);
+        }
+
+        DealRecord(UUID id, UUID tenantId, String reference, String title, String description,
+                DealStatus status, UUID buyerLegalEntityId, UUID sellerLegalEntityId,
+                UUID currentDocumentId, UUID currentRuleSetVersionId,
+                UUID initiatorLegalEntityId, UUID createdBy,
+                Instant createdAt, Instant updatedAt, long version) {
+            this(id, tenantId, reference, title, description, status, buyerLegalEntityId,
+                    sellerLegalEntityId, currentDocumentId, currentRuleSetVersionId, null,
+                    initiatorLegalEntityId, createdBy, createdAt, updatedAt, version);
+        }
     }
 
     record ParticipantRecord(UUID legalEntityId, UUID legalEntityTenantId,
