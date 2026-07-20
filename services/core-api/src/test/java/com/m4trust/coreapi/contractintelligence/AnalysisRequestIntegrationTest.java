@@ -92,7 +92,10 @@ class AnalysisRequestIntegrationTest {
                     contract_intelligence_extraction_result_version,
                     contract_intelligence_analysis_job,
                     http_idempotency_record, audit_record, deal_invitation, deal_participant, document,
-                    ratification_package_approval, ratification_package, ratification_package_snapshot, deal,
+                    ratification_package_approval, ratification_package, ratification_package_snapshot,
+                    fulfillment_video_analysis_result, fulfillment_video_analysis_job,
+                    fulfillment_evidence_submission, fulfillment_milestone_rule_reference,
+                    fulfillment_milestone, fulfillment, deal,
                     legal_entity_membership, legal_entity, tenant_user, tenant, identity_user
                 """);
         userId = UUID.randomUUID();

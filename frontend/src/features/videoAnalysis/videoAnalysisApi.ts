@@ -3,6 +3,9 @@ import { postJsonWithFreshCsrf, requestJson } from "../../app/coreApi";
 
 export type VideoAnalysisDetail = components["schemas"]["VideoAnalysisDetail"];
 export type VideoAnalysisStatus = components["schemas"]["VideoAnalysisStatus"];
+export type VideoAnalysisResult = components["schemas"]["VideoAnalysisResult"];
+export type VideoAnalysisFailureSummary =
+  components["schemas"]["VideoAnalysisFailureSummary"];
 export type RequestVideoAnalysisRequest =
   components["schemas"]["RequestVideoAnalysisRequest"];
 

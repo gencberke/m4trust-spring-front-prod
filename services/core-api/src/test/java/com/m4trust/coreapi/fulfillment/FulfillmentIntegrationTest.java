@@ -85,6 +85,8 @@ class FulfillmentIntegrationTest {
         jdbc.update("DELETE FROM spring_session");
         jdbc.execute("""
                 TRUNCATE TABLE
+                    fulfillment_video_analysis_result,
+                    fulfillment_video_analysis_job,
                     fulfillment_evidence_submission,
                     fulfillment_milestone_rule_reference,
                     fulfillment_milestone,

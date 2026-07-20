@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
-/** Coordinates per-evidence video analysis request and read projection; result consumption is absent in P3. */
+/** Coordinates per-evidence video analysis request and read projection. */
 @Service
 class VideoAnalysisService {
 
@@ -44,6 +44,7 @@ class VideoAnalysisService {
     private final AuditAppendPort auditAppender;
     private final TransactionTemplate transactions;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
     private final VideoAnalysisRequestedEventFactory eventFactory;
 
     VideoAnalysisService(VideoAnalysisRepository repository, FulfillmentSourcePorts.DealTarget deals,
@@ -64,6 +65,7 @@ class VideoAnalysisService {
         this.auditAppender = auditAppender;
         this.transactions = transactions;
         this.clock = clock;
+        this.objectMapper = objectMapper;
         this.eventFactory = new VideoAnalysisRequestedEventFactory(objectMapper, producerVersion);
     }
 
@@ -166,9 +168,31 @@ class VideoAnalysisService {
         VideoAnalysisFailureSummary failure = job.failureCode() == null ? null
                 : new VideoAnalysisFailureSummary(job.failureCode(),
                         Boolean.TRUE.equals(job.retryRecommended()));
+        Object result = repository.findResultByJobId(job.id()).map(this::readPublicResult).orElse(null);
         return new VideoAnalysisDetail(resolved.evidenceSubmissionId(), job.id(), publicStatus(job),
-                job.requestedAt(), job.completedAt(), job.failedAt(), failure, null,
+                job.requestedAt(), job.completedAt(), job.failedAt(), failure, result,
                 new VideoAnalysisAvailableActions(canRequest(resolved, context, job)));
+    }
+
+    private Object readPublicResult(String serialized) {
+        try {
+            var canonical = objectMapper.readTree(serialized);
+            var result = canonical.has("result") ? canonical.get("result") : canonical;
+            var warnings = canonical.has("warnings")
+                    ? canonical.get("warnings")
+                    : canonical.path("warnings");
+            if (!warnings.isArray()) {
+                warnings = objectMapper.createArrayNode();
+            }
+            return java.util.Map.of(
+                    "durationMs", result.get("durationMs").numberValue(),
+                    "observations", objectMapper.treeToValue(result.get("observations"), Object.class),
+                    "anomalies", objectMapper.treeToValue(result.get("anomalies"), Object.class),
+                    "summary", objectMapper.treeToValue(result.get("summary"), Object.class),
+                    "warnings", objectMapper.treeToValue(warnings, Object.class));
+        } catch (Exception exception) {
+            throw new IllegalStateException("Stored canonical result is invalid", exception);
+        }
     }
 
     private VideoAnalysisDetail notRequested(ResolvedEvidence resolved, OperationContext context) {

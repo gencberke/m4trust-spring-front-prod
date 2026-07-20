@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from .contracts import ContractValidator
+from .contracts import ContractValidator, ContractViolation, DOCUMENT_JOB_TYPE, VIDEO_JOB_TYPE
 
 
 @dataclass(frozen=True)
@@ -56,12 +56,11 @@ class DocumentDownloader:
 
     def _download_with_retry(self, url: str) -> bytes:
         connection_url, host_header = self._connection_target(url)
+        last_error: Exception | None = None
         for attempt in range(1, self._max_attempts + 1):
             try:
                 headers = {"User-Agent": "m4trust-mock-ai-worker/1.0"}
                 if host_header:
-                    # SigV4 includes Host in the signature. Connect through the
-                    # Docker host alias while preserving the signed public host.
                     headers["Host"] = host_header
                 request = urllib.request.Request(connection_url, headers=headers)
                 with urllib.request.urlopen(request, timeout=self._timeout_seconds) as response:
@@ -112,29 +111,39 @@ class ScenarioSelector:
             return "retryable_failure"
         if normalized.startswith("duplicate"):
             return "duplicate"
+        if normalized.startswith("fail-warning") or normalized.startswith("warning"):
+            return "warning"
         return "success"
 
 
 class EventFactory:
+    CANONICAL_PRODUCER = {"service": "m4trust-ai-worker", "version": "1.0.0"}
+
     def __init__(self, contracts: ContractValidator):
         self._contracts = contracts
 
-    def completed(self, request: dict[str, Any]) -> dict[str, Any]:
-        payload = copy.deepcopy(self._contracts.fixture_payload("success-result.json"))
+    def document_completed(self, request: dict[str, Any]) -> dict[str, Any]:
+        payload = copy.deepcopy(self._contracts.fixture_payload("success-result.json", DOCUMENT_JOB_TYPE))
         payload["result"]["document"]["contentSha256"] = request["payload"]["input"]["sha256"].lower()
         event = self._envelope(request, "ai.job.completed.v1", payload, "completed")
         self._contracts.validate_completed(event)
         return event
 
+    def video_completed(self, request: dict[str, Any], fixture_name: str) -> dict[str, Any]:
+        payload = copy.deepcopy(self._contracts.fixture_payload(fixture_name, VIDEO_JOB_TYPE))
+        event = self._envelope(request, "ai.job.completed.v1", payload, "completed")
+        self._contracts.validate_completed(event)
+        return event
+
     def retryable_failure(self, request: dict[str, Any]) -> dict[str, Any]:
-        payload = copy.deepcopy(self._contracts.fixture_payload("retryable-failure.json"))
+        payload = copy.deepcopy(self._contracts.fixture_payload("retryable-failure.json", request["jobType"]))
         event = self._envelope(request, "ai.job.failed.v1", payload, "failed")
         self._contracts.validate_failed(event)
         return event
 
     def download_failure(self, request: dict[str, Any], failure: DownloadFailure) -> dict[str, Any]:
         fixture = "retryable-failure.json" if failure.retry_recommended else "non-retryable-failure.json"
-        payload = copy.deepcopy(self._contracts.fixture_payload(fixture))
+        payload = copy.deepcopy(self._contracts.fixture_payload(fixture, request["jobType"]))
         payload["error"] = {
             "category": failure.category,
             "code": failure.code,
@@ -147,8 +156,7 @@ class EventFactory:
         self._contracts.validate_failed(event)
         return event
 
-    @staticmethod
-    def _envelope(request: dict[str, Any], event_type: str, payload: dict[str, Any], suffix: str) -> dict[str, Any]:
+    def _envelope(self, request: dict[str, Any], event_type: str, payload: dict[str, Any], suffix: str) -> dict[str, Any]:
         return {
             "eventId": str(uuid.uuid4()),
             "eventType": event_type,
@@ -162,12 +170,17 @@ class EventFactory:
             "transactionId": request["transactionId"],
             "subjectId": request["subjectId"],
             "idempotencyKey": f'{request["idempotencyKey"]}:mock-{suffix}',
-            "producer": {"service": "m4trust-mock-ai-worker", "version": "1.0.0"},
+            "producer": self.CANONICAL_PRODUCER,
             "payload": payload,
         }
 
 
 class Processor:
+    DOCUMENT_COMPLETED = "ai.document-extraction.completed.v1"
+    DOCUMENT_FAILED = "ai.document-extraction.failed.v1"
+    VIDEO_COMPLETED = "ai.video-analysis.completed.v1"
+    VIDEO_FAILED = "ai.video-analysis.failed.v1"
+
     def __init__(self, contracts: ContractValidator, downloader: DocumentDownloader, selector: ScenarioSelector):
         self._contracts = contracts
         self._downloader = downloader
@@ -175,23 +188,60 @@ class Processor:
         self._events = EventFactory(contracts)
 
     def process(self, request: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+        job_type = request["jobType"]
+        if job_type == DOCUMENT_JOB_TYPE:
+            return self._process_document(request)
+        if job_type == VIDEO_JOB_TYPE:
+            return self._process_video(request)
+        raise ContractViolation("Unsupported job type")
+
+    def _process_document(self, request: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+        return self._process(
+            request,
+            self.DOCUMENT_FAILED,
+            self.DOCUMENT_COMPLETED,
+            self._validate_document_request,
+        )
+
+    def _process_video(self, request: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+        return self._process(
+            request,
+            self.VIDEO_FAILED,
+            self.VIDEO_COMPLETED,
+            self._validate_video_request,
+            warning_fixture="warning-result.json",
+        )
+
+    def _process(
+        self,
+        request: dict[str, Any],
+        failed_routing_key: str,
+        completed_routing_key: str,
+        validate_request: Callable[[dict[str, Any]], None],
+        warning_fixture: str | None = None,
+    ) -> list[tuple[str, dict[str, Any]]]:
         self._contracts.validate_request(request)
         try:
-            self._validate_expected_request(request)
+            validate_request(request)
             self._downloader.download_and_verify(request["payload"]["input"])
         except DownloadFailure as failure:
-            event = self._events.download_failure(request, failure)
-            return [("ai.document-extraction.failed.v1", event)]
+            return [(failed_routing_key, self._events.download_failure(request, failure))]
 
         scenario = self._selector.select(request["payload"]["input"]["fileName"])
         if scenario == "retryable_failure":
-            return [("ai.document-extraction.failed.v1", self._events.retryable_failure(request))]
-        completed = self._events.completed(request)
-        messages = [("ai.document-extraction.completed.v1", completed)]
+            return [(failed_routing_key, self._events.retryable_failure(request))]
+
+        if request["jobType"] == VIDEO_JOB_TYPE:
+            fixture_name = warning_fixture if scenario == "warning" else "success-result.json"
+            completed = self._events.video_completed(request, fixture_name)
+        else:
+            completed = self._events.document_completed(request)
+
+        messages = [(completed_routing_key, completed)]
         return messages * 2 if scenario == "duplicate" else messages
 
     @staticmethod
-    def _validate_expected_request(request: dict[str, Any]) -> None:
+    def _validate_document_request(request: dict[str, Any]) -> None:
         payload = request["payload"]
         if request["subjectId"] != payload["input"]["documentId"]:
             raise DownloadFailure(
@@ -203,6 +253,42 @@ class Processor:
                 "NON_RETRYABLE_TECHNICAL", "UNSUPPORTED_SCHEMA_VERSION", "The requested output schema version is unsupported.",
                 {"field": "processing.requestedOutputSchemaVersion", "reason": "unsupported schema version"}, False,
             )
+        Processor._validate_deadline(payload)
+
+    @staticmethod
+    def _validate_video_request(request: dict[str, Any]) -> None:
+        payload = request["payload"]
+        input_data = payload["input"]
+        processing = payload["processing"]
+        if request["subjectId"] != input_data["videoId"]:
+            raise DownloadFailure(
+                "INVALID_INPUT", "INVALID_EXPECTED_OBJECT", "The requested object identity is inconsistent.",
+                {"field": "input.videoId", "reason": "subject mismatch"}, False,
+            )
+        if input_data["mediaType"] != "video/mp4":
+            raise DownloadFailure(
+                "INVALID_INPUT", "INVALID_EXPECTED_OBJECT", "The requested media type is unsupported.",
+                {"field": "input.mediaType", "reason": "unsupported media type"}, False,
+            )
+        if processing["analysisProfile"] != "DELIVERY_EVIDENCE_DEFAULT":
+            raise DownloadFailure(
+                "INVALID_INPUT", "INVALID_EXPECTED_OBJECT", "The requested analysis profile is unsupported.",
+                {"field": "processing.analysisProfile", "reason": "unsupported analysis profile"}, False,
+            )
+        if processing["requestedOutputSchema"] != "m4trust.video-analysis-result":
+            raise DownloadFailure(
+                "NON_RETRYABLE_TECHNICAL", "UNSUPPORTED_SCHEMA_VERSION", "The requested output schema is unsupported.",
+                {"field": "processing.requestedOutputSchema", "reason": "unsupported output schema"}, False,
+            )
+        if processing["requestedOutputSchemaVersion"] != "1.0.0":
+            raise DownloadFailure(
+                "NON_RETRYABLE_TECHNICAL", "UNSUPPORTED_SCHEMA_VERSION", "The requested output schema version is unsupported.",
+                {"field": "processing.requestedOutputSchemaVersion", "reason": "unsupported schema version"}, False,
+            )
+        Processor._validate_deadline(payload)
+
+    @staticmethod
+    def _validate_deadline(payload: dict[str, Any]) -> None:
         deadline = datetime.fromisoformat(payload["deadlineAt"].replace("Z", "+00:00"))
         if deadline <= datetime.now(timezone.utc):
             raise DownloadFailure(

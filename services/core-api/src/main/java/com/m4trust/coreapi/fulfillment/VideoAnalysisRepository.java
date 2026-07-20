@@ -97,6 +97,29 @@ class VideoAnalysisRepository {
                 """, resultId, jobId, schemaVersion, canonicalResult, Timestamp.from(createdAt));
     }
 
+    void complete(VideoAnalysisJobRecord job, Instant completedAt) {
+        int changed = jdbcTemplate.update("""
+                UPDATE fulfillment_video_analysis_job
+                SET status = 'RESULT_AVAILABLE', completed_at = ?, version = version + 1
+                WHERE id = ? AND version = ? AND status = 'QUEUED'
+                """, Timestamp.from(completedAt), job.id(), job.version());
+        if (changed != 1) {
+            throw new IllegalStateException("Video analysis job changed while completing");
+        }
+    }
+
+    void fail(VideoAnalysisJobRecord job, Instant failedAt, String code, boolean retryRecommended) {
+        int changed = jdbcTemplate.update("""
+                UPDATE fulfillment_video_analysis_job
+                SET status = 'FAILED', failed_at = ?, failure_code = ?, retry_recommended = ?,
+                    version = version + 1
+                WHERE id = ? AND version = ? AND status = 'QUEUED'
+                """, Timestamp.from(failedAt), code, retryRecommended, job.id(), job.version());
+        if (changed != 1) {
+            throw new IllegalStateException("Video analysis job changed while failing");
+        }
+    }
+
     Optional<String> findResultByJobId(UUID jobId) {
         return jdbcTemplate.query("""
                 SELECT canonical_result::text

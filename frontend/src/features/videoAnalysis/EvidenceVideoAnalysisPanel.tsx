@@ -4,12 +4,28 @@ import { useRef } from "react";
 import {
   requestVideoAnalysis,
   type VideoAnalysisDetail,
+  type VideoAnalysisFailureSummary,
+  type VideoAnalysisResult,
 } from "./videoAnalysisApi";
 import {
   getVideoAnalysisReadErrorMessage,
   getVideoAnalysisRequestErrorMessage,
   shouldRefetchAfterVideoAnalysisRequestError,
 } from "./videoAnalysisErrors";
+import {
+  formatDurationMs,
+  formatTimeRange,
+  labelAdvisoryOutcome,
+  labelAnomalySeverity,
+  labelFailureCode,
+  labelObservationType,
+  labelReviewReason,
+  labelWarningCode,
+  PERCENT_FORMATTER,
+  presentWarningMessage,
+  shouldShowWarningCode,
+  WARNING_SEVERITY_LABELS,
+} from "./videoAnalysisLabels";
 import {
   videoAnalysisQueryKey,
   videoAnalysisQueryOptions,
@@ -156,22 +172,172 @@ function VideoAnalysisBody({ analysis }: { analysis: VideoAnalysisDetail }) {
   }
 
   if (analysis.status === "FAILED" && analysis.failure) {
-    return (
-      <div className="analysis-failure" role="alert">
-        <span className="analysis-failure-code">{analysis.failure.code}</span>
-        <h5>Video analizi tamamlanamadı</h5>
-        <p>Teknik bir nedenle analiz tamamlanamadı.</p>
-      </div>
-    );
+    return <VideoAnalysisFailureView failure={analysis.failure} />;
   }
 
-  if (analysis.status === "RESULT_AVAILABLE") {
-    return (
-      <p className="success-text">
-        Video analizi tamamlandı. Sonuçlar yalnızca danışmanlık amaçlıdır.
-      </p>
-    );
+  if (analysis.status === "RESULT_AVAILABLE" && analysis.result) {
+    return <VideoAnalysisResultView result={analysis.result} />;
   }
 
   return null;
+}
+
+function VideoAnalysisFailureView({
+  failure,
+}: {
+  failure: VideoAnalysisFailureSummary;
+}) {
+  return (
+    <div className="analysis-failure" role="alert">
+      <span className="analysis-failure-code">{failure.code}</span>
+      <h5>Video analizi tamamlanamadı</h5>
+      <p>{labelFailureCode(failure.code)}</p>
+      <p className="analysis-advisory">
+        Bu sonuç yalnızca danışmanlık amaçlıdır; evidence kabul veya red kararı
+        vermez.
+      </p>
+      {failure.retryRecommended ? (
+        <p className="muted-copy">
+          Teknik olarak yeniden denenebilir. Yeni talep, yalnızca backend izin
+          verdiğinde gönderilebilir.
+        </p>
+      ) : (
+        <p className="muted-copy">
+          Bu hata otomatik yeniden deneme için uygun görünmüyor.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
+  return (
+    <div className="analysis-result">
+      <div className="analysis-review-notice" role="status">
+        <span>Danışmanlık sonucu</span>
+        <div>
+          <strong>
+            Video analizi tamamlandı; sonuç yalnızca danışmanlık amaçlıdır.
+          </strong>
+          <p>
+            Teslimat onayı, ödeme serbest bırakma veya evidence kabul/red
+            kararları bu sonuçtan otomatik türetilmez.
+          </p>
+        </div>
+      </div>
+
+      <section className="analysis-result-section" aria-labelledby="video-summary-title">
+        <div className="analysis-section-heading">
+          <h3 id="video-summary-title">Özet</h3>
+        </div>
+        <p>
+          <strong>{labelAdvisoryOutcome(result.summary.advisoryOutcome)}</strong>
+        </p>
+        <p className="muted-copy">
+          Süre: {formatDurationMs(result.durationMs)}
+        </p>
+        {result.summary.reviewReasons.length ? (
+          <ul className="analysis-card-list">
+            {result.summary.reviewReasons.map((reason) => (
+              <li key={reason}>{labelReviewReason(reason)}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted-copy">Ek inceleme nedeni bildirilmedi.</p>
+        )}
+      </section>
+
+      <section
+        className="analysis-result-section"
+        aria-labelledby="video-observations-title"
+      >
+        <div className="analysis-section-heading">
+          <h3 id="video-observations-title">Gözlemler</h3>
+          <span>{result.observations.length} kayıt</span>
+        </div>
+        {result.observations.length ? (
+          <ul className="analysis-card-list">
+            {result.observations.map((observation) => (
+              <li key={observation.observationReference}>
+                <div className="analysis-card-heading">
+                  <strong>{observation.label}</strong>
+                  <span>{labelObservationType(observation.type)}</span>
+                </div>
+                <p>
+                  Değer: {String(observation.observedValue)} · Güven{" "}
+                  {PERCENT_FORMATTER.format(observation.confidence)}
+                </p>
+                <p className="analysis-source-copy">
+                  {formatTimeRange(
+                    observation.timeRange.startMs,
+                    observation.timeRange.endMs,
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted-copy">Gözlem kaydı yok.</p>
+        )}
+      </section>
+
+      <section
+        className="analysis-result-section"
+        aria-labelledby="video-anomalies-title"
+      >
+        <div className="analysis-section-heading">
+          <h3 id="video-anomalies-title">Anomaliler</h3>
+          <span>{result.anomalies.length} kayıt</span>
+        </div>
+        {result.anomalies.length ? (
+          <ul className="analysis-rule-list">
+            {result.anomalies.map((anomaly) => (
+              <li key={anomaly.anomalyReference}>
+                <div className="analysis-rule-topline">
+                  <span className="analysis-category-badge">
+                    {labelAnomalySeverity(anomaly.severity)}
+                  </span>
+                  <span>Güven {PERCENT_FORMATTER.format(anomaly.confidence)}</span>
+                </div>
+                <h4>{anomaly.type}</h4>
+                <p>{anomaly.description}</p>
+                <p className="analysis-source-copy">
+                  {formatTimeRange(anomaly.timeRange.startMs, anomaly.timeRange.endMs)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted-copy">Anomali kaydı yok.</p>
+        )}
+      </section>
+
+      {result.warnings.length ? (
+        <section
+          className="analysis-result-section"
+          aria-labelledby="video-warnings-title"
+        >
+          <div className="analysis-section-heading">
+            <h3 id="video-warnings-title">Uyarılar</h3>
+            <span>{result.warnings.length} kayıt</span>
+          </div>
+          <ul className="analysis-card-list">
+            {result.warnings.map((warning) => (
+              <li key={`${warning.code}-${warning.path ?? "root"}`}>
+                <div className="analysis-card-heading">
+                  <strong>{presentWarningMessage(warning.code, warning.message)}</strong>
+                  <span>
+                    {WARNING_SEVERITY_LABELS[warning.severity] ?? warning.severity}
+                  </span>
+                </div>
+                {shouldShowWarningCode(warning.code) ? (
+                  <p className="muted-copy">{labelWarningCode(warning.code)}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
 }
