@@ -1,10 +1,10 @@
 # Review Request
 
 Task: 13-T01
-Revision: 9
+Revision: 10
 Plan: docs/plan/ready/13-video-analysis.md
-Phases: P1-P7
-Status: COMPLETED
+Phases: P1-P7 + browser-acceptance fix (D1, D2)
+Status: FIX
 Branch: codex/slice-13-video-analysis
 Base: main@d342b01
 Plan completion claim: NO
@@ -18,27 +18,53 @@ Plan completion claim: NO
 - P5 — DONE — Mock AI Worker `VIDEO_ANALYSIS` dispatch/fixtures; advisory frontend panel/labels; canonical payload persisted at completion; public DTO built only on read.
 - P6 — DONE — Hardening matrix: latch-ordered concurrent review/request races, FAILED-first late COMPLETED, authorization boundaries (seller/buyer member, other participant, initiator-only non-buyer/seller), HTTP VIDEO finalize without auto-job, ACTIVE/FULFILLMENT lifecycle assertions, duplicate-terminal idempotency.
 - P7 — DONE — Full implementer validation (`mvn verify` 290 tests), final fast check, regression truncate fixes for V21 FK tables across 13 legacy integration tests, review handoff. Section 6 browser acceptance not run (planner-owned).
+- Browser-acceptance fix — DONE — Corrected V21 tenant integrity model and `EvidenceMediaType` wire serialization; added genuine cross-tenant HTTP integration coverage and MockMvc MIME regression tests. Section 6 browser acceptance not re-run here (planner-owned).
+
+## Browser-discovered defects and regression coverage
+
+### D1 — Cross-tenant video-analysis request persistence (HTTP 500)
+
+- **Symptom:** Buyer ADMIN POST `/fulfillment/evidence/{id}/video-analysis` returned HTTP 500 with `DataIntegrityViolationException` when the Deal hosting tenant differed from the seller fulfillment actor tenant (cross-participant deal topology).
+- **Root cause:** `V21__video_analysis.sql` required `(fulfillment_id, tenant_id) -> fulfillment(id, tenant_id)` while `VideoAnalysisService` correctly persisted `job.tenant_id` as the Deal hosting tenant used by the canonical AI envelope; `fulfillment.tenant_id` remains the seller actor tenant from `FulfillmentService.start()`.
+- **Fix:** Removed the incompatible `(fulfillment_id, tenant_id)` FK and the additive `fulfillment(id, tenant_id)` unique constraint; kept `(deal_id, tenant_id) -> deal(id, tenant_id)` and `(fulfillment_id, deal_id) -> fulfillment(id, deal_id)`.
+- **Regression:**
+  - `VideoAnalysisMigrationIntegrationTest.allowsDealHostingJobTenantWhenFulfillmentUsesSellerActorTenant`
+  - `VideoAnalysisCrossTenantIntegrationTest.crossTenantSellerFulfillmentVideoAnalysisRequestUsesDealHostingTenantForJob` — seller starts fulfillment on separate tenant; buyer ADMIN request returns 202; asserts `job.tenant_id == deal hosting tenant`, `fulfillment.tenant_id == seller tenant`, and atomic delta for job/outbox/`VIDEO_ANALYSIS_REQUESTED` audit/idempotency without HTTP 500.
+- **Removed:** `VideoAnalysisRequestIntegrationTest.crossTenantBuyerAdminRequestUsesActorTenantForAuditAndDealTenantForJob` (JDBC-seeded fulfillment under Deal tenant; did not exercise real seller start path).
+
+### D2 — EvidenceMediaType response serialization (`VIDEO_MP4` vs `video/mp4`)
+
+- **Symptom:** GET `/fulfillment` responses serialized `EvidenceMediaType` enum constant names (`VIDEO_MP4`, `APPLICATION_PDF`) instead of committed MIME wire values; frontend video panel gate (`currentEvidence.mediaType === "video/mp4"`) never rendered.
+- **Root cause:** Jackson default enum serialization on response DTOs using `EvidenceMediaType`.
+- **Fix:** `@JsonValue` on `EvidenceMediaType.value()`; no OpenAPI or generated type change.
+- **Regression:** `FulfillmentIntegrationTest.fulfillmentResponsesSerializeEvidenceMediaTypeAsMimeWireValues` — MockMvc asserts finalized VIDEO evidence returns `"video/mp4"` and PDF evidence returns `"application/pdf"`.
 
 ## Validation
 
 - `python contracts/scripts/validate_contracts.py` — PASS
-- `services/core-api` `mvnw verify` — PASS (290 tests)
+- `services/core-api` `mvn verify` — PASS (292 tests)
 - `npm run typecheck` — PASS
 - `npm run build` (frontend) — PASS
 - `python -m pytest tools/mock-ai-worker/tests` — PASS (27 tests)
 - `docker compose -f infra/compose.yaml config` — PASS
 - `git diff --check` — PASS
-- Final fast check (Slice 13 + router + document regression) — PASS (63 tests):
+- Focused browser-acceptance fix tests — PASS:
+  - `VideoAnalysisCrossTenantIntegrationTest` — 1
+  - `VideoAnalysisMigrationIntegrationTest` — 3 (includes D1 migration boundary)
+  - `FulfillmentIntegrationTest#fulfillmentResponsesSerializeEvidenceMediaTypeAsMimeWireValues` — 1
+- Final fast check (Slice 13 + router + document regression) — PASS (65 tests):
   - `VideoAnalysisHardeningIntegrationTest` — 18
-  - `VideoAnalysisRequestIntegrationTest` — 14
+  - `VideoAnalysisRequestIntegrationTest` — 13
   - `VideoAnalysisResultConsumerIntegrationTest` — 4
-  - `VideoAnalysisMigrationIntegrationTest` — 2
+  - `VideoAnalysisMigrationIntegrationTest` — 3
+  - `VideoAnalysisCrossTenantIntegrationTest` — 1
   - `AiResultsRabbitListenerTest` — 1
   - `CommittedEventSchemaValidatorTest` — 3
   - `AnalysisResultConsumerIntegrationTest` — 7
   - `AnalysisRequestIntegrationTest` — 9
   - `ModuleArchitectureTest` — 4
   - `AsyncApiTopologyTest` — 1
+  - `FulfillmentIntegrationTest#fulfillmentResponsesSerializeEvidenceMediaTypeAsMimeWireValues` — 1
 - RabbitMQ smoke (prior revision, unchanged):
 
 ```powershell
@@ -53,11 +79,11 @@ Result: `RabbitMQ smoke PASS: document and video download plus completed and fai
 
 ## Scope confirmation
 
-- Base-to-HEAD: 61 files changed on feature branch (contracts, core-api, frontend, mock worker, tests).
-- Migration: `V21__video_analysis.sql` only; V15-V20 unchanged.
-- Public contract: additive video-analysis paths/schemas in `contracts/openapi/core-api-v1.yaml`.
+- Base-to-HEAD: 76 files changed on feature branch (contracts, core-api, frontend, mock worker, tests, req-review).
+- Migration: `V21__video_analysis.sql` corrected on feature branch (not merged history); V15-V20 unchanged.
+- Public contract: unchanged in this fix; additive video-analysis paths/schemas remain in `contracts/openapi/core-api-v1.yaml`.
 - Shared router: document + video terminal dispatch via `integration/messaging`; document extraction regression covered.
-- Unchanged by design: `docs/agent/CURRENT.md`, ready/done plans, deployment/Railway, payment/provider/settlement/dispute/casework scope.
+- Unchanged by design: `docs/agent/CURRENT.md`, ready/done plans, deployment/Railway, payment/provider/settlement/dispute/casework scope, OpenAPI/AsyncAPI/fixture/AI schema.
 
 ## Decisions needed
 
@@ -66,3 +92,4 @@ Result: `RabbitMQ smoke PASS: document and video download plus completed and fai
 ## Deviation or risk
 
 - P7 required adding V21 fulfillment/video-analysis tables to TRUNCATE lists in 13 pre-existing integration tests so full `mvn verify` passes after migration FK constraints; behavior under test unchanged.
+- V21 tenant model now allows `fulfillment_video_analysis_job.tenant_id` (Deal hosting) to differ from `fulfillment.tenant_id` (seller actor); integrity is enforced via deal and fulfillment/deal FKs plus service-layer tenant selection for AI envelope/outbox/audit.

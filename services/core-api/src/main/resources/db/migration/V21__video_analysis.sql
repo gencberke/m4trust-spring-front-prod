@@ -4,9 +4,6 @@
 ALTER TABLE fulfillment_evidence_submission
     ADD CONSTRAINT fulfillment_evidence_submission_id_deal_id_unique UNIQUE (id, deal_id);
 
-ALTER TABLE fulfillment
-    ADD CONSTRAINT fulfillment_id_tenant_uk UNIQUE (id, tenant_id);
-
 CREATE TABLE fulfillment_video_analysis_job (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -37,8 +34,6 @@ CREATE TABLE fulfillment_video_analysis_job (
         REFERENCES fulfillment_evidence_submission(id, deal_id),
     CONSTRAINT fulfillment_video_analysis_job_deal_hosting_tenant_fk
         FOREIGN KEY (deal_id, tenant_id) REFERENCES deal(id, tenant_id),
-    CONSTRAINT fulfillment_video_analysis_job_fulfillment_hosting_tenant_fk
-        FOREIGN KEY (fulfillment_id, tenant_id) REFERENCES fulfillment(id, tenant_id),
     CONSTRAINT fulfillment_video_analysis_job_status_ck CHECK (
         status IN ('QUEUED', 'RESULT_AVAILABLE', 'FAILED')
     ),

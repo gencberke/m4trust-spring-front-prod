@@ -113,6 +113,23 @@ class VideoAnalysisMigrationIntegrationTest {
                 "video analysis job tenant must match Deal hosting tenant");
     }
 
+    @Test
+    void allowsDealHostingJobTenantWhenFulfillmentUsesSellerActorTenant() {
+        Fixture fixture = fixture();
+        UUID sellerActorTenant = UUID.randomUUID();
+        jdbc.update("INSERT INTO tenant(id) VALUES (?)", sellerActorTenant);
+        UUID fulfillmentId = fulfillment(fixture.dealId(), sellerActorTenant, UUID.randomUUID(),
+                "REVIEW_REQUIRED", 0L);
+        UUID milestoneId = milestone(fulfillmentId, fixture.dealId(), "Primary", "REVIEW_REQUIRED", 0L);
+        String sha256 = "d".repeat(64);
+        UUID evidenceId = videoEvidence(UUID.randomUUID(), fixture.dealId(), milestoneId, fulfillmentId,
+                "SUBMITTED", sha256, 1L);
+
+        assertDoesNotThrow(() -> queuedJob(UUID.randomUUID(), fixture.tenant(), fixture.dealId(), fulfillmentId,
+                milestoneId, evidenceId, sha256, null),
+                "job tenant follows Deal hosting tenant even when fulfillment tenant differs");
+    }
+
     private static void markFailed(UUID jobId) {
         jdbc.update("""
                 UPDATE fulfillment_video_analysis_job

@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.fulfillment;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 public enum EvidenceMediaType {
     APPLICATION_PDF("application/pdf"),
     APPLICATION_DOCX("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
@@ -13,6 +15,7 @@ public enum EvidenceMediaType {
         this.value = value;
     }
 
+    @JsonValue
     public String value() {
         return value;
     }

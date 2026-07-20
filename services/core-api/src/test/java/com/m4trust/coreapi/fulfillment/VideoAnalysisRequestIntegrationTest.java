@@ -416,44 +416,6 @@ class VideoAnalysisRequestIntegrationTest {
     }
 
     @Test
-    void crossTenantBuyerAdminRequestUsesActorTenantForAuditAndDealTenantForJob() {
-        UUID hostTenantId = tenantId;
-        UUID buyerHomeTenantId = UUID.randomUUID();
-        UUID crossBuyerUserId = UUID.randomUUID();
-        UUID crossBuyerEntityId = UUID.randomUUID();
-        jdbc.update("INSERT INTO tenant (id) VALUES (?)", buyerHomeTenantId);
-        insertUser(crossBuyerUserId, "cross-buyer-admin@example.test");
-        jdbc.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)", crossBuyerUserId,
-                buyerHomeTenantId);
-        jdbc.update("""
-                INSERT INTO legal_entity (id, tenant_id, legal_name, registration_number)
-                VALUES (?, ?, 'Cross Buyer Co', ?)
-                """, crossBuyerEntityId, buyerHomeTenantId, "REG-" + crossBuyerEntityId);
-        jdbc.update("""
-                INSERT INTO legal_entity_membership (id, tenant_id, legal_entity_id, user_id, role)
-                VALUES (?, ?, ?, ?, 'ADMIN')
-                """, UUID.randomUUID(), buyerHomeTenantId, crossBuyerEntityId, crossBuyerUserId);
-        jdbc.update("""
-                INSERT INTO deal_participant (deal_id, tenant_id, legal_entity_id, legal_entity_tenant_id)
-                VALUES (?, ?, ?, ?)
-                """, dealId, hostTenantId, crossBuyerEntityId, buyerHomeTenantId);
-        jdbc.update("UPDATE deal SET buyer_legal_entity_id = ? WHERE id = ?",
-                crossBuyerEntityId, dealId);
-
-        service.request(context(crossBuyerUserId, buyerHomeTenantId, crossBuyerEntityId,
-                        LegalEntityRole.ADMIN, RequestedOperation.VIDEO_ANALYSIS_REQUEST),
-                dealId, evidenceId, new RequestVideoAnalysisRequest(evidenceVersion), UUID.randomUUID(),
-                UUID.randomUUID());
-
-        assertEquals(buyerHomeTenantId, jdbc.queryForObject("SELECT tenant_id FROM audit_record LIMIT 1",
-                UUID.class));
-        assertEquals(hostTenantId, jdbc.queryForObject(
-                "SELECT tenant_id FROM fulfillment_video_analysis_job LIMIT 1", UUID.class));
-        assertEquals(hostTenantId.toString(), jdbc.queryForObject(
-                "SELECT payload->>'tenantId' FROM integration_outbox_event LIMIT 1", String.class));
-    }
-
-    @Test
     void idempotencyKeyReuseWithDifferentCanonicalRequestIsRejected() throws Exception {
         UUID key = UUID.randomUUID();
         acceptHttpRequestWithKey(key);
