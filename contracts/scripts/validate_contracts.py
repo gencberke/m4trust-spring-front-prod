@@ -307,6 +307,16 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get"): {
+        "operationId": "getVideoAnalysis",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post"): {
+        "operationId": "requestVideoAnalysis",
+        "responses": {"202", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
 }
 EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
@@ -333,6 +343,7 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post"): "#/components/schemas/FinalizeEvidenceUploadRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post"): "#/components/schemas/AcceptEvidenceRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post"): "#/components/schemas/RejectEvidenceRequest",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post"): "#/components/schemas/RequestVideoAnalysisRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
@@ -382,6 +393,8 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link", "post", "200"): "#/components/schemas/EvidenceDownloadLink",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post", "200"): "#/components/schemas/AcceptedEvidenceSubmission",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "200"): "#/components/schemas/RejectedEvidenceSubmission",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "200"): "#/components/schemas/VideoAnalysisDetail",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "202"): "#/components/schemas/VideoAnalysisDetail",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -588,6 +601,16 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "403"): "EvidenceReviewForbidden",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "404"): "EvidenceNotFoundOrHidden",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "409"): "EvidenceReviewConflict",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "404"): "EvidenceNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "403"): "VideoAnalysisRequestForbidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "404"): "EvidenceNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "409"): "VideoAnalysisRequestConflict",
+    ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "422"): "ValidationFailed",
 }
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
@@ -621,6 +644,12 @@ REQUIRED_CORE_API_SCHEMAS = {
     "MilestoneRuleReference", "FulfillmentMilestone",
     "PendingEvidenceSubmission", "SubmittedEvidenceSubmission", "AcceptedEvidenceSubmission",
     "RejectedEvidenceSubmission", "EvidenceSubmission", "EvidenceUploadIntent", "EvidenceDownloadLink",
+    "VideoAnalysisStatus", "VideoAnalysisFailureSummary", "VideoAnalysisTimeRange",
+    "VideoAnalysisObservationType", "VideoAnalysisObservation", "VideoAnalysisAnomalySeverity",
+    "VideoAnalysisAnomaly", "VideoAnalysisAdvisoryOutcome", "VideoAnalysisSummary",
+    "VideoAnalysisWarningSeverity", "VideoAnalysisWarningDetails", "VideoAnalysisWarning",
+    "VideoAnalysisResult", "RequestVideoAnalysisRequest", "VideoAnalysisAvailableActions",
+    "VideoAnalysisDetail",
     "DealFulfillmentSummary", "FulfillmentDetail",
 }
 
@@ -1431,6 +1460,17 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/LegalEntityContext",
                 "#/components/parameters/IdempotencyKey",
             },
+            ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/EvidenceSubmissionId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/EvidenceSubmissionId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
             ("/deals/{dealId}/invitations", "post"): {
                 "#/components/parameters/DealId",
                 "#/components/parameters/LegalEntityContext",
@@ -1624,6 +1664,86 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or "FULFILLMENT_COMPLETED" not in evidence_review_conflict.get("description", "")
                 or "IDEMPOTENCY_KEY_REUSED" not in evidence_review_conflict.get("description", "")):
             failures.append("FAIL Core API Slice 12 evidence review: stable conflict codes changed")
+
+        video_analysis_status = core_components.get("schemas", {}).get("VideoAnalysisStatus", {})
+        video_analysis_actions = core_components.get("schemas", {}).get("VideoAnalysisAvailableActions", {})
+        video_analysis_request = core_components.get("schemas", {}).get("RequestVideoAnalysisRequest", {})
+        video_analysis_detail = core_components.get("schemas", {}).get("VideoAnalysisDetail", {})
+        video_analysis_result = core_components.get("schemas", {}).get("VideoAnalysisResult", {})
+        video_analysis_observation_type = core_components.get("schemas", {}).get("VideoAnalysisObservationType", {})
+        video_analysis_anomaly_severity = core_components.get("schemas", {}).get("VideoAnalysisAnomalySeverity", {})
+        video_analysis_advisory_outcome = core_components.get("schemas", {}).get("VideoAnalysisAdvisoryOutcome", {})
+        video_analysis_warning_severity = core_components.get("schemas", {}).get("VideoAnalysisWarningSeverity", {})
+        video_analysis_request_forbidden = core_components.get("responses", {}).get("VideoAnalysisRequestForbidden", {})
+        video_analysis_request_conflict = core_components.get("responses", {}).get("VideoAnalysisRequestConflict", {})
+        forbidden_video_result_fields = {
+            "technicalMetadata", "modelProvider", "modelFamily", "modelVersion", "promptVersion",
+            "downloadUrl", "objectKey", "storageUrl", "providerReference", "eventPayload", "payload",
+        }
+        video_analysis_closed_fields = {
+            "VideoAnalysisFailureSummary": {"code", "retryRecommended"},
+            "VideoAnalysisTimeRange": {"startMs", "endMs"},
+            "VideoAnalysisObservation": {"observationReference", "type", "label", "observedValue", "confidence", "timeRange"},
+            "VideoAnalysisAnomaly": {"anomalyReference", "type", "severity", "description", "confidence", "timeRange"},
+            "VideoAnalysisSummary": {"advisoryOutcome", "reviewReasons"},
+            "VideoAnalysisWarning": {"code", "message", "severity", "path", "details"},
+            "RequestVideoAnalysisRequest": {"expectedEvidenceVersion"},
+            "VideoAnalysisAvailableActions": {"canRequest"},
+            "VideoAnalysisDetail": {
+                "evidenceSubmissionId", "jobId", "status", "requestedAt", "completedAt", "failedAt",
+                "failure", "result", "availableActions",
+            },
+        }
+        if (video_analysis_status.get("enum") != ["NOT_REQUESTED", "QUEUED", "RESULT_AVAILABLE", "FAILED"]
+                or set(video_analysis_actions.get("required", [])) != {"canRequest"}
+                or set(video_analysis_actions.get("properties", {})) != {"canRequest"}
+                or video_analysis_actions.get("additionalProperties") is not False
+                or set(video_analysis_request.get("required", [])) != {"expectedEvidenceVersion"}
+                or set(video_analysis_request.get("properties", {})) != {"expectedEvidenceVersion"}
+                or video_analysis_request.get("additionalProperties") is not False
+                or video_analysis_request.get("properties", {}).get("expectedEvidenceVersion", {}).get("minimum") != 0
+                or set(video_analysis_detail.get("required", [])) != {
+                    "evidenceSubmissionId", "jobId", "status", "requestedAt", "completedAt", "failedAt",
+                    "failure", "result", "availableActions"}
+                or video_analysis_detail.get("properties", {}).get("result", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/VideoAnalysisResult"}, {"type": "null"}]
+                or video_analysis_observation_type.get("enum")
+                != ["OBJECT_COUNT", "OBJECT_PRESENCE", "SEQUENCE", "VISIBILITY", "OTHER", "UNKNOWN"]
+                or video_analysis_anomaly_severity.get("enum") != ["LOW", "MEDIUM", "HIGH", "UNKNOWN"]
+                or video_analysis_advisory_outcome.get("enum")
+                != ["NO_ISSUE_DETECTED", "REVIEW_SUGGESTED", "INSUFFICIENT_EVIDENCE", "UNKNOWN"]
+                or video_analysis_warning_severity.get("enum") != ["INFO", "WARNING"]
+                or forbidden_video_result_fields & set(video_analysis_result.get("properties", {}))
+                or "advisory only" not in video_analysis_detail.get("description", "").lower()
+                or "VIDEO_ANALYSIS_REQUEST_FORBIDDEN" not in video_analysis_request_forbidden.get("description", "")
+                or "VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE" not in video_analysis_request_conflict.get("description", "")
+                or "EVIDENCE_STALE_VERSION" not in video_analysis_request_conflict.get("description", "")
+                or "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS" not in video_analysis_request_conflict.get("description", "")
+                or "VIDEO_ANALYSIS_ALREADY_COMPLETED" not in video_analysis_request_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in video_analysis_request_conflict.get("description", "")):
+            failures.append("FAIL Core API Slice 13 video analysis: state, actions, safe result, or stable conflicts changed")
+        for schema_name, expected_fields in video_analysis_closed_fields.items():
+            schema = core_components.get("schemas", {}).get(schema_name, {})
+            if (schema.get("additionalProperties") is not False
+                    or set(schema.get("properties", {})) != expected_fields
+                    or set(schema.get("required", [])) != expected_fields):
+                failures.append(f"FAIL Core API Slice 13 {schema_name}: closed field set changed")
+        warning_details = core_components.get("schemas", {}).get("VideoAnalysisWarningDetails", {})
+        if (warning_details.get("additionalProperties") is not False
+                or set(warning_details.get("properties", {})) != {"field", "reason", "expected", "observed"}):
+            failures.append("FAIL Core API Slice 13 VideoAnalysisWarningDetails: closed field set changed")
+        request_video_analysis_location = (core_paths.get(
+                "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", {})
+                .get("post", {}).get("responses", {}).get("202", {}).get("headers", {}).get("Location", {}))
+        if request_video_analysis_location.get("schema", {}).get("format") != "uri-reference":
+            failures.append("FAIL Core API request video analysis: 202 Location header is required")
+        request_video_analysis_description = core_paths.get(
+            "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", {}
+        ).get("post", {}).get("description", "")
+        if ("IDEMPOTENCY_KEY_REUSED" not in request_video_analysis_description
+                or "never waits" not in request_video_analysis_description
+                or "expectedEvidenceVersion" not in request_video_analysis_description):
+            failures.append("FAIL Core API request video analysis: idempotency, optimistic version, or async semantics missing")
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})
