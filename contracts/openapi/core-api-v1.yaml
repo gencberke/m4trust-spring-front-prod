@@ -23,6 +23,10 @@ tags:
     description: Initiator-requested asynchronous analysis of a Deal's current AVAILABLE document and participant read projections.
   - name: Deal Rule Sets
     description: Participant-readable manual extraction review and immutable accepted rule-set history.
+  - name: Funding
+    description: >
+      Provider-independent sandbox funding foundation: buyer-ADMIN funding plan
+      creation, polling-first payment operation initiation, and reconciliation.
 paths:
   /auth/register:
     post:
@@ -950,6 +954,189 @@ paths:
         '404': {$ref: '#/components/responses/RatificationPackageNotFoundOrHidden'}
         '409': {$ref: '#/components/responses/RatificationPackageActionConflict'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/funding-plan:
+    post:
+      operationId: createFundingPlan
+      tags: [Funding]
+      summary: Explicitly create the Deal's single funding plan from the ratified package
+      description: >
+        Buyer entity ADMIN-only, idempotent action. The request carries only the Deal
+        expectedVersion; amount and currency are never client-supplied and are copied
+        server-side from the current RATIFIED package structured commercial terms. The
+        Deal must be ACTIVE. Exactly one FundingPlan and one FundingUnit exist per Deal;
+        a concurrent or repeated create races under the same database unique invariant
+        and a second attempt returns 409. Idempotency-Key replays the original plan for
+        the same canonical request; reuse with a different request returns 409
+        IDEMPOTENCY_KEY_REUSED.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFundingPlanRequest'
+      responses:
+        '201':
+          description: >
+            Created funding plan and its single funding unit; idempotent replay returns
+            the original plan.
+          headers:
+            Location:
+              description: Same-origin path of the Deal's single funding plan.
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FundingPlanDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/FundingMutationForbidden'}
+        '404': {$ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/FundingPlanCreateConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    get:
+      operationId: getFundingPlan
+      tags: [Funding]
+      summary: Get the participant-readable funding plan, unit, and current operation projection
+      description: >
+        Returns the Deal's single FundingPlan with its single FundingUnit, the unit's
+        current PaymentOperation when one exists, and the Deal-level FundingStatus
+        business projection. Returns 404 until a plan has been created. All Deal
+        participants may read; only buyer entity ADMIN may mutate.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Funding plan projection visible to the active Deal participant.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FundingPlanDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/LegalEntityAccessDenied'}
+        '404': {$ref: '#/components/responses/FundingPlanNotFoundOrHidden'}
+  /funding-units/{fundingUnitId}/payment-operations:
+    post:
+      operationId: initiatePaymentOperation
+      tags: [Funding]
+      summary: Initiate a payment operation on a funding unit without awaiting the provider
+      description: >
+        Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries
+        the target FundingUnit expectedVersion. The durable intent, dispatch/outbox
+        record, audit entry, and HTTP idempotency result are committed in one short
+        transaction before this response is returned; the provider is never called
+        within the request or its transaction. Returns 202 with the CREATED operation
+        projection. A CREATED or UNCONFIRMED operation is the unit's only in-flight
+        operation: replaying the same Idempotency-Key returns the same operation, a
+        different key returns 409, and a FUNDED unit rejects any new operation with 409.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/FundingUnitId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiatePaymentOperationRequest'
+      responses:
+        '202':
+          description: >
+            Durable CREATED payment operation accepted for dispatch; the provider result
+            is resolved later and observed only through polling reads.
+          headers:
+            Location:
+              description: Same-origin path of the created payment operation.
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PaymentOperation'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/FundingMutationForbidden'}
+        '404': {$ref: '#/components/responses/FundingUnitNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/PaymentOperationInitiateConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /payment-operations/{paymentOperationId}:
+    get:
+      operationId: getPaymentOperation
+      tags: [Funding]
+      summary: Get one payment operation projection for polling
+      description: >
+        Participant-readable safe operation projection: status, explicit
+        reconciliation-required indication, and an opaque non-PII provider reference.
+        Raw provider payloads, card data, credentials, and other PII are never returned.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentOperationId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Payment operation projection visible to the active Deal participant.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PaymentOperation'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/LegalEntityAccessDenied'}
+        '404': {$ref: '#/components/responses/PaymentOperationNotFoundOrHidden'}
+  /payment-operations/{paymentOperationId}/reconcile:
+    post:
+      operationId: reconcilePaymentOperation
+      tags: [Funding]
+      summary: Dispatch query-first reconciliation for an UNCONFIRMED payment operation
+      description: >
+        Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries
+        the target PaymentOperation expectedVersion. This command never calls the
+        provider within the request: it commits a durable reconciliation dispatch/audit/
+        idempotency record in one short transaction and returns 202 with the same
+        operation Location. A relay later queries the same operation using its unchanged
+        provider key and applies a definitive result in a separate transaction. Replaying
+        the same Idempotency-Key returns the same result and Location; a different
+        request with the same key returns 409.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentOperationId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconcilePaymentOperationRequest'
+      responses:
+        '202':
+          description: >
+            Durable reconciliation dispatch accepted; the provider query result is
+            resolved later and observed only through polling reads of the same operation.
+          headers:
+            Location:
+              description: Same-origin path of the target payment operation.
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PaymentOperation'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/FundingMutationForbidden'}
+        '404': {$ref: '#/components/responses/PaymentOperationNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/PaymentOperationReconcileConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /documents/{documentId}/finalize:
     post:
       operationId: finalizeDocumentUpload
@@ -1354,6 +1541,22 @@ components:
       schema:
         type: string
         format: uuid
+    FundingUnitId:
+      name: fundingUnitId
+      in: path
+      required: true
+      description: Public UUID of the requested FundingUnit.
+      schema:
+        type: string
+        format: uuid
+    PaymentOperationId:
+      name: paymentOperationId
+      in: path
+      required: true
+      description: Public UUID of the requested PaymentOperation.
+      schema:
+        type: string
+        format: uuid
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1737,6 +1940,78 @@ components:
         (RATIFICATION_PACKAGE_STATE_CONFLICT), the Deal is no longer DRAFT
         (DEAL_STATE_CONFLICT), or Idempotency-Key was reused for a different canonical
         request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    FundingMutationForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context
+        is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal
+        entity is visible on the Deal but is not the buyer entity, or the caller is
+        not an ADMIN of the buyer entity (FUNDING_MUTATION_FORBIDDEN). Buyer MEMBER
+        membership, seller participation, and other participant visibility never
+        grant funding-plan create, payment-operation initiate, or reconcile authority.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    FundingPlanCreateConflict:
+      description: >
+        The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is
+        not ACTIVE (DEAL_STATE_CONFLICT), a FundingPlan already exists for the Deal
+        (FUNDING_PLAN_ALREADY_EXISTS), or Idempotency-Key was reused for a different
+        canonical request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    FundingPlanNotFoundOrHidden:
+      description: >
+        The active legal entity is nonexistent or hidden because the authenticated
+        user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is
+        hidden because the authorized active legal entity is not a participant
+        (DEAL_NOT_FOUND), or the visible Deal has no FundingPlan yet
+        (FUNDING_PLAN_NOT_FOUND). All cases return 404 and preserve non-disclosure at
+        their respective authorization boundary.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    FundingUnitNotFoundOrHidden:
+      description: >
+        The active legal entity is nonexistent or hidden because the authenticated
+        user is not a member (LEGAL_ENTITY_NOT_FOUND), or the FundingUnit does not
+        exist, or its owning Deal is hidden because the authorized active legal
+        entity is not a participant; the latter cases both use FUNDING_UNIT_NOT_FOUND
+        and do not disclose existence.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    PaymentOperationInitiateConflict:
+      description: >
+        The supplied FundingUnit expectedVersion is stale
+        (FUNDING_UNIT_STALE_VERSION), the Deal is not ACTIVE (DEAL_STATE_CONFLICT),
+        the FundingUnit is already FUNDED (FUNDING_UNIT_ALREADY_FUNDED), a CREATED or
+        UNCONFIRMED operation is already the unit's in-flight operation
+        (PAYMENT_OPERATION_IN_FLIGHT), or Idempotency-Key was reused for a different
+        canonical request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    PaymentOperationNotFoundOrHidden:
+      description: >
+        The active legal entity is nonexistent or hidden because the authenticated
+        user is not a member (LEGAL_ENTITY_NOT_FOUND), or the PaymentOperation does
+        not exist, or its owning Deal is hidden because the authorized active legal
+        entity is not a participant; the latter cases both use
+        PAYMENT_OPERATION_NOT_FOUND and do not disclose existence.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    PaymentOperationReconcileConflict:
+      description: >
+        The supplied PaymentOperation expectedVersion is stale
+        (PAYMENT_OPERATION_STALE_VERSION), the operation already reached a terminal
+        SUCCEEDED or DECLINED result and cannot be reconciled
+        (PAYMENT_OPERATION_STATE_CONFLICT), or Idempotency-Key was reused for a
+        different canonical request (IDEMPOTENCY_KEY_REUSED).
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/ProblemDetail'}
@@ -3189,6 +3464,225 @@ components:
       required: [expectedPackageVersion]
       properties:
         expectedPackageVersion: {type: integer, minimum: 0, maximum: 9007199254740991}
+    FundingStatus:
+      type: string
+      description: >
+        Closed Deal-level funding business projection (ADR-003 §12 axis). V1 exposes
+        only the single-FundingUnit progression NOT_CONFIGURED -> PLANNED -> PENDING
+        -> FUNDED. PARTIALLY_FUNDED remains part of the closed axis for forward
+        multi-unit compatibility but is unreachable in V1 because exactly one
+        FundingUnit exists per Deal.
+      enum: [NOT_CONFIGURED, PLANNED, PENDING, PARTIALLY_FUNDED, FUNDED]
+    FundingUnitStatus:
+      type: string
+      description: >
+        Closed FundingUnit state set. Allowed transitions are
+        PLANNED -> PENDING, PENDING -> FUNDED, PENDING -> FAILED (only a definitive
+        provider decline), and FAILED -> PENDING when a new PaymentOperation starts.
+      enum: [PLANNED, PENDING, FUNDED, FAILED]
+    PaymentOperationStatus:
+      type: string
+      description: >
+        Closed PaymentOperation state set. Allowed transitions are
+        CREATED -> SUCCEEDED | DECLINED | UNCONFIRMED and
+        UNCONFIRMED -> SUCCEEDED | DECLINED after reconciliation; no other transition
+        exists. UNCONFIRMED means the provider outcome is unknown after a timeout,
+        crash, or ambiguous response; it is never treated as failure and only
+        query-first reconciliation resolves it to a definitive terminal state.
+      enum: [CREATED, SUCCEEDED, DECLINED, UNCONFIRMED]
+    FundingUnitAvailableActions:
+      type: object
+      additionalProperties: false
+      description: Backend-derived action availability for this FundingUnit and actor context.
+      required: [canInitiatePayment]
+      properties:
+        canInitiatePayment:
+          type: boolean
+          description: >
+            True only for buyer entity ADMIN while the unit is not FUNDED and has no
+            CREATED or UNCONFIRMED in-flight PaymentOperation.
+    PaymentOperationAvailableActions:
+      type: object
+      additionalProperties: false
+      description: Backend-derived action availability for this PaymentOperation and actor context.
+      required: [canReconcile]
+      properties:
+        canReconcile:
+          type: boolean
+          description: True only for buyer entity ADMIN while the operation status is UNCONFIRMED.
+    PaymentOperation:
+      type: object
+      additionalProperties: false
+      description: >
+        Safe non-raw PaymentOperation projection. Raw provider payloads, card data,
+        credentials, and other PII are never included.
+      required: [id, fundingUnitId, status, reconciliationRequired, providerReference, version, availableActions, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fundingUnitId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/PaymentOperationStatus'
+        reconciliationRequired:
+          type: boolean
+          description: >
+            Explicit backend-derived indication that is true only while status is
+            UNCONFIRMED; clients must not infer it by parsing status themselves.
+        providerReference:
+          description: >
+            Opaque non-PII provider correlation reference, or null before the provider
+            has issued one. Never a raw provider payload, card datum, or credential.
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 200
+            - type: 'null'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        availableActions:
+          $ref: '#/components/schemas/PaymentOperationAvailableActions'
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+    FundingUnit:
+      type: object
+      additionalProperties: false
+      required: [id, sequenceNo, amountMinor, currency, status, version, currentOperation, availableActions, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sequenceNo:
+          type: integer
+          minimum: 1
+          description: V1 is always 1; exactly one FundingUnit exists per FundingPlan.
+        amountMinor:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Positive I-JSON-safe minor-unit amount snapshot copied from the ratified package.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: Uppercase ISO 4217 currency code snapshot copied from the ratified package.
+        status:
+          $ref: '#/components/schemas/FundingUnitStatus'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        currentOperation:
+          description: >
+            Most recent PaymentOperation for this unit, or null when no payment has
+            been initiated yet.
+          anyOf:
+            - $ref: '#/components/schemas/PaymentOperation'
+            - type: 'null'
+        availableActions:
+          $ref: '#/components/schemas/FundingUnitAvailableActions'
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+    FundingPlanDetail:
+      type: object
+      additionalProperties: false
+      description: >
+        Deal-scoped funding plan projection. Amount and currency are immutable once
+        created and are never client-supplied; they are copied server-side from the
+        RATIFIED package structured commercial terms.
+      required: [id, dealId, amountMinor, currency, fundingStatus, version, fundingUnit, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        amountMinor:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Positive I-JSON-safe minor-unit amount snapshot copied from the ratified package.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: Uppercase ISO 4217 currency code snapshot copied from the ratified package.
+        fundingStatus:
+          $ref: '#/components/schemas/FundingStatus'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        fundingUnit:
+          $ref: '#/components/schemas/FundingUnit'
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+    DealFundingSummary:
+      type: object
+      additionalProperties: false
+      description: Optional backend-owned Deal funding summary; independent of the full plan/unit/operation projection.
+      required: [fundingStatus, fundingPlanId, amountMinor, currency]
+      properties:
+        fundingStatus:
+          $ref: '#/components/schemas/FundingStatus'
+        fundingPlanId:
+          description: Current FundingPlan id, or null when fundingStatus is NOT_CONFIGURED.
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        amountMinor:
+          description: Ratified funding amount snapshot, or null when fundingStatus is NOT_CONFIGURED.
+          anyOf:
+            - type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            - type: 'null'
+        currency:
+          description: Ratified funding currency snapshot, or null when fundingStatus is NOT_CONFIGURED.
+          anyOf:
+            - type: string
+              pattern: '^[A-Z]{3}$'
+            - type: 'null'
+    CreateFundingPlanRequest:
+      type: object
+      additionalProperties: false
+      description: >
+        Carries only the Deal expectedVersion; amount and currency are never
+        client-supplied and are always copied server-side from the current RATIFIED
+        package.
+      required: [expectedVersion]
+      properties:
+        expectedVersion: {type: integer, minimum: 0, maximum: 9007199254740991}
+    InitiatePaymentOperationRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: Expected FundingUnit version.
+    ReconcilePaymentOperationRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: Expected PaymentOperation version.
     DealAvailableActions:
       type: object
       additionalProperties: false
@@ -3241,6 +3735,25 @@ components:
         canRejectRatification:
           type: boolean
           description: Optional actor-aware availability; absent or unknown means false/read-only.
+        canCreateFundingPlan:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for buyer entity ADMIN while
+            the Deal is ACTIVE and no FundingPlan exists yet. Absent or unknown means
+            false/read-only.
+        canInitiateFunding:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for buyer entity ADMIN when
+            the Deal's single FundingUnit accepts a new payment operation (not FUNDED
+            and no CREATED or UNCONFIRMED in-flight operation). Absent or unknown
+            means false/read-only.
+        canReconcilePaymentOperation:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for buyer entity ADMIN when
+            the Deal's current PaymentOperation is UNCONFIRMED. Absent or unknown
+            means false/read-only.
     UtcTimestamp:
       type: string
       format: date-time
@@ -3430,6 +3943,15 @@ components:
           description: Optional backend-owned ratification readiness and current-package projection.
           anyOf:
             - $ref: '#/components/schemas/RatificationProjection'
+            - type: 'null'
+        funding:
+          description: >
+            Optional backend-owned funding summary. Null-tolerant: null means funding
+            is not currently projected for this Deal (for example before it is ever
+            ACTIVE); absence is tolerated for additive compatibility with clients
+            predating Slice 11.
+          anyOf:
+            - $ref: '#/components/schemas/DealFundingSummary'
             - type: 'null'
     DealPage:
       type: object
