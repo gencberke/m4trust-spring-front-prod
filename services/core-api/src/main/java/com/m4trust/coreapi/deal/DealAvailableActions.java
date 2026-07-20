@@ -6,5 +6,7 @@ record DealAvailableActions(boolean canUpdate, boolean canCancel,
         boolean canReviewExtraction, boolean canCreateRatificationPackage,
         boolean canApproveRatification, boolean canRejectRatification,
         boolean canCreateFundingPlan, boolean canInitiateFunding,
-        boolean canReconcilePaymentOperation) {
+        boolean canReconcilePaymentOperation,
+        boolean canStartFulfillment, boolean canUploadEvidence,
+        boolean canAcceptEvidence, boolean canRejectEvidence) {
 }

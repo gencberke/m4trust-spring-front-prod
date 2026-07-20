@@ -27,6 +27,10 @@ tags:
     description: >
       Provider-independent sandbox funding foundation: buyer-ADMIN funding plan
       creation, polling-first payment operation initiation, and reconciliation.
+  - name: Fulfillment
+    description: >
+      Seller direct-to-private-storage evidence upload and buyer-ADMIN manual
+      review for one V1 primary milestone after a Deal is ACTIVE and FUNDED.
 paths:
   /auth/register:
     post:
@@ -1215,6 +1219,260 @@ paths:
           $ref: '#/components/responses/DealDocumentNotFoundOrHidden'
         '409':
           $ref: '#/components/responses/DocumentDownloadConflict'
+  /deals/{dealId}/fulfillment:
+    post:
+      operationId: startFulfillment
+      tags: [Fulfillment]
+      summary: Start fulfillment for an ACTIVE and FUNDED Deal
+      description: >
+        Seller legal entity ADMIN or MEMBER action. Atomically creates the Deal's
+        single fulfillment record and its single primary milestone, bound to the
+        current RATIFIED package. Idempotency-Key is required: replaying the same
+        canonical request returns the original or an equivalent result, while
+        reusing the key for a different request returns 409 IDEMPOTENCY_KEY_REUSED.
+        The Deal must be ACTIVE and FUNDED; the active legal entity must be the
+        seller entity.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartFulfillmentRequest'
+      responses:
+        '201':
+          description: >
+            Fulfillment started and primary milestone created; idempotent replay
+            returns the original or an equivalent result.
+          headers:
+            Location:
+              description: Same-origin path of the Deal fulfillment.
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FulfillmentDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/FulfillmentStartForbidden'}
+        '404': {$ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/FulfillmentStartConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    get:
+      operationId: getFulfillment
+      tags: [Fulfillment]
+      summary: Get the participant-readable fulfillment detail
+      description: >
+        Returns the Deal's fulfillment status, primary milestone, current evidence,
+        immutable evidence history, and actor-aware actions to every Deal participant.
+        Returns 404 until fulfillment has been started.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Fulfillment projection visible to the active Deal participant.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FulfillmentDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/LegalEntityAccessDenied'}
+        '404': {$ref: '#/components/responses/FulfillmentNotFoundOrHidden'}
+  /deals/{dealId}/fulfillment/evidence/upload-intents:
+    post:
+      operationId: createEvidenceUploadIntent
+      tags: [Fulfillment]
+      summary: Create a direct private-storage upload intent for milestone evidence
+      description: >
+        Seller legal entity ADMIN or MEMBER action. Creates a PENDING_UPLOAD
+        EvidenceSubmission and a short-lived presigned PUT target for direct
+        browser-to-private-object-storage transfer. Spring never proxies evidence
+        bytes. The current milestone must accept new evidence and the Deal must be
+        ACTIVE and FUNDED. Client-declared size, SHA-256, and media type are later
+        verified against storage and are not authoritative by themselves.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEvidenceUploadIntentRequest'
+      responses:
+        '201':
+          description: PENDING_UPLOAD evidence and short-lived direct PUT target created.
+          headers:
+            Location:
+              description: Same-origin path of the pending evidence submission.
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EvidenceUploadIntent'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/EvidenceUploadForbidden'}
+        '404': {$ref: '#/components/responses/DealOrLegalEntityNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/EvidenceUploadConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize:
+    post:
+      operationId: finalizeEvidenceUpload
+      tags: [Fulfillment]
+      summary: Verify and finalize a pending direct evidence upload
+      description: >
+        Seller legal entity ADMIN or MEMBER action. Verifies the pending object
+        outside the database transaction and atomically marks the submission
+        SUBMITTED, sets it as the milestone's current evidence, moves the
+        FulfillmentStatus to REVIEW_REQUIRED, writes audit/idempotency state, and
+        pins the immutable storage object version. Idempotency-Key is required:
+        the same key with the same canonical request replays the original result;
+        reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED.
+        Verified storage metadata, not client declarations, determines success.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/EvidenceSubmissionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizeEvidenceUploadRequest'
+      responses:
+        '200':
+          description: Verified evidence finalized; replay returns this original result.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SubmittedEvidenceSubmission'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/EvidenceUploadForbidden'}
+        '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/EvidenceFinalizeConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link:
+    post:
+      operationId: createEvidenceDownloadLink
+      tags: [Fulfillment]
+      summary: Mint a short-lived direct download link for verified evidence
+      description: >
+        Any Deal participant may request a short-lived presigned GET link for a
+        SUBMITTED, ACCEPTED, or REJECTED evidence submission. The link is pinned
+        to the recorded immutable object version. The storage bucket remains
+        private; the link is not a stable evidence URL and the backend re-authorizes
+        every request.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/EvidenceSubmissionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Short-lived direct download link for the immutable evidence version.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EvidenceDownloadLink'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/LegalEntityAccessDenied'}
+        '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/EvidenceDownloadConflict'}
+  /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept:
+    post:
+      operationId: acceptEvidence
+      tags: [Fulfillment]
+      summary: Accept the current evidence and complete fulfillment
+      description: >
+        Buyer legal entity ADMIN-only action. Accepts the current SUBMITTED
+        evidence submission for the primary milestone, moves the submission to
+        ACCEPTED, the milestone to COMPLETED, and the FulfillmentStatus to
+        COMPLETED. The Deal remains ACTIVE; no payment release, settlement,
+        payout, refund, provider call, or AI job is produced. Idempotency-Key is
+        required. The request carries the Deal expectedVersion and the target
+        evidenceSubmission expectedVersion; both are checked under lock.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/EvidenceSubmissionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptEvidenceRequest'
+      responses:
+        '200':
+          description: Evidence accepted and fulfillment completed.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AcceptedEvidenceSubmission'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/EvidenceReviewForbidden'}
+        '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/EvidenceReviewConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject:
+    post:
+      operationId: rejectEvidence
+      tags: [Fulfillment]
+      summary: Reject the current evidence and require a replacement
+      description: >
+        Buyer legal entity ADMIN-only action. Rejects the current SUBMITTED
+        evidence submission for the primary milestone with a bounded reason. The
+        submission moves to REJECTED and remains immutable history; the milestone
+        and FulfillmentStatus return to EVIDENCE_REQUIRED so the seller can submit
+        a replacement with a new evidence id and object version. Idempotency-Key is
+        required. The request carries the Deal expectedVersion and the target
+        evidenceSubmission expectedVersion; both are checked under lock.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/EvidenceSubmissionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectEvidenceRequest'
+      responses:
+        '200':
+          description: Evidence rejected; the submission is immutable REJECTED history.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RejectedEvidenceSubmission'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/EvidenceReviewForbidden'}
+        '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/EvidenceReviewConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /deals/{dealId}/invitations:
     post:
       operationId: createDealInvitation
@@ -1554,6 +1812,14 @@ components:
       in: path
       required: true
       description: Public UUID of the requested PaymentOperation.
+      schema:
+        type: string
+        format: uuid
+    EvidenceSubmissionId:
+      name: evidenceSubmissionId
+      in: path
+      required: true
+      description: Public UUID of an EvidenceSubmission for a Deal fulfillment milestone.
       schema:
         type: string
         format: uuid
@@ -2012,7 +2278,109 @@ components:
         (CREATED has not completed its initial dispatch, or SUCCEEDED/DECLINED is terminal)
         and therefore cannot be reconciled
         (PAYMENT_OPERATION_STATE_CONFLICT), or Idempotency-Key was reused for a
-        different canonical request (IDEMPOTENCY_KEY_REUSED).
+        different request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    FulfillmentStartForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context
+        is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal
+        entity is visible on the Deal but is not the seller entity, or the caller is
+        not an ADMIN or MEMBER of the seller entity (FULFILLMENT_START_FORBIDDEN).
+        Buyer entity, initiator-only entity, and other participant visibility never
+        grant fulfillment start authority.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    FulfillmentStartConflict:
+      description: >
+        The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is
+        not ACTIVE and FUNDED (DEAL_STATE_CONFLICT), a fulfillment record already
+        exists for the Deal (FULFILLMENT_ALREADY_EXISTS), or Idempotency-Key was
+        reused for a different canonical request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    FulfillmentNotFoundOrHidden:
+      description: >
+        The active legal entity is nonexistent or hidden because the authenticated
+        user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is
+        hidden because the authorized active legal entity is not a participant
+        (DEAL_NOT_FOUND), or the Deal has no fulfillment record yet
+        (FULFILLMENT_NOT_FOUND). All cases return 404 and preserve non-disclosure at
+        their respective authorization boundary.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceUploadForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context
+        is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal
+        entity is visible on the Deal but is not the seller entity, or the caller is
+        not an ADMIN or MEMBER of the seller entity (EVIDENCE_UPLOAD_FORBIDDEN).
+        Buyer entity, initiator-only entity, and other participant visibility never
+        grant evidence upload authority.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceUploadConflict:
+      description: >
+        The Deal is not ACTIVE and FUNDED (DEAL_STATE_CONFLICT), the fulfillment is
+        not in a state that accepts new evidence (FULFILLMENT_STATE_CONFLICT), or the
+        milestone already has a current SUBMITTED evidence awaiting review
+        (EVIDENCE_ALREADY_SUBMITTED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceNotFoundOrHidden:
+      description: >
+        The active legal entity is nonexistent or hidden because the authenticated
+        user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is
+        hidden because the authorized active legal entity is not a participant
+        (DEAL_NOT_FOUND), or the evidence submission does not exist or does not belong
+        to the visible Deal's fulfillment milestone (EVIDENCE_NOT_FOUND). All cases
+        return 404 and preserve non-disclosure.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceFinalizeConflict:
+      description: >
+        The pending upload expired (EVIDENCE_UPLOAD_EXPIRED), is no longer pending
+        (EVIDENCE_UPLOAD_STATE_CONFLICT), verified storage size or SHA-256 differs
+        from the canonical client request (EVIDENCE_VERIFICATION_FAILED), the
+        milestone is not awaiting this submission (EVIDENCE_MILESTONE_CONFLICT), or
+        Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceDownloadConflict:
+      description: >
+        The evidence submission is PENDING_UPLOAD, expired, or otherwise lacks a
+        verified immutable object version; Problem Details code is
+        EVIDENCE_DOWNLOAD_NOT_AVAILABLE.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceReviewForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context
+        is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal
+        entity is visible on the Deal but is not the buyer entity, or the caller is
+        not an ADMIN of the buyer entity (EVIDENCE_REVIEW_FORBIDDEN). Seller entity,
+        initiator-only entity, MEMBER membership, and other participant visibility
+        never grant evidence review authority.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceReviewConflict:
+      description: >
+        The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the
+        supplied evidence submission expectedVersion is stale
+        (EVIDENCE_STALE_VERSION), the submission is not the current SUBMITTED
+        evidence awaiting review (EVIDENCE_STATE_CONFLICT), the fulfillment is
+        already COMPLETED (FULFILLMENT_COMPLETED), or Idempotency-Key was reused for a
+        different request (IDEMPOTENCY_KEY_REUSED).
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/ProblemDetail'}
@@ -3755,6 +4123,30 @@ components:
             Optional actor-aware availability. True only for buyer entity ADMIN when
             the Deal's current PaymentOperation is UNCONFIRMED. Absent or unknown
             means false/read-only.
+        canStartFulfillment:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for seller entity ADMIN or
+            MEMBER when the Deal is ACTIVE and FUNDED and no fulfillment exists yet.
+            Absent or unknown means false/read-only.
+        canUploadEvidence:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for seller entity ADMIN or
+            MEMBER when the Deal is ACTIVE and FUNDED and the fulfillment accepts new
+            evidence. Absent or unknown means false/read-only.
+        canAcceptEvidence:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for buyer entity ADMIN when
+            the fulfillment has current SUBMITTED evidence awaiting review. Absent or
+            unknown means false/read-only.
+        canRejectEvidence:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for buyer entity ADMIN when
+            the fulfillment has current SUBMITTED evidence awaiting review. Absent or
+            unknown means false/read-only.
     UtcTimestamp:
       type: string
       format: date-time
@@ -3954,6 +4346,14 @@ components:
           anyOf:
             - $ref: '#/components/schemas/DealFundingSummary'
             - type: 'null'
+        fulfillment:
+          description: >
+            Optional backend-owned fulfillment summary. Null-tolerant: null means
+            fulfillment has not started for this Deal; absence is tolerated for
+            additive compatibility with clients predating Slice 12.
+          anyOf:
+            - $ref: '#/components/schemas/DealFulfillmentSummary'
+            - type: 'null'
     DealPage:
       type: object
       additionalProperties: false
@@ -3993,6 +4393,494 @@ components:
         headerName:
           type: string
           const: X-CSRF-TOKEN
+    FulfillmentStatus:
+      type: string
+      description: >
+        Closed V1 fulfillment state set. NOT_STARTED is the projection before the
+        record exists; IN_PROGRESS, EVIDENCE_REQUIRED, REVIEW_REQUIRED, and COMPLETED
+        are the active progression; CANCELLED is reserved for forward compatibility
+        and is not reachable in Slice 12.
+      enum: [NOT_STARTED, IN_PROGRESS, EVIDENCE_REQUIRED, REVIEW_REQUIRED, COMPLETED, CANCELLED]
+    EvidenceType:
+      type: string
+      description: Closed V1 evidence type set. UNKNOWN is not a user submission type.
+      enum: [DELIVERY_NOTE, INVOICE, VIDEO, PHOTO, SIGNED_DOCUMENT, OTHER]
+    EvidenceMediaType:
+      type: string
+      description: Closed V1 evidence media type set.
+      enum:
+        - application/pdf
+        - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        - image/jpeg
+        - image/png
+        - video/mp4
+    EvidenceSubmissionStatus:
+      type: string
+      description: >
+        Closed evidence submission state set. Each upload is a distinct immutable
+        business record; rejected and accepted history is never overwritten or deleted.
+      enum: [PENDING_UPLOAD, SUBMITTED, ACCEPTED, REJECTED]
+    StartFulfillmentRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current Deal optimistic-lock version observed by the client.
+    CreateEvidenceUploadIntentRequest:
+      type: object
+      additionalProperties: false
+      required: [evidenceType, mediaType, fileName, sizeBytes, sha256]
+      properties:
+        evidenceType:
+          $ref: '#/components/schemas/EvidenceType'
+        mediaType:
+          $ref: '#/components/schemas/EvidenceMediaType'
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Display filename after server-side normalization; it is not an object-storage key.
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: >
+            Client-declared byte size. The server validates this against its active
+            deployment-configured upload limit and reports excess values as 422
+            VALIDATION_FAILED; the limit is not a versioned wire constant.
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+    FinalizeEvidenceUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [sizeBytes, sha256]
+      properties:
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Subject to the active server-configured upload limit.
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+    AcceptEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, expectedEvidenceVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current Deal optimistic-lock version observed by the client.
+        expectedEvidenceVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current evidence submission optimistic-lock version observed by the client.
+    RejectEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, expectedEvidenceVersion, reason]
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current Deal optimistic-lock version observed by the client.
+        expectedEvidenceVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current evidence submission optimistic-lock version observed by the client.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Bounded user-visible rejection reason.
+    EvidenceAvailableActions:
+      type: object
+      additionalProperties: false
+      required: [canDownload]
+      properties:
+        canDownload:
+          type: boolean
+          description: True only when the active legal entity is a Deal participant and the immutable version is available.
+    MilestoneAvailableActions:
+      type: object
+      additionalProperties: false
+      required: [canUpload]
+      properties:
+        canUpload:
+          type: boolean
+          description: True only for the seller entity ADMIN/MEMBER while the milestone accepts new evidence.
+    FulfillmentAvailableActions:
+      type: object
+      additionalProperties: false
+      required: [canStart, canAccept, canReject]
+      properties:
+        canStart:
+          type: boolean
+          description: True only for the seller entity ADMIN/MEMBER when the Deal is ACTIVE and FUNDED and no fulfillment exists.
+        canAccept:
+          type: boolean
+          description: True only for the buyer entity ADMIN when current SUBMITTED evidence awaits review.
+        canReject:
+          type: boolean
+          description: True only for the buyer entity ADMIN when current SUBMITTED evidence awaits review.
+    MilestoneRuleReference:
+      type: object
+      additionalProperties: false
+      required: [ruleReference, category]
+      properties:
+        ruleReference:
+          type: string
+          minLength: 1
+          description: Reference to a DELIVERY or QUALITY rule in the ratified package; not a contractual obligation itself.
+        category:
+          $ref: '#/components/schemas/RuleCategory'
+    FulfillmentMilestone:
+      type: object
+      additionalProperties: false
+      required: [id, title, description, ruleReferences, availableActions, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Short milestone title copied from the ratified package commercial terms or default.
+        description:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Optional milestone description.
+        ruleReferences:
+          type: array
+          description: Traceable DELIVERY/QUALITY rule references from the ratified package; never null.
+          items:
+            $ref: '#/components/schemas/MilestoneRuleReference'
+        availableActions:
+          $ref: '#/components/schemas/MilestoneAvailableActions'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    PendingEvidenceSubmission:
+      type: object
+      additionalProperties: false
+      required: [id, dealId, milestoneId, evidenceType, mediaType, fileName, status, clientSizeBytes, clientSha256, expiresAt, createdAt, availableActions, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        milestoneId:
+          type: string
+          format: uuid
+        evidenceType:
+          $ref: '#/components/schemas/EvidenceType'
+        mediaType:
+          $ref: '#/components/schemas/EvidenceMediaType'
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        status:
+          const: PENDING_UPLOAD
+        clientSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        clientSha256:
+          $ref: '#/components/schemas/Sha256'
+        expiresAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        availableActions:
+          $ref: '#/components/schemas/EvidenceAvailableActions'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    SubmittedEvidenceSubmission:
+      type: object
+      additionalProperties: false
+      required: [id, dealId, milestoneId, evidenceType, mediaType, fileName, status, clientSizeBytes, clientSha256, verifiedSizeBytes, verifiedSha256, objectVersion, createdAt, submittedAt, availableActions, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        milestoneId:
+          type: string
+          format: uuid
+        evidenceType:
+          $ref: '#/components/schemas/EvidenceType'
+        mediaType:
+          $ref: '#/components/schemas/EvidenceMediaType'
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        status:
+          const: SUBMITTED
+        verifiedSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Size independently verified from object storage during finalize.
+        verifiedSha256:
+          $ref: '#/components/schemas/Sha256'
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque immutable object-storage version reference pinned for download and later AI access; never an object key.
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        submittedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        clientSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        clientSha256:
+          $ref: '#/components/schemas/Sha256'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        availableActions:
+          $ref: '#/components/schemas/EvidenceAvailableActions'
+    AcceptedEvidenceSubmission:
+      type: object
+      additionalProperties: false
+      required: [id, dealId, milestoneId, evidenceType, mediaType, fileName, status, clientSizeBytes, clientSha256, verifiedSizeBytes, verifiedSha256, objectVersion, createdAt, submittedAt, acceptedAt, availableActions, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        milestoneId:
+          type: string
+          format: uuid
+        evidenceType:
+          $ref: '#/components/schemas/EvidenceType'
+        mediaType:
+          $ref: '#/components/schemas/EvidenceMediaType'
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        status:
+          const: ACCEPTED
+        verifiedSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        verifiedSha256:
+          $ref: '#/components/schemas/Sha256'
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque immutable object-storage version reference; never an object key.
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        submittedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        acceptedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        clientSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        clientSha256:
+          $ref: '#/components/schemas/Sha256'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        availableActions:
+          $ref: '#/components/schemas/EvidenceAvailableActions'
+    RejectedEvidenceSubmission:
+      type: object
+      additionalProperties: false
+      required: [id, dealId, milestoneId, evidenceType, mediaType, fileName, status, clientSizeBytes, clientSha256, verifiedSizeBytes, verifiedSha256, objectVersion, createdAt, submittedAt, rejectedAt, rejectionReason, availableActions, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        milestoneId:
+          type: string
+          format: uuid
+        evidenceType:
+          $ref: '#/components/schemas/EvidenceType'
+        mediaType:
+          $ref: '#/components/schemas/EvidenceMediaType'
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        status:
+          const: REJECTED
+        verifiedSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        verifiedSha256:
+          $ref: '#/components/schemas/Sha256'
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque immutable object-storage version reference; never an object key.
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        submittedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        rejectedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        rejectionReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        clientSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        clientSha256:
+          $ref: '#/components/schemas/Sha256'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        availableActions:
+          $ref: '#/components/schemas/EvidenceAvailableActions'
+    EvidenceSubmission:
+      description: One immutable evidence submission record in its current state.
+      oneOf:
+        - $ref: '#/components/schemas/PendingEvidenceSubmission'
+        - $ref: '#/components/schemas/SubmittedEvidenceSubmission'
+        - $ref: '#/components/schemas/AcceptedEvidenceSubmission'
+        - $ref: '#/components/schemas/RejectedEvidenceSubmission'
+      discriminator:
+        propertyName: status
+        mapping:
+          PENDING_UPLOAD: '#/components/schemas/PendingEvidenceSubmission'
+          SUBMITTED: '#/components/schemas/SubmittedEvidenceSubmission'
+          ACCEPTED: '#/components/schemas/AcceptedEvidenceSubmission'
+          REJECTED: '#/components/schemas/RejectedEvidenceSubmission'
+    EvidenceUploadIntent:
+      type: object
+      additionalProperties: false
+      required: [evidence, uploadUrl, uploadHeaders, expiresAt]
+      properties:
+        evidence:
+          $ref: '#/components/schemas/PendingEvidenceSubmission'
+        uploadUrl:
+          type: string
+          format: uri
+          description: Short-lived presigned PUT target for direct browser transfer; never persist or treat as an evidence URL.
+        uploadHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Required provider-neutral PUT request headers. Values may be signed and must be sent unchanged.
+        expiresAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+    EvidenceDownloadLink:
+      type: object
+      additionalProperties: false
+      required: [evidenceSubmissionId, objectVersion, downloadUrl, expiresAt]
+      properties:
+        evidenceSubmissionId:
+          type: string
+          format: uuid
+        objectVersion:
+          type: string
+          minLength: 1
+          maxLength: 512
+        downloadUrl:
+          type: string
+          format: uri
+          description: Short-lived presigned GET link for the immutable object version; never persist or expose as a stable URL.
+        expiresAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+    DealFulfillmentSummary:
+      type: object
+      additionalProperties: false
+      description: Optional backend-owned Deal fulfillment summary; independent of the full fulfillment detail.
+      required: [status, fulfillmentId, currentEvidenceSubmissionId]
+      properties:
+        status:
+          $ref: '#/components/schemas/FulfillmentStatus'
+        fulfillmentId:
+          description: Current fulfillment id, or null before start.
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        currentEvidenceSubmissionId:
+          description: Current evidence submission id awaiting review or already decided, or null when none.
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+    FulfillmentDetail:
+      type: object
+      additionalProperties: false
+      required: [id, dealId, status, sourcePackageId, milestone, currentEvidence, history, availableActions, version, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/FulfillmentStatus'
+        sourcePackageId:
+          type: string
+          format: uuid
+          description: Immutable ratification package id to which the fulfillment is bound.
+        milestone:
+          $ref: '#/components/schemas/FulfillmentMilestone'
+        currentEvidence:
+          description: Current evidence submission pointer, or null when none is current.
+          anyOf:
+            - $ref: '#/components/schemas/EvidenceSubmission'
+            - type: 'null'
+        history:
+          type: array
+          description: Immutable evidence submission history in backend-defined stable order; never null.
+          items:
+            $ref: '#/components/schemas/EvidenceSubmission'
+        availableActions:
+          $ref: '#/components/schemas/FulfillmentAvailableActions'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/UtcTimestamp'
+        updatedAt:
+          $ref: '#/components/schemas/UtcTimestamp'
     ProblemDetail:
       type: object
       additionalProperties: false

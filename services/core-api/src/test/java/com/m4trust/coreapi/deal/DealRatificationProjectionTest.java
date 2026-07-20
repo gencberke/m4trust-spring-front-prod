@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
+import com.m4trust.coreapi.fulfillment.FulfillmentProjectionPort;
 import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.LegalEntityRole;
 import com.m4trust.coreapi.organization.OperationContext;
@@ -57,15 +58,18 @@ class DealRatificationProjectionTest {
             mock(RatificationPackageProjectionPort.class);
     private final RatificationSupersessionPort supersessions = mock(RatificationSupersessionPort.class);
     private final FundingProjectionPort fundingProjections = mock(FundingProjectionPort.class);
+    private final FulfillmentProjectionPort fulfillmentProjections = mock(FulfillmentProjectionPort.class);
     private final AuditAppendPort audit = mock(AuditAppendPort.class);
     private final DealService service = new DealService(
             repository, policy, legalEntities, documents, analysis, ruleSets,
-            ratificationProjections, supersessions, fundingProjections, audit, Clock.fixed(NOW, ZoneOffset.UTC));
+            ratificationProjections, supersessions, fundingProjections, fulfillmentProjections,
+            audit, Clock.fixed(NOW, ZoneOffset.UTC));
 
     {
         when(fundingProjections.summarize(any(), org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(
                         new FundingProjectionPort.Summary("NOT_CONFIGURED", null, null, null, false, false, false));
+        when(fulfillmentProjections.summarize(any())).thenReturn(null);
     }
 
     @Test

@@ -602,6 +602,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/fulfillment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the participant-readable fulfillment detail
+         * @description Returns the Deal's fulfillment status, primary milestone, current evidence, immutable evidence history, and actor-aware actions to every Deal participant. Returns 404 until fulfillment has been started.
+         */
+        get: operations["getFulfillment"];
+        put?: never;
+        /**
+         * Start fulfillment for an ACTIVE and FUNDED Deal
+         * @description Seller legal entity ADMIN or MEMBER action. Atomically creates the Deal's single fulfillment record and its single primary milestone, bound to the current RATIFIED package. Idempotency-Key is required: replaying the same canonical request returns the original or an equivalent result, while reusing the key for a different request returns 409 IDEMPOTENCY_KEY_REUSED. The Deal must be ACTIVE and FUNDED; the active legal entity must be the seller entity.
+         */
+        post: operations["startFulfillment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/fulfillment/evidence/upload-intents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a direct private-storage upload intent for milestone evidence
+         * @description Seller legal entity ADMIN or MEMBER action. Creates a PENDING_UPLOAD EvidenceSubmission and a short-lived presigned PUT target for direct browser-to-private-object-storage transfer. Spring never proxies evidence bytes. The current milestone must accept new evidence and the Deal must be ACTIVE and FUNDED. Client-declared size, SHA-256, and media type are later verified against storage and are not authoritative by themselves.
+         */
+        post: operations["createEvidenceUploadIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify and finalize a pending direct evidence upload
+         * @description Seller legal entity ADMIN or MEMBER action. Verifies the pending object outside the database transaction and atomically marks the submission SUBMITTED, sets it as the milestone's current evidence, moves the FulfillmentStatus to REVIEW_REQUIRED, writes audit/idempotency state, and pins the immutable storage object version. Idempotency-Key is required: the same key with the same canonical request replays the original result; reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED. Verified storage metadata, not client declarations, determines success.
+         */
+        post: operations["finalizeEvidenceUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mint a short-lived direct download link for verified evidence
+         * @description Any Deal participant may request a short-lived presigned GET link for a SUBMITTED, ACCEPTED, or REJECTED evidence submission. The link is pinned to the recorded immutable object version. The storage bucket remains private; the link is not a stable evidence URL and the backend re-authorizes every request.
+         */
+        post: operations["createEvidenceDownloadLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept the current evidence and complete fulfillment
+         * @description Buyer legal entity ADMIN-only action. Accepts the current SUBMITTED evidence submission for the primary milestone, moves the submission to ACCEPTED, the milestone to COMPLETED, and the FulfillmentStatus to COMPLETED. The Deal remains ACTIVE; no payment release, settlement, payout, refund, provider call, or AI job is produced. Idempotency-Key is required. The request carries the Deal expectedVersion and the target evidenceSubmission expectedVersion; both are checked under lock.
+         */
+        post: operations["acceptEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject the current evidence and require a replacement
+         * @description Buyer legal entity ADMIN-only action. Rejects the current SUBMITTED evidence submission for the primary milestone with a bounded reason. The submission moves to REJECTED and remains immutable history; the milestone and FulfillmentStatus return to EVIDENCE_REQUIRED so the seller can submit a replacement with a new evidence id and object version. Idempotency-Key is required. The request carries the Deal expectedVersion and the target evidenceSubmission expectedVersion; both are checked under lock.
+         */
+        post: operations["rejectEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/{dealId}/invitations": {
         parameters: {
             query?: never;
@@ -1610,6 +1734,14 @@ export interface components {
             canInitiateFunding?: boolean;
             /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the Deal's current PaymentOperation is UNCONFIRMED. Absent or unknown means false/read-only. */
             canReconcilePaymentOperation?: boolean;
+            /** @description Optional actor-aware availability. True only for seller entity ADMIN or MEMBER when the Deal is ACTIVE and FUNDED and no fulfillment exists yet. Absent or unknown means false/read-only. */
+            canStartFulfillment?: boolean;
+            /** @description Optional actor-aware availability. True only for seller entity ADMIN or MEMBER when the Deal is ACTIVE and FUNDED and the fulfillment accepts new evidence. Absent or unknown means false/read-only. */
+            canUploadEvidence?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the fulfillment has current SUBMITTED evidence awaiting review. Absent or unknown means false/read-only. */
+            canAcceptEvidence?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the fulfillment has current SUBMITTED evidence awaiting review. Absent or unknown means false/read-only. */
+            canRejectEvidence?: boolean;
         };
         /**
          * Format: date-time
@@ -1680,6 +1812,8 @@ export interface components {
             ratification?: components["schemas"]["RatificationProjection"] | null;
             /** @description Optional backend-owned funding summary. Null-tolerant: null means funding is not currently projected for this Deal (for example before it is ever ACTIVE); absence is tolerated for additive compatibility with clients predating Slice 11. */
             funding?: components["schemas"]["DealFundingSummary"] | null;
+            /** @description Optional backend-owned fulfillment summary. Null-tolerant: null means fulfillment has not started for this Deal; absence is tolerated for additive compatibility with clients predating Slice 12. */
+            fulfillment?: components["schemas"]["DealFulfillmentSummary"] | null;
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -1698,6 +1832,286 @@ export interface components {
             token: string;
             /** @constant */
             headerName: "X-CSRF-TOKEN";
+        };
+        /**
+         * @description Closed V1 fulfillment state set. NOT_STARTED is the projection before the record exists; IN_PROGRESS, EVIDENCE_REQUIRED, REVIEW_REQUIRED, and COMPLETED are the active progression; CANCELLED is reserved for forward compatibility and is not reachable in Slice 12.
+         * @enum {string}
+         */
+        FulfillmentStatus: "NOT_STARTED" | "IN_PROGRESS" | "EVIDENCE_REQUIRED" | "REVIEW_REQUIRED" | "COMPLETED" | "CANCELLED";
+        /**
+         * @description Closed V1 evidence type set. UNKNOWN is not a user submission type.
+         * @enum {string}
+         */
+        EvidenceType: "DELIVERY_NOTE" | "INVOICE" | "VIDEO" | "PHOTO" | "SIGNED_DOCUMENT" | "OTHER";
+        /**
+         * @description Closed V1 evidence media type set.
+         * @enum {string}
+         */
+        EvidenceMediaType: "application/pdf" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "image/jpeg" | "image/png" | "video/mp4";
+        /**
+         * @description Closed evidence submission state set. Each upload is a distinct immutable business record; rejected and accepted history is never overwritten or deleted.
+         * @enum {string}
+         */
+        EvidenceSubmissionStatus: "PENDING_UPLOAD" | "SUBMITTED" | "ACCEPTED" | "REJECTED";
+        StartFulfillmentRequest: {
+            /**
+             * Format: int64
+             * @description Current Deal optimistic-lock version observed by the client.
+             */
+            expectedVersion: number;
+        };
+        CreateEvidenceUploadIntentRequest: {
+            evidenceType: components["schemas"]["EvidenceType"];
+            mediaType: components["schemas"]["EvidenceMediaType"];
+            /** @description Display filename after server-side normalization; it is not an object-storage key. */
+            fileName: string;
+            /**
+             * Format: int64
+             * @description Client-declared byte size. The server validates this against its active deployment-configured upload limit and reports excess values as 422 VALIDATION_FAILED; the limit is not a versioned wire constant.
+             */
+            sizeBytes: number;
+            sha256: components["schemas"]["Sha256"];
+        };
+        FinalizeEvidenceUploadRequest: {
+            /**
+             * Format: int64
+             * @description Subject to the active server-configured upload limit.
+             */
+            sizeBytes: number;
+            sha256: components["schemas"]["Sha256"];
+        };
+        AcceptEvidenceRequest: {
+            /**
+             * Format: int64
+             * @description Current Deal optimistic-lock version observed by the client.
+             */
+            expectedVersion: number;
+            /**
+             * Format: int64
+             * @description Current evidence submission optimistic-lock version observed by the client.
+             */
+            expectedEvidenceVersion: number;
+        };
+        RejectEvidenceRequest: {
+            /**
+             * Format: int64
+             * @description Current Deal optimistic-lock version observed by the client.
+             */
+            expectedVersion: number;
+            /**
+             * Format: int64
+             * @description Current evidence submission optimistic-lock version observed by the client.
+             */
+            expectedEvidenceVersion: number;
+            /** @description Bounded user-visible rejection reason. */
+            reason: string;
+        };
+        EvidenceAvailableActions: {
+            /** @description True only when the active legal entity is a Deal participant and the immutable version is available. */
+            canDownload: boolean;
+        };
+        MilestoneAvailableActions: {
+            /** @description True only for the seller entity ADMIN/MEMBER while the milestone accepts new evidence. */
+            canUpload: boolean;
+        };
+        FulfillmentAvailableActions: {
+            /** @description True only for the seller entity ADMIN/MEMBER when the Deal is ACTIVE and FUNDED and no fulfillment exists. */
+            canStart: boolean;
+            /** @description True only for the buyer entity ADMIN when current SUBMITTED evidence awaits review. */
+            canAccept: boolean;
+            /** @description True only for the buyer entity ADMIN when current SUBMITTED evidence awaits review. */
+            canReject: boolean;
+        };
+        MilestoneRuleReference: {
+            /** @description Reference to a DELIVERY or QUALITY rule in the ratified package; not a contractual obligation itself. */
+            ruleReference: string;
+            category: components["schemas"]["RuleCategory"];
+        };
+        FulfillmentMilestone: {
+            /** Format: uuid */
+            id: string;
+            /** @description Short milestone title copied from the ratified package commercial terms or default. */
+            title: string;
+            /** @description Optional milestone description. */
+            description: string | null;
+            /** @description Traceable DELIVERY/QUALITY rule references from the ratified package; never null. */
+            ruleReferences: components["schemas"]["MilestoneRuleReference"][];
+            availableActions: components["schemas"]["MilestoneAvailableActions"];
+            /** Format: int64 */
+            version: number;
+        };
+        PendingEvidenceSubmission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            /** Format: uuid */
+            milestoneId: string;
+            evidenceType: components["schemas"]["EvidenceType"];
+            mediaType: components["schemas"]["EvidenceMediaType"];
+            fileName: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "PENDING_UPLOAD";
+            /** Format: int64 */
+            clientSizeBytes: number;
+            clientSha256: components["schemas"]["Sha256"];
+            expiresAt: components["schemas"]["UtcTimestamp"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            availableActions: components["schemas"]["EvidenceAvailableActions"];
+            /** Format: int64 */
+            version: number;
+        };
+        SubmittedEvidenceSubmission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            /** Format: uuid */
+            milestoneId: string;
+            evidenceType: components["schemas"]["EvidenceType"];
+            mediaType: components["schemas"]["EvidenceMediaType"];
+            fileName: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "SUBMITTED";
+            /**
+             * Format: int64
+             * @description Size independently verified from object storage during finalize.
+             */
+            verifiedSizeBytes: number;
+            verifiedSha256: components["schemas"]["Sha256"];
+            /** @description Opaque immutable object-storage version reference pinned for download and later AI access; never an object key. */
+            objectVersion: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            submittedAt: components["schemas"]["UtcTimestamp"];
+            /** Format: int64 */
+            clientSizeBytes: number;
+            clientSha256: components["schemas"]["Sha256"];
+            /** Format: int64 */
+            version: number;
+            availableActions: components["schemas"]["EvidenceAvailableActions"];
+        };
+        AcceptedEvidenceSubmission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            /** Format: uuid */
+            milestoneId: string;
+            evidenceType: components["schemas"]["EvidenceType"];
+            mediaType: components["schemas"]["EvidenceMediaType"];
+            fileName: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "ACCEPTED";
+            /** Format: int64 */
+            verifiedSizeBytes: number;
+            verifiedSha256: components["schemas"]["Sha256"];
+            /** @description Opaque immutable object-storage version reference; never an object key. */
+            objectVersion: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            submittedAt: components["schemas"]["UtcTimestamp"];
+            acceptedAt: components["schemas"]["UtcTimestamp"];
+            /** Format: int64 */
+            clientSizeBytes: number;
+            clientSha256: components["schemas"]["Sha256"];
+            /** Format: int64 */
+            version: number;
+            availableActions: components["schemas"]["EvidenceAvailableActions"];
+        };
+        RejectedEvidenceSubmission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            /** Format: uuid */
+            milestoneId: string;
+            evidenceType: components["schemas"]["EvidenceType"];
+            mediaType: components["schemas"]["EvidenceMediaType"];
+            fileName: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "REJECTED";
+            /** Format: int64 */
+            verifiedSizeBytes: number;
+            verifiedSha256: components["schemas"]["Sha256"];
+            /** @description Opaque immutable object-storage version reference; never an object key. */
+            objectVersion: string;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            submittedAt: components["schemas"]["UtcTimestamp"];
+            rejectedAt: components["schemas"]["UtcTimestamp"];
+            rejectionReason: string;
+            /** Format: int64 */
+            clientSizeBytes: number;
+            clientSha256: components["schemas"]["Sha256"];
+            /** Format: int64 */
+            version: number;
+            availableActions: components["schemas"]["EvidenceAvailableActions"];
+        };
+        /** @description One immutable evidence submission record in its current state. */
+        EvidenceSubmission: components["schemas"]["PendingEvidenceSubmission"] | components["schemas"]["SubmittedEvidenceSubmission"] | components["schemas"]["AcceptedEvidenceSubmission"] | components["schemas"]["RejectedEvidenceSubmission"];
+        EvidenceUploadIntent: {
+            evidence: components["schemas"]["PendingEvidenceSubmission"];
+            /**
+             * Format: uri
+             * @description Short-lived presigned PUT target for direct browser transfer; never persist or treat as an evidence URL.
+             */
+            uploadUrl: string;
+            /** @description Required provider-neutral PUT request headers. Values may be signed and must be sent unchanged. */
+            uploadHeaders: {
+                [key: string]: string;
+            };
+            expiresAt: components["schemas"]["UtcTimestamp"];
+        };
+        EvidenceDownloadLink: {
+            /** Format: uuid */
+            evidenceSubmissionId: string;
+            objectVersion: string;
+            /**
+             * Format: uri
+             * @description Short-lived presigned GET link for the immutable object version; never persist or expose as a stable URL.
+             */
+            downloadUrl: string;
+            expiresAt: components["schemas"]["UtcTimestamp"];
+        };
+        /** @description Optional backend-owned Deal fulfillment summary; independent of the full fulfillment detail. */
+        DealFulfillmentSummary: {
+            status: components["schemas"]["FulfillmentStatus"];
+            /** @description Current fulfillment id, or null before start. */
+            fulfillmentId: string | null;
+            /** @description Current evidence submission id awaiting review or already decided, or null when none. */
+            currentEvidenceSubmissionId: string | null;
+        };
+        FulfillmentDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            status: components["schemas"]["FulfillmentStatus"];
+            /**
+             * Format: uuid
+             * @description Immutable ratification package id to which the fulfillment is bound.
+             */
+            sourcePackageId: string;
+            milestone: components["schemas"]["FulfillmentMilestone"];
+            /** @description Current evidence submission pointer, or null when none is current. */
+            currentEvidence: components["schemas"]["EvidenceSubmission"] | null;
+            /** @description Immutable evidence submission history in backend-defined stable order; never null. */
+            history: components["schemas"]["EvidenceSubmission"][];
+            availableActions: components["schemas"]["FulfillmentAvailableActions"];
+            /** Format: int64 */
+            version: number;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
         };
         /** @description RFC 9457 Problem Details with stable M4Trust error identity and correlation context. */
         ProblemDetail: {
@@ -2125,8 +2539,98 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
-        /** @description The supplied PaymentOperation expectedVersion is stale (PAYMENT_OPERATION_STALE_VERSION), the operation is not UNCONFIRMED (CREATED has not completed its initial dispatch, or SUCCEEDED/DECLINED is terminal) and therefore cannot be reconciled (PAYMENT_OPERATION_STATE_CONFLICT), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        /** @description The supplied PaymentOperation expectedVersion is stale (PAYMENT_OPERATION_STALE_VERSION), the operation is not UNCONFIRMED (CREATED has not completed its initial dispatch, or SUCCEEDED/DECLINED is terminal) and therefore cannot be reconciled (PAYMENT_OPERATION_STATE_CONFLICT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
         PaymentOperationReconcileConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the seller entity, or the caller is not an ADMIN or MEMBER of the seller entity (FULFILLMENT_START_FORBIDDEN). Buyer entity, initiator-only entity, and other participant visibility never grant fulfillment start authority. */
+        FulfillmentStartForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is not ACTIVE and FUNDED (DEAL_STATE_CONFLICT), a fulfillment record already exists for the Deal (FULFILLMENT_ALREADY_EXISTS), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        FulfillmentStartConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is hidden because the authorized active legal entity is not a participant (DEAL_NOT_FOUND), or the Deal has no fulfillment record yet (FULFILLMENT_NOT_FOUND). All cases return 404 and preserve non-disclosure at their respective authorization boundary. */
+        FulfillmentNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the seller entity, or the caller is not an ADMIN or MEMBER of the seller entity (EVIDENCE_UPLOAD_FORBIDDEN). Buyer entity, initiator-only entity, and other participant visibility never grant evidence upload authority. */
+        EvidenceUploadForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The Deal is not ACTIVE and FUNDED (DEAL_STATE_CONFLICT), the fulfillment is not in a state that accepts new evidence (FULFILLMENT_STATE_CONFLICT), or the milestone already has a current SUBMITTED evidence awaiting review (EVIDENCE_ALREADY_SUBMITTED). */
+        EvidenceUploadConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is hidden because the authorized active legal entity is not a participant (DEAL_NOT_FOUND), or the evidence submission does not exist or does not belong to the visible Deal's fulfillment milestone (EVIDENCE_NOT_FOUND). All cases return 404 and preserve non-disclosure. */
+        EvidenceNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The pending upload expired (EVIDENCE_UPLOAD_EXPIRED), is no longer pending (EVIDENCE_UPLOAD_STATE_CONFLICT), verified storage size or SHA-256 differs from the canonical client request (EVIDENCE_VERIFICATION_FAILED), the milestone is not awaiting this submission (EVIDENCE_MILESTONE_CONFLICT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        EvidenceFinalizeConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The evidence submission is PENDING_UPLOAD, expired, or otherwise lacks a verified immutable object version; Problem Details code is EVIDENCE_DOWNLOAD_NOT_AVAILABLE. */
+        EvidenceDownloadConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the buyer entity, or the caller is not an ADMIN of the buyer entity (EVIDENCE_REVIEW_FORBIDDEN). Seller entity, initiator-only entity, MEMBER membership, and other participant visibility never grant evidence review authority. */
+        EvidenceReviewForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the supplied evidence submission expectedVersion is stale (EVIDENCE_STALE_VERSION), the submission is not the current SUBMITTED evidence awaiting review (EVIDENCE_STATE_CONFLICT), the fulfillment is already COMPLETED (FULFILLMENT_COMPLETED), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        EvidenceReviewConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2154,6 +2658,8 @@ export interface components {
         FundingUnitId: string;
         /** @description Public UUID of the requested PaymentOperation. */
         PaymentOperationId: string;
+        /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+        EvidenceSubmissionId: string;
         /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
         IdempotencyKey: string;
         /** @description Optional exact Deal status filter. */
@@ -3309,6 +3815,267 @@ export interface operations {
             403: components["responses"]["LegalEntityAccessDenied"];
             404: components["responses"]["DealDocumentNotFoundOrHidden"];
             409: components["responses"]["DocumentDownloadConflict"];
+        };
+    };
+    getFulfillment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fulfillment projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FulfillmentDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["FulfillmentNotFoundOrHidden"];
+        };
+    };
+    startFulfillment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartFulfillmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Fulfillment started and primary milestone created; idempotent replay returns the original or an equivalent result. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the Deal fulfillment. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FulfillmentDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["FulfillmentStartForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["FulfillmentStartConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createEvidenceUploadIntent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvidenceUploadIntentRequest"];
+            };
+        };
+        responses: {
+            /** @description PENDING_UPLOAD evidence and short-lived direct PUT target created. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the pending evidence submission. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceUploadIntent"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["EvidenceUploadForbidden"];
+            404: components["responses"]["DealOrLegalEntityNotFoundOrHidden"];
+            409: components["responses"]["EvidenceUploadConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    finalizeEvidenceUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+                evidenceSubmissionId: components["parameters"]["EvidenceSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeEvidenceUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Verified evidence finalized; replay returns this original result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittedEvidenceSubmission"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["EvidenceUploadForbidden"];
+            404: components["responses"]["EvidenceNotFoundOrHidden"];
+            409: components["responses"]["EvidenceFinalizeConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createEvidenceDownloadLink: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+                evidenceSubmissionId: components["parameters"]["EvidenceSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short-lived direct download link for the immutable evidence version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceDownloadLink"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["EvidenceNotFoundOrHidden"];
+            409: components["responses"]["EvidenceDownloadConflict"];
+        };
+    };
+    acceptEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+                evidenceSubmissionId: components["parameters"]["EvidenceSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Evidence accepted and fulfillment completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedEvidenceSubmission"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["EvidenceReviewForbidden"];
+            404: components["responses"]["EvidenceNotFoundOrHidden"];
+            409: components["responses"]["EvidenceReviewConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    rejectEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+                evidenceSubmissionId: components["parameters"]["EvidenceSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Evidence rejected; the submission is immutable REJECTED history. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectedEvidenceSubmission"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["EvidenceReviewForbidden"];
+            404: components["responses"]["EvidenceNotFoundOrHidden"];
+            409: components["responses"]["EvidenceReviewConflict"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     listDealInvitations: {
