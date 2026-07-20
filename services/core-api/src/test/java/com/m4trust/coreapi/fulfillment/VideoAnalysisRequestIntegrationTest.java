@@ -289,6 +289,102 @@ class VideoAnalysisRequestIntegrationTest {
     }
 
     @Test
+    void pendingVideoMp4EvidenceReturnsNonDisclosing404() throws Exception {
+        UUID pendingVideoId = UUID.randomUUID();
+        UUID milestoneId = jdbc.queryForObject(
+                "SELECT milestone_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        UUID fulfillmentId = jdbc.queryForObject(
+                "SELECT fulfillment_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        jdbc.update("""
+                INSERT INTO fulfillment_evidence_submission (
+                    id, deal_id, milestone_id, fulfillment_id, evidence_type, media_type, file_name,
+                    status, object_key, client_size_bytes, client_sha256, upload_expires_at, created_at, version
+                ) VALUES (?, ?, ?, ?, 'VIDEO', 'video/mp4', 'pending-delivery.mp4', 'PENDING_UPLOAD', 'obj-key-pending',
+                    2048, ?, CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP, 2)
+                """, pendingVideoId, dealId, milestoneId, fulfillmentId, SHA);
+
+        mockMvc.perform(get(videoAnalysisPath(pendingVideoId))
+                        .with(user(buyerAdminUserId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post(videoAnalysisPath(pendingVideoId))
+                        .with(user(buyerAdminUserId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedEvidenceVersion\": 2}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void finalizedNonVideoEvidenceReturnsNonDisclosing404() throws Exception {
+        UUID pdfEvidenceId = UUID.randomUUID();
+        UUID milestoneId = jdbc.queryForObject(
+                "SELECT milestone_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        UUID fulfillmentId = jdbc.queryForObject(
+                "SELECT fulfillment_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        jdbc.update("""
+                INSERT INTO fulfillment_evidence_submission (
+                    id, deal_id, milestone_id, fulfillment_id, evidence_type, media_type, file_name,
+                    status, object_key, object_version, client_size_bytes, client_sha256, verified_size_bytes,
+                    verified_sha256, upload_expires_at, created_at, submitted_at, accepted_at, version
+                ) VALUES (?, ?, ?, ?, 'DELIVERY_NOTE', 'application/pdf', 'note.pdf', 'ACCEPTED', 'obj-key-pdf',
+                    'version-1', 2048, ?, 2048, ?, CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 2)
+                """, pdfEvidenceId, dealId, milestoneId, fulfillmentId, SHA, SHA);
+
+        mockMvc.perform(get(videoAnalysisPath(pdfEvidenceId))
+                        .with(user(buyerAdminUserId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post(videoAnalysisPath(pdfEvidenceId))
+                        .with(user(buyerAdminUserId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedEvidenceVersion\": 2}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void supersededFinalizedVideoMp4RemainsReadableButNotRequestable() throws Exception {
+        UUID supersededVideoId = UUID.randomUUID();
+        UUID milestoneId = jdbc.queryForObject(
+                "SELECT milestone_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        UUID fulfillmentId = jdbc.queryForObject(
+                "SELECT fulfillment_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        jdbc.update("""
+                INSERT INTO fulfillment_evidence_submission (
+                    id, deal_id, milestone_id, fulfillment_id, evidence_type, media_type, file_name,
+                    status, object_key, object_version, client_size_bytes, client_sha256, verified_size_bytes,
+                    verified_sha256, upload_expires_at, created_at, submitted_at, rejected_at, rejection_reason, version
+                ) VALUES (?, ?, ?, ?, 'VIDEO', 'video/mp4', 'old-delivery.mp4', 'REJECTED', 'obj-key-old', 'version-0',
+                    2048, ?, 2048, ?, CURRENT_TIMESTAMP + INTERVAL '1 hour',
+                    CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 day',
+                    CURRENT_TIMESTAMP - INTERVAL '1 hour', 'superseded', 0)
+                """, supersededVideoId, dealId, milestoneId, fulfillmentId, SHA, SHA);
+
+        mockMvc.perform(get(videoAnalysisPath(supersededVideoId))
+                        .with(user(sellerAdminUserId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, sellerAdminEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evidenceSubmissionId").value(supersededVideoId.toString()))
+                .andExpect(jsonPath("$.status").value("NOT_REQUESTED"))
+                .andExpect(jsonPath("$.availableActions.canRequest").value(false));
+
+        mockMvc.perform(post(videoAnalysisPath(supersededVideoId))
+                        .with(user(buyerAdminUserId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedEvidenceVersion\": 0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE"));
+    }
+
+    @Test
     void nonVideoEvidenceAndCrossDealEvidenceRemainHidden() throws Exception {
         UUID pdfEvidenceId = UUID.randomUUID();
         UUID milestoneId = jdbc.queryForObject(
@@ -476,7 +572,11 @@ class VideoAnalysisRequestIntegrationTest {
     }
 
     private String videoAnalysisPath() {
-        return "/api/v1/deals/" + dealId + "/fulfillment/evidence/" + evidenceId + "/video-analysis";
+        return videoAnalysisPath(evidenceId);
+    }
+
+    private String videoAnalysisPath(UUID evidenceSubmissionId) {
+        return "/api/v1/deals/" + dealId + "/fulfillment/evidence/" + evidenceSubmissionId + "/video-analysis";
     }
 
     private OperationContext requestContext() {
