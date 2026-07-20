@@ -67,6 +67,10 @@ class DealIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    payment_dispatch,
+                    payment_operation,
+                    funding_unit,
+                    funding_plan,
                     contract_intelligence_rule_set_version,
                     contract_intelligence_extraction_result_version,
                     contract_intelligence_analysis_job,
@@ -110,7 +114,7 @@ class DealIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(header().string("Location",
                         matchesPattern("/api/v1/deals/[0-9a-f-]{36}")))
-                .andExpect(jsonPath("$.*", hasSize(17)))
+                .andExpect(jsonPath("$.*", hasSize(18)))
                 .andExpect(jsonPath("$.reference")
                         .value(matchesPattern("DL-[0-9]{10}")))
                 .andExpect(jsonPath("$.title").value("Equipment Purchase"))
@@ -140,6 +144,8 @@ class DealIntegrationTest {
                 .andExpect(jsonPath("$.currentDocument").value((Object) null))
                 .andExpect(jsonPath("$.ratification.readiness").value("NOT_READY"))
                 .andExpect(jsonPath("$.ratification.currentPackage").value((Object) null))
+                .andExpect(jsonPath("$.funding.fundingStatus").value("NOT_CONFIGURED"))
+                .andExpect(jsonPath("$.funding.fundingPlanId").value((Object) null))
                 .andExpect(jsonPath("$.participants", hasSize(1)))
                 .andExpect(jsonPath("$.participants[0].legalEntityId")
                         .value(owner.legalEntityId().toString()))

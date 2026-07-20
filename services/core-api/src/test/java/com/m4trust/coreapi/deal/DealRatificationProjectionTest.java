@@ -22,6 +22,7 @@ import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.LegalEntityRole;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
+import com.m4trust.coreapi.payment.FundingProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationPackageProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import org.junit.jupiter.api.Test;
@@ -55,10 +56,17 @@ class DealRatificationProjectionTest {
     private final RatificationPackageProjectionPort ratificationProjections =
             mock(RatificationPackageProjectionPort.class);
     private final RatificationSupersessionPort supersessions = mock(RatificationSupersessionPort.class);
+    private final FundingProjectionPort fundingProjections = mock(FundingProjectionPort.class);
     private final AuditAppendPort audit = mock(AuditAppendPort.class);
     private final DealService service = new DealService(
             repository, policy, legalEntities, documents, analysis, ruleSets,
-            ratificationProjections, supersessions, audit, Clock.fixed(NOW, ZoneOffset.UTC));
+            ratificationProjections, supersessions, fundingProjections, audit, Clock.fixed(NOW, ZoneOffset.UTC));
+
+    {
+        when(fundingProjections.summarize(any(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(
+                        new FundingProjectionPort.Summary("NOT_CONFIGURED", null, null, null, false, false, false));
+    }
 
     @Test
     void readinessRequiresPartiesAcceptedRuleSetAndCurrentDocumentTogether() {

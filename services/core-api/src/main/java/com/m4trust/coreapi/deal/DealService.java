@@ -11,6 +11,7 @@ import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.RequestedOperation;
+import com.m4trust.coreapi.payment.FundingProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationPackageProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ class DealService {
     private final DealRuleSetProjectionPort ruleSetProjections;
     private final RatificationPackageProjectionPort ratificationProjections;
     private final RatificationSupersessionPort ratificationSupersessions;
+    private final FundingProjectionPort fundingProjections;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
@@ -44,6 +46,7 @@ class DealService {
             DealRuleSetProjectionPort ruleSetProjections,
             RatificationPackageProjectionPort ratificationProjections,
             RatificationSupersessionPort ratificationSupersessions,
+            FundingProjectionPort fundingProjections,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
@@ -53,6 +56,7 @@ class DealService {
         this.ruleSetProjections = ruleSetProjections;
         this.ratificationProjections = ratificationProjections;
         this.ratificationSupersessions = ratificationSupersessions;
+        this.fundingProjections = fundingProjections;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -289,6 +293,11 @@ class DealService {
     private DealDetail toDetail(Deal deal, OperationContext context) {
         List<DealParticipant> participantProjections = participants(deal);
         DealRatificationProjection ratification = ratification(deal, context);
+        boolean callerIsBuyerAdmin = deal.buyerLegalEntityId() != null
+                && context.activeLegalEntityId().equals(deal.buyerLegalEntityId())
+                && context.activeLegalEntityRole() == com.m4trust.coreapi.organization.LegalEntityRole.ADMIN;
+        FundingProjectionPort.Summary fundingSummary = fundingProjections.summarize(
+                deal.id(), deal.status() == DealStatus.ACTIVE, callerIsBuyerAdmin);
         return new DealDetail(
                 deal.id(),
                 deal.reference(),
@@ -299,11 +308,17 @@ class DealService {
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actionsWithAnalysis(deal, context, ratification),
+                actionsWithAnalysis(deal, context, ratification, fundingSummary),
                 party(deal.buyerLegalEntityId(), participantProjections),
                 party(deal.sellerLegalEntityId(), participantProjections),
                 participantProjections,
-                currentDocument(deal), analysis(deal), currentRuleSet(deal), ratification);
+                currentDocument(deal), analysis(deal), currentRuleSet(deal), ratification,
+                fundingSummary(fundingSummary));
+    }
+
+    private DealFundingSummary fundingSummary(FundingProjectionPort.Summary summary) {
+        return new DealFundingSummary(summary.fundingStatus(), summary.fundingPlanId(), summary.amountMinor(),
+                summary.currency());
     }
 
     /**
@@ -357,7 +372,8 @@ class DealService {
     }
 
     private DealAvailableActions actionsWithAnalysis(Deal deal,
-            OperationContext context, DealRatificationProjection ratification) {
+            OperationContext context, DealRatificationProjection ratification,
+            FundingProjectionPort.Summary fundingSummary) {
         DealAvailableActions base = actions(deal, context);
         UUID documentId = deal.currentDocumentId();
         boolean allowed = operationPolicy.isInitiator(deal, context)
@@ -380,7 +396,9 @@ class DealService {
                         && deal.status() == DealStatus.DRAFT
                         && documentId != null
                         && "REVIEW_REQUIRED".equals(analysisProjections.summary(documentId).status()),
-                canCreateRatificationPackage, canApproveRatification, canRejectRatification);
+                canCreateRatificationPackage, canApproveRatification, canRejectRatification,
+                fundingSummary.canCreateFundingPlan(), fundingSummary.canInitiateFunding(),
+                fundingSummary.canReconcilePaymentOperation());
     }
 
     private DealAnalysisProjectionPort.AnalysisSummary analysis(Deal deal) {

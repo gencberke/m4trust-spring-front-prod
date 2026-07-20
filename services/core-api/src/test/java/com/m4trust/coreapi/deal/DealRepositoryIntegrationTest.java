@@ -62,6 +62,10 @@ class DealRepositoryIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    payment_dispatch,
+                    payment_operation,
+                    funding_unit,
+                    funding_plan,
                     ratification_package_approval,
                     ratification_package,
                     ratification_package_snapshot,

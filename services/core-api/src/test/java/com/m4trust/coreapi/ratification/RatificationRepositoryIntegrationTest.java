@@ -44,7 +44,8 @@ class RatificationRepositoryIntegrationTest {
     @BeforeEach
     void setUp() {
         jdbc.execute("""
-                TRUNCATE TABLE ratification_package_approval, ratification_package,
+                TRUNCATE TABLE payment_dispatch, payment_operation, funding_unit, funding_plan,
+                    ratification_package_approval, ratification_package,
                     ratification_package_snapshot, contract_intelligence_rule_set_version,
                     contract_intelligence_extraction_result_version, contract_intelligence_analysis_job,
                     http_idempotency_record, deal_invitation, deal_participant, document, deal,

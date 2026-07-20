@@ -1,6 +1,7 @@
 package com.m4trust.coreapi.deal;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -21,6 +22,7 @@ import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.LegalEntityRole;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
+import com.m4trust.coreapi.payment.FundingProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationPackageProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import org.junit.jupiter.api.Test;
@@ -46,10 +48,11 @@ class DealServiceSupersessionTest {
             mock(RatificationPackageProjectionPort.class);
     private final RatificationSupersessionPort supersessions =
             mock(RatificationSupersessionPort.class);
+    private final FundingProjectionPort fundingProjections = mock(FundingProjectionPort.class);
     private final AuditAppendPort audit = mock(AuditAppendPort.class);
     private final DealService service = new DealService(
             repository, policy, legalEntities, documents, analysis, ruleSets,
-            ratificationProjections, supersessions, audit, Clock.fixed(NOW, ZoneOffset.UTC));
+            ratificationProjections, supersessions, fundingProjections, audit, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void titleChangeLocksDealThenSupersedesBeforePersistingTheDeal() {
@@ -102,8 +105,9 @@ class DealServiceSupersessionTest {
         stubParticipants(changedDealId);
         stubParticipants(unchangedDealId);
         stubRatificationProjection();
+        stubFundingProjection();
         when(policy.availableActions(any(), eq(context))).thenReturn(new DealAvailableActions(
-                true, true, true, true, true, false, false, false, false, false));
+                true, true, true, true, true, false, false, false, false, false, false, false, false));
         when(policy.isInitiator(any(), eq(context))).thenReturn(true);
         when(repository.updateParties(any(), any(), any(), any(Long.class),
                 any(), any(), any())).thenReturn(true);
@@ -144,9 +148,16 @@ class DealServiceSupersessionTest {
                 .thenReturn(Optional.of(record));
         stubParticipants(record.id());
         stubRatificationProjection();
+        stubFundingProjection();
         when(policy.availableActions(any(), eq(context))).thenReturn(new DealAvailableActions(
-                true, true, true, true, true, false, false, false, false, false));
+                true, true, true, true, true, false, false, false, false, false, false, false, false));
         when(policy.isInitiator(any(), eq(context))).thenReturn(true);
+    }
+
+    private void stubFundingProjection() {
+        when(fundingProjections.summarize(any(), anyBoolean(), anyBoolean()))
+                .thenReturn(new FundingProjectionPort.Summary("NOT_CONFIGURED", null, null, null,
+                        false, false, false));
     }
 
     /** The current-package pointer is always set in these fixtures, so the

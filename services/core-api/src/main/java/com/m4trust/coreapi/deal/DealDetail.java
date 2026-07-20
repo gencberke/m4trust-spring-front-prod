@@ -21,7 +21,8 @@ record DealDetail(
         DealCurrentDocumentQueryPort.CurrentDealDocument currentDocument,
         DealAnalysisProjectionPort.AnalysisSummary analysis,
         DealRuleSetProjectionPort.CurrentRuleSet currentRuleSet,
-        DealRatificationProjection ratification) {
+        DealRatificationProjection ratification,
+        DealFundingSummary funding) {
 
     DealDetail {
         participants = List.copyOf(participants);
