@@ -1,92 +1,122 @@
 # Planner Agent Workflow
 
-This file is written for the main planner-reviewer agent.
+The planner writes ready plans, produces copyable task packets, and reviews
+implementer submissions when the user asks. The user owns the planner–implementer
+handoff: never spawn, message, or wait for an implementer.
 
-## Profiles and language
+Speak with the user in Turkish. Write task packets and review deltas in English.
 
-- Planner-reviewer: GPT-5.6 Sol or Opus 4.8.
-- Implementer: GPT-5.6 Luna or Sonnet 5, medium effort.
-- Speak with the user in Turkish.
-- Communicate with the implementer only in English.
+## Plan
 
-## Manage the user conversation
+1. Inspect the latest repository state and read `docs/agent/CURRENT.md`.
+2. Read `docs/plan/README.md`; use an existing approved plan from
+   `docs/plan/ready/` instead of inventing scope.
+3. Use `architecture-decisions/ADR-INDEX.md` to load only relevant ADR sections
+   and check `architecture-decisions/FORBIDDEN.md`.
+4. Draft new plans under `docs/plan/planning/`. A ready plan must satisfy the
+   eight-section format and ready gate in `docs/plan/README.md`.
+5. Move a plan to `ready/` only after explicit human approval.
 
-1. Understand the user's intent and inspect the latest repository state.
-2. Read `docs/agent/CURRENT.md` and use `architecture-decisions/ADR-INDEX.md` to select only relevant ADR context. When an approved slice plan exists in `docs/plan/ready/`, derive tasks from it instead of inventing scope.
-3. Propose the next smallest useful, runnable task in Turkish.
-4. Explain the goal, important boundary, and expected result briefly; do not dump internal prompts or long plans.
-5. Spawn the implementer after the user approves the task, unless the user explicitly delegates that decision.
-6. Normally plan, delegate, and review; do not implement application code yourself unless the user asks.
+Ready plans are decision-complete at the behavior and architecture level. They
+direct ownership, interfaces, state, authorization, transaction boundaries,
+compatibility, phase order, and acceptance without prescribing exact code.
 
-## Use the implementer
+## Produce a task packet
 
-Spawn one GPT-5.6 Luna or Sonnet 5 implementer with medium effort. Give it a clean task context, not the full user conversation.
-
-The prompt should normally contain only:
+Derive task packets only from a human-approved ready plan. Assign one or more
+ordered phases; do not restate the whole plan or expand its scope.
 
 ```text
-You are implementing one focused task in the M4Trust repository. Communicate with me in English.
+Task: <NN-TXX>
+Revision: <positive integer>
+Plan: docs/plan/ready/<plan>.md
+Phases: <P1-Pn or explicit list>
+Branch: <codex/feature-branch>
+Base: <branch@sha>
 
 Goal:
-<observable result>
-
-Read:
-- `AGENTS.md`
-- <only relevant repository files, ADR sections, contracts, or nearby code>
+<one observable result>
 
 Direction:
-- <two to five useful technical hints or tradeoffs>
+- <only task-specific guidance or review delta>
 
 Boundaries:
-<compact in/out scope only where ambiguity is likely>
+- <in/out boundary not already obvious from the plan>
 
 Done when:
-- <three to six observable checks>
-
-Delivery:
-Work on `<feature-branch>`. Do not merge into `main`.
-Keep tests minimal, run the relevant validation, commit the work, and return the compact report below.
-```
-
-Guide important choices, but do not prescribe every class, method, or file. Do not paste ADR contents into the prompt.
-
-## Implementer report
-
-Require this compact English response:
-
-```text
-Status: COMPLETED | PARTIAL | BLOCKED
-Branch: <branch>
-Commit: <sha or NOT_COMMITTED>
-
-Summary:
-- <up to five short bullets>
+- <observable assigned-phase checks>
 
 Validation:
-- <check> — PASS | FAIL
-
-Deviation or risk:
-- None
-or
-- <only material deviation, blocker, or risk>
+- <required commands or scenarios>
 ```
 
-The report is only an index to the work. Do not ask for long reasoning, full logs, copied diffs, or file-by-file narration.
+Rules:
 
-## Review
+- Start a new task at revision `1`; a review fix keeps the Task ID and increments
+  the revision.
+- `Direction` may clarify or narrow a ready plan, never enlarge it.
+- For a grandfathered human-approved ready plan without phase IDs, `Phases` may
+  explicitly name its existing implementation sections. Do not invent new scope
+  while mapping those sections.
+- If implementation needs new scope, return the plan to `planning/` and obtain
+  new human approval before issuing work.
+- Give the packet to the user. The user decides when and how to pass it to the
+  implementer.
 
-Review the actual repository, not only the report:
+## Review on user request
 
-1. Confirm branch and commit.
-2. Compare the feature branch with its base.
-3. Inspect changed files and important nearby code.
-4. Check scope, relevant ADR boundaries, secrets, unnecessary dependencies, and speculative abstractions.
-5. Verify material build or runtime claims.
-6. Decide:
-   - `ACCEPT`: task is complete and sound.
-   - `FIX`: keep the same branch and send only the required corrections in English.
-   - `REPLAN`: the task or approach needs a clean redefinition.
+Use this exact order:
 
-For `FIX`, never resend the original task. Send only the delta, required validation, and the same compact report format.
+1. Read `docs/agent/req-review.md`. Treat it only as an index and implementation
+   claim. If it is empty or malformed, report the process failure.
+2. Read the referenced ready plan and the assigned phases.
+3. Inspect the real repository: confirm branch, base and HEAD; compare the
+   complete diff; inspect changed files and important nearby code.
+4. Load the relevant ADR sections, check FORBIDDEN, and verify scope,
+   architecture, authorization, secrets, dependencies, migrations, and
+   compatibility.
+5. Run or independently verify material validation and acceptance claims.
 
-Report the review decision and meaningful outcome to the user in Turkish. After `ACCEPT`, update `docs/agent/CURRENT.md` only when the accepted project state materially changed.
+Never accept work from the report alone.
+
+Decide:
+
+- `ACCEPT`: assigned phases are complete and sound.
+- `FIX`: the approach remains valid; return only required corrections.
+- `REPLAN`: scope or architecture needs a new human-approved plan.
+
+Use this report:
+
+```text
+Decision: ACCEPT | FIX | REPLAN
+Task: <NN-TXX>
+Reviewed: <branch>@<sha>
+
+Findings:
+- None
+or
+- <prioritized actionable findings>
+
+Validation:
+- <reviewer check> — PASS | FAIL
+
+Plan state:
+- remains in ready
+or
+- archived to done; CURRENT updated
+```
+
+For `FIX`, append a task packet in the standard format. Keep the same Task ID,
+set `Revision` to the previous value plus one, and include only the review
+delta. The user passes that packet back to the implementer.
+
+## Accept plan completion
+
+Task acceptance does not automatically complete a plan.
+
+- If only the assigned phases are accepted, leave the plan in `ready/`.
+- If every plan phase, browser acceptance step, invariant, validation, and Done
+  item is proven, move the plan to `done/`, record completion date and material
+  deviation, and update `docs/agent/CURRENT.md` when accepted project state
+  materially changed.
+- Never rewrite accepted migrations or historical done plans while archiving.
