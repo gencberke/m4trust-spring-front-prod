@@ -37,7 +37,8 @@ class DealAnalysisMutationService implements DealAnalysisMutationPort {
         return repository.findVisibleByIdForUpdate(context.tenantId(), context.activeLegalEntityId(), dealId)
                 .map(Deal::rehydrate)
                 .map(deal -> new ReviewTarget(deal.id(), deal.toRecord().tenantId(),
-                        deal.currentDocumentId(), deal.version(), operationPolicy.isInitiator(deal, context),
+                        deal.currentDocumentId(), deal.currentRatificationPackageId(),
+                        deal.version(), operationPolicy.isInitiator(deal, context),
                         deal.status() == DealStatus.DRAFT));
     }
 

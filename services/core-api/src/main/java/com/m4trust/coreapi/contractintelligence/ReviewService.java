@@ -10,6 +10,7 @@ import com.m4trust.coreapi.idempotency.IdempotencyResultReference;
 import com.m4trust.coreapi.idempotency.IdempotencyService;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
+import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ class ReviewService implements DealRuleSetProjectionPort {
     private final RuleSetRepository ruleSets;
     private final DealAnalysisReadPort dealReads;
     private final DealAnalysisMutationPort dealMutations;
+    private final RatificationSupersessionPort ratificationSupersessions;
     private final IdempotencyService idempotency;
     private final AuditAppendPort audit;
     private final TransactionTemplate transaction;
@@ -40,12 +42,14 @@ class ReviewService implements DealRuleSetProjectionPort {
 
     ReviewService(AnalysisRepository analyses, RuleSetRepository ruleSets,
             DealAnalysisReadPort dealReads, DealAnalysisMutationPort dealMutations,
+            RatificationSupersessionPort ratificationSupersessions,
             IdempotencyService idempotency, AuditAppendPort audit,
             TransactionTemplate transaction, Clock clock, ObjectMapper json) {
         this.analyses = analyses;
         this.ruleSets = ruleSets;
         this.dealReads = dealReads;
         this.dealMutations = dealMutations;
+        this.ratificationSupersessions = ratificationSupersessions;
         this.idempotency = idempotency;
         this.audit = audit;
         this.transaction = transaction;
@@ -104,12 +108,12 @@ class ReviewService implements DealRuleSetProjectionPort {
 
     private ReviewDtos.Version acceptLocked(OperationContext context, UUID dealId, UUID correlationId,
             IdempotencyRequest idempotencyRequest, ReviewAcceptanceRequestDecoder.Request request) {
+        var target = dealMutations.lockForReview(context, dealId)
+                .orElseThrow(AnalysisExceptions.DealNotFound::new);
         var claim = idempotency.claim(idempotencyRequest);
         if (claim.isReplay()) {
             return versionForDeal(dealId, claim.resultReference().id());
         }
-        var target = dealMutations.lockForReview(context, dealId)
-                .orElseThrow(AnalysisExceptions.DealNotFound::new);
         if (!target.initiator()) {
             throw new AnalysisExceptions.ReviewAcceptanceForbidden();
         }
@@ -119,6 +123,9 @@ class ReviewService implements DealRuleSetProjectionPort {
         if (target.version() != request.expectedVersion()) {
             throw new AnalysisExceptions.Conflict("DEAL_STALE_VERSION");
         }
+        Instant now = clock.instant();
+        ratificationSupersessions.supersedePending(
+                context, dealId, target.currentPackageId(), correlationId, now);
         var job = analyses.findByIdForUpdate(request.analysisId())
                 .filter(candidate -> candidate.dealId().equals(dealId)
                         && candidate.documentId().equals(target.currentDocumentId())
@@ -128,7 +135,6 @@ class ReviewService implements DealRuleSetProjectionPort {
                 .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT"));
         DecisionOutput output = new ReviewDecisionAssembler().assemble(extractedRules(job.id()), request.decisions());
         UUID versionId = UUID.randomUUID();
-        Instant now = clock.instant();
         var previous = ruleSets.latest(dealId).orElse(null);
         ruleSets.insert(versionId, dealId, previous == null ? 1 : previous.version() + 1,
                 job.id(), extractionId, context.authenticatedUserId(), now,

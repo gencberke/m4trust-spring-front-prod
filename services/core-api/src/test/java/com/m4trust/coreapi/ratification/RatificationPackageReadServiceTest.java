@@ -3,6 +3,7 @@ package com.m4trust.coreapi.ratification;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.m4trust.coreapi.organization.LegalEntityRole;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
 import org.junit.jupiter.api.Test;
@@ -45,14 +47,88 @@ class RatificationPackageReadServiceTest {
         assertEquals("APPROVED", buyerDetail.approvals().get(0).status());
         assertEquals(fixture.buyerUserId, buyerDetail.approvals().get(0).approverUserId());
         assertEquals(null, buyerDetail.approvals().get(1).approverUserId());
+        // The buyer already recorded an approval: approving again is a no-op
+        // so canApprove hides, but the package is still PENDING so the buyer
+        // may still reject it (matches RatificationPackageActionService,
+        // which never conditions reject on the caller's own approval state).
         assertFalse(buyerDetail.availableActions().canApprove());
-        assertFalse(buyerDetail.availableActions().canReject());
+        assertTrue(buyerDetail.availableActions().canReject());
 
         stubVisible(fixture, fixture.sellerId);
         var sellerDetail = service.detail(context(fixture.sellerId, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
                 fixture.dealId, fixture.packageRecord.id());
         assertEquals(null, sellerDetail.approvals().get(0).approverUserId());
         assertEquals(fixture.sellerUserId, sellerDetail.approvals().get(1).approverUserId());
+        assertFalse(sellerDetail.availableActions().canApprove());
+        assertTrue(sellerDetail.availableActions().canReject());
+    }
+
+    @Test
+    void availableActionsMatchTheActionServiceAcceptanceRulesForEachActor() throws Exception {
+        Fixture fixture = fixture();
+        UUID otherParticipantId = UUID.randomUUID();
+        stubVisibleForBothRoles(fixture, fixture.buyerId);
+        stubVisibleForBothRoles(fixture, fixture.sellerId);
+        stubVisibleForBothRoles(fixture, otherParticipantId);
+        when(packages.findByDealAndId(fixture.dealId, fixture.packageRecord.id()))
+                .thenReturn(Optional.of(fixture.packageRecord));
+
+        // No approvals yet: both assigned ADMIN parties may approve or reject;
+        // an ADMIN that is not a party, and a non-ADMIN party, may do neither.
+        when(packages.listApprovals(fixture.packageRecord.id())).thenReturn(List.of());
+        var buyerBeforeApproval = service.detail(
+                context(fixture.buyerId, LegalEntityRole.ADMIN, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
+                fixture.dealId, fixture.packageRecord.id());
+        assertTrue(buyerBeforeApproval.availableActions().canApprove());
+        assertTrue(buyerBeforeApproval.availableActions().canReject());
+
+        var sellerBeforeApproval = service.detail(
+                context(fixture.sellerId, LegalEntityRole.ADMIN, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
+                fixture.dealId, fixture.packageRecord.id());
+        assertTrue(sellerBeforeApproval.availableActions().canApprove());
+        assertTrue(sellerBeforeApproval.availableActions().canReject());
+
+        var buyerMember = service.detail(
+                context(fixture.buyerId, LegalEntityRole.MEMBER, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
+                fixture.dealId, fixture.packageRecord.id());
+        assertFalse(buyerMember.availableActions().canApprove());
+        assertFalse(buyerMember.availableActions().canReject());
+
+        var otherParticipantAdmin = service.detail(
+                context(otherParticipantId, LegalEntityRole.ADMIN, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
+                fixture.dealId, fixture.packageRecord.id());
+        assertFalse(otherParticipantAdmin.availableActions().canApprove());
+        assertFalse(otherParticipantAdmin.availableActions().canReject());
+
+        // After the buyer approves: buyer can no longer approve (idempotent
+        // no-op) but can still reject while PENDING; the seller is unaffected.
+        when(packages.listApprovals(fixture.packageRecord.id())).thenReturn(
+                List.of(approval(fixture, fixture.buyerId, fixture.buyerUserId, 1)));
+        var buyerAfterApproval = service.detail(
+                context(fixture.buyerId, LegalEntityRole.ADMIN, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
+                fixture.dealId, fixture.packageRecord.id());
+        assertFalse(buyerAfterApproval.availableActions().canApprove());
+        assertTrue(buyerAfterApproval.availableActions().canReject());
+
+        var sellerAfterBuyerApproval = service.detail(
+                context(fixture.sellerId, LegalEntityRole.ADMIN, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
+                fixture.dealId, fixture.packageRecord.id());
+        assertTrue(sellerAfterBuyerApproval.availableActions().canApprove());
+        assertTrue(sellerAfterBuyerApproval.availableActions().canReject());
+
+        // A RATIFIED package (via history projection) never advertises
+        // actions to anyone, even an assigned ADMIN party.
+        var ratified = new RatificationRepository.PackageRecord(fixture.packageRecord.id(), fixture.dealId,
+                fixture.packageRecord.snapshotId(), RatificationPackageStatus.RATIFIED, fixture.buyerId,
+                fixture.sellerId, fixture.packageRecord.amountMinor(), fixture.packageRecord.currency(),
+                fixture.createdAt, 2, fixture.packageRecord.snapshotSchemaVersion(),
+                fixture.packageRecord.canonicalSnapshot(), fixture.packageRecord.contentHash());
+        when(packages.findByDealAndId(fixture.dealId, ratified.id())).thenReturn(Optional.of(ratified));
+        var buyerOnRatified = service.detail(
+                context(fixture.buyerId, LegalEntityRole.ADMIN, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ),
+                fixture.dealId, ratified.id());
+        assertFalse(buyerOnRatified.availableActions().canApprove());
+        assertFalse(buyerOnRatified.availableActions().canReject());
     }
 
     @Test
@@ -145,6 +221,14 @@ class RatificationPackageReadServiceTest {
                 .thenReturn(Optional.of(fixture.target));
     }
 
+    private void stubVisibleForBothRoles(Fixture fixture, UUID activeEntityId) {
+        for (LegalEntityRole role : LegalEntityRole.values()) {
+            when(deals.findVisible(
+                    context(activeEntityId, role, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ), fixture.dealId))
+                    .thenReturn(Optional.of(fixture.target));
+        }
+    }
+
     private RatificationRepository.ApprovalRecord approval(Fixture fixture, UUID entityId, UUID userId, int seconds) {
         return approvalFor(fixture.packageRecord.id(), entityId, userId, seconds);
     }
@@ -162,8 +246,11 @@ class RatificationPackageReadServiceTest {
     }
 
     private OperationContext context(UUID entityId, RequestedOperation operation) {
-        return new OperationContext(USER_ID, TENANT_ID, entityId,
-                com.m4trust.coreapi.organization.LegalEntityRole.ADMIN, operation);
+        return context(entityId, LegalEntityRole.ADMIN, operation);
+    }
+
+    private OperationContext context(UUID entityId, LegalEntityRole role, RequestedOperation operation) {
+        return new OperationContext(USER_ID, TENANT_ID, entityId, role, operation);
     }
 
     private record Fixture(UUID dealId, UUID buyerId, UUID sellerId, UUID documentId, UUID ruleSetId,

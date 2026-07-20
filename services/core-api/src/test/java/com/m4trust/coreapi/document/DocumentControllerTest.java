@@ -65,7 +65,7 @@ class DocumentControllerTest {
         private final UUID dealId;
 
         RecordingDocumentService(UUID documentId, UUID dealId) {
-            super(null, null, null, null, null, null, null, Clock.systemUTC(), null, 1);
+            super(null, null, null, null, null, null, null, Clock.systemUTC(), null, null, 1);
             this.documentId = documentId;
             this.dealId = dealId;
         }

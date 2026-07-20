@@ -124,7 +124,10 @@ class RatificationPackageActionService {
         }
         requireAuthority(context, current);
         if (!"DRAFT".equals(target.status())) {
-            throw new State();
+            // Distinct from a terminal-package State: the Deal itself is no
+            // longer DRAFT (e.g. already ACTIVE), so the HTTP layer maps this
+            // to DEAL_STATE_CONFLICT rather than RATIFICATION_PACKAGE_STATE_CONFLICT.
+            throw new DealState();
         }
         // A stale caller is rejected even when this entity already approved.
         if (current.version() != request.expectedPackageVersion()) {
@@ -294,5 +297,6 @@ class RatificationPackageActionService {
     static final class NotFound extends RuntimeException { }
     static final class Stale extends RuntimeException { }
     static final class State extends RuntimeException { }
+    static final class DealState extends RuntimeException { }
     static final class Forbidden extends RuntimeException { }
 }

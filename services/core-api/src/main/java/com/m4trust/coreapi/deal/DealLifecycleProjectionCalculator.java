@@ -26,7 +26,12 @@ final class DealLifecycleProjectionCalculator {
             case ARCHIVED -> DealLifecycleProjection.ARCHIVED;
             case CANCELLED -> DealLifecycleProjection.CANCELLED;
             case COMPLETED -> DealLifecycleProjection.COMPLETED;
-            case DRAFT, ACTIVE -> !currentDocumentExists ? DealLifecycleProjection.DRAFT
+            // ACTIVE is reachable only through atomic ratification, which
+            // requires an accepted rule-set and current document; the Deal's
+            // display lifecycle moves on to the next (Slice 11) stage rather
+            // than remaining pinned at RATIFICATION.
+            case ACTIVE -> DealLifecycleProjection.FUNDING;
+            case DRAFT -> !currentDocumentExists ? DealLifecycleProjection.DRAFT
                     : switch (analysisStatus) {
                         case "QUEUED", "PROCESSING", "FAILED", "NOT_REQUESTED",
                                 "SUPERSEDED" -> DealLifecycleProjection.CONTRACT_ANALYSIS;

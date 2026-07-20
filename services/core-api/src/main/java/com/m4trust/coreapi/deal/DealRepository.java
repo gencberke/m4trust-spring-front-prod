@@ -281,7 +281,7 @@ class DealRepository {
                     version = version + 1
                 WHERE id = ?
                   AND version = ?
-                  AND deal_status IN ('DRAFT', 'ACTIVE')
+                  AND deal_status = 'DRAFT'
                   AND initiator_legal_entity_id = ?
                   AND EXISTS (
                       SELECT 1
@@ -352,6 +352,7 @@ class DealRepository {
                     version = version + 1
                 WHERE id = ?
                   AND deal_status = ?
+                  AND deal_status = 'DRAFT'
                   AND version = ?
                   AND initiator_legal_entity_id = ?
                   AND EXISTS (

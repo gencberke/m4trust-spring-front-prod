@@ -15,6 +15,7 @@ public interface DealDocumentMutationPort {
     void repointCurrentDocument(UUID dealId, UUID documentId, Instant changedAt);
 
     record LockedDealDocumentTarget(UUID dealId, UUID tenantId,
-            UUID currentDocumentId, boolean initiator, boolean acceptsDocuments) {
+            UUID currentDocumentId, UUID currentPackageId,
+            boolean initiator, boolean acceptsDocuments) {
     }
 }

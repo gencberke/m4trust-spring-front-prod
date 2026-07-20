@@ -3,6 +3,7 @@ package com.m4trust.coreapi.deal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
@@ -10,6 +11,8 @@ import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.RequestedOperation;
+import com.m4trust.coreapi.ratification.RatificationPackageProjectionPort;
+import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,8 @@ class DealService {
     private final DealCurrentDocumentQueryPort currentDocumentQueries;
     private final DealAnalysisProjectionPort analysisProjections;
     private final DealRuleSetProjectionPort ruleSetProjections;
+    private final RatificationPackageProjectionPort ratificationProjections;
+    private final RatificationSupersessionPort ratificationSupersessions;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
@@ -37,6 +42,8 @@ class DealService {
             DealCurrentDocumentQueryPort currentDocumentQueries,
             DealAnalysisProjectionPort analysisProjections,
             DealRuleSetProjectionPort ruleSetProjections,
+            RatificationPackageProjectionPort ratificationProjections,
+            RatificationSupersessionPort ratificationSupersessions,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
@@ -44,6 +51,8 @@ class DealService {
         this.currentDocumentQueries = currentDocumentQueries;
         this.analysisProjections = analysisProjections;
         this.ruleSetProjections = ruleSetProjections;
+        this.ratificationProjections = ratificationProjections;
+        this.ratificationSupersessions = ratificationSupersessions;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -106,12 +115,17 @@ class DealService {
                     "description", "REQUIRED",
                     "Description must be provided, and may be null.");
         }
-        Deal deal = loadVisible(context, dealId);
+        Deal deal = loadVisibleForUpdate(context, dealId);
         operationPolicy.requireInitiator(deal, context);
         long currentVersion = deal.version();
         Instant now = clock.instant();
+        boolean titleChanged = !deal.title().equals(request.title());
         deal.updateBasicFields(request.title(), request.description(),
                 request.expectedVersion(), now);
+        if (titleChanged) {
+            ratificationSupersessions.supersedePending(
+                    context, deal.id(), deal.currentRatificationPackageId(), correlationId, now);
+        }
         boolean updated = repository.updateBasicFields(
                 context.tenantId(),
                 context.activeLegalEntityId(),
@@ -132,17 +146,18 @@ class DealService {
             UUID correlationId) {
         requireOperation(context, RequestedOperation.DEAL_CANCEL);
         Instant now = clock.instant();
-        Deal deal = loadVisible(context, dealId);
+        Deal deal = loadVisibleForUpdate(context, dealId);
         operationPolicy.requireInitiator(deal, context);
-        if (!tryPersistCancel(context, deal, now)) {
-            // Cancel carries no expectedVersion, so a plain concurrent version
-            // bump must not fail it: retry once against the latest state.
-            deal = loadVisible(context, dealId);
-            operationPolicy.requireInitiator(deal, context);
-            if (!tryPersistCancel(context, deal, now)) {
-                throw new DealStateConflictException(
-                        "Deal changed while cancellation was attempted");
-            }
+        long currentVersion = deal.version();
+        DealStatus previousStatus = deal.status();
+        deal.cancel(now);
+        ratificationSupersessions.supersedePending(
+                context, deal.id(), deal.currentRatificationPackageId(), correlationId, now);
+        if (!repository.updateStatus(
+                context.tenantId(), context.activeLegalEntityId(), deal.id(),
+                previousStatus, deal.status(), currentVersion, deal.updatedAt())) {
+            throw new DealStateConflictException(
+                    "Deal changed while cancellation was attempted");
         }
         appendAudit(context, deal.id(), DEAL_CANCELLED, correlationId, now);
         return toDetail(deal, context);
@@ -152,14 +167,21 @@ class DealService {
     DealDetail updateParties(OperationContext context, UUID dealId,
             UpdateDealPartiesRequest request, UUID correlationId) {
         requireOperation(context, RequestedOperation.DEAL_PARTIES_UPDATE);
-        Deal deal = loadVisible(context, dealId);
+        Deal deal = loadVisibleForUpdate(context, dealId);
         operationPolicy.requireInitiator(deal, context);
         deal.status().requirePartyManagementAllowed();
         validatePartyRequest(request, deal.id());
         long currentVersion = deal.version();
         Instant now = clock.instant();
+        boolean assignmentsChanged = !Objects.equals(
+                deal.buyerLegalEntityId(), request.buyerLegalEntityId())
+                || !Objects.equals(deal.sellerLegalEntityId(), request.sellerLegalEntityId());
         deal.assignParties(request.buyerLegalEntityId(),
                 request.sellerLegalEntityId(), request.expectedVersion(), now);
+        if (assignmentsChanged) {
+            ratificationSupersessions.supersedePending(
+                    context, deal.id(), deal.currentRatificationPackageId(), correlationId, now);
+        }
         boolean updated = repository.updateParties(
                 context.tenantId(),
                 context.activeLegalEntityId(),
@@ -175,26 +197,18 @@ class DealService {
         return toDetail(deal, context);
     }
 
-    private boolean tryPersistCancel(
-            OperationContext context, Deal deal, Instant now) {
-        long currentVersion = deal.version();
-        DealStatus previousStatus = deal.status();
-        deal.cancel(now);
-        return repository.updateStatus(
-                context.tenantId(),
-                context.activeLegalEntityId(),
-                deal.id(),
-                previousStatus,
-                deal.status(),
-                currentVersion,
-                deal.updatedAt());
-    }
-
     private Deal loadVisible(OperationContext context, UUID dealId) {
         return repository.findVisibleById(
                         context.tenantId(),
                         context.activeLegalEntityId(),
                         dealId)
+                .map(Deal::rehydrate)
+                .orElseThrow(DealNotFoundException::new);
+    }
+
+    private Deal loadVisibleForUpdate(OperationContext context, UUID dealId) {
+        return repository.findVisibleByIdForUpdate(
+                        context.tenantId(), context.activeLegalEntityId(), dealId)
                 .map(Deal::rehydrate)
                 .orElseThrow(DealNotFoundException::new);
     }
@@ -274,6 +288,7 @@ class DealService {
 
     private DealDetail toDetail(Deal deal, OperationContext context) {
         List<DealParticipant> participantProjections = participants(deal);
+        DealRatificationProjection ratification = ratification(deal, context);
         return new DealDetail(
                 deal.id(),
                 deal.reference(),
@@ -284,11 +299,34 @@ class DealService {
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actionsWithAnalysis(deal, context),
+                actionsWithAnalysis(deal, context, ratification),
                 party(deal.buyerLegalEntityId(), participantProjections),
                 party(deal.sellerLegalEntityId(), participantProjections),
                 participantProjections,
-                currentDocument(deal), analysis(deal), currentRuleSet(deal));
+                currentDocument(deal), analysis(deal), currentRuleSet(deal), ratification);
+    }
+
+    /**
+     * READY is derived, never persisted: parties, an accepted rule-set, and a
+     * current document pointer must exist together (§5 NOT_READY/READY
+     * hesabı). The current-package pointer is looked up by id regardless of
+     * its terminal status so SUPERSEDED/REJECTED history stays visible.
+     */
+    private DealRatificationProjection ratification(Deal deal, OperationContext context) {
+        boolean ready = deal.buyerLegalEntityId() != null
+                && deal.sellerLegalEntityId() != null
+                && deal.currentRuleSetVersionId() != null
+                && deal.currentDocumentId() != null;
+        DealRatificationReadiness readiness = ready
+                ? DealRatificationReadiness.READY : DealRatificationReadiness.NOT_READY;
+        UUID currentPackageId = deal.currentRatificationPackageId();
+        RatificationPackageProjectionPort.CurrentPackage currentPackage = currentPackageId == null
+                ? null
+                : ratificationProjections.findCurrentPackage(
+                                context, deal.id(), deal.status().name(), currentPackageId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Deal current ratification package is unavailable"));
+        return new DealRatificationProjection(readiness, currentPackage);
     }
 
     private DealCurrentDocumentQueryPort.CurrentDealDocument currentDocument(Deal deal) {
@@ -319,7 +357,7 @@ class DealService {
     }
 
     private DealAvailableActions actionsWithAnalysis(Deal deal,
-            OperationContext context) {
+            OperationContext context, DealRatificationProjection ratification) {
         DealAvailableActions base = actions(deal, context);
         UUID documentId = deal.currentDocumentId();
         boolean allowed = operationPolicy.isInitiator(deal, context)
@@ -327,13 +365,22 @@ class DealService {
                 && documentId != null
                 && currentDocumentQueries.findAvailable(documentId).isPresent()
                 && !analysisProjections.hasActiveJob(documentId);
+        boolean canCreateRatificationPackage = operationPolicy.isInitiator(deal, context)
+                && deal.status() == DealStatus.DRAFT
+                && ratification.readiness() == DealRatificationReadiness.READY;
+        RatificationPackageProjectionPort.CurrentPackage currentPackage = ratification.currentPackage();
+        boolean canApproveRatification = currentPackage != null
+                && currentPackage.availableActions().canApprove();
+        boolean canRejectRatification = currentPackage != null
+                && currentPackage.availableActions().canReject();
         return new DealAvailableActions(base.canUpdate(), base.canCancel(),
                 base.canCreateInvitation(), base.canManageParties(),
                 base.canCreateDocumentUploadIntent(), allowed,
                 operationPolicy.isInitiator(deal, context)
                         && deal.status() == DealStatus.DRAFT
                         && documentId != null
-                        && "REVIEW_REQUIRED".equals(analysisProjections.summary(documentId).status()));
+                        && "REVIEW_REQUIRED".equals(analysisProjections.summary(documentId).status()),
+                canCreateRatificationPackage, canApproveRatification, canRejectRatification);
     }
 
     private DealAnalysisProjectionPort.AnalysisSummary analysis(Deal deal) {

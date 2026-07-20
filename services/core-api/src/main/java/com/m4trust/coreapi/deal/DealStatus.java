@@ -24,15 +24,15 @@ enum DealStatus {
     }
 
     boolean allowsBasicFieldEditing() {
-        return this == DRAFT || this == ACTIVE;
+        return this == DRAFT;
     }
 
     boolean allowsCancellation() {
-        return this == DRAFT || this == ACTIVE;
+        return this == DRAFT;
     }
 
     boolean allowsDocumentUpload() {
-        return this == DRAFT || this == ACTIVE;
+        return this == DRAFT;
     }
 
     void requireBasicFieldEditingAllowed() {
@@ -56,11 +56,12 @@ enum DealStatus {
                 case CANCEL -> CANCELLED;
                 default -> throw invalidTransition(action);
             };
-            case ACTIVE -> switch (action) {
-                case CANCEL -> CANCELLED;
-                case COMPLETE -> COMPLETED;
-                default -> throw invalidTransition(action);
-            };
+            case ACTIVE -> {
+                if (action == DealAction.COMPLETE) {
+                    yield COMPLETED;
+                }
+                throw invalidTransition(action);
+            }
             case CANCELLED, COMPLETED -> {
                 if (action == DealAction.ARCHIVE) {
                     yield ARCHIVED;

@@ -13,7 +13,6 @@ class DealStatusTest {
     void allAllowedTransitionsFollowTheAuthoritativeLifecycle() {
         assertEquals(DealStatus.ACTIVE, DealStatus.DRAFT.activate());
         assertEquals(DealStatus.CANCELLED, DealStatus.DRAFT.cancel());
-        assertEquals(DealStatus.CANCELLED, DealStatus.ACTIVE.cancel());
         assertEquals(DealStatus.COMPLETED, DealStatus.ACTIVE.complete());
         assertEquals(DealStatus.ARCHIVED, DealStatus.COMPLETED.archive());
         assertEquals(DealStatus.ARCHIVED, DealStatus.CANCELLED.archive());
@@ -27,12 +26,18 @@ class DealStatusTest {
                 () -> DealStatus.COMPLETED.activate());
         assertThrows(DealStateConflictException.class,
                 () -> DealStatus.ARCHIVED.cancel());
+        assertThrows(DealStateConflictException.class,
+                () -> DealStatus.ACTIVE.cancel());
     }
 
     @Test
-    void basicFieldsAreEditableOnlyWhileDraftOrActive() {
+    void allDirectDealMutationsAreDraftOnly() {
         assertTrue(DealStatus.DRAFT.allowsBasicFieldEditing());
-        assertTrue(DealStatus.ACTIVE.allowsBasicFieldEditing());
+        assertTrue(DealStatus.DRAFT.allowsCancellation());
+        assertTrue(DealStatus.DRAFT.allowsDocumentUpload());
+        assertFalse(DealStatus.ACTIVE.allowsBasicFieldEditing());
+        assertFalse(DealStatus.ACTIVE.allowsCancellation());
+        assertFalse(DealStatus.ACTIVE.allowsDocumentUpload());
         assertFalse(DealStatus.CANCELLED.allowsBasicFieldEditing());
         assertFalse(DealStatus.COMPLETED.allowsBasicFieldEditing());
         assertFalse(DealStatus.ARCHIVED.allowsBasicFieldEditing());
@@ -54,8 +59,21 @@ class DealStatusTest {
         assertEquals(DealLifecycleProjection.DRAFT,
                 DealLifecycleProjectionCalculator.calculate(
                         DealStatus.DRAFT));
-        assertEquals(DealLifecycleProjection.DRAFT,
+        assertEquals(DealLifecycleProjection.FUNDING,
                 DealLifecycleProjectionCalculator.calculate(
                         DealStatus.ACTIVE));
+    }
+
+    @Test
+    void activeDealsAlwaysShowTheFundingViewRegardlessOfAnalysisStatus() {
+        assertEquals(DealLifecycleProjection.FUNDING,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true));
+        assertEquals(DealLifecycleProjection.FUNDING,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "NOT_REQUESTED", false));
+        assertEquals(DealLifecycleProjection.RATIFICATION,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.DRAFT, "ACCEPTED", true));
     }
 }

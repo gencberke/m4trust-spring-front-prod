@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.m4trust.coreapi.organization.LegalEntityRole;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
 import org.springframework.stereotype.Service;
@@ -69,7 +70,34 @@ class RatificationPackageReadService {
                 snapshot, storedApprovals);
         return new RatificationPackageReadDtos.Detail(packageRecord.id(), packageRecord.version(),
                 packageRecord.status(), packageRecord.contentHash(), snapshot, approvals,
-                new RatificationPackageReadDtos.AvailableActions(false, false), packageRecord.createdAt());
+                availableActions(context, target, packageRecord, storedApprovals), packageRecord.createdAt());
+    }
+
+    /**
+     * Wrapper-only, actor-aware projection; never part of the canonical
+     * snapshot or contentHash input. Mirrors RatificationPackageActionService's
+     * actual acceptance rules exactly so this projection never advertises an
+     * action the action service would refuse: PENDING package, DRAFT Deal, the
+     * active legal entity is the package buyer or seller, and the active
+     * membership role is ADMIN. Approve additionally requires that entity has
+     * not already recorded an effective approval; reject has no such
+     * restriction because an entity that already approved may still reject
+     * while the package remains PENDING.
+     */
+    private static RatificationPackageReadDtos.AvailableActions availableActions(
+            OperationContext context,
+            RatificationSourcePorts.Target target,
+            RatificationRepository.PackageRecord packageRecord,
+            List<RatificationRepository.ApprovalRecord> storedApprovals) {
+        boolean assignedParty = context.activeLegalEntityId().equals(packageRecord.buyerLegalEntityId())
+                || context.activeLegalEntityId().equals(packageRecord.sellerLegalEntityId());
+        boolean baseEligible = packageRecord.status() == RatificationPackageStatus.PENDING
+                && "DRAFT".equals(target.status())
+                && assignedParty
+                && context.activeLegalEntityRole() == LegalEntityRole.ADMIN;
+        boolean alreadyApproved = baseEligible && storedApprovals.stream()
+                .anyMatch(approval -> approval.legalEntityId().equals(context.activeLegalEntityId()));
+        return new RatificationPackageReadDtos.AvailableActions(baseEligible && !alreadyApproved, baseEligible);
     }
 
     private RatificationSnapshotAssembler.Snapshot parseAndVerifySnapshot(

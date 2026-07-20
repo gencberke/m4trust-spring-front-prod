@@ -4,13 +4,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+
+import javax.sql.DataSource;
 
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,16 +36,20 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Cancel carries no expectedVersion, so a plain concurrent version bump must
- * not fail it, while a concurrent transition into a terminal state must keep
- * producing a state conflict. The race window between the service's load and
- * its atomic status update is reproduced deterministically with a repository
- * hook that runs a competing SQL mutation first.
+ * Cancel carries no expectedVersion and now locks the Deal row
+ * (SELECT ... FOR UPDATE) before a single atomic {@code updateStatus} attempt;
+ * the old load-then-retry-once design was replaced by the architect's binding
+ * decision to keep lock-based, single-attempt cancel. These tests reproduce
+ * the race with a REAL second transaction, in a real second thread, that
+ * holds the same row lock a plain concurrent mutation would hold: cancel must
+ * block on the lock and then either succeed against the freshly-committed
+ * version (a plain rename) or observe the freshly-committed terminal status
+ * and reject (a concurrent cancellation-equivalent transition).
  */
 @SpringBootTest
 @ActiveProfiles("local")
 @Testcontainers
-@Import(DealCancelRaceIntegrationTest.RacingDealRepositoryConfiguration.class)
+@Import(DealCancelRaceIntegrationTest.CountingDealRepositoryConfiguration.class)
 class DealCancelRaceIntegrationTest {
 
     @Container
@@ -51,11 +64,12 @@ class DealCancelRaceIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
-    private AtomicReference<Runnable> beforeUpdateStatusHook;
+    private DataSource dataSource;
 
     @Autowired
     private AtomicInteger updateStatusAttempts;
 
+    private ExecutorService executor;
     private OperationContext cancelContext;
 
     @BeforeEach
@@ -105,27 +119,51 @@ class DealCancelRaceIntegrationTest {
         cancelContext = new OperationContext(userId, tenantId, legalEntityId,
                 com.m4trust.coreapi.organization.LegalEntityRole.ADMIN,
                 RequestedOperation.DEAL_CANCEL);
-        beforeUpdateStatusHook.set(null);
         updateStatusAttempts.set(0);
+        executor = Executors.newFixedThreadPool(2);
+    }
+
+    @AfterEach
+    void tearDown() {
+        executor.shutdownNow();
     }
 
     @Test
-    void cancelSucceedsWhenOnlyTheVersionChangedConcurrently() {
+    void cancelSucceedsWhenOnlyTheVersionChangedConcurrently() throws Exception {
         UUID dealId = createDraftDeal();
-        beforeUpdateStatusHook.set(() -> jdbcTemplate.update("""
-                UPDATE deal
-                SET title = 'Concurrently Renamed',
-                    version = version + 1
-                WHERE id = ?
-                """, dealId));
+        CountDownLatch lockAcquired = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
 
-        DealDetail detail = service.cancel(
-                cancelContext, dealId, UUID.randomUUID());
+        Future<Void> racer = executor.submit(() -> {
+            lockRowThenRun(dealId, lockAcquired, releaseLock, connection -> {
+                try (PreparedStatement update = connection.prepareStatement("""
+                        UPDATE deal
+                        SET title = 'Concurrently Renamed',
+                            version = version + 1
+                        WHERE id = ?
+                        """)) {
+                    update.setObject(1, dealId);
+                    update.executeUpdate();
+                }
+            });
+            return null;
+        });
+
+        lockAcquired.await(10, TimeUnit.SECONDS);
+        Future<DealDetail> cancelFuture = executor.submit(
+                () -> service.cancel(cancelContext, dealId, UUID.randomUUID()));
+        releaseLock.countDown();
+
+        DealDetail detail = cancelFuture.get(10, TimeUnit.SECONDS);
+        racer.get(10, TimeUnit.SECONDS);
 
         assertEquals(DealStatus.CANCELLED, detail.status());
-        assertEquals(2, updateStatusAttempts.get());
+        assertEquals(1, updateStatusAttempts.get());
         assertEquals("CANCELLED", jdbcTemplate.queryForObject(
                 "SELECT deal_status FROM deal WHERE id = ?",
+                String.class, dealId));
+        assertEquals("Concurrently Renamed", jdbcTemplate.queryForObject(
+                "SELECT title FROM deal WHERE id = ?",
                 String.class, dealId));
         assertEquals(1, jdbcTemplate.queryForObject("""
                 SELECT count(*)
@@ -136,23 +174,72 @@ class DealCancelRaceIntegrationTest {
     }
 
     @Test
-    void cancelConflictsWhenTheDealReachedATerminalStateConcurrently() {
+    void cancelConflictsWhenTheDealReachedATerminalStateConcurrently() throws Exception {
         UUID dealId = createDraftDeal();
-        beforeUpdateStatusHook.set(() -> jdbcTemplate.update("""
-                UPDATE deal
-                SET deal_status = 'CANCELLED',
-                    version = version + 1
-                WHERE id = ?
-                """, dealId));
+        CountDownLatch lockAcquired = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
 
-        assertThrows(DealStateConflictException.class,
+        Future<Void> racer = executor.submit(() -> {
+            lockRowThenRun(dealId, lockAcquired, releaseLock, connection -> {
+                try (PreparedStatement update = connection.prepareStatement("""
+                        UPDATE deal
+                        SET deal_status = 'CANCELLED',
+                            version = version + 1
+                        WHERE id = ?
+                        """)) {
+                    update.setObject(1, dealId);
+                    update.executeUpdate();
+                }
+            });
+            return null;
+        });
+
+        lockAcquired.await(10, TimeUnit.SECONDS);
+        Future<DealDetail> cancelFuture = executor.submit(
                 () -> service.cancel(cancelContext, dealId, UUID.randomUUID()));
+        releaseLock.countDown();
+
+        try {
+            cancelFuture.get(10, TimeUnit.SECONDS);
+            throw new AssertionError("Expected cancel to fail against the freshly committed CANCELLED status");
+        } catch (java.util.concurrent.ExecutionException expected) {
+            assertThrows(DealStateConflictException.class, () -> {
+                throw expected.getCause();
+            });
+        }
+        racer.get(10, TimeUnit.SECONDS);
 
         assertEquals(0, jdbcTemplate.queryForObject("""
                 SELECT count(*)
                 FROM audit_record
                 WHERE subject_id = ? AND action = 'DEAL_CANCELLED'
                 """, Integer.class, dealId));
+    }
+
+    /**
+     * Opens its own transaction on a dedicated JDBC connection, takes the same
+     * {@code SELECT ... FOR UPDATE} row lock cancel's load takes, signals the
+     * caller once the lock is held, waits for the caller's release signal
+     * (issued once cancel has been dispatched and is blocked behind this same
+     * lock), then applies the racing mutation and commits - releasing the lock
+     * so cancel observes the freshly-committed row.
+     */
+    private void lockRowThenRun(UUID dealId, CountDownLatch lockAcquired,
+            CountDownLatch releaseLock, SqlAction mutation) {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement lock = connection.prepareStatement(
+                    "SELECT id FROM deal WHERE id = ? FOR UPDATE")) {
+                lock.setObject(1, dealId);
+                lock.executeQuery();
+            }
+            lockAcquired.countDown();
+            releaseLock.await(10, TimeUnit.SECONDS);
+            mutation.run(connection);
+            connection.commit();
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
     private UUID createDraftDeal() {
@@ -167,13 +254,13 @@ class DealCancelRaceIntegrationTest {
                 UUID.randomUUID()).id();
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
-    static class RacingDealRepositoryConfiguration {
+    @FunctionalInterface
+    private interface SqlAction {
+        void run(Connection connection) throws Exception;
+    }
 
-        @Bean
-        AtomicReference<Runnable> beforeUpdateStatusHook() {
-            return new AtomicReference<>();
-        }
+    @TestConfiguration(proxyBeanMethods = false)
+    static class CountingDealRepositoryConfiguration {
 
         @Bean
         AtomicInteger updateStatusAttempts() {
@@ -182,8 +269,7 @@ class DealCancelRaceIntegrationTest {
 
         @Bean
         @Primary
-        DealRepository racingDealRepository(JdbcTemplate jdbcTemplate,
-                AtomicReference<Runnable> beforeUpdateStatusHook,
+        DealRepository countingDealRepository(JdbcTemplate jdbcTemplate,
                 AtomicInteger updateStatusAttempts) {
             return new DealRepository(jdbcTemplate) {
                 @Override
@@ -192,10 +278,6 @@ class DealCancelRaceIntegrationTest {
                         DealStatus nextStatus, long expectedVersion,
                         Instant updatedAt) {
                     updateStatusAttempts.incrementAndGet();
-                    Runnable hook = beforeUpdateStatusHook.getAndSet(null);
-                    if (hook != null) {
-                        hook.run();
-                    }
                     return super.updateStatus(tenantId, legalEntityId, dealId,
                             expectedStatus, nextStatus, expectedVersion,
                             updatedAt);
