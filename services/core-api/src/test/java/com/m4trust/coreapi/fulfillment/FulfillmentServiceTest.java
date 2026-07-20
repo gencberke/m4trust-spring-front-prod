@@ -110,7 +110,7 @@ class FulfillmentServiceTest {
                 FulfillmentStatus.IN_PROGRESS, NOW, NOW, 0);
         stubDeal(SELLER);
         when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.of(fulfillment));
-        when(fulfillmentRepository.findByIdForUpdate(fulfillment.id())).thenReturn(Optional.of(fulfillment));
+        when(fulfillmentRepository.findByDealIdForUpdate(DEAL)).thenReturn(Optional.of(fulfillment));
         when(milestoneRepository.findByFulfillmentId(fulfillment.id())).thenReturn(Optional.of(milestone));
         when(milestoneRepository.findByFulfillmentIdForUpdate(fulfillment.id())).thenReturn(Optional.of(milestone));
         when(milestoneRepository.update(any(Milestone.MilestoneRecord.class), anyLong())).thenReturn(true);

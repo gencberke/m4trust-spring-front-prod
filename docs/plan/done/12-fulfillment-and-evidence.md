@@ -1,6 +1,17 @@
 # Slice 12 — Fulfillment and Evidence
 
-- Status: ready — human-approved on 20 July 2026
+- Status: done
+- Completion date: 20 July 2026
+- Material deviation: At the user's direction, planner-owned browser acceptance
+  used the minimum critical two-party path with sequential seller ADMIN and
+  buyer ADMIN sessions instead of repeating the complete seller MEMBER, buyer
+  MEMBER, participant, and concurrency matrix in browsers. The omitted
+  authorization, participant visibility, stale-version, idempotency, and
+  concurrency cases are covered by the accepted automated integration suite.
+  The critical real-storage path (start, upload/finalize, reject, replacement,
+  accept, terminal completion, and immutable rejected history) passed against
+  PostgreSQL and MinIO. Browser acceptance found and fixed a missing initial
+  finalize idempotency key before the path was rerun successfully.
 - Slice order: ADR-004 §24 “Fulfillment and Evidence” (Slice 12 in the split
   roadmap)
 - Predecessor: accepted Slice 11 Funding Foundation; the Deal is `ACTIVE` and
@@ -479,31 +490,32 @@ do not replace §6. The planner performs §6 after implementation review.
 
 - [x] ADR-011 actor, cardinality, contractual source, state, and completion
       decisions are accepted; ADR index/FORBIDDEN are synchronized
-- [ ] P1 additive Core API contract and exact validator/docs/generated-type
+- [x] P1 additive Core API contract and exact validator/docs/generated-type
       review unit is complete; AI contracts remain unchanged
-- [ ] New forward-only migrations are implemented; V15–V19 remain unchanged
-- [ ] Fulfillment ownership, narrow source/storage ports, and module
+- [x] New forward-only migrations are implemented; V15–V19 remain unchanged
+- [x] Fulfillment ownership, narrow source/storage ports, and module
       architecture constraints are implemented
-- [ ] ACTIVE + FUNDED start, one fulfillment/one milestone, and exact
+- [x] ACTIVE + FUNDED start, one fulfillment/one milestone, and exact
       FulfillmentStatus flow work
-- [ ] Direct private-storage evidence upload/finalize verifies size, checksum,
+- [x] Direct private-storage evidence upload/finalize verifies size, checksum,
       and immutable object version
-- [ ] Participant-readable evidence history/download and party/role mutation
+- [x] Participant-readable evidence history/download and party/role mutation
       authorization work server-side
-- [ ] Buyer ADMIN accept/reject, replacement after rejection, stale recovery,
+- [x] Buyer ADMIN accept/reject, replacement after rejection, stale recovery,
       idempotency, and terminal races are tested
-- [ ] Fulfillment COMPLETED creates no Deal COMPLETE, release, settlement,
+- [x] Fulfillment COMPLETED creates no Deal COMPLETE, release, settlement,
       refund, provider, or AI side effect
-- [ ] Deal-detail lifecycle/action projection is backend-derived; frontend
+- [x] Deal-detail lifecycle/action projection is backend-derived; frontend
       loading/error/empty/read-only states use the real API
-- [ ] Implementer-owned §7 automated validation passes
-- [ ] Implementer-owned final fast check passes and is recorded in
+- [x] Implementer-owned §7 automated validation passes
+- [x] Implementer-owned final fast check passes and is recorded in
       `docs/agent/req-review.md`
-- [ ] Implementer reports P1–P6 `COMPLETED` with
+- [x] Implementer reports P1–P6 `COMPLETED` with
       `Plan completion claim: NO`
-- [ ] Planner independently reviews the implementation and completes the §6
-      PostgreSQL + MinIO multi-actor real-browser matrix
-- [ ] Previous-slice regressions pass and the planner accepts the complete plan
+- [x] Planner independently reviews the implementation and completes the
+      user-directed minimum §6 PostgreSQL + MinIO two-party real-browser path;
+      omitted matrix cases remain covered by automated integration tests
+- [x] Previous-slice regressions pass and the planner accepts the complete plan
 
 Implementer completion of P1–P6 is not plan completion. The plan moves to
 `done/` only after planner-owned browser acceptance and final planner `ACCEPT`.

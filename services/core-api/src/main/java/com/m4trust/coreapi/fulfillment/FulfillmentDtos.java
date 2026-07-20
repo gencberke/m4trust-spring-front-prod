@@ -48,12 +48,54 @@ record FulfillmentMilestoneProjection(UUID id, String title, String description,
         long version) {
 }
 
-record EvidenceSubmissionProjection(UUID id, UUID dealId, UUID milestoneId,
+sealed interface EvidenceSubmissionProjection permits PendingEvidenceSubmissionProjection,
+        SubmittedEvidenceSubmissionProjection, AcceptedEvidenceSubmissionProjection,
+        RejectedEvidenceSubmissionProjection {
+    UUID id();
+    UUID dealId();
+    UUID milestoneId();
+    EvidenceType evidenceType();
+    EvidenceMediaType mediaType();
+    String fileName();
+    EvidenceSubmissionStatus status();
+    long clientSizeBytes();
+    String clientSha256();
+    Instant createdAt();
+    EvidenceAvailableActions availableActions();
+    long version();
+}
+
+record PendingEvidenceSubmissionProjection(UUID id, UUID dealId, UUID milestoneId,
         EvidenceType evidenceType, EvidenceMediaType mediaType, String fileName,
-        EvidenceSubmissionStatus status, Long clientSizeBytes, String clientSha256,
-        Long verifiedSizeBytes, String verifiedSha256, String objectVersion,
-        Instant createdAt, Instant submittedAt, Instant acceptedAt, Instant rejectedAt,
-        String rejectionReason, EvidenceAvailableActions availableActions, long version) {
+        EvidenceSubmissionStatus status, long clientSizeBytes, String clientSha256,
+        Instant expiresAt, Instant createdAt, EvidenceAvailableActions availableActions,
+        long version) implements EvidenceSubmissionProjection {
+}
+
+record SubmittedEvidenceSubmissionProjection(UUID id, UUID dealId, UUID milestoneId,
+        EvidenceType evidenceType, EvidenceMediaType mediaType, String fileName,
+        EvidenceSubmissionStatus status, long clientSizeBytes, String clientSha256,
+        long verifiedSizeBytes, String verifiedSha256, String objectVersion,
+        Instant createdAt, Instant submittedAt, EvidenceAvailableActions availableActions,
+        long version) implements EvidenceSubmissionProjection {
+}
+
+record AcceptedEvidenceSubmissionProjection(UUID id, UUID dealId, UUID milestoneId,
+        EvidenceType evidenceType, EvidenceMediaType mediaType, String fileName,
+        EvidenceSubmissionStatus status, long clientSizeBytes, String clientSha256,
+        long verifiedSizeBytes, String verifiedSha256, String objectVersion,
+        Instant createdAt, Instant submittedAt, Instant acceptedAt,
+        EvidenceAvailableActions availableActions, long version)
+        implements EvidenceSubmissionProjection {
+}
+
+record RejectedEvidenceSubmissionProjection(UUID id, UUID dealId, UUID milestoneId,
+        EvidenceType evidenceType, EvidenceMediaType mediaType, String fileName,
+        EvidenceSubmissionStatus status, long clientSizeBytes, String clientSha256,
+        long verifiedSizeBytes, String verifiedSha256, String objectVersion,
+        Instant createdAt, Instant submittedAt, Instant rejectedAt, String rejectionReason,
+        EvidenceAvailableActions availableActions, long version)
+        implements EvidenceSubmissionProjection {
 }
 
 record EvidenceUploadIntent(EvidenceSubmissionProjection evidence, String uploadUrl,
@@ -72,4 +114,3 @@ record MilestoneAvailableActions(boolean canUpload) {
 
 record EvidenceAvailableActions(boolean canDownload) {
 }
-

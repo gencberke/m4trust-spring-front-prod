@@ -73,40 +73,15 @@ public class FulfillmentExceptionHandler {
                 "The active legal entity is not authorized to review evidence.");
     }
 
-    @ExceptionHandler(FulfillmentExceptions.StartConflict.class)
-    ResponseEntity<ProblemDetail> handleStartConflict(HttpServletRequest request) {
+    @ExceptionHandler(FulfillmentExceptions.Conflict.class)
+    ResponseEntity<ProblemDetail> handleConflict(FulfillmentExceptions.Conflict exception,
+            HttpServletRequest request) {
+        String slug = exception.code().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
         return response(request, HttpStatus.CONFLICT,
-                "https://problems.m4trust.internal/fulfillment-start-conflict",
-                "Fulfillment start conflict",
-                "FULFILLMENT_START_CONFLICT",
-                "The Deal is not in a state that allows fulfillment to be started.");
-    }
-
-    @ExceptionHandler(FulfillmentExceptions.UploadConflict.class)
-    ResponseEntity<ProblemDetail> handleUploadConflict(HttpServletRequest request) {
-        return response(request, HttpStatus.CONFLICT,
-                "https://problems.m4trust.internal/evidence-upload-conflict",
-                "Evidence upload conflict",
-                "EVIDENCE_UPLOAD_CONFLICT",
-                "The milestone is not accepting new evidence.");
-    }
-
-    @ExceptionHandler(FulfillmentExceptions.FinalizeConflict.class)
-    ResponseEntity<ProblemDetail> handleFinalizeConflict(HttpServletRequest request) {
-        return response(request, HttpStatus.CONFLICT,
-                "https://problems.m4trust.internal/evidence-finalize-conflict",
-                "Evidence finalize conflict",
-                "EVIDENCE_FINALIZE_CONFLICT",
-                "The evidence submission cannot be finalized in its current state.");
-    }
-
-    @ExceptionHandler(FulfillmentExceptions.ReviewConflict.class)
-    ResponseEntity<ProblemDetail> handleReviewConflict(HttpServletRequest request) {
-        return response(request, HttpStatus.CONFLICT,
-                "https://problems.m4trust.internal/evidence-review-conflict",
-                "Evidence review conflict",
-                "EVIDENCE_REVIEW_CONFLICT",
-                "The evidence submission cannot be reviewed in its current state.");
+                "https://problems.m4trust.internal/" + slug,
+                "Fulfillment operation conflict",
+                exception.code(),
+                "The fulfillment operation conflicts with the current resource state.");
     }
 
     @ExceptionHandler(FulfillmentExceptions.DownloadNotAvailable.class)

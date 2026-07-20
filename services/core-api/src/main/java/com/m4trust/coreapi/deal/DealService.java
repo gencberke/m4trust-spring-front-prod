@@ -412,7 +412,8 @@ class DealService {
                 ? null : fulfillmentSummary.status().name();
         boolean isActive = deal.status() == DealStatus.ACTIVE;
         boolean isFunded = "FUNDED".equals(fundingSummary.fundingStatus());
-        boolean canStartFulfillment = operationPolicy.isInitiator(deal, context)
+        boolean canStartFulfillment = deal.sellerLegalEntityId() != null
+                && context.activeLegalEntityId().equals(deal.sellerLegalEntityId())
                 && isActive && isFunded
                 && (fulfillmentStatus == null || "NOT_STARTED".equals(fulfillmentStatus));
         boolean canUploadEvidence = isActive

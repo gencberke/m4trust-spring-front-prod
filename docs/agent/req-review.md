@@ -2,7 +2,7 @@
 
 Task: 12-T01
 Revision: 2
-Plan: docs/plan/ready/12-fulfillment-and-evidence.md
+Plan: docs/plan/done/12-fulfillment-and-evidence.md
 Phases: P1–P6
 Status: COMPLETED
 Branch: codex/slice-12-fulfillment
@@ -27,13 +27,13 @@ Plan completion claim: NO
 - `docker compose -f .\infra\compose.yaml config` — PASS
 - `git diff --check` — PASS (only LF/CRLF line-ending warnings)
 
-## Deviation or risk
+## Planner acceptance
 
-- Real-browser acceptance remains planner-owned and has not yet passed.
-- Post-suite PostgreSQL connection-refused warnings from Spring Session cleanup threads after Testcontainers shutdown do not fail tests.
-
-## Review focus
-
-- Fulfillment exception handler precedence and stable Problem Details codes.
-- Lock order and status transitions in `FulfillmentService`.
-- Deal-to-fulfillment projection boundary and actor-aware action flags.
+- Decision: ACCEPT
+- Reviewed: `codex/slice-12-fulfillment@a21a75ecd9fd21c93f001527f9343049e7ed0ef0`
+  plus the planner review fixes in the working tree.
+- Plan archived to `docs/plan/done/12-fulfillment-and-evidence.md`.
+- Acceptance evidence:
+  `docs/agent/slice-12-acceptance-2026-07-20.md`.
+- The user-directed minimum browser scope and its automated-test substitution
+  are recorded as a material plan deviation.

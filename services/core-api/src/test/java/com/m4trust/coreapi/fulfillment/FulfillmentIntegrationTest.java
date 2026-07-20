@@ -122,9 +122,15 @@ class FulfillmentIntegrationTest {
     void sellerCanStartFulfillmentForActiveFundedDeal() throws Exception {
         UUID dealId = createActiveFundedDeal();
 
+        mockMvc.perform(get("/api/v1/deals/" + dealId)
+                        .with(user(sellerMember.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableActions.canStartFulfillment").value(true));
+
         MvcResult result = mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .with(user(sellerMember.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
                         .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedVersion\": 3}"))
@@ -163,7 +169,7 @@ class FulfillmentIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedVersion\": 0}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("FULFILLMENT_START_CONFLICT"));
+                .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
     }
 
     @Test
@@ -218,6 +224,8 @@ class FulfillmentIntegrationTest {
                         .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"))
+                .andExpect(jsonPath("$.evidence.expiresAt").exists())
+                .andExpect(jsonPath("$.evidence.length()").value(13))
                 .andReturn();
 
         String intentResponse = intentResult.getResponse().getContentAsString();
@@ -307,7 +315,7 @@ class FulfillmentIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"sizeBytes\": 12, \"sha256\": \"" + SHA + "\"}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("EVIDENCE_FINALIZE_CONFLICT"));
+                .andExpect(jsonPath("$.code").value("EVIDENCE_VERIFICATION_FAILED"));
     }
 
     @Test
@@ -360,11 +368,17 @@ class FulfillmentIntegrationTest {
         UUID dealId = createActiveFundedDeal();
         startFulfillment(dealId, sellerAdmin);
         String submissionId = submitEvidence(dealId, sellerAdmin, "PHOTO", "photo.png", "image/png");
+        insertParticipant(dealId, outsider);
 
+        mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
+                        .with(user(outsider.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentEvidence.id").value(submissionId));
         mockMvc.perform(post("/api/v1/deals/" + dealId
                         + "/fulfillment/evidence/" + submissionId + "/download-link")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                        .with(user(outsider.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.downloadUrl").exists());
     }

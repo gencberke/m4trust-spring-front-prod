@@ -334,6 +334,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
       return;
     }
     const attemptId = ++attemptIdRef.current;
+    resetFinalizeKey();
     setUploadState({ stage: "hashing", file, evidenceType, mediaType });
     let sha256: string;
     try {

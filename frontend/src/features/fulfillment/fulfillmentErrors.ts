@@ -9,7 +9,7 @@ export function isFulfillmentNotFound(error: unknown): boolean {
 }
 
 export function isEvidenceUploadExpired(error: unknown): boolean {
-  return error instanceof ApiError && error.code === "EVIDENCE_UPLOAD_CONFLICT";
+  return error instanceof ApiError && error.code === "EVIDENCE_UPLOAD_EXPIRED";
 }
 
 export function getFulfillmentErrorMessage(error: unknown): string {
@@ -31,10 +31,23 @@ export function getFulfillmentErrorMessage(error: unknown): string {
       return "Fulfillment bu Deal için başlatılamıyor. Deal ACTIVE ve FUNDED olmalı.";
     case "FULFILLMENT_ALREADY_EXISTS":
       return "Bu Deal için fulfillment zaten başlatılmış. Güncel durum yenilendi.";
+    case "FULFILLMENT_STATE_CONFLICT":
+      return "Fulfillment artık bu işlem için uygun durumda değil.";
+    case "FULFILLMENT_COMPLETED":
+      return "Fulfillment zaten tamamlanmış.";
     case "EVIDENCE_UPLOAD_FORBIDDEN":
       return "Evidence yüklemeye yalnızca satıcı (seller) tarafı yetkilidir.";
     case "EVIDENCE_UPLOAD_CONFLICT":
       return "Bu milestone için şu anda yeni evidence yüklenemiyor; süre dolmuş olabilir.";
+    case "EVIDENCE_ALREADY_SUBMITTED":
+      return "Bu milestone için zaten inceleme bekleyen evidence var.";
+    case "EVIDENCE_UPLOAD_EXPIRED":
+      return "Evidence yükleme süresi doldu. Yeni bir yükleme başlatın.";
+    case "EVIDENCE_UPLOAD_STATE_CONFLICT":
+    case "EVIDENCE_MILESTONE_CONFLICT":
+      return "Evidence artık bu milestone için tamamlanamıyor.";
+    case "EVIDENCE_VERIFICATION_FAILED":
+      return "Yüklenen dosyanın boyut, checksum veya media type doğrulaması başarısız.";
     case "EVIDENCE_FINALIZE_CONFLICT":
       return "Evidence doğrulanamadı veya durumu değişti. Lütfen yeniden deneyin.";
     case "EVIDENCE_REVIEW_FORBIDDEN":
@@ -43,6 +56,8 @@ export function getFulfillmentErrorMessage(error: unknown): string {
       return "Evidence artık incelenmek için uygun değil. Güncel durum yenilendi.";
     case "EVIDENCE_STALE_VERSION":
       return "Evidence başka bir işlemle değişti. Güncel durum yenilendi; lütfen tekrar deneyin.";
+    case "EVIDENCE_STATE_CONFLICT":
+      return "Evidence artık incelenmek için uygun durumda değil.";
     case "EVIDENCE_DOWNLOAD_NOT_AVAILABLE":
       return "Bu evidence için indirme bağlantısı şu anda kullanılamıyor.";
     case "IDEMPOTENCY_KEY_REUSED":
@@ -62,7 +77,8 @@ export function shouldRefetchAfterStartError(error: unknown): boolean {
     (error.code === "DEAL_STALE_VERSION" ||
       error.code === "DEAL_STATE_CONFLICT" ||
       error.code === "FULFILLMENT_START_CONFLICT" ||
-      error.code === "FULFILLMENT_ALREADY_EXISTS")
+      error.code === "FULFILLMENT_ALREADY_EXISTS" ||
+      error.code === "FULFILLMENT_STATE_CONFLICT")
   );
 }
 
@@ -72,7 +88,13 @@ export function shouldRefetchAfterUploadError(error: unknown): boolean {
     (error.code === "DEAL_STALE_VERSION" ||
       error.code === "DEAL_STATE_CONFLICT" ||
       error.code === "EVIDENCE_UPLOAD_CONFLICT" ||
-      error.code === "EVIDENCE_FINALIZE_CONFLICT")
+      error.code === "EVIDENCE_FINALIZE_CONFLICT" ||
+      error.code === "EVIDENCE_ALREADY_SUBMITTED" ||
+      error.code === "EVIDENCE_UPLOAD_EXPIRED" ||
+      error.code === "EVIDENCE_UPLOAD_STATE_CONFLICT" ||
+      error.code === "EVIDENCE_MILESTONE_CONFLICT" ||
+      error.code === "EVIDENCE_VERIFICATION_FAILED" ||
+      error.code === "FULFILLMENT_STATE_CONFLICT")
   );
 }
 
@@ -82,7 +104,9 @@ export function shouldRefetchAfterReviewError(error: unknown): boolean {
     (error.code === "DEAL_STALE_VERSION" ||
       error.code === "EVIDENCE_STALE_VERSION" ||
       error.code === "DEAL_STATE_CONFLICT" ||
-      error.code === "EVIDENCE_REVIEW_CONFLICT")
+      error.code === "EVIDENCE_REVIEW_CONFLICT" ||
+      error.code === "EVIDENCE_STATE_CONFLICT" ||
+      error.code === "FULFILLMENT_COMPLETED")
   );
 }
 

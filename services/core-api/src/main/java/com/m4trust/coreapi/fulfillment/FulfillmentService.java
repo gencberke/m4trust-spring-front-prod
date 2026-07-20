@@ -84,13 +84,13 @@ class FulfillmentService {
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         requireSeller(context, preflight);
         if (!"ACTIVE".equals(preflight.status()) || !"FUNDED".equals(preflight.fundingStatus())) {
-            throw new FulfillmentExceptions.StartConflict();
+            throw conflict("DEAL_STATE_CONFLICT");
         }
         if (preflight.version() != request.expectedVersion()) {
-            throw new FulfillmentExceptions.StartConflict();
+            throw conflict("DEAL_STALE_VERSION");
         }
         if (preflight.ratifiedPackageId() == null) {
-            throw new FulfillmentExceptions.StartConflict();
+            throw conflict("DEAL_STATE_CONFLICT");
         }
         return required(transactions.execute(status -> startInTransaction(context, dealId, request,
                 idempotencyRequest, correlationId)));
@@ -103,17 +103,17 @@ class FulfillmentService {
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         requireSeller(context, target);
         if (!"ACTIVE".equals(target.status()) || !"FUNDED".equals(target.fundingStatus())) {
-            throw new FulfillmentExceptions.StartConflict();
+            throw conflict("DEAL_STATE_CONFLICT");
         }
         if (target.version() != request.expectedVersion()) {
-            throw new FulfillmentExceptions.StartConflict();
+            throw conflict("DEAL_STALE_VERSION");
         }
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
         if (claim.isReplay()) {
             return replayFulfillment(context, claim.resultReference());
         }
         if (fulfillmentRepository.findByDealId(dealId).isPresent()) {
-            throw new FulfillmentExceptions.StartConflict();
+            throw conflict("FULFILLMENT_ALREADY_EXISTS");
         }
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         UUID fulfillmentId = UUID.randomUUID();
@@ -139,7 +139,6 @@ class FulfillmentService {
         requireOperation(context, RequestedOperation.FULFILLMENT_READ);
         FulfillmentSourcePorts.Target target = deals.findVisible(context, dealId)
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
-        requireParticipant(context, target);
         Fulfillment.FulfillmentRecord record = fulfillmentRepository.findByDealId(dealId)
                 .orElseThrow(FulfillmentExceptions.NotFound::new);
         return toDetail(record, target, context);
@@ -156,26 +155,33 @@ class FulfillmentService {
         requireSellerForUpload(context, preflight);
         requireUploadState(preflight);
         Fulfillment.FulfillmentRecord fulfillment = fulfillmentRepository.findByDealId(dealId)
-                .orElseThrow(FulfillmentExceptions.UploadConflict::new);
+                .orElseThrow(() -> conflict("FULFILLMENT_STATE_CONFLICT"));
         Milestone.MilestoneRecord milestone = milestoneRepository.findByFulfillmentId(fulfillment.id())
-                .orElseThrow(FulfillmentExceptions.UploadConflict::new);
+                .orElseThrow(() -> conflict("FULFILLMENT_STATE_CONFLICT"));
         if (milestone.status() != FulfillmentStatus.IN_PROGRESS
                 && milestone.status() != FulfillmentStatus.EVIDENCE_REQUIRED) {
-            throw new FulfillmentExceptions.UploadConflict();
+            throw conflict(milestone.status() == FulfillmentStatus.REVIEW_REQUIRED
+                    ? "EVIDENCE_ALREADY_SUBMITTED" : "FULFILLMENT_STATE_CONFLICT");
         }
         String objectKey = FulfillmentObjectKeys.newKey();
         FulfillmentObjectStorage.DirectUpload directUpload = storage.createDirectUpload(
                 objectKey, mediaType.value(), request.sizeBytes());
         return required(transactions.execute(status -> {
             Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-            Milestone.MilestoneRecord lockedMilestone = milestoneRepository.findByFulfillmentIdForUpdate(fulfillment.id())
-                    .orElseThrow(FulfillmentExceptions.UploadConflict::new);
+            FulfillmentSourcePorts.Target lockedTarget = deals.lockVisibleForStart(context, dealId)
+                    .orElseThrow(FulfillmentExceptions.DealNotFound::new);
+            requireSellerForUpload(context, lockedTarget);
+            requireUploadState(lockedTarget);
+            Fulfillment.FulfillmentRecord lockedFulfillment = fulfillmentRepository.findByDealIdForUpdate(dealId)
+                    .orElseThrow(() -> conflict("FULFILLMENT_STATE_CONFLICT"));
+            Milestone.MilestoneRecord lockedMilestone =
+                    milestoneRepository.findByFulfillmentIdForUpdate(lockedFulfillment.id())
+                            .orElseThrow(() -> conflict("FULFILLMENT_STATE_CONFLICT"));
             if (lockedMilestone.status() != FulfillmentStatus.IN_PROGRESS
                     && lockedMilestone.status() != FulfillmentStatus.EVIDENCE_REQUIRED) {
-                throw new FulfillmentExceptions.UploadConflict();
+                throw conflict(lockedMilestone.status() == FulfillmentStatus.REVIEW_REQUIRED
+                        ? "EVIDENCE_ALREADY_SUBMITTED" : "FULFILLMENT_STATE_CONFLICT");
             }
-            Fulfillment.FulfillmentRecord lockedFulfillment = fulfillmentRepository.findByIdForUpdate(fulfillment.id())
-                    .orElseThrow(FulfillmentExceptions.UploadConflict::new);
             Milestone milestoneAggregate = Milestone.rehydrate(lockedMilestone);
             Fulfillment fulfillmentAggregate = Fulfillment.rehydrate(lockedFulfillment);
             if (milestoneAggregate.status() == FulfillmentStatus.IN_PROGRESS) {
@@ -188,10 +194,10 @@ class FulfillmentService {
             long previousFulfillmentVersion = lockedFulfillment.version();
             if (!milestoneRepository.update(milestoneAggregate.toRecord(), previousMilestoneVersion)
                     || !fulfillmentRepository.update(fulfillmentAggregate.toRecord(), previousFulfillmentVersion)) {
-                throw new FulfillmentExceptions.UploadConflict();
+                throw conflict("FULFILLMENT_STATE_CONFLICT");
             }
             EvidenceSubmission submission = EvidenceSubmission.createPending(UUID.randomUUID(), dealId,
-                    lockedMilestone.id(), fulfillment.id(), evidenceType, mediaType, request.fileName(),
+                    lockedMilestone.id(), lockedFulfillment.id(), evidenceType, mediaType, request.fileName(),
                     objectKey, request.sizeBytes(), request.sha256().toLowerCase(),
                     directUpload.expiresAt(), now);
             evidenceRepository.insert(submission.toRecord());
@@ -238,9 +244,9 @@ class FulfillmentService {
         requireSellerForUpload(context, target);
         requireUploadState(target);
         Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
-                .orElseThrow(FulfillmentExceptions.FinalizeConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_MILESTONE_CONFLICT"));
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
-                .orElseThrow(FulfillmentExceptions.FinalizeConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_MILESTONE_CONFLICT"));
         EvidenceSubmission.EvidenceSubmissionRecord current = evidenceRepository.findByIdForUpdate(submissionId)
                 .orElseThrow(FulfillmentExceptions.NotFound::new);
         if (!current.dealId().equals(dealId) || !current.milestoneId().equals(milestoneRecord.id())) {
@@ -252,41 +258,41 @@ class FulfillmentService {
         }
         EvidenceSubmission submission = EvidenceSubmission.rehydrate(current);
         if (submission.status() != EvidenceSubmissionStatus.PENDING_UPLOAD) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_UPLOAD_STATE_CONFLICT");
         }
         if (!now.isBefore(submission.uploadExpiresAt())) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_UPLOAD_EXPIRED");
         }
         if (verified.sizeBytes() != request.sizeBytes()
                 || !verified.sha256().equals(request.sha256().toLowerCase())) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_VERIFICATION_FAILED");
         }
         if (!submission.mediaType().value().equalsIgnoreCase(verified.mediaType())) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_VERIFICATION_FAILED");
         }
         if (evidenceRepository.findCurrentSubmittedByMilestoneId(milestoneRecord.id()).isPresent()) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_MILESTONE_CONFLICT");
         }
         long previousSubmissionVersion = submission.version();
         try {
             submission.markSubmitted(verified.sizeBytes(), verified.sha256(), verified.objectVersion(), now);
         } catch (IllegalArgumentException exception) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_VERIFICATION_FAILED");
         }
         if (!evidenceRepository.update(submission.toRecord(), previousSubmissionVersion)) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_UPLOAD_STATE_CONFLICT");
         }
         Milestone milestone = Milestone.rehydrate(milestoneRecord);
         long previousMilestoneVersion = milestoneRecord.version();
         milestone.moveToReviewRequired(now);
         if (!milestoneRepository.update(milestone.toRecord(), previousMilestoneVersion)) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("EVIDENCE_MILESTONE_CONFLICT");
         }
         Fulfillment fulfillment = Fulfillment.rehydrate(fulfillmentRecord);
         long previousFulfillmentVersion = fulfillmentRecord.version();
         fulfillment.moveToReviewRequired(now);
         if (!fulfillmentRepository.update(fulfillment.toRecord(), previousFulfillmentVersion)) {
-            throw new FulfillmentExceptions.FinalizeConflict();
+            throw conflict("FULFILLMENT_STATE_CONFLICT");
         }
         auditAppender.append(new AuditRecord(UUID.randomUUID(), context.tenantId(),
                 context.authenticatedUserId(), context.activeLegalEntityId(),
@@ -304,7 +310,6 @@ class FulfillmentService {
         }
         FulfillmentSourcePorts.Target target = deals.findVisible(context, record.dealId())
                 .orElseThrow(FulfillmentExceptions.NotFound::new);
-        requireParticipant(context, target);
         EvidenceSubmission submission = EvidenceSubmission.rehydrate(record);
         if (submission.status() == EvidenceSubmissionStatus.PENDING_UPLOAD
                 || submission.objectVersion() == null) {
@@ -349,18 +354,18 @@ class FulfillmentService {
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         requireBuyerAdmin(context, target);
         if (!"ACTIVE".equals(target.status()) || !"FUNDED".equals(target.fundingStatus())) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("DEAL_STATE_CONFLICT");
         }
         if (target.version() != expectedDealVersion) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("DEAL_STALE_VERSION");
         }
         Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
-                .orElseThrow(FulfillmentExceptions.ReviewConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_STATE_CONFLICT"));
         if (fulfillmentRecord.status() == FulfillmentStatus.COMPLETED) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("FULFILLMENT_COMPLETED");
         }
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
-                .orElseThrow(FulfillmentExceptions.ReviewConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_STATE_CONFLICT"));
         EvidenceSubmission.EvidenceSubmissionRecord currentRecord = evidenceRepository.findByIdForUpdate(submissionId)
                 .orElseThrow(FulfillmentExceptions.NotFound::new);
         if (!currentRecord.dealId().equals(dealId)
@@ -369,9 +374,9 @@ class FulfillmentService {
         }
         EvidenceSubmission currentSubmitted = evidenceRepository.findCurrentSubmittedByMilestoneId(milestoneRecord.id())
                 .map(EvidenceSubmission::rehydrate)
-                .orElseThrow(FulfillmentExceptions.ReviewConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_STATE_CONFLICT"));
         if (!currentSubmitted.id().equals(submissionId)) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("EVIDENCE_STATE_CONFLICT");
         }
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
@@ -380,10 +385,10 @@ class FulfillmentService {
         }
         EvidenceSubmission submission = EvidenceSubmission.rehydrate(currentRecord);
         if (submission.status() != EvidenceSubmissionStatus.SUBMITTED) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("EVIDENCE_STATE_CONFLICT");
         }
         if (submission.version() != expectedEvidenceVersion) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("EVIDENCE_STALE_VERSION");
         }
         long previousSubmissionVersion = submission.version();
         if (accept) {
@@ -392,7 +397,7 @@ class FulfillmentService {
             submission.markRejected(reason, now);
         }
         if (!evidenceRepository.update(submission.toRecord(), previousSubmissionVersion)) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("EVIDENCE_STATE_CONFLICT");
         }
         Milestone milestone = Milestone.rehydrate(milestoneRecord);
         long previousMilestoneVersion = milestoneRecord.version();
@@ -402,7 +407,7 @@ class FulfillmentService {
             milestone.returnToEvidenceRequired(now);
         }
         if (!milestoneRepository.update(milestone.toRecord(), previousMilestoneVersion)) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("EVIDENCE_STATE_CONFLICT");
         }
         Fulfillment fulfillment = Fulfillment.rehydrate(fulfillmentRecord);
         long previousFulfillmentVersion = fulfillmentRecord.version();
@@ -412,7 +417,7 @@ class FulfillmentService {
             fulfillment.returnToEvidenceRequired(now);
         }
         if (!fulfillmentRepository.update(fulfillment.toRecord(), previousFulfillmentVersion)) {
-            throw new FulfillmentExceptions.ReviewConflict();
+            throw conflict("EVIDENCE_STATE_CONFLICT");
         }
         String action = accept ? "EVIDENCE_ACCEPTED" : "EVIDENCE_REJECTED";
         String resultType = accept ? ACCEPT_IDEMPOTENCY_RESULT : REJECT_IDEMPOTENCY_RESULT;
@@ -428,7 +433,7 @@ class FulfillmentService {
             throw new IllegalStateException("Unexpected idempotency result type");
         }
         Fulfillment.FulfillmentRecord record = fulfillmentRepository.findById(reference.id())
-                .orElseThrow(FulfillmentExceptions.StartConflict::new);
+                .orElseThrow(() -> conflict("FULFILLMENT_ALREADY_EXISTS"));
         FulfillmentSourcePorts.Target target = deals.findVisible(context, record.dealId())
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         return toDetail(record, target, context);
@@ -441,7 +446,7 @@ class FulfillmentService {
         EvidenceSubmission submission = evidenceRepository.findById(reference.id())
                 .map(EvidenceSubmission::rehydrate)
                 .filter(result -> result.status() == EvidenceSubmissionStatus.SUBMITTED)
-                .orElseThrow(FulfillmentExceptions.FinalizeConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_UPLOAD_STATE_CONFLICT"));
         return toProjection(submission, true, clock.instant());
     }
 
@@ -452,7 +457,7 @@ class FulfillmentService {
         EvidenceSubmission submission = evidenceRepository.findById(reference.id())
                 .map(EvidenceSubmission::rehydrate)
                 .filter(result -> result.status() == EvidenceSubmissionStatus.ACCEPTED)
-                .orElseThrow(FulfillmentExceptions.ReviewConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_STATE_CONFLICT"));
         return toProjection(submission, true, clock.instant());
     }
 
@@ -463,7 +468,7 @@ class FulfillmentService {
         EvidenceSubmission submission = evidenceRepository.findById(reference.id())
                 .map(EvidenceSubmission::rehydrate)
                 .filter(result -> result.status() == EvidenceSubmissionStatus.REJECTED)
-                .orElseThrow(FulfillmentExceptions.ReviewConflict::new);
+                .orElseThrow(() -> conflict("EVIDENCE_STATE_CONFLICT"));
         return toProjection(submission, true, clock.instant());
     }
 
@@ -528,14 +533,35 @@ class FulfillmentService {
     }
 
     private EvidenceSubmissionProjection toProjection(EvidenceSubmission submission, boolean canDownload, Instant now) {
-        return new EvidenceSubmissionProjection(
-                submission.id(), submission.dealId(), submission.milestoneId(),
-                submission.evidenceType(), submission.mediaType(), submission.fileName(),
-                submission.status(), submission.clientSizeBytes(), submission.clientSha256(),
-                submission.verifiedSizeBytes(), submission.verifiedSha256(), submission.objectVersion(),
-                submission.createdAt(), submission.submittedAt(), submission.acceptedAt(),
-                submission.rejectedAt(), submission.rejectionReason(),
-                new EvidenceAvailableActions(canDownload), submission.version());
+        EvidenceAvailableActions actions = new EvidenceAvailableActions(canDownload);
+        return switch (submission.status()) {
+            case PENDING_UPLOAD -> new PendingEvidenceSubmissionProjection(
+                    submission.id(), submission.dealId(), submission.milestoneId(),
+                    submission.evidenceType(), submission.mediaType(), submission.fileName(),
+                    submission.status(), submission.clientSizeBytes(), submission.clientSha256(),
+                    submission.uploadExpiresAt(), submission.createdAt(), actions, submission.version());
+            case SUBMITTED -> new SubmittedEvidenceSubmissionProjection(
+                    submission.id(), submission.dealId(), submission.milestoneId(),
+                    submission.evidenceType(), submission.mediaType(), submission.fileName(),
+                    submission.status(), submission.clientSizeBytes(), submission.clientSha256(),
+                    required(submission.verifiedSizeBytes()), submission.verifiedSha256(),
+                    submission.objectVersion(), submission.createdAt(), submission.submittedAt(),
+                    actions, submission.version());
+            case ACCEPTED -> new AcceptedEvidenceSubmissionProjection(
+                    submission.id(), submission.dealId(), submission.milestoneId(),
+                    submission.evidenceType(), submission.mediaType(), submission.fileName(),
+                    submission.status(), submission.clientSizeBytes(), submission.clientSha256(),
+                    required(submission.verifiedSizeBytes()), submission.verifiedSha256(),
+                    submission.objectVersion(), submission.createdAt(), submission.submittedAt(),
+                    submission.acceptedAt(), actions, submission.version());
+            case REJECTED -> new RejectedEvidenceSubmissionProjection(
+                    submission.id(), submission.dealId(), submission.milestoneId(),
+                    submission.evidenceType(), submission.mediaType(), submission.fileName(),
+                    submission.status(), submission.clientSizeBytes(), submission.clientSha256(),
+                    required(submission.verifiedSizeBytes()), submission.verifiedSha256(),
+                    submission.objectVersion(), submission.createdAt(), submission.submittedAt(),
+                    submission.rejectedAt(), submission.rejectionReason(), actions, submission.version());
+        };
     }
 
     private boolean canDownload(OperationContext context, EvidenceSubmission submission) {
@@ -571,16 +597,9 @@ class FulfillmentService {
         }
     }
 
-    private void requireParticipant(OperationContext context, FulfillmentSourcePorts.Target target) {
-        UUID active = context.activeLegalEntityId();
-        if (!active.equals(target.buyerLegalEntityId()) && !active.equals(target.sellerLegalEntityId())) {
-            throw new FulfillmentExceptions.DealNotFound();
-        }
-    }
-
     private void requireUploadState(FulfillmentSourcePorts.Target target) {
         if (!"ACTIVE".equals(target.status()) || !"FUNDED".equals(target.fundingStatus())) {
-            throw new FulfillmentExceptions.UploadConflict();
+            throw conflict("DEAL_STATE_CONFLICT");
         }
     }
 
@@ -672,5 +691,9 @@ class FulfillmentService {
             throw new IllegalStateException("Transaction returned no result");
         }
         return value;
+    }
+
+    private static FulfillmentExceptions.Conflict conflict(String code) {
+        return new FulfillmentExceptions.Conflict(code);
     }
 }

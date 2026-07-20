@@ -22,26 +22,24 @@ class FulfillmentExceptions {
         private static final long serialVersionUID = 1L;
     }
 
-    static class StartConflict extends RuntimeException {
+    static class Conflict extends RuntimeException {
         private static final long serialVersionUID = 1L;
-    }
 
-    static class UploadConflict extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-    }
+        private final String code;
 
-    static class FinalizeConflict extends RuntimeException {
-        private static final long serialVersionUID = 1L;
+        Conflict(String code) {
+            super("Fulfillment operation conflict: " + code);
+            this.code = code;
+        }
+
+        String code() {
+            return code;
+        }
     }
 
     static class DownloadNotAvailable extends RuntimeException {
         private static final long serialVersionUID = 1L;
     }
-
-    static class ReviewConflict extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-    }
-
     static class MalformedRequest extends RuntimeException {
         private static final long serialVersionUID = 1L;
     }

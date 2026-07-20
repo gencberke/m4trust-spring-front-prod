@@ -56,10 +56,15 @@ class FulfillmentMigrationIntegrationTest {
                 "negative fulfillment version is rejected");
 
         UUID milestoneId = milestone(fulfillmentId, f.dealId, "Primary", "IN_PROGRESS", 0L);
+        UUID otherFulfillmentId = fulfillment(f.otherDealId, f.tenant, UUID.randomUUID(), "IN_PROGRESS", 0L);
+        UUID otherMilestoneId = milestone(otherFulfillmentId, f.otherDealId, "Other", "IN_PROGRESS", 0L);
 
         assertThrows(DataAccessException.class,
                 () -> milestone(fulfillmentId, f.dealId, "Duplicate", "NOT_STARTED", 0L),
                 "only one milestone per fulfillment is allowed");
+        assertThrows(DataAccessException.class,
+                () -> milestone(otherFulfillmentId, f.dealId, "Cross Deal", "IN_PROGRESS", 0L),
+                "a milestone must belong to the same Deal as its fulfillment");
         assertThrows(DataAccessException.class,
                 () -> jdbc.update("INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at) VALUES (?, ?, ?, ?, 'INVALID', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                         UUID.randomUUID(), fulfillmentId, f.dealId, "Bad"),
@@ -76,6 +81,10 @@ class FulfillmentMigrationIntegrationTest {
         String sha256 = "a".repeat(64);
         UUID pendingEvidence = evidence(UUID.randomUUID(), f.dealId, milestoneId, fulfillmentId,
                 "PENDING_UPLOAD", sha256, 0L);
+        assertThrows(DataAccessException.class,
+                () -> evidence(UUID.randomUUID(), f.dealId, otherMilestoneId, otherFulfillmentId,
+                        "PENDING_UPLOAD", sha256, 0L),
+                "evidence must belong to the same Deal as its milestone and fulfillment");
 
         assertThrows(DataAccessException.class,
                 () -> jdbc.update("UPDATE fulfillment_evidence_submission SET status='UNKNOWN' WHERE id=?", pendingEvidence),
@@ -90,6 +99,14 @@ class FulfillmentMigrationIntegrationTest {
 
         UUID submittedEvidence = evidence(UUID.randomUUID(), f.dealId, milestoneId, fulfillmentId,
                 "SUBMITTED", sha256, 1L);
+        assertThrows(DataAccessException.class,
+                () -> jdbc.update("UPDATE fulfillment_evidence_submission SET object_key='changed' WHERE id=?",
+                        submittedEvidence),
+                "evidence object key is immutable");
+        assertThrows(DataAccessException.class,
+                () -> jdbc.update("UPDATE fulfillment_evidence_submission SET object_version='changed' WHERE id=?",
+                        submittedEvidence),
+                "finalized evidence object version is immutable");
         assertThrows(DataAccessException.class,
                 () -> evidence(UUID.randomUUID(), f.dealId, milestoneId, fulfillmentId,
                         "SUBMITTED", sha256, 2L),
@@ -136,19 +153,23 @@ class FulfillmentMigrationIntegrationTest {
         jdbc.update("""
                 INSERT INTO fulfillment_evidence_submission (
                     id, deal_id, milestone_id, fulfillment_id, evidence_type, media_type, file_name,
-                    status, object_key, client_size_bytes, client_sha256, verified_size_bytes,
+                    status, object_key, object_version, client_size_bytes, client_sha256, verified_size_bytes,
                     verified_sha256, upload_expires_at, created_at, submitted_at, accepted_at,
                     rejected_at, rejection_reason, version
-                ) VALUES (?, ?, ?, ?, 'INVOICE', 'application/pdf', 'invoice.pdf', ?, 'obj-key', 12, ?,
-                    12, ?, CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP,
+                ) VALUES (?, ?, ?, ?, 'INVOICE', 'application/pdf', 'invoice.pdf', ?, 'obj-key',
+                    CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN 'version-1' ELSE NULL END,
+                    12, ?,
+                    CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN 12 ELSE NULL END,
+                    CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN ? ELSE NULL END,
+                    CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP,
                     CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN CURRENT_TIMESTAMP ELSE NULL END,
                     CASE WHEN ? = 'ACCEPTED' THEN CURRENT_TIMESTAMP ELSE NULL END,
                     CASE WHEN ? = 'REJECTED' THEN CURRENT_TIMESTAMP ELSE NULL END,
                     CASE WHEN ? = 'REJECTED' THEN 'reason' ELSE NULL END,
                     ?)
                 """,
-                id, dealId, milestoneId, fulfillmentId, status, sha256, sha256,
-                status, status, status, status, version);
+                id, dealId, milestoneId, fulfillmentId, status, status, sha256,
+                status, status, sha256, status, status, status, status, version);
         return id;
     }
 

@@ -60,10 +60,14 @@ SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS flows and FUNDING→FULFILLMENT projection
 passed. Release, payout, refund, settlement and a real provider remain out of
 scope.
 
-Slice 12 Fulfillment and Evidence is human-approved and ready under
-`docs/plan/ready/12-fulfillment-and-evidence.md`; implementation has not
-started. ADR-011 fixes its V1 actor, evidence, state and fail-closed completion
-boundaries. Deployment/provider work remains deferred.
+Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
+Seller start, participant-readable fulfillment, private-storage evidence
+upload/finalize, immutable history, buyer accept/reject/replacement, terminal
+completion, backend-derived lifecycle/actions, and the user-directed minimum
+real-browser acceptance path passed against PostgreSQL and MinIO. Fulfillment
+completion leaves the Deal ACTIVE and creates no release, settlement, refund,
+provider-payment, dispute, or AI side effect. Deployment/provider work remains
+deferred.
 
 ## Accepted foundations
 
@@ -82,9 +86,8 @@ boundaries. Deployment/provider work remains deferred.
   `docs/plan/done/`.
 - Slice 10 Ratification is accepted under `docs/plan/done/`.
 - Slice 11 Funding Foundation is accepted under `docs/plan/done/`.
-- Slice 12 Fulfillment and Evidence plan is human-approved under
-  `docs/plan/ready/`; no implementation phase is accepted yet.
-- V15–V19 migrations are frozen accepted history; future database changes use
+- Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
+- V15–V20 migrations are frozen accepted history; future database changes use
   new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
@@ -106,8 +109,10 @@ boundaries. Deployment/provider work remains deferred.
   short-lived download links), immutable ratification packages and approvals,
   atomic Deal activation, provider-independent funding plans/units/payment
   operations, durable payment dispatch and query-first reconciliation,
-  append-only audit, centralized legal-entity authorization, Problem Details,
-  structured logging, health probes, and module-cycle checks.
+  fulfillment/milestone/evidence state with immutable private-storage object
+  identity, buyer review and fail-closed completion, append-only audit,
+  centralized legal-entity authorization, Problem Details, structured logging,
+  health probes, and module-cycle checks.
 - `frontend`: generated OpenAPI types, TanStack Query-backed authentication and
   organization state, protected routing, legal-entity create/list/switch/detail
   and member views, Deal create/list/detail/update/cancel views, incoming Deal
@@ -119,7 +124,9 @@ boundaries. Deployment/provider work remains deferred.
   → finalize with progress/retry/expired-intent recovery, current document and
   SUPERSEDED history, download links, and a read-only card for non-initiator
   participants), ratification package creation/approve/reject/history and
-  actor-aware funding/payment/reconciliation panels,
+  actor-aware funding/payment/reconciliation panels, and a fulfillment panel
+  for seller start, direct evidence upload/finalize, history/download, buyer
+  accept/reject, replacement, and terminal state,
   session-expiry handling, and logout against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
   with health checks, persistent volumes, optional Mock AI Worker profile, and
@@ -129,10 +136,11 @@ boundaries. Deployment/provider work remains deferred.
 
 ## Validation state
 
-- Contract validation passes for the Slice 10–11 OpenAPI: 21 schemas, 13 valid
-  fixtures and all expected-invalid checks.
-- Core API `mvn verify` passes 230/230 against Testcontainers PostgreSQL,
-  including module architecture and ratification/payment concurrency tests.
+- Contract validation passes for the accepted Slice 12 additive OpenAPI,
+  fixtures, generated types, and all expected-invalid checks.
+- Core API `mvn verify` passes 250/250 against Testcontainers PostgreSQL,
+  including module architecture and ratification/payment/fulfillment
+  concurrency tests.
 - Frontend `npm run typecheck` and production `npm run build` pass.
 - Slice 4 invitation/participation regression and Slice 5 real two-browser
   acceptance passed on 2026-07-18.
@@ -153,21 +161,25 @@ boundaries. Deployment/provider work remains deferred.
   closure, SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS, retry/reconcile and actor
   visibility flows passed. Evidence:
   `docs/agent/slice-10-11-acceptance-2026-07-20.md`.
+- Slice 12 planner review and the user-directed minimum real-browser acceptance
+  passed on 2026-07-20. The critical seller start → direct MinIO upload/finalize
+  → buyer reject → replacement → buyer accept path completed; rejected history
+  remained immutable. Targeted reviewer tests passed 17/17 and frontend
+  production build passed. Evidence:
+  `docs/agent/slice-12-acceptance-2026-07-20.md`.
 - Mock AI Worker tests remain 14/14; frontend typecheck/build pass.
 
 ## Not yet stable or accepted
 
 - FastAPI AI service skeleton
 - Railway service configuration
-- Slice 12 implementation
+- Slice 13 Video Analysis
 
 ## Active work
 
-Slice 12 planning is accepted on `codex/plan-slice-12-fulfillment`. Its
-implementation task runs P1–P6 sequentially: contract first, then persistence,
-start/read, evidence upload, buyer review/completion, and an implementer-owned
-automated final fast check. Real-browser acceptance remains planner-owned after
-implementation review. Railway staging and real-provider integration are
+No content slice is currently active. Slice 12 is accepted on
+`codex/slice-12-fulfillment`; its ready plan is archived to `done/` and V20 is
+frozen accepted history. Railway staging and real-provider integration remain
 explicitly deferred until the user reopens that work.
 
 ## Known blockers
@@ -176,9 +188,10 @@ No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Implement Slice 12 P1–P6 sequentially from the human-approved ready plan, then
-return the implementation for planner-owned real-browser acceptance.
-Deployment and real-provider work are not part of the active content line.
+Plan Slice 13 Video Analysis as the next content capability, using Slice 12's
+immutable evidence version as input and preserving the advisory-only AI
+boundary. Deployment and real-provider work are not part of the active content
+line.
 
 ## Update rule
 
