@@ -1,9 +1,9 @@
 # Review Request
 
 Task: 13-T01
-Revision: 7
+Revision: 9
 Plan: docs/plan/ready/13-video-analysis.md
-Phases: P4-P6 fix
+Phases: P1-P7
 Status: COMPLETED
 Branch: codex/slice-13-video-analysis
 Base: main@d342b01
@@ -11,27 +11,35 @@ Plan completion claim: NO
 
 ## Phase outcomes
 
-- P4 — DONE — Shared AI terminal routing (`AiResultsMessageRouter`, `AiResultsRabbitListener`, `AiTerminalResultHandler`) with document and video handlers; integration-layer schema validation relocated under `integration/messaging`.
-- P5 — DONE — Mock AI Worker extended for `VIDEO_ANALYSIS`; advisory frontend panel and labels; public read projection built at GET time only.
-- P6 — DONE — Hardening matrix expanded with real concurrent request-vs-accept/reject races, FAILED-first then late COMPLETED, other-participant and initiator-only authorization, HTTP VIDEO finalize flow (no auto job), ACTIVE/FULFILLMENT lifecycle assertions, and duplicate-terminal idempotency.
-- Fix — DONE — Persist full canonical completed payload (`result` + `technicalMetadata` + `warnings`) in `canonical_result`; DB assertion proves retention while HTTP omits `technicalMetadata`. Unknown warning codes use generic safe UI copy (no raw unknown codes). Removed `__pycache__` artifacts.
+- P1 — DONE — Additive Core API OpenAPI contract for video-analysis request/read on finalized VIDEO/MP4 evidence; contract validator and generated frontend types updated.
+- P2 — DONE — Forward-only `V21__video_analysis.sql` with evidence-bound jobs/results, one-queued/one-successful partial indexes, and migration integration coverage.
+- P3 — DONE — Buyer ADMIN request/read/retry vertical (`VideoAnalysisService`, repository, outbox enqueue, HTTP endpoints, idempotency, eligibility/lock order) with request integration tests.
+- P4 — DONE — Shared AI terminal routing (`AiResultsMessageRouter`, `AiResultsRabbitListener`, `AiTerminalResultHandler`); document handler extracted; integration-layer committed-event validator; video terminal consumption ports/adapters.
+- P5 — DONE — Mock AI Worker `VIDEO_ANALYSIS` dispatch/fixtures; advisory frontend panel/labels; canonical payload persisted at completion; public DTO built only on read.
+- P6 — DONE — Hardening matrix: latch-ordered concurrent review/request races, FAILED-first late COMPLETED, authorization boundaries (seller/buyer member, other participant, initiator-only non-buyer/seller), HTTP VIDEO finalize without auto-job, ACTIVE/FULFILLMENT lifecycle assertions, duplicate-terminal idempotency.
+- P7 — DONE — Full implementer validation (`mvn verify` 290 tests), final fast check, regression truncate fixes for V21 FK tables across 13 legacy integration tests, review handoff. Section 6 browser acceptance not run (planner-owned).
 
 ## Validation
 
-- `VideoAnalysisHardeningIntegrationTest` — PASS (17 tests)
-- `VideoAnalysisRequestIntegrationTest` — PASS (14 tests)
-- `VideoAnalysisResultConsumerIntegrationTest` — PASS (4 tests; includes canonical DB + public HTTP projection assertion)
-- `AnalysisResultConsumerIntegrationTest` — PASS (7 tests)
-- `AnalysisRequestIntegrationTest` — PASS (9 tests)
-- `FulfillmentIntegrationTest` — PASS (12 tests)
-- `ModuleArchitectureTest` — PASS (4 tests)
-- `AsyncApiTopologyTest` — PASS (1 test)
-- Targeted Slice 13 + regression suite total — PASS (68 tests)
-- `tools/mock-ai-worker/tests` (`pytest`) — PASS (27 tests)
 - `python contracts/scripts/validate_contracts.py` — PASS
-- `npm run typecheck` (frontend) — PASS
+- `services/core-api` `mvnw verify` — PASS (290 tests)
+- `npm run typecheck` — PASS
+- `npm run build` (frontend) — PASS
+- `python -m pytest tools/mock-ai-worker/tests` — PASS (27 tests)
+- `docker compose -f infra/compose.yaml config` — PASS
 - `git diff --check` — PASS
-- RabbitMQ smoke (rebuilt local Mock AI Worker image):
+- Final fast check (Slice 13 + router + document regression) — PASS (63 tests):
+  - `VideoAnalysisHardeningIntegrationTest` — 18
+  - `VideoAnalysisRequestIntegrationTest` — 14
+  - `VideoAnalysisResultConsumerIntegrationTest` — 4
+  - `VideoAnalysisMigrationIntegrationTest` — 2
+  - `AiResultsRabbitListenerTest` — 1
+  - `CommittedEventSchemaValidatorTest` — 3
+  - `AnalysisResultConsumerIntegrationTest` — 7
+  - `AnalysisRequestIntegrationTest` — 9
+  - `ModuleArchitectureTest` — 4
+  - `AsyncApiTopologyTest` — 1
+- RabbitMQ smoke (prior revision, unchanged):
 
 ```powershell
 docker compose -f infra/compose.yaml --profile mock-ai build mock-ai-worker
@@ -43,10 +51,18 @@ python tools/mock-ai-worker/tests/smoke_rabbitmq.py
 
 Result: `RabbitMQ smoke PASS: document and video download plus completed and failed publishes`
 
+## Scope confirmation
+
+- Base-to-HEAD: 61 files changed on feature branch (contracts, core-api, frontend, mock worker, tests).
+- Migration: `V21__video_analysis.sql` only; V15-V20 unchanged.
+- Public contract: additive video-analysis paths/schemas in `contracts/openapi/core-api-v1.yaml`.
+- Shared router: document + video terminal dispatch via `integration/messaging`; document extraction regression covered.
+- Unchanged by design: `docs/agent/CURRENT.md`, ready/done plans, deployment/Railway, payment/provider/settlement/dispute/casework scope.
+
 ## Decisions needed
 
 - None
 
 ## Deviation or risk
 
-- None
+- P7 required adding V21 fulfillment/video-analysis tables to TRUNCATE lists in 13 pre-existing integration tests so full `mvn verify` passes after migration FK constraints; behavior under test unchanged.

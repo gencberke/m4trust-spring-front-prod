@@ -2,7 +2,6 @@ package com.m4trust.coreapi.fulfillment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -23,7 +22,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.jayway.jsonpath.JsonPath;
 import com.m4trust.coreapi.integration.messaging.AiResultsMessageRouter;
@@ -304,100 +302,174 @@ class VideoAnalysisHardeningIntegrationTest {
     }
 
     @Test
-    void concurrentRequestAndAcceptRacePreservesInvariants() throws Exception {
-        CountDownLatch start = new CountDownLatch(1);
+    void acceptCompletesBeforeConcurrentRequestReturns409WithNoJob() throws Exception {
+        CountDownLatch acceptCompleted = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
-        AtomicReference<Throwable> acceptError = new AtomicReference<>();
-        AtomicReference<Throwable> requestError = new AtomicReference<>();
-        AtomicInteger requestStatus = new AtomicInteger();
 
         Future<?> acceptFuture = executor.submit(() -> {
             try {
-                start.await();
                 acceptEvidence();
-            } catch (Throwable throwable) {
-                acceptError.set(throwable);
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                acceptCompleted.countDown();
             }
         });
-        Future<?> requestFuture = executor.submit(() -> {
+        Future<Integer> requestFuture = executor.submit(() -> {
             try {
-                start.await();
-                requestStatus.set(postAnalysisRequestRaw(UUID.randomUUID()));
-            } catch (Throwable throwable) {
-                requestError.set(throwable);
+                if (!acceptCompleted.await(30, TimeUnit.SECONDS)) {
+                    throw new AssertionError("accept did not complete in time");
+                }
+                return postAnalysisRequestRaw(UUID.randomUUID());
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
             }
         });
-        start.countDown();
+
         acceptFuture.get(30, TimeUnit.SECONDS);
-        requestFuture.get(30, TimeUnit.SECONDS);
+        int requestStatus = requestFuture.get(30, TimeUnit.SECONDS);
         executor.shutdownNow();
 
-        assertNull(acceptError.get());
-        assertNull(requestError.get());
-
-        String status = evidenceStatus();
-        int jobs = jdbc.queryForObject(
-                "SELECT count(*) FROM fulfillment_video_analysis_job WHERE evidence_submission_id = ?",
-                Integer.class, evidenceId);
-        if ("ACCEPTED".equals(status)) {
-            assertEquals(0, jobs);
-            assertTrue(requestStatus.get() == 409 || requestStatus.get() == 202);
-        } else {
-            assertEquals("SUBMITTED", status);
-            assertEquals(202, requestStatus.get());
-            assertEquals(1, jobs);
-        }
+        assertEquals("ACCEPTED", evidenceStatus());
+        assertEquals(409, requestStatus);
+        assertEquals(0, jobCountForEvidence());
+        mockMvc.perform(post(videoAnalysisPath())
+                        .with(user(buyerAdminUserId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedEvidenceVersion\": " + evidenceVersion + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE"));
         assertActiveFulfillmentLifecycle();
         assertEquals(0, count("integration_outbox_event"));
     }
 
     @Test
-    void concurrentRequestAndRejectRacePreservesInvariants() throws Exception {
-        CountDownLatch start = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        AtomicReference<Throwable> rejectError = new AtomicReference<>();
-        AtomicReference<Throwable> requestError = new AtomicReference<>();
+    void requestCompletesBeforeConcurrentAcceptRetainsJobAndAcceptSucceeds() throws Exception {
+        CountDownLatch requestCompleted = new CountDownLatch(1);
         AtomicInteger requestStatus = new AtomicInteger();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        Future<?> requestFuture = executor.submit(() -> {
+            try {
+                requestStatus.set(postAnalysisRequestRaw(UUID.randomUUID()));
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                requestCompleted.countDown();
+            }
+        });
+        Future<?> acceptFuture = executor.submit(() -> {
+            try {
+                if (!requestCompleted.await(30, TimeUnit.SECONDS)) {
+                    throw new AssertionError("request did not complete in time");
+                }
+                acceptEvidence();
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+        });
+
+        requestFuture.get(30, TimeUnit.SECONDS);
+        acceptFuture.get(30, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        UUID jobId = jdbc.queryForObject(
+                "SELECT id FROM fulfillment_video_analysis_job WHERE evidence_submission_id = ?",
+                UUID.class, evidenceId);
+
+        assertEquals(202, requestStatus.get());
+        assertEquals(1, jobCountForEvidence());
+        assertEquals("ACCEPTED", evidenceStatus());
+        assertEquals("QUEUED", jobStatus(jobId));
+        assertActiveFulfillmentLifecycle();
+    }
+
+    @Test
+    void rejectCompletesBeforeConcurrentRequestReturns409WithNoJob() throws Exception {
+        CountDownLatch rejectCompleted = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
 
         Future<?> rejectFuture = executor.submit(() -> {
             try {
-                start.await();
                 rejectEvidence();
-            } catch (Throwable throwable) {
-                rejectError.set(throwable);
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                rejectCompleted.countDown();
             }
         });
-        Future<?> requestFuture = executor.submit(() -> {
+        Future<Integer> requestFuture = executor.submit(() -> {
             try {
-                start.await();
-                requestStatus.set(postAnalysisRequestRaw(UUID.randomUUID()));
-            } catch (Throwable throwable) {
-                requestError.set(throwable);
+                if (!rejectCompleted.await(30, TimeUnit.SECONDS)) {
+                    throw new AssertionError("reject did not complete in time");
+                }
+                return postAnalysisRequestRaw(UUID.randomUUID());
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
             }
         });
-        start.countDown();
+
         rejectFuture.get(30, TimeUnit.SECONDS);
-        requestFuture.get(30, TimeUnit.SECONDS);
+        int requestStatus = requestFuture.get(30, TimeUnit.SECONDS);
         executor.shutdownNow();
 
-        assertNull(rejectError.get());
-        assertNull(requestError.get());
-
-        String status = evidenceStatus();
-        int jobs = jdbc.queryForObject(
-                "SELECT count(*) FROM fulfillment_video_analysis_job WHERE evidence_submission_id = ?",
-                Integer.class, evidenceId);
-        if ("REJECTED".equals(status)) {
-            assertEquals(0, jobs);
-            assertTrue(requestStatus.get() == 409 || requestStatus.get() == 202);
-        } else {
-            assertEquals("SUBMITTED", status);
-            assertEquals(202, requestStatus.get());
-            assertEquals(1, jobs);
-        }
+        assertEquals("REJECTED", evidenceStatus());
+        assertEquals(409, requestStatus);
+        assertEquals(0, jobCountForEvidence());
+        mockMvc.perform(post(videoAnalysisPath())
+                        .with(user(buyerAdminUserId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedEvidenceVersion\": " + evidenceVersion + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE"));
         assertActiveFulfillmentLifecycle();
         assertEquals(0, count("payment_dispatch"));
         assertEquals(0, count("payment_operation"));
+    }
+
+    @Test
+    void requestCompletesBeforeConcurrentRejectRetainsJobAndRejectSucceeds() throws Exception {
+        CountDownLatch requestCompleted = new CountDownLatch(1);
+        AtomicInteger requestStatus = new AtomicInteger();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        Future<?> requestFuture = executor.submit(() -> {
+            try {
+                requestStatus.set(postAnalysisRequestRaw(UUID.randomUUID()));
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                requestCompleted.countDown();
+            }
+        });
+        Future<?> rejectFuture = executor.submit(() -> {
+            try {
+                if (!requestCompleted.await(30, TimeUnit.SECONDS)) {
+                    throw new AssertionError("request did not complete in time");
+                }
+                rejectEvidence();
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+        });
+
+        requestFuture.get(30, TimeUnit.SECONDS);
+        rejectFuture.get(30, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        UUID jobId = jdbc.queryForObject(
+                "SELECT id FROM fulfillment_video_analysis_job WHERE evidence_submission_id = ?",
+                UUID.class, evidenceId);
+
+        assertEquals(202, requestStatus.get());
+        assertEquals(1, jobCountForEvidence());
+        assertEquals("REJECTED", evidenceStatus());
+        assertEquals("QUEUED", jobStatus(jobId));
+        assertActiveFulfillmentLifecycle();
     }
 
     @Test
@@ -452,15 +524,36 @@ class VideoAnalysisHardeningIntegrationTest {
     }
 
     @Test
-    void buyerInitiatorCanRequestWhileSellerAdminCannot() throws Exception {
+    void initiatorOnlyParticipantWhoIsNotBuyerOrSellerCannotRequest() throws Exception {
+        UUID initiatorUserId = UUID.randomUUID();
+        UUID initiatorEntityId = UUID.randomUUID();
+        insertUser(initiatorUserId, "initiator-admin@example.test");
+        jdbc.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)", initiatorUserId, tenantId);
+        insertEntity(initiatorEntityId, "Initiator Agency");
+        insertMembership(initiatorUserId, initiatorEntityId, "ADMIN");
+        jdbc.update("UPDATE deal SET initiator_legal_entity_id = ? WHERE id = ?", initiatorEntityId, dealId);
+        jdbc.update("""
+                INSERT INTO deal_participant (deal_id, tenant_id, legal_entity_id, legal_entity_tenant_id)
+                VALUES (?, ?, ?, ?)
+                """, dealId, tenantId, initiatorEntityId, tenantId);
+
+        mockMvc.perform(get(videoAnalysisPath())
+                        .with(user(initiatorUserId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, initiatorEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NOT_REQUESTED"))
+                .andExpect(jsonPath("$.availableActions.canRequest").value(false));
+
         mockMvc.perform(post(videoAnalysisPath())
-                        .with(user(sellerAdminUserId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdminEntityId)
+                        .with(user(initiatorUserId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, initiatorEntityId)
                         .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedEvidenceVersion\": " + evidenceVersion + "}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("VIDEO_ANALYSIS_REQUEST_FORBIDDEN"));
+
+        assertEquals(0, jobCountForEvidence());
 
         UUID jobId = requestAnalysisJob();
         assertEquals("QUEUED", jobStatus(jobId));
@@ -663,6 +756,12 @@ class VideoAnalysisHardeningIntegrationTest {
     private String jobStatus(UUID jobId) {
         return jdbc.queryForObject("SELECT status FROM fulfillment_video_analysis_job WHERE id = ?",
                 String.class, jobId);
+    }
+
+    private int jobCountForEvidence() {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM fulfillment_video_analysis_job WHERE evidence_submission_id = ?",
+                Integer.class, evidenceId);
     }
 
     private Map<String, Object> completedEvent(UUID eventId, UUID jobId) {
