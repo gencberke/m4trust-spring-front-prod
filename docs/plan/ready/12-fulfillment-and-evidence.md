@@ -1,427 +1,447 @@
 # Slice 12 — Fulfillment and Evidence
 
-- Durum: ready — insan onayı 20 Temmuz 2026
-- Slice sırası: ADR-004 §24 "Fulfillment and Evidence" (bölünmüş
-  yol haritasında Slice 12)
-- Öncül: kabul edilmiş Slice 11 Funding Foundation; Deal `ACTIVE` ve tek
-  FundingUnit `FUNDED`
-- Ardıl: Slice 13 Video Analysis
-- Contract sınırı: Core API OpenAPI'deki additive fulfillment/evidence yüzeyi
-  bu planın onayıyla birlikte review edilir. AI JSON Schema/fixture, AsyncAPI
-  ve AI-internal OpenAPI değişiklikleri kapsam dışıdır.
-- Deployment sınırı: Railway/staging, environment secret'ları, production
-  object-storage seçimi ve gerçek provider kurulumu ayrı ve sonraya bırakılmış
-  çalışma hattıdır; hiçbir implementation phase'e dahil değildir.
+- Status: ready — human-approved on 20 July 2026
+- Slice order: ADR-004 §24 “Fulfillment and Evidence” (Slice 12 in the split
+  roadmap)
+- Predecessor: accepted Slice 11 Funding Foundation; the Deal is `ACTIVE` and
+  its single FundingUnit is `FUNDED`
+- Successor: Slice 13 Video Analysis
+- Contract boundary: the additive Core API fulfillment/evidence surface is
+  included in this approval. AI JSON Schema/fixtures, AsyncAPI, and AI-internal
+  OpenAPI are out of scope.
+- Deployment boundary: Railway/staging, environment secrets, production object
+  storage selection, and real-provider setup are deferred work and are not
+  included in any implementation phase.
+- Execution ownership:
+  - The implementer executes P1 through P6 in order. After a phase passes its
+    exit checks, the implementer continues directly to the next phase.
+  - P6 is the implementer-owned automated validation, final fast check, and
+    review handoff.
+  - The implementer does **not** perform or claim the real-browser acceptance
+    in §6. The planner owns that acceptance after implementation review.
 
-Bu planın V1 actor, cardinality, state, evidence ve completion kararları
-ADR-011 ile bağlayıcıdır. Planın kapsamı ve bütün phase'leri 20 Temmuz 2026
-tarihinde insan tarafından onaylanmıştır.
+ADR-011 makes this plan’s V1 actor, cardinality, state, evidence, and completion
+decisions binding. The human approval covers the complete plan and the ordered
+P1–P6 implementation assignment.
 
-## 1. Amaç ve kullanıcı sonucu
+## 1. Purpose and user outcome
 
-`ACTIVE + FUNDED` bir Deal'de seller tarafındaki kullanıcı fulfillment'ı
-başlatır, primary milestone için PDF/DOCX/fotoğraf/video kanıtını doğrudan
-private object storage'a yükler ve finalize eder. Buyer tarafının `ADMIN`
-kullanıcısı aynı immutable evidence version'ını gerçek browser'da inceler,
-indirir ve gerekçeli olarak kabul veya reddeder.
+For an `ACTIVE + FUNDED` Deal, a seller user starts fulfillment and uploads
+PDF, DOCX, photo, or video evidence for the primary milestone directly to
+private object storage. A buyer `ADMIN` reviews and downloads the exact
+immutable evidence version in the real application, then accepts or rejects it
+with an explicit reason.
 
-Kabul edilen evidence fulfillment'ı `COMPLETED` yapar. Reddedilen evidence
-geçmişte kalır, seller yeni bir version sunar ve iki taraf aynı review
-durumunu görür. Diğer Deal participant'ları metadata, geçmiş ve indirme
-görünümüne sahiptir; mutation yetkisi participant olmaktan türetilmez.
+Rejected evidence remains immutable history. The seller submits a replacement
+as a new evidence version, and both sides see the same current review state.
+Other Deal participants can read metadata, history, and download projections;
+participant visibility never implies mutation authority.
 
-Bu slice para hareketi üretmez. Fulfillment kabulü Deal `COMPLETED`, settlement,
-release, payout veya refund tetiklemez. Video dosyası first-class evidence
-olarak saklanabilir, fakat Video Analysis ve bütün AI yorumları Slice 13'tedir.
+Accepted evidence moves only the milestone and FulfillmentStatus to
+`COMPLETED`. The Deal remains `ACTIVE`. This slice never produces Deal
+completion, settlement, release, payout, refund, provider calls, or AI
+decisions.
 
-## 2. Kapsam ve sınırlar
+## 2. Scope and boundaries
 
-### Kapsam
+### In scope
 
-- `fulfillment` owning modülü: Deal başına V1 fulfillment kaydı, tek primary
-  milestone, evidence submission/history ve manual review sonucu
-- `FulfillmentStatus` V1 akışı ve merkezi Deal lifecycle projection'ı
-- FUNDED önkoşulunun `payment` modülünden dar read port ile doğrulanması
-- Seller tarafından explicit, idempotent fulfillment start action'ı
+- A `fulfillment` owning module for one V1 fulfillment record, one primary
+  milestone, evidence submissions/history, and manual review outcome per Deal
+- The V1 FulfillmentStatus state machine and centralized Deal lifecycle
+  projection
+- A narrow payment-owned read projection for verifying the `FUNDED`
+  prerequisite
+- An explicit idempotent seller action that starts fulfillment
 - Evidence upload intent → browser direct PUT → storage-verified finalize
-- Immutable object version, size, SHA-256 ve media/evidence type metadata'sı
-- Participant-readable fulfillment detail, evidence history ve kısa ömürlü
-  download link
-- Buyer `ADMIN` accept/reject action'ları; reject reason ve stale-version
-  recovery
-- Audit ve HTTP idempotency'nin ilgili business mutation ile atomik olması
-- Deal detail'e optional fulfillment özeti ve actor-aware action'lar
-- Yeni forward-only migration'lar; V15–V19'a dokunulmaması
+- Immutable object version, size, SHA-256, media type, and evidence type
+  metadata
+- Participant-readable fulfillment detail, evidence history, and short-lived
+  download links
+- Buyer `ADMIN` accept/reject actions, bounded rejection reason, optimistic
+  concurrency, and stale-state recovery
+- Atomic audit and HTTP idempotency behavior for relevant business mutations
+- Optional fulfillment summary and actor-aware actions on Deal detail
+- New forward-only migrations; V15–V19 remain frozen
+- Implementer-owned automated validation and final fast check
+- Planner-owned real-browser acceptance after implementation review
 
-### Kapsam dışı
+### Out of scope
 
-- Deal `ACTIVE → COMPLETED` mutation'ı
-- Payment release, payout, refund, reversal, settlement veya provider çağrısı
-- Dispute/casework, ACTIVE cancellation ve mutual cancellation
-- Video Analysis, RabbitMQ event'i, AI result/review veya FastAPI değişikliği
-- AI extraction `deliveryRequirements` listesinden otomatik contractual
-  milestone/checklist üretmek
-- Çoklu milestone, partial milestone acceptance, amount allocation veya
-  milestone başına payment/funding unit
-- Buyer/seller'ın ratified package sonrasında yeni contractual obligation
-  eklemesi; fulfillment tracking ratified package'ı değiştirmez
-- Evidence silme/overwrite; antivirus/malware scanning ve OCR
-- Public bucket, Core API üzerinden binary proxy upload veya production
-  object-storage provider seçimi
-- Railway/staging config'i, deploy pipeline, production secret/credential
-  kurulumu ve gerçek payment provider entegrasyonu
+- Deal `ACTIVE → COMPLETED`
+- Payment release, payout, refund, reversal, settlement, or provider calls
+- Dispute/casework, ACTIVE cancellation, or mutual cancellation
+- Video Analysis, RabbitMQ events, AI result/review, or FastAPI changes
+- Turning AI extraction `deliveryRequirements` into automatic contractual
+  milestones, checklists, or completion rules
+- Multiple milestones, partial milestone acceptance, amount allocation, or a
+  funding/payment unit per milestone
+- Adding a new contractual obligation after ratification; fulfillment tracking
+  does not mutate the ratified package
+- Evidence deletion or overwrite, antivirus/malware scanning, or OCR
+- Public buckets or binary upload proxying through the Core API
+- Railway/staging configuration, deployment pipelines, production
+  secrets/credentials, production storage selection, or real payment-provider
+  integration
+- Implementer-run browser acceptance
 
-## 3. Kararlar ve ilgili ADR'ler
+## 3. Decisions and relevant ADRs
 
-### Kabul edilmiş kararlar
+### Existing binding constraints
 
-- `fulfillment` milestone, evidence evaluation ve status'un sahibidir
+- `fulfillment` owns milestones, evidence evaluation, and fulfillment state
   (ADR-003 §4.7).
-- Evidence first-class business kaydıdır; Deal ve milestone'a bağlanır. Binary
-  object storage'da, authoritative metadata ve business state Spring'de kalır
-  (ADR-001 §4.1, §6; ADR-003 §22).
-- `FulfillmentStatus`, `DealStatus`, funding ve settlement'tan ayrı state
-  eksenidir. Frontend lifecycle/action hesaplamaz (ADR-003 §8, §13, §16, §29;
-  ADR-006 §33, §41).
-- AI/video sonucu otomatik fulfillment completion, dispute veya payment
-  release üretemez (ADR-003 §13, §22; FORBIDDEN §1).
-- Modüller repository/JPA entity paylaşmaz; port, ID, event veya read
-  projection kullanır (ADR-003 §23).
-- Business mutation + audit + gerekiyorsa outbox aynı transaction'dadır;
-  object storage çağrısında transaction açık tutulmaz (ADR-003 §24).
-- Evidence mutation'larında actor + tenant + active legal entity + Deal +
-  operation bağlamı application katmanında doğrulanır. Deal visibility yalnız
-  participant ilişkisine dayanır (ADR-005 §20–§21; ADR-008 §2.4).
-- Public API contract-first ve additive ilerler; riskli mutation'lar
-  `expectedVersion` ve `Idempotency-Key` kullanır (ADR-006 §21–§25, §42–§47).
+- Evidence is a first-class business record tied to a Deal and milestone.
+  Binary content lives in object storage; Spring owns authoritative metadata
+  and business state (ADR-001 §4.1, §6; ADR-003 §22).
+- FulfillmentStatus is independent of DealStatus, FundingStatus, and
+  SettlementStatus. The frontend does not derive lifecycle or action
+  availability (ADR-003 §8, §13, §16, §29; ADR-006 §33, §41).
+- AI or video output cannot automatically complete fulfillment, open a
+  dispute, or release payment (ADR-003 §13, §22; FORBIDDEN §1).
+- Modules communicate through ports, stable IDs, events, or read projections;
+  they never share repositories or JPA entities (ADR-003 §23).
+- Business mutation, audit, and any required outbox record share one
+  transaction. Object-storage calls never run inside a DB transaction
+  (ADR-003 §24).
+- Authorization uses authenticated user, tenant, active legal entity, Deal,
+  and requested operation in the application layer. Deal visibility is based
+  only on participation (ADR-005 §20–§21; ADR-008 §2.4).
+- Risky mutations use `expectedVersion` and server-side `Idempotency-Key`
+  behavior (ADR-006 §21–§25, §42–§47).
 
-### ADR-011 ile bağlayıcı V1 kararları
+### Binding ADR-011 V1 decisions
 
-Aşağıdaki kararlar **ADR-011 — Fulfillment and Evidence V1** ile bağlayıcıdır:
+1. **Actor model:** seller legal entity `ADMIN` and `MEMBER` users may start
+   fulfillment and submit evidence. Only buyer legal entity `ADMIN` users may
+   accept or reject evidence. Buyer `MEMBER`, initiator-only entities, and
+   other participants are read-only.
+2. **V1 cardinality:** each Deal has one fulfillment record and one primary
+   milestone. Start creates both atomically and binds them to the immutable
+   current ratification package. Multiple milestones are later additive work.
+3. **Contractual source:** the milestone is traceable to the ratification
+   package and any `DELIVERY`/`QUALITY` rule references in that package. It does
+   not reinterpret those rules. AI extraction `deliveryRequirements` were not
+   carried through Slice 9 review and ratification, so they are not required
+   checklists, accepted obligations, or automatic completion inputs.
+4. **Exact V1 fulfillment flow:** no record means `NOT_STARTED`; seller start
+   produces `IN_PROGRESS`; upload intent produces `EVIDENCE_REQUIRED`;
+   storage-verified finalize produces `REVIEW_REQUIRED`; buyer reject returns
+   to `EVIDENCE_REQUIRED`; buyer accept produces `COMPLETED`. `CANCELLED` may
+   remain in the closed public set for forward compatibility, but Slice 12 has
+   no action that reaches it.
+5. **Evidence history:** each upload is a distinct immutable-object-version
+   `EvidenceSubmission` with
+   `PENDING_UPLOAD → SUBMITTED → ACCEPTED | REJECTED`. Rejected history is
+   neither mutated nor deleted; a replacement has a new ID and object version.
+6. **Completion boundary:** buyer acceptance completes only fulfillment and
+   its primary milestone. The Deal stays `ACTIVE`, lifecycle remains
+   `FULFILLMENT`, and settlement remains unavailable. The future plan that
+   opens Deal `COMPLETE` must lock the Deal-status reads in payment
+   initiate/reconcile and test that race.
+7. **Initial evidence types:** `DELIVERY_NOTE`, `INVOICE`, `VIDEO`, `PHOTO`,
+   `SIGNED_DOCUMENT`, and `OTHER`. Initial media types are PDF, DOCX, JPEG,
+   PNG, and MP4. `UNKNOWN` is not a user submission type. Media-class size
+   limits are configuration values documented as public behavior.
 
-1. **Actor modeli:** seller legal entity'nin `ADMIN` ve `MEMBER` kullanıcıları
-   fulfillment başlatabilir ve evidence sunabilir. Evidence acceptance/rejection
-   gelecekte release eligibility'ye girdi olacağı için yalnız buyer legal
-   entity `ADMIN` kullanıcısına aittir. Buyer `MEMBER`, initiator-only entity
-   ve diğer participant'lar salt-okunurdur.
-2. **V1 cardinality:** Deal başına tek fulfillment ve onun altında tek primary
-   milestone vardır. Start action bu iki kaydı atomik oluşturur ve immutable
-   current ratification package kimliğine bağlar. Çoklu milestone sonraki
-   additive slice'tır.
-3. **Contractual kaynak:** milestone ratified package'a ve varsa package'taki
-   `DELIVERY`/`QUALITY` rule reference'larına izlenebilir biçimde bağlanır;
-   kuralları yeniden yorumlamaz. AI extraction'daki `deliveryRequirements`
-   Slice 9 review/ratification zincirine taşınmadığından required checklist,
-   accepted obligation veya otomatik completion girdisi değildir.
-4. **Exact V1 state akışı:** kayıt yokken `NOT_STARTED`; seller start ile
-   `IN_PROGRESS`; upload intent ile `EVIDENCE_REQUIRED`; storage-verified
-   finalize ile `REVIEW_REQUIRED`; buyer reject ile `EVIDENCE_REQUIRED`;
-   buyer accept ile `COMPLETED`. `CANCELLED` V1 public state setinde korunabilir
-   fakat bu slice'ta ona götüren action yoktur.
-5. **Evidence history:** her upload ayrı immutable object version'lı
-   `EvidenceSubmission` olur. V1 submission akışı
-   `PENDING_UPLOAD → SUBMITTED → ACCEPTED | REJECTED` şeklindedir. Reject edilen
-   kayıt değişmez/silinmez; yeni submission yeni ID/object version ile gelir.
-6. **Completion sınırı:** buyer acceptance yalnız fulfillment ve milestone
-   completion üretir. Deal `ACTIVE` kalır, lifecycle bu slice boyunca
-   `FULFILLMENT` gösterir ve “settlement henüz kullanılamıyor” durumu açıkça
-   sunulur. Deal `COMPLETED` ve payment release sonraki insan-onaylı planlara
-   aittir. Bu nedenle payment initiate/reconcile Deal-status okumasını Deal
-   lock'una alma borcu bu slice'ta tetiklenmez; Deal `COMPLETE` mutation'ını
-   açan sonraki plan bu yarışı ve lock sırasını zorunlu olarak üstlenir.
-7. **Başlangıç evidence türleri:** `DELIVERY_NOTE`, `INVOICE`, `VIDEO`,
-   `PHOTO`, `SIGNED_DOCUMENT`, `OTHER`; desteklenen ilk media türleri PDF,
-   DOCX, JPEG, PNG ve MP4'tür. Boyut limitleri media sınıfına göre config'te
-   tutulur ve OpenAPI'de davranış olarak belgelenir; `UNKNOWN` kullanıcı
-   submission türü değildir.
+## 4. Public interface, state, and data impact
 
-## 4. Public interface, state ve data etkisi
+### Binding Core API behavior surface
 
-### Bağlayıcı Core API davranış yüzeyi
+The committed OpenAPI is designed before implementation and covers:
 
-OpenAPI implementasyondan önce aşağıdaki use-case yüzeylerini tanımlar; exact
-DTO alan listeleri contract phase'inde review edilir:
+- Deal fulfillment detail: status, source ratification package, primary
+  milestone, current evidence, immutable history, and actor-aware actions
+- Seller start: Deal `expectedVersion`, required `Idempotency-Key`,
+  synchronous created-resource response, and `Location`
+- Milestone evidence upload intent: declared evidence/media metadata, size,
+  client SHA-256, and a short-lived direct-PUT URL
+- Evidence finalize: target milestone/evidence version, required
+  `Idempotency-Key`, and the storage-verified current submission
+- Evidence history and short-lived download-link reads
+- Buyer `ADMIN` accept and reject: target evidence/milestone version, required
+  `Idempotency-Key`, and bounded rejection reason
+- Optional fulfillment summary and action members on Deal detail; absent or
+  unknown actions are false/read-only
 
-- Deal fulfillment detail read: status, source ratification package, primary
-  milestone, current evidence, immutable history ve actor-aware actions
-- Seller fulfillment start action: Deal `expectedVersion` +
-  `Idempotency-Key`; synchronous create sonucu ve `Location`
-- Milestone evidence upload intent: declared evidence/media metadata, size ve
-  client SHA-256; direct PUT için kısa ömürlü URL
-- Evidence finalize action: milestone/evidence expected version +
-  `Idempotency-Key`; storage verification sonucu current submission
-- Evidence history ve kısa ömürlü download-link read yüzeyleri
-- Buyer `ADMIN` accept ve reject action'ları: target submission/milestone
-  expected version + `Idempotency-Key`; reject için kullanıcıya gösterilebilir
-  bounded reason
-- Deal detail'e optional fulfillment summary ve optional action üyeleri;
-  eksik/bilinmeyen action frontend'de `false`/read-only
+Required HTTP and disclosure behavior:
 
-Sabit HTTP ve disclosure davranışı:
-
-- Session yok → 401
-- Active entity membership'i yok veya görünür Deal'de operation yetkisi yok →
-  403
-- Nonparticipant, başka Deal'e ait milestone/evidence veya gizli kaynak →
-  varlığı açıklamayan (non-disclosing) 404
-- Parse edilebilir fakat geçersiz evidence metadata/size/type/reject reason →
+- Missing session → 401
+- Authenticated caller without active-entity membership or operation authority
+  on a visible Deal → 403
+- Nonparticipant, cross-Deal milestone/evidence, or hidden resource →
+  non-disclosing 404
+- Parseable but invalid evidence metadata, size/type, or rejection reason →
   field-level 422
-- ACTIVE olmayan, FUNDED olmayan, stale version, terminal fulfillment veya
-  uygun olmayan current evidence → stable code'lu 409
-- Aynı idempotency key + aynı canonical request → ilk/eşdeğer sonuç; aynı key +
-  farklı request → 409 `IDEMPOTENCY_KEY_REUSED`
+- Non-ACTIVE, non-FUNDED, stale, terminal, or wrong-current-evidence state →
+  stable-code 409
+- Same idempotency key + same canonical request → original/equivalent result;
+  same key + different request → 409 `IDEMPOTENCY_KEY_REUSED`
 
-Compatibility:
+Compatibility rules:
 
-- Yeni path/schema'lar additive olur.
-- Closed `DealDetail` ve `DealAvailableActions` içindeki yeni fulfillment
-  üyeleri optional olur; mevcut required listeleri ve alan semantiği değişmez.
-- OpenAPI değişikliği, validator exact allowlist/response/closed-shape
-  beklentileri, `contracts/README.md` ve `contracts/CHANGELOG.md` ile tek review
-  birimidir.
-- AI JSON Schema/fixture, AsyncAPI ve AI-internal OpenAPI değişmez.
+- All new paths and schemas are additive.
+- New members on closed `DealDetail` and `DealAvailableActions` schemas are
+  optional; existing required lists and semantics do not change.
+- OpenAPI changes, validator exact allowlists/response/closed-shape checks,
+  `contracts/README.md`, and `contracts/CHANGELOG.md` are one review unit.
+- AI JSON Schema/fixtures, AsyncAPI, and AI-internal OpenAPI remain unchanged.
 
-### Persistence ve transaction etkisi
+### Persistence and transaction impact
 
-- V15–V19 frozen history'dir; fulfillment tabloları ve bütün constraint'ler
-  yeni versioned migration ile, mevcut zincirde V20 veya sonrasından eklenir.
-- DB seviyesinde en az Deal başına tek fulfillment, V1 fulfillment başına tek
-  primary milestone, evidence'ın aynı Deal/milestone'a ait olması, immutable
-  object key/version ve geçerli status/type invariant'ları korunur.
-- Bir milestone üzerinde aynı anda yalnız bir current `SUBMITTED` evidence
-  review bekleyebilir. Concurrent finalize yarışında tek current submission
-  kazanır; diğer işlem stale/state conflict alır.
-- Upload intent/presign ve storage size/checksum/version verification DB
-  transaction'ı dışında çalışır. Finalize transaction'ı evidence'ı SUBMITTED
-  yapar, milestone/current pointer'ı ve FulfillmentStatus'u günceller, audit ve
-  idempotency sonucunu birlikte yazar.
-- Accept/reject transaction'ı deterministik olarak Deal → fulfillment/
-  milestone → current evidence sırasını lock eder; target expected version ve
-  current pointer lock altında doğrulanır. Terminal yarışın yalnız bir sonucu
-  olur.
-- `fulfillment`, Deal/ratification/payment/document repository veya entity'sini
-  kullanmaz. FUNDED ve immutable ratification provenance consumer-owned dar
-  source port'larla okunur. Storage adapter, fulfillment-owned bir portu
-  uygular; document aggregate'i evidence için yeniden kullanılmaz.
-- `ModuleArchitectureTest` fulfillment ownership'ini ve yeni dependency
-  yönlerini cycle/repository paylaşımı açısından kilitler.
+- V15–V19 are frozen history. Fulfillment tables and constraints use new
+  forward-only migrations starting at V20 or later.
+- The database enforces at least one fulfillment per Deal, one V1 primary
+  milestone per fulfillment, same-Deal/milestone evidence ownership,
+  immutable object key/version, and valid status/type relationships.
+- A milestone has at most one current `SUBMITTED` evidence awaiting review.
+  Concurrent finalize attempts leave one current winner; the loser receives a
+  stale/state conflict.
+- Upload intent/presign and storage size/checksum/version verification run
+  outside a DB transaction.
+- Finalize atomically writes SUBMITTED evidence, current pointer,
+  FulfillmentStatus, audit, and idempotency result.
+- Accept/reject locks Deal → fulfillment/milestone → current evidence in that
+  deterministic order. It validates the target version and current pointer
+  under lock, so only one terminal decision wins.
+- `fulfillment` never uses Deal, payment, ratification, or document repositories
+  or entities. It reads FUNDED and immutable ratification provenance through
+  consumer-owned narrow ports. A storage adapter implements a
+  fulfillment-owned port; the document aggregate is not reused.
+- `ModuleArchitectureTest` covers fulfillment ownership and dependency
+  direction.
 
 ## 5. Implementation phases
+
+The implementer owns every phase in this section and executes them in order.
+Passing a phase exit gate means continuing directly to the next phase; it does
+not require a new task packet or planner approval. Scope conflicts still require
+an immediate `BLOCKED` report.
 
 ### P1 — Reviewed Core API contract
 
 Outcome:
-Fulfillment/evidence kullanıcı akışını, actor-aware action'ları, state ve error
-semantiğini taşıyan additive committed OpenAPI review edilebilir ve validator
-ile kilitlidir.
+The committed additive OpenAPI completely specifies the Slice 12
+fulfillment/evidence behavior and is locked by exact contract validation.
 
 Direction:
 
-- Yalnız Core API public contract değişir.
-- Path/schema/response tasarımıyla exact validator beklentileri,
-  `contracts/README.md` ve `contracts/CHANGELOG.md` aynı review birimidir.
-- AI contract dosyalarında değişiklik yoktur.
-- Farklı Deal'e ait nested resource disclosure ve stale/idempotency davranışı
-  contract açıklamalarında açık olur.
+- Design every use-case surface and error/disclosure rule in §4.
+- Update exact validator expectations, `contracts/README.md`, and
+  `contracts/CHANGELOG.md` in the same review unit.
+- Regenerate committed frontend types only from the OpenAPI.
+- Do not change AI contracts.
 
 Depends on:
-None — ADR-011 ve plan onayı tamamlanmış önkoşuldur
+None — ADR-011 and plan approval are complete prerequisites.
 
 Exit checks:
 
-- Contract validator yeni yüzeyi ve expected-invalid kontrolleriyle geçer.
-- Generated frontend tipleri contract'tan üretilebilir; paralel elle yazılmış
-  model yoktur.
+- Contract validation covers new paths, operations, schemas, required headers,
+  responses, optional Deal projection members, and expected-invalid cases.
+- Generated frontend types match the committed contract; no handwritten
+  parallel transport model exists.
 
 ### P2 — Fulfillment ownership and persistence foundation
 
 Outcome:
-Yeni fulfillment modülü, forward-only migration ve dar source/storage port
-sınırlarıyla tek plan/tek milestone state'ini PostgreSQL'de korur.
+The fulfillment module, forward-only migration, and narrow source/storage ports
+protect the one-fulfillment/one-milestone state in PostgreSQL.
 
 Direction:
 
-- V15–V19 değiştirilmez.
-- Unique, same-Deal/milestone, status, immutable object reference ve optimistic
-  version invariant'ları DB/application seviyesinde bölüştürülür.
-- Payment/Deal/ratification verisi repository paylaşmadan consumer-owned port
-  ile okunur.
-- Module architecture listesi fulfillment ile genişletilir.
+- Do not edit V15–V19.
+- Split unique, same-Deal/milestone, status, immutable-object-reference, and
+  optimistic-version invariants appropriately between DB and application.
+- Read payment/Deal/ratification data through consumer-owned ports without
+  repository sharing.
+- Extend module architecture enforcement for fulfillment.
 
 Depends on:
 P1
 
 Exit checks:
 
-- Migration temiz veritabanında ve mevcut migration zinciri üstünde uygulanır.
-- Persistence invariant ve module-cycle testleri geçer.
+- Migrations apply on a clean database and on top of the accepted migration
+  chain.
+- Persistence invariant and module-cycle tests pass.
 
 ### P3 — Start and participant-readable fulfillment vertical
 
 Outcome:
-Seller kullanıcı gerçek API'den idempotent start yapar; bütün participant'lar
-aynı fulfillment/milestone projection'ını görür.
+A seller user starts fulfillment through the real API, and all participants see
+the same fulfillment/milestone projection.
 
 Direction:
 
-- Start yalnız `ACTIVE + FUNDED` Deal'de ve seller entity adına çalışır.
-- Deal başına tek fulfillment/milestone yarışta DB unique invariant'ıyla
-  korunur; replay aynı sonucu verir.
-- Source ratification package ve ilgili accepted rule reference'ları
-  traceability olarak tutulur, contractual içerik yeniden yorumlanmaz.
-- Frontend ilk loading/error/empty/read-only ve start action durumlarını gerçek
-  API üzerinden sunar.
+- Start works only for `ACTIVE + FUNDED` Deals and the seller entity.
+- DB uniqueness protects one fulfillment/milestone under concurrent starts;
+  idempotent replay returns the same result.
+- Persist ratification-package provenance and accepted rule references for
+  traceability without reinterpreting contractual content.
+- Add frontend loading, error, empty, read-only, and seller-start states backed
+  by the real API.
 
 Depends on:
 P2
 
 Exit checks:
 
-- Seller `ADMIN`/`MEMBER`, buyer ve diğer participant authorization matrisi
-  server-side testlidir.
-- Concurrent/replayed start tek fulfillment ve tek milestone üretir.
+- Seller `ADMIN`/`MEMBER`, buyer, other participant, initiator-only, and
+  nonparticipant authorization cases are server-tested.
+- Concurrent and replayed starts produce one fulfillment and one milestone.
 
-### P4 — Direct evidence upload, history and download vertical
+### P4 — Direct evidence upload, history, and download vertical
 
 Outcome:
-Seller browser'dan private object storage'a evidence yükler, verified finalize
-eder; participant'lar immutable history'yi görür ve indirir.
+A seller uploads evidence directly to private object storage, finalizes a
+verified immutable version, and participants can read/download its history.
 
 Direction:
 
-- Slice 6'nın intent → direct PUT → verify → finalize deseni davranış emsalidir;
-  evidence ayrı aggregate ve ayrı object key namespace'inde kalır.
-- Object version, size ve checksum doğrulaması storage-authoritative olur.
-- Pending/expired intent current olamaz; physical orphan cleanup bu slice'ın
-  Done koşulu değildir.
-- Finalize status/current pointer/audit/idempotency atomikliğini korur.
-- Frontend progress, retry, expired-intent recovery, type/size/checksum
-  hataları ve read-only participant görünümünü işler.
+- Reuse the Slice 6 intent → direct PUT → verify → finalize behavior pattern,
+  while keeping evidence a separate aggregate and object-key namespace.
+- Treat storage-verified size, checksum, and object version as authoritative.
+- Pending or expired intents never become current; physical orphan cleanup is
+  not a Slice 12 Done condition.
+- Keep finalize status/current-pointer/audit/idempotency changes atomic.
+- Implement frontend progress, retry, expired-intent recovery, type/size/
+  checksum errors, history, download, and read-only participant states.
 
 Depends on:
 P3
 
 Exit checks:
 
-- PDF/DOCX/JPEG/PNG/MP4 için izin verilen media/type matrisi testlidir.
-- Concurrent finalize tek current SUBMITTED evidence bırakır.
-- Download immutable object version'a pinlidir; başka Deal referansı reddedilir.
+- The allowed PDF/DOCX/JPEG/PNG/MP4 media/evidence-type matrix is tested.
+- Concurrent finalize attempts leave one current SUBMITTED evidence.
+- Downloads are pinned to immutable object versions and reject cross-Deal
+  references.
 
 ### P5 — Buyer review and fulfillment completion vertical
 
 Outcome:
-Buyer `ADMIN` current evidence'ı kabul veya gerekçeli reddeder; seller
-replacement sunabilir ve terminal fulfillment sonucu iki tarafta görünür.
+A buyer `ADMIN` accepts or rejects current evidence, the seller can submit a
+replacement after rejection, and the terminal fulfillment result is visible to
+both parties.
 
 Direction:
 
-- Accept/reject yalnız current SUBMITTED evidence'a ve expected version'a karşı
-  çalışır.
-- Reject history'yi korur ve fulfillment'ı EVIDENCE_REQUIRED'a döndürür; yeni
-  upload yeni submission olur.
-- Accept milestone/fulfillment'ı COMPLETED yapar ancak Deal status, payment,
-  settlement veya outbox external effect üretmez.
-- Frontend stale conflict'te refetch eder; backend action projection'ından
-  hareket eder.
+- Accept/reject works only against current SUBMITTED evidence and expected
+  versions.
+- Reject preserves history and returns fulfillment to EVIDENCE_REQUIRED.
+- Accept completes the milestone/fulfillment without creating Deal, payment,
+  settlement, provider, outbox-external-effect, or AI side effects.
+- Frontend conflicts refetch authoritative projections and never derive action
+  availability.
 
 Depends on:
 P4
 
 Exit checks:
 
-- Accept ↔ reject ve accept ↔ stale finalize yarışlarında tek geçerli sonuç
-  vardır.
-- Buyer MEMBER/seller/diğer participant review yapamaz.
-- Completion sonrasında bütün mutation action'ları fail-closed olur.
+- Accept ↔ reject and accept ↔ stale-finalize races have one valid winner.
+- Buyer MEMBER, seller, and other participants cannot review.
+- All fulfillment mutations fail closed after completion.
 
-### P6 — Real-browser acceptance and regression hardening
+### P6 — Automated validation, final fast check, and review handoff
 
 Outcome:
-Çok-actor gerçek browser akışı PostgreSQL ve MinIO ile kanıtlanır; Slice 11 ve
-önceki Deal akışları regresyonsuzdur.
+The complete P1–P5 implementation is automatically validated, receives a final
+implementer sanity pass, and is submitted for planner review without claiming
+browser acceptance.
 
 Direction:
 
-- Browser kabulü §6 matrisini izler.
-- Yalnız material state/authorization/concurrency riskleri otomatik testle
-  güçlendirilir; adapter için geniş test matrisi kurulmaz.
-- Kabul sırasında payment release, Deal COMPLETE veya AI event'i oluşmadığı
-  veri/audit görünümüyle doğrulanır.
+- Run all implementer-owned automated validation in §7.
+- After full validation passes, run the §7 final fast check against the complete
+  base-to-HEAD change.
+- Fix in-scope failures before reporting `COMPLETED`; report `PARTIAL` or
+  `BLOCKED` when the workflow requires it.
+- Replace `docs/agent/req-review.md` using the implementer workflow.
+- Set `Plan completion claim: NO`: §6 browser acceptance is still planner-owned.
+- Do not run or claim the real-browser matrix.
 
 Depends on:
 P5
 
 Exit checks:
 
-- §6 ve §7 kontrolleri geçer.
-- Contract validator, Core API verify, frontend typecheck/build ve
-  `git diff --check` yeşildir.
+- Required automated commands pass.
+- The final fast check passes and confirms scope/frozen-history boundaries.
+- The review request reports P1–P6 outcomes and identifies planner-owned
+  browser acceptance as not run by the implementer.
 
-## 6. Gerçek browser kabulü
+## 6. Real-browser acceptance — planner-owned
 
-PostgreSQL + MinIO ile en az üç browser context kullanılır: seller `MEMBER`,
-buyer `ADMIN`, buyer `MEMBER` veya başka salt-okunur participant.
+Owner: **planner**. The implementer must not execute these steps, claim them as
+validation, or mark the plan complete. After the implementer submits P1–P6 and
+the user returns the report, the planner reviews the real diff and automated
+evidence, then runs this matrix with PostgreSQL and MinIO. A failure produces a
+planner `FIX` or `REPLAN` decision under `docs/agent/WORKFLOW.md`.
 
-1. Ratified `ACTIVE` Deal sandbox funding ile `FUNDED` yapılır; lifecycle
-   `FULFILLMENT` görünür. DRAFT/ACTIVE-but-not-FUNDED Deal'de start action'ı
-   görünmez ve zorlanan istek 409 alır.
-2. Seller `MEMBER` fulfillment'ı başlatır. Double-click/same-key replay tek
-   fulfillment ve tek primary milestone üretir; buyer aynı durumu görür.
-3. Seller PDF veya fotoğraf evidence için intent alır, browser doğrudan MinIO'ya
-   PUT eder ve finalize eder. Durum REVIEW_REQUIRED olur; refresh sonrası
-   current evidence kalır.
-4. Buyer ve diğer participant metadata/history'yi görür, kısa ömürlü link ile
-   exact immutable object version'ı indirir. Nonparticipant görünürlük
-   kazanmaz.
-5. Buyer `MEMBER` accept/reject kontrolü görmez ve zorlanan istek 403 alır.
-   Buyer `ADMIN` gerekçeyle reject eder; kayıt REJECTED history olarak kalır ve
-   durum EVIDENCE_REQUIRED olur.
-6. Seller replacement evidence yükler; eski evidence değişmez/silinmez, yeni
-   submission REVIEW_REQUIRED olur.
-7. Buyer `ADMIN` iki tab/context ile accept ↔ reject yarışını çalıştırır. Tek
-   terminal sonuç oluşur; kaybeden stale/state 409 alır. Same-key retry ikinci
-   karar üretmez.
-8. Kabul kazandığında milestone ve fulfillment COMPLETED görünür. Deal hâlâ
-   ACTIVE, lifecycle FULFILLMENT ve settlement kullanılamazdır; payment
-   release/refund/payout kaydı veya external çağrı oluşmaz.
-9. Ayrı bir Deal'de MP4 evidence yüklenir ve participant'lar indirebilir; hiçbir
-   video analysis job'ı otomatik oluşmaz.
-10. Seller dışındaki participant upload/start yapamaz; buyer dışındaki actor
-    review yapamaz. Initiator buyer/seller değilse initiator kimliği ek
-    fulfillment mutation yetkisi sağlamaz.
-11. Document, ratification ve funding read/mutation regresyonları ilgili actor
-    sınırlarıyla çalışmaya devam eder.
+Use at least three browser contexts: seller `MEMBER`, buyer `ADMIN`, and buyer
+`MEMBER` or another read-only participant.
 
-## 7. Minimum invariant ve validation
+1. Ratify an ACTIVE Deal and fund it through the sandbox until `FUNDED`.
+   Lifecycle shows `FULFILLMENT`. DRAFT or ACTIVE-but-not-FUNDED Deals expose no
+   start action, and a forced start returns 409.
+2. Seller `MEMBER` starts fulfillment. Double-click/same-key replay creates one
+   fulfillment and one primary milestone; the buyer sees the same state.
+3. Seller creates an intent for PDF or photo evidence, PUTs directly to MinIO,
+   and finalizes it. Status becomes REVIEW_REQUIRED and survives refresh.
+4. Buyer and another participant see metadata/history and download the exact
+   immutable object version. A nonparticipant gains no visibility.
+5. Buyer `MEMBER` sees no accept/reject action and a forced request returns
+   403. Buyer `ADMIN` rejects with a reason; the evidence remains REJECTED
+   history and status becomes EVIDENCE_REQUIRED.
+6. Seller uploads replacement evidence. The old evidence remains unchanged;
+   the new submission becomes REVIEW_REQUIRED.
+7. Buyer `ADMIN` races accept against reject from two tabs/contexts. One
+   terminal result wins, the loser receives stale/state 409, and same-key replay
+   creates no second decision.
+8. When accept wins, milestone and fulfillment show COMPLETED. Deal remains
+   ACTIVE, lifecycle remains FULFILLMENT, settlement is unavailable, and no
+   release/refund/payout/provider operation exists.
+9. On another Deal, upload MP4 evidence and verify participant download. No
+   Video Analysis job starts automatically.
+10. Non-seller participants cannot start/upload; non-buyer actors cannot review;
+    an initiator that is neither buyer nor seller gains no extra mutation
+    authority.
+11. Document, ratification, and funding read/mutation regressions remain sound
+    for their existing actor boundaries.
 
-Minimum otomatik invariant'lar:
+## 7. Minimum invariants and validation
 
-- Yalnız `ACTIVE + FUNDED` Deal'de start; FUNDED status'u frontend veya
-  caller input'ından kabul edilmez
-- Deal başına concurrent/idempotent start → tek fulfillment + tek milestone
-- Seller `ADMIN`/`MEMBER` submit; buyer `ADMIN` review; buyer MEMBER, yanlış
-  party, initiator-only ve nonparticipant retleri
-- Evidence mutlaka aynı Deal ve milestone'a bağlı; cross-Deal current pointer
-  DB/application tarafından reddedilir
-- Storage-verified size/checksum/media mismatch reddi; immutable object version
-  ve private bucket davranışı
-- Presign/verify/download sırasında açık DB transaction olmaması
-- Finalize mutation + current pointer + status + audit + idempotency
-  atomikliği; rollback'te kısmi current evidence kalmaması
-- Concurrent finalize → tek current SUBMITTED; accept/reject stale target ve
-  expected version enforcement
-- Accept ↔ reject yarışı → tek terminal karar; replay/different-request
-  idempotency davranışı
-- Rejected/accepted evidence history'nin silinmemesi veya overwrite edilmemesi
-- Fulfillment COMPLETED'ın Deal COMPLETED, settlement/release/refund,
-  PaymentOperation veya AI job üretmemesi
-- Video/AI sonucunun bu slice'ta fulfillment state değiştirecek yolu olmaması
-- Backend-derived lifecycle/action; absent optional action frontend'de
-  false/read-only
-- `ModuleArchitectureTest` fulfillment repository/entity ownership ve cycle
-  kontrolü
+### Implementer-owned automated invariants
 
-Zorunlu doğrulama:
+- Start requires authoritative `ACTIVE + FUNDED`; caller/frontend input cannot
+  assert FUNDED.
+- Concurrent/idempotent start produces one fulfillment and one milestone.
+- Seller `ADMIN`/`MEMBER` submit; buyer `ADMIN` reviews; buyer MEMBER, wrong
+  party, initiator-only entity, and nonparticipant attempts are rejected.
+- Evidence always belongs to the same Deal and milestone; DB/application reject
+  cross-Deal current pointers.
+- Storage-verified size/checksum/media mismatches are rejected; object version
+  remains immutable and bucket access remains private.
+- Presign, verify, and download calls do not hold DB transactions.
+- Finalize atomically writes mutation, current pointer, status, audit, and
+  idempotency result; rollback leaves no partial current evidence.
+- Concurrent finalize leaves one current SUBMITTED evidence.
+- Accept/reject enforces current target and expected version.
+- Accept ↔ reject races have one winner; idempotent replay and different-request
+  key reuse behave correctly.
+- Accepted/rejected evidence history cannot be deleted or overwritten.
+- Fulfillment COMPLETED creates no Deal COMPLETED, settlement, release, refund,
+  PaymentOperation, provider call, or AI job.
+- Lifecycle and action availability are backend-derived; absent optional
+  actions are false/read-only.
+- `ModuleArchitectureTest` protects fulfillment repository/entity ownership and
+  cycle boundaries.
+
+### Required implementer validation
+
+Run from the repository root:
 
 ```powershell
 python .\contracts\scripts\validate_contracts.py
@@ -438,32 +458,52 @@ docker compose -f .\infra\compose.yaml config
 git diff --check
 ```
 
-§6 gerçek browser akışı otomatik komutların yerine geçmez; otomatik testler de
-gerçek direct PUT/download ve çok-actor kabulünün yerine geçmez.
+### Final implementer fast check
 
-## 8. Done tanımı
+After P1–P5 and the full automated validation pass, perform one short final
+sanity pass before writing `req-review.md`:
 
-- [x] ADR-011 actor, cardinality, contractual source, state ve completion
-      kararları insan tarafından kabul edildi; ADR index/FORBIDDEN türevleri
-      güncellendi
-- [ ] P1 additive Core API contract yüzeyi implementasyondan önce review edildi;
-      validator exact beklentileri ve contracts README/CHANGELOG aynı birimde
-      güncellendi; AI contract'ları değişmedi
-- [ ] Yeni forward-only migration'lar uygulandı; V15–V19 değişmedi
-- [ ] Fulfillment owning modülü, dar source/storage port'ları ve
-      `ModuleArchitectureTest` sınırı çalışıyor
-- [ ] ACTIVE + FUNDED start, tek fulfillment/tek milestone ve exact
-      FulfillmentStatus akışı uygulanmış
-- [ ] Direct private-storage evidence upload/finalize verified size, checksum
-      ve immutable object version ile çalışıyor
-- [ ] Evidence history/download participant-readable; mutation yetkileri
-      party/role bazında server-side uygulanıyor
-- [ ] Buyer ADMIN accept/reject, rejection replacement, stale recovery,
-      idempotency ve terminal yarışlar testli
-- [ ] Fulfillment COMPLETED hiçbir Deal COMPLETE, release, settlement, refund,
-      provider veya AI side effect'i üretmiyor
-- [ ] Deal detail lifecycle/action projection'ı backend-derived; frontend
-      loading/error/empty/read-only durumları gerçek API'ye bağlı
-- [ ] §7 minimum invariant testleri ve zorunlu komutlar yeşil
-- [ ] §6 çok-actor gerçek browser akışı PostgreSQL + MinIO ile tamamlandı;
-      önceki slice regresyonları geçti
+- Re-run the contract validator.
+- Re-run the targeted Slice 12 fulfillment integration tests selected by their
+  implemented test names.
+- Re-run frontend typecheck.
+- Run `git diff --check`.
+- Inspect `git status --short` and the complete base-to-HEAD changed-file list.
+- Confirm no AI contract/messaging, Railway/deployment, accepted ready-plan,
+  `docs/agent/CURRENT.md`, or V15–V19 migration file changed.
+
+The implementer records this fast check in the review request. Automated tests
+do not replace §6. The planner performs §6 after implementation review.
+
+## 8. Done definition
+
+- [x] ADR-011 actor, cardinality, contractual source, state, and completion
+      decisions are accepted; ADR index/FORBIDDEN are synchronized
+- [ ] P1 additive Core API contract and exact validator/docs/generated-type
+      review unit is complete; AI contracts remain unchanged
+- [ ] New forward-only migrations are implemented; V15–V19 remain unchanged
+- [ ] Fulfillment ownership, narrow source/storage ports, and module
+      architecture constraints are implemented
+- [ ] ACTIVE + FUNDED start, one fulfillment/one milestone, and exact
+      FulfillmentStatus flow work
+- [ ] Direct private-storage evidence upload/finalize verifies size, checksum,
+      and immutable object version
+- [ ] Participant-readable evidence history/download and party/role mutation
+      authorization work server-side
+- [ ] Buyer ADMIN accept/reject, replacement after rejection, stale recovery,
+      idempotency, and terminal races are tested
+- [ ] Fulfillment COMPLETED creates no Deal COMPLETE, release, settlement,
+      refund, provider, or AI side effect
+- [ ] Deal-detail lifecycle/action projection is backend-derived; frontend
+      loading/error/empty/read-only states use the real API
+- [ ] Implementer-owned §7 automated validation passes
+- [ ] Implementer-owned final fast check passes and is recorded in
+      `docs/agent/req-review.md`
+- [ ] Implementer reports P1–P6 `COMPLETED` with
+      `Plan completion claim: NO`
+- [ ] Planner independently reviews the implementation and completes the §6
+      PostgreSQL + MinIO multi-actor real-browser matrix
+- [ ] Previous-slice regressions pass and the planner accepts the complete plan
+
+Implementer completion of P1–P6 is not plan completion. The plan moves to
+`done/` only after planner-owned browser acceptance and final planner `ACCEPT`.

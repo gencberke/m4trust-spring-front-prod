@@ -163,10 +163,12 @@ boundaries. Deployment/provider work remains deferred.
 
 ## Active work
 
-Slice 12 planning is accepted on `codex/plan-slice-12-fulfillment`. The first
-implementation task is P1, the reviewed additive Core API contract. Railway
-staging and real-provider integration are explicitly deferred until the user
-reopens that work.
+Slice 12 planning is accepted on `codex/plan-slice-12-fulfillment`. Its
+implementation task runs P1–P6 sequentially: contract first, then persistence,
+start/read, evidence upload, buyer review/completion, and an implementer-owned
+automated final fast check. Real-browser acceptance remains planner-owned after
+implementation review. Railway staging and real-provider integration are
+explicitly deferred until the user reopens that work.
 
 ## Known blockers
 
@@ -174,8 +176,9 @@ No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Implement Slice 12 P1 from the human-approved ready plan. Deployment and
-real-provider work are not part of the active content line.
+Implement Slice 12 P1–P6 sequentially from the human-approved ready plan, then
+return the implementation for planner-owned real-browser acceptance.
+Deployment and real-provider work are not part of the active content line.
 
 ## Update rule
 
