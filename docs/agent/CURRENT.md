@@ -60,9 +60,14 @@ SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS flows and FUNDING→FULFILLMENT projection
 passed. Release, payout, refund, settlement and a real provider remain out of
 scope.
 
+Slice 12 Fulfillment and Evidence is human-approved and ready under
+`docs/plan/ready/12-fulfillment-and-evidence.md`; implementation has not
+started. ADR-011 fixes its V1 actor, evidence, state and fail-closed completion
+boundaries. Deployment/provider work remains deferred.
+
 ## Accepted foundations
 
-- ADR-001 through ADR-010 are accepted and remain authoritative.
+- ADR-001 through ADR-011 are accepted and remain authoritative.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
 - Slice 2 organization and membership is accepted under `docs/plan/done/`.
@@ -77,6 +82,8 @@ scope.
   `docs/plan/done/`.
 - Slice 10 Ratification is accepted under `docs/plan/done/`.
 - Slice 11 Funding Foundation is accepted under `docs/plan/done/`.
+- Slice 12 Fulfillment and Evidence plan is human-approved under
+  `docs/plan/ready/`; no implementation phase is accepted yet.
 - V15–V19 migrations are frozen accepted history; future database changes use
   new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
@@ -152,12 +159,14 @@ scope.
 
 - FastAPI AI service skeleton
 - Railway service configuration
+- Slice 12 implementation
 
 ## Active work
 
-Slices 9–11 are accepted on `codex/slice-9-11`; Slice 10–11 plans are archived
-under `docs/plan/done/`. Final commit/merge into `main` remains a Git delivery
-step. Slice 7 Railway staging remains a separate approved implementation line.
+Slice 12 planning is accepted on `codex/plan-slice-12-fulfillment`. The first
+implementation task is P1, the reviewed additive Core API contract. Railway
+staging and real-provider integration are explicitly deferred until the user
+reopens that work.
 
 ## Known blockers
 
@@ -165,8 +174,8 @@ No architectural, implementation, or acceptance blocker.
 
 ## Next likely capability
 
-Plan the next content slice from the accepted Slice 11 foundation; Slice 7
-Railway staging continues independently.
+Implement Slice 12 P1 from the human-approved ready plan. Deployment and
+real-provider work are not part of the active content line.
 
 ## Update rule
 

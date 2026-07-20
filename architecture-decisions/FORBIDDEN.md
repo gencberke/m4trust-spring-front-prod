@@ -1,6 +1,8 @@
 # FORBIDDEN — Konsolide Yasak Listesi
 
-9 ADR'ye dağılmış yasakların tek noktadan görünümü. **Türetilmiş bir dokümandır: bu liste ile bir ADR çelişirse ADR kazanır.** ADR'yi değiştiren her PR bu dosyayı da günceller.
+Kabul edilmiş ADR'lere dağılmış yasakların tek noktadan görünümü.
+**Türetilmiş bir dokümandır: bu liste ile bir ADR çelişirse ADR kazanır.**
+ADR'yi değiştiren her PR bu dosyayı da günceller.
 
 Bir görev bu listedeki bir maddeye takılıyorsa workaround üretme: ihtiyaç gerçekse bu bir ADR değişikliği talebidir ([ADR-INDEX.md](ADR-INDEX.md) Katman 3).
 
@@ -23,6 +25,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Manual acceptance olmadan AI sonucundan RuleSetVersion veya Deal current rule-set pointer üretmek | ADR-003 §17–§19; ADR-010 §1 |
 | Yeni current document'a geçerken eski RuleSetVersion'ı current/ratification-ready bırakmak | ADR-003 §18–§20 |
 | Video/AI sonucunun otomatik fulfillment completion, dispute veya payment release üretmesi | ADR-002 §10.1; ADR-003 §22 |
+| Ratify edilmemiş AI `deliveryRequirements` çıktısını contractual checklist, milestone veya completion kuralı saymak | ADR-011 §1, §2.1 |
 | Broker mesajında provider-specific payload, raw doküman/video, secret, credential, session token taşımak | ADR-001 §20; ADR-002 §29 |
 | Contract'ı tek taraflı değiştirmek (FastAPI model gerekçesiyle, Spring yeni required alan dayatarak) | ADR-001 §9; ADR-002 §28 |
 | Contract değişikliğini uygulama kodundan sonra yapmak | ADR-002 §25 |
@@ -55,6 +58,9 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Belirsiz pool/refund davranışını çözmek için otomatik approve-then-refund yapmak | ADR-010 §2.7 |
 | Kart verisi, provider credential veya raw provider payload'ını domain/audit/public API'ye taşımak | ADR-007 §19–§20, §33; ADR-010 §2.6 |
 | Payment sandbox adapter'ını production profile'da açmak veya production API'ye scenario test-control alanı/yüzeyi eklemek | ADR-004 §19; ADR-010 §2.2, §2.6 |
+| Participant/initiator görünürlüğünü fulfillment mutation yetkisi saymak; seller dışı actor'ın submit veya buyer ADMIN dışı actor'ın accept/reject yapması | ADR-009 §2.2; ADR-011 §2.2 |
+| Accepted/rejected evidence object veya history kaydını overwrite etmek, silmek ya da replacement olarak mutation ile kullanmak | ADR-003 §22; ADR-011 §2.3–§2.4 |
+| Fulfillment acceptance'tan otomatik Deal COMPLETED, settlement, release, payout, refund, provider çağrısı veya AI job üretmek | ADR-011 §2.5 |
 | Query edilen temel domain alanlarını (money, status, party, authorization) JSONB'ye gömmek | ADR-003 §27 |
 | Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5; ADR-008 §2.4 |
 | `deal.tenant_id` (veya çağıranın tenant'ı) eşleşmesini Deal görünürlük/erişim koşulu olarak kullanmak | ADR-008 §2.2, §4 |
