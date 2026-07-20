@@ -36,6 +36,7 @@ import {
 } from "../features/deals/dealQueries";
 import { DealDocumentManagement } from "../features/documents/DealDocumentManagement";
 import { DealInvitationManagement } from "../features/invitations/DealInvitationManagement";
+import { DealRatificationPanel } from "../features/ratification/DealRatificationPanel";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
 import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
 import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
@@ -679,6 +680,8 @@ export function DealDetailPage() {
         />
 
         <DealReviewWorkspace deal={deal} legalEntityId={selectedLegalEntityId} />
+
+        <DealRatificationPanel deal={deal} legalEntityId={selectedLegalEntityId} />
 
         <DealInvitationManagement
           deal={deal}
