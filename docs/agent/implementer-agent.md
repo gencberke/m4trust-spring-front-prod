@@ -1,129 +1,100 @@
 # Implementer Agent Workflow
 
-The implementer applies assigned phases from one human-approved ready plan. The
-user owns communication with the planner. Do not contact, spawn, or wait for a
-planner.
+Implement one planner task packet at a time. The user owns handoffs; do not spawn,
+contact, or wait for a planner. Speak Turkish; write `req-review.md` and the final
+report in English. This file is self-contained.
 
-Write the review request and final delivery report in English.
+## Accept the task
 
-## Read before implementation
+Start only when the packet contains `Task`, `Revision`, `Plan`, `Phases`, `Branch`,
+`Base`, `Goal`, `Direction`, `Boundaries`, `Done when`, and `Validation`.
 
-1. Read `AGENTS.md` and this file.
-2. Parse the user's task packet. Do not start without Task, Revision, Plan,
-   Phases, Branch, Base, Goal, Direction, Boundaries, Done when, and Validation.
-3. Read the referenced ready plan, focusing on the assigned phases and their
-   dependencies.
-4. Read the ADR sections referenced by the plan and check
-   `architecture-decisions/FORBIDDEN.md`.
-5. Confirm the branch/base and inspect the latest repository state, nearby code,
-   and the nearest module-level `AGENTS.md` when one exists.
+Read the ready plan, assigned phases, referenced ADR sections, and
+`architecture-decisions/FORBIDDEN.md`; inspect relevant code before editing.
 
-If the task packet conflicts with the ready plan or expands it, stop and report
-`BLOCKED`. Scope changes require a replanned and human-approved ready plan.
-For a grandfathered ready plan without phase IDs, follow the existing sections
-explicitly named in `Phases`; do not reinterpret them as new scope.
+If the packet conflicts with the plan, expands scope, reaches a forbidden item,
+or needs an unmade decision, record it in `req-review.md` and stop. Never invent
+a workaround or silently choose new scope.
 
-## Work through phases
+## Mandatory branch isolation
 
-- Turn the assigned phases into an internal implementation checklist and execute
-  them in plan order.
-- Preserve each phase's outcome, dependencies, architecture direction, and exit
-  checks. Exact classes, methods, and local mechanics remain implementation
-  choices unless an ADR or contract fixes them.
-- Use contract-first sequencing when a public or shared contract changes.
-- Keep module ownership, transaction/external-call boundaries, lock order,
-  authorization, concurrency, compatibility, and migration rules explicit.
-- Do not edit unrelated code, accepted historical migrations, the ready plan,
-  or `docs/agent/CURRENT.md`.
-- Phase-level commits are allowed. Never merge into `main`.
-- Run the task's required validation and the minimum additional checks needed to
-  support the delivery claim.
+- Never implement on `main`, `master`, or the packet's base branch.
+- Work only on the exact feature branch named in `Branch`.
+- Create it from the exact `Base` when it does not exist.
+- Verify the current branch and base SHA before editing.
+- Preserve unrelated changes; never reset or overwrite them.
+- Do not merge, push, or open a PR unless the user asks.
 
-Stop and report rather than invent a workaround when:
+If branch isolation cannot be established safely, report `BLOCKED` before changing files.
 
-- an assigned phase needs a missing product or architecture decision;
-- two authoritative instructions conflict;
-- the task reaches a FORBIDDEN item;
-- safe completion requires scope beyond the ready plan.
+## Iterate through phases
 
-## Submission status
+Execute phases strictly in plan order. For every phase:
 
-- `COMPLETED`: every assigned phase and implementer-owned required validation is
-  complete.
-- `PARTIAL`: useful work exists, but an assigned phase or required validation is
-  incomplete.
-- `BLOCKED`: safe progress cannot continue without a decision or scope change.
+1. Re-read its outcome, direction, dependencies, and exit checks.
+2. Inspect the nearest implementation and tests.
+3. Implement only that phase.
+4. Run its exit checks and minimum risk-proportional tests.
+5. Update `docs/agent/req-review.md` immediately.
+6. Continue only when the phase is `DONE`.
 
-`COMPLETED` is an implementation claim, not planner acceptance.
+Use contract-first order for public/shared API changes. Preserve ownership,
+authorization, compatibility, transaction/external-call boundaries, lock order,
+idempotency, immutable history, and forward-only migrations.
 
-Set `Plan completion claim: YES` only when all plan phases, browser acceptance,
-invariants, validation, and Done items are proven. If acceptance remains for the
-planner, use `NO` even when the assigned task is `COMPLETED`.
+Do not edit unrelated code, accepted migrations, the ready plan, or
+`docs/agent/CURRENT.md`. Do not perform planner-owned browser acceptance unless
+the task packet explicitly assigns it.
 
-## Write the review request
+## Maintain the review inbox
 
-After the assigned phases, replace the entire contents of
-`docs/agent/req-review.md` with:
+Create or replace `docs/agent/req-review.md` when work starts. Update it after
+every phase using:
 
 ```text
 # Review Request
-
 Task: <NN-TXX>
 Revision: <integer>
 Plan: <ready plan path>
 Phases: <assigned phases>
-Status: COMPLETED | PARTIAL | BLOCKED
-Branch: <branch>
+Status: IN_PROGRESS | COMPLETED | PARTIAL | BLOCKED
+Branch: <feature branch>
 Base: <branch@sha>
 Plan completion claim: YES | NO
 
 ## Phase outcomes
-
-- P1 — DONE | PARTIAL | NOT_STARTED — <short evidence>
+- P1 — DONE — <short implementation and test evidence>
+- P2 — IN_PROGRESS | PARTIAL | NOT_STARTED — <short note>
 
 ## Validation
+- `<check>` — PASS | FAIL | NOT_RUN
 
-- `<command or scenario>` — PASS | FAIL | NOT_RUN — <short reason if needed>
-
-## Deviation or risk
-
-None
-or
-- <material deviation, blocker or risk>
-
-## Review focus
-
-- <at most three areas that deserve reviewer attention>
-```
-
-The file is a single active inbox. Replace it on every submission; Git preserves
-prior versions. Do not add full logs, a changed-file inventory, or copied diffs.
-
-Include `req-review.md` in the implementation branch's final commit. Do not put
-that commit's SHA inside the file; the user-facing report supplies the real HEAD
-after the commit exists. Do not stage unrelated working-tree files.
-
-## Return the final report
-
-```text
-Status: COMPLETED | PARTIAL | BLOCKED
-Task: <NN-TXX>
-Revision: <integer>
-Plan: <path>
-Phases: <phases>
-Branch: <branch>
-Commit: <HEAD sha>
-Review request: docs/agent/req-review.md
-Plan completion claim: YES | NO
-
-Summary:
-- <up to five bullets>
-
-Validation:
-- <check> — PASS | FAIL | NOT_RUN
-
-Deviation or risk:
+## Decisions needed
 - None
 or
-- <material item>
+- <exact decision, conflict, or missing authority>
+
+## Deviation or risk
+- None
+or
+- <material deviation or risk>
 ```
+
+Keep notes short: `P1 — DONE — ...`. If a decision is needed, add it under
+`Decisions needed`, set `BLOCKED` or `PARTIAL`, and stop before undecided work.
+Do not paste logs, diffs, or changed-file inventories.
+
+## Finish the task
+
+After all phases are `DONE`, run the packet's full validation and a fast final
+check: targeted tests, generated artifacts when applicable, `git diff --check`,
+`git status --short`, and the base-to-HEAD file list.
+
+Set `COMPLETED` only when every assigned phase and implementer check passes.
+This is not planner acceptance; use `Plan completion claim: NO` while
+planner-owned acceptance remains.
+
+Include final `req-review.md` in the feature branch's final commit without staging
+unrelated files. Return status, task/revision, plan/phases, branch/commit,
+review-request path, plan-completion claim, up to five summary bullets,
+validation results, and any decision/deviation/risk.
