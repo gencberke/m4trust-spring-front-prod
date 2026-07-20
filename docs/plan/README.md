@@ -1,55 +1,129 @@
 # M4Trust Slice Plan Workflow
 
-Bu dizin, vertical slice geliştirme planlarını (ADR-004) yönetir. Her plan dokümanı bir planner agent'ın veya geliştiricinin ilgili slice'ı ayrıntılı implementasyon görevlerine bölmesi için **yönerge** niteliğindedir; exact kod şeması veya tam DTO tanımı içermez.
+Bu dizin ADR-004 vertical slice planlarını yönetir. Plan, exact kod reçetesi
+değil; implementasyon phase'lerini davranış ve mimari düzeyde karar-tam hale
+getiren bağlayıcı yönergedir.
 
 ## Dizin akışı
 
 ```text
-planning/  → taslak; içerik tartışılıyor veya gözden geçiriliyor
-ready/     → onaylandı; implementasyona alınabilir
-done/      → slice'ın Done tanımı sağlandı; doküman arşivlendi
+planning/  → taslak; sorular ve kararlar tartışılıyor
+ready/     → insan onaylı; phase'ler implementasyona alınabilir
+done/      → bütün Done koşulları kabul edildi; plan arşivlendi
 ```
 
-Kurallar:
+- Plan insan onayı olmadan `ready/` dizinine taşınmaz.
+- Ready planda kapsam değişikliği gerekiyorsa plan `planning/` dizinine döner,
+  değişiklik açıkça yazılır ve yeniden insan onayı alır.
+- Yalnız bir task'ın kabulü planı tamamlamaz. Bütün phase, browser kabulü,
+  invariant, validation ve Done maddeleri kanıtlandığında plan `done/` altına
+  taşınır; tamamlanma tarihi ve material sapmalar kaydedilir.
+- Dosya adı `NN-kebab-case-baslik.md` biçimindedir ve numara ADR-004 slice
+  sırasını izler.
+- Mevcut tarihsel done planları ve önceden insan-onaylı ready planlar yalnız yeni
+  format nedeniyle yeniden yazılmaz.
+- Phase ID taşımayan insan-onaylı eski bir ready plan için task paketi,
+  `Phases` alanında planın mevcut implementasyon bölümlerini açıkça sayabilir;
+  bu eşleme kapsam ekleyemez.
 
-- Bir plan `ready/` dizinine insan onayı olmadan taşınmaz.
-- `ready/` içindeki plan üzerinde kapsam değişikliği gerekirse plan `planning/` dizinine geri alınır ve değişiklik açıkça yazılır.
-- Slice tamamlandığında doküman `done/` dizinine taşınır; içine tamamlanma tarihi ve varsa kapsam sapmaları not edilir.
-- Dosya adlandırma: `NN-kebab-case-baslik.md`. Numara ADR-004 §24'teki slice sırasını takip eder.
+## Sekiz bölümlü ready plan
 
-## Plan dokümanı formatı
+Her yeni veya yeniden planlanan ready dokümanı şu bölümleri taşır:
 
-Her plan aynı bölümleri içerir:
+1. **Amaç ve kullanıcı sonucu** — gerçek tarayıcıda elde edilen observable sonuç
+2. **Kapsam ve sınırlar** — açık in/out kapsamı ve sonraki slice'a bırakılanlar
+3. **Kararlar ve ilgili ADR'ler** — bağlayıcı davranış/mimari kararlar ve yalnız
+   gerekli ADR bölümleri
+4. **Public interface, state ve data etkisi** — API/contract, state transition,
+   persistence/migration ve compatibility etkisi
+5. **Implementation phases** — bağımlılık sırasındaki runnable phase'ler
+6. **Gerçek browser kabulü** — kullanıcı/rol/context bazlı uçtan uca akış
+7. **Minimum invariant ve validation** — riskle orantılı otomatik ve operatif
+   kontroller
+8. **Done tanımı** — planı ready'den done'a taşıyan gözlemlenebilir checklist
 
-1. **Amaç ve kullanıcı sonucu** — slice bittiğinde kullanıcının gerçek tarayıcıda yapabildiği şey
-2. **Kapsam / kapsam dışı** — açık in/out listesi
-3. **Okunacak ADR bölümleri** — yalnız ilgili başlıklar; `architecture-decisions/ADR-INDEX.md` yönlendirme mantığı geçerlidir
-4. **Public API yüzeyi** — endpoint listesi ve `contracts/openapi/core-api-v1.yaml`'a eklenecek yüzeyin tarifi
-5. **Backend yönlendirmesi** — modüller, aggregate'ler, migration ihtiyacı, invariant'lar
-6. **Frontend yönlendirmesi** — ekranlar, route'lar, state yaklaşımı
-7. **Kabul testi (tarayıcı akışı)** — adım adım manuel akış (ADR-004 §8–9)
-8. **Minimum invariant testleri** — ADR-004 §7 kapsamında, aşırı test yazılmaz
-9. **Açık sorular / karar noktaları** — implementer'ın planner'a geri getirmesi gerekenler
-10. **Done tanımı** — ADR-004 §23 checklist'inin slice'a uyarlanmış hali
+Planning taslağı açık sorular taşıyabilir. Ready plan taşıyamaz; bütün
+yüksek-etkili ürün, kapsam ve mimari kararlar insan onayından önce kapanır.
 
-## Planner agent'ın kullanımı
+## Implementation phase formatı
 
-- Önce bu README'yi ve ilgili slice planını oku.
-- Mikro-kararlar (format, status code, adlandırma vb.) için önce `architecture-decisions/ADR-INDEX.md` Katman 0/1'e bak; yasak kontrolü için `architecture-decisions/FORBIDDEN.md` kullan.
-- Plandaki "Okunacak ADR bölümleri" listesindeki başlıkları oku; ADR'nin tamamını yalnız core policy değiştiriliyorsa oku.
-- Plan ile ADR çelişirse **ADR kazanır**; çelişkiyi implementasyona gömmek yerine plana not düş ve insana bildir.
-- Plandaki "öneri" ifadeleri serbestlik derecesidir; "karar" ifadeleri bağlayıcıdır.
-- Public API yüzeyi implementasyondan **önce** `core-api-v1.yaml` dosyasına tasarlanır (ADR-006 §42–43 hibrit akış).
-- Onaylı bir public OpenAPI yüzeyinin zorunlu contract deltasına
-  `contracts/scripts/validate_contracts.py` exact beklentileri ile
-  `contracts/README.md` ve `contracts/CHANGELOG.md` güncellemeleri de dahildir.
-  Bunlar OpenAPI değişikliğiyle aynı review/validation birimidir; ilgili plan
-  aksini söylemedikçe AI JSON Schema/fixture, AsyncAPI ve AI-internal OpenAPI
-  değişiklikleri bu kapsama girmez.
+Phase ID'leri plan içinde stabil ve sıralıdır:
 
-## Sabitlenmiş teknoloji kararları (tüm slice'lar için)
+```text
+### P<n> — <observable phase name>
 
-- Backend: Spring Boot modular monolith (ADR-003), PostgreSQL + Flyway, Spring Session JDBC
-- Frontend: **Vite + React + TypeScript**, server state için **TanStack Query**, tip/client üretimi committed OpenAPI'den (öneri: `openapi-typescript` + ince fetch wrapper)
-- Local orkestrasyon: Docker Compose (PostgreSQL, RabbitMQ, MinIO)
-- Frontend dev server `/api` isteklerini Spring'e proxy'ler; production'daki same-origin davranışı (ADR-007 §6) local'de böyle simüle edilir
+Outcome:
+<phase sonunda çalışan sonuç>
+
+Direction:
+- <owning module ve önemli sınırlar>
+- <port, transaction, lock veya compatibility yönü>
+- <gerektiğinde contract, persistence ve frontend koordinasyonu>
+
+Depends on:
+<P0 veya None>
+
+Exit checks:
+- <observable check>
+```
+
+Phase'ler mümkün olduğunca runnable vertical parçalar olmalıdır. Contract-first
+veya migration bağımlılığı varsa sıra açıkça gösterilir. Planner exact sınıf,
+metot veya dosya listesi vermek yerine implementerin yanlış bir mimari yön
+seçmesini engelleyecek sınırları tarif eder.
+
+## Ready gate
+
+Uygulanabildiği her yerde plan aşağıdakileri karara bağlamadan ready olamaz:
+
+- actor, authorization ve non-disclosure davranışı;
+- state transition, invariant, optimistic concurrency ve idempotency;
+- owning module, dar port yönü ve repository ownership;
+- transaction, lock order ve external-call sınırı;
+- public/shared contract ve additive/breaking compatibility yaklaşımı;
+- persistence, migration rollout ve immutable-history etkisi;
+- backend-derived lifecycle/action projection ve frontend fail-closed davranışı;
+- phase bağımlılıkları, browser acceptance ve minimum validation.
+
+Ready plan şunları içermez:
+
+- exact sınıf veya metot gövdeleri;
+- tam SQL DDL veya uygulanmaya hazır migration metni;
+- bütün DTO/OpenAPI şemasının kopyası;
+- dosya-dosya implementasyon reçetesi;
+- implementerin çözmesi beklenen açık ürün veya mimari sorular.
+
+İsim veya wire alanı bir public contract, accepted ADR ya da cross-module sınır
+için bağlayıcıysa exact yazılabilir. Local implementasyon mekaniği implementere
+kalır.
+
+## Contract ve ADR kuralları
+
+- Mikro kararlar için önce `architecture-decisions/ADR-INDEX.md` Katman 0/1,
+  yasaklar için `architecture-decisions/FORBIDDEN.md` kullanılır.
+- Plan ile ADR çelişirse ADR kazanır; çelişki implementasyona gömülmez.
+- Public API yüzeyi implementasyondan önce
+  `contracts/openapi/core-api-v1.yaml` içinde tasarlanır.
+- OpenAPI değişikliği; validator exact beklentileri,
+  `contracts/README.md` ve `contracts/CHANGELOG.md` ile tek review birimidir.
+- İlgili plan aksini açıkça ve insan-onaylı biçimde söylemedikçe AI JSON
+  Schema/fixture, AsyncAPI ve AI-internal OpenAPI bu public API deltasına dahil
+  değildir.
+
+## Planner ve implementer kullanımı
+
+- Planner süreci, task paketi ve review kuralları:
+  `docs/agent/WORKFLOW.md`.
+- Implementer phase yürütme ve teslim kuralları:
+  `docs/agent/implementer-agent.md`.
+- Kullanıcı task paketini implementere, implementer raporunu planner'a taşır.
+- Tek aktif implementasyon review kaydı `docs/agent/req-review.md` içindedir.
+
+## Sabit teknoloji kararları
+
+- Backend: Spring Boot modular monolith, PostgreSQL + Flyway, Spring Session JDBC
+- Frontend: Vite + React + TypeScript, TanStack Query, committed OpenAPI'den tip
+  üretimi
+- Local orkestrasyon: Docker Compose ile PostgreSQL, RabbitMQ ve MinIO
+- Local frontend `/api` isteklerini Spring'e proxy'ler; production same-origin
+  davranışı bu şekilde simüle edilir

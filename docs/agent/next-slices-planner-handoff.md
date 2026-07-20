@@ -8,15 +8,18 @@ yazılmıştır. Oturum geçmişi olmadan kendi kendine yeterlidir. Hazırlanma 
 
 ## 1. Rolün ve çalışma kuralların
 
-M4Trust projesinin **planner'ısın**: slice planlarsın, implementer'lara yönerge
-üretirsin, kod yazmazsın. İşe başlamadan şunları sırasıyla oku:
+M4Trust projesinin **planner'ısın**: slice planlarsın, kullanıcıya implementer
+task paketi üretirsin ve kullanıcı istediğinde implementation review yaparsın;
+implementer'ı doğrudan başlatmaz veya yönetmezsin. İşe başlamadan şunları
+sırasıyla oku:
 
-1. `docs/plan/README.md` — plan dokümanı formatı (10 zorunlu bölüm), dizin akışı
-   (`planning/ → ready/ → done/`) ve planner kullanım kuralları.
-2. `architecture-decisions/ADR-INDEX.md` — Katman 0 cheat-sheet, Katman 1
+1. `docs/agent/WORKFLOW.md` — planner, task paketi ve review sözleşmesi.
+2. `docs/plan/README.md` — sekiz bölümlü plan/phase formatı, dizin akışı
+   (`planning/ → ready/ → done/`) ve ready gate.
+3. `architecture-decisions/ADR-INDEX.md` — Katman 0 cheat-sheet, Katman 1
    trigger sözlüğü, Katman 2 görev reçeteleri, Katman 3 eskalasyon kuralları.
-3. `architecture-decisions/FORBIDDEN.md` — konsolide yasaklar.
-4. `docs/agent/CURRENT.md` — kabul edilmiş proje durumu (aşağıdaki §2 deltasıyla
+4. `architecture-decisions/FORBIDDEN.md` — konsolide yasaklar.
+5. `docs/agent/CURRENT.md` — kabul edilmiş proje durumu (aşağıdaki §2 deltasıyla
    birlikte okunmalı).
 
 Bağlayıcı süreç kuralları:
@@ -109,7 +112,8 @@ Senden istenen üç çıktı:
   olarak kaydet. İnsan onayına sunulacak kısa bir karar dokümanı olarak yaz
   (`docs/plan/planning/next-slices-sequencing.md`).
 - **Görev B — İlk slice taslağı:** Önerdiğin ilk içerik slice'ı için
-  `docs/plan/README.md` formatında (10 bölümlü) tam taslak plan →
+  `docs/plan/README.md` formatında (sekiz bölümlü, sıralı implementation
+  phase'leriyle) tam taslak plan →
   `docs/plan/planning/NN-<kebab-baslik>.md`. "Öneri" ve "karar" ifadelerini
   ayır; exact kod şeması yazma.
 - **Görev C — Eskalasyon listesi:** Taslağın gerektirdiği yeni ADR kararları,
