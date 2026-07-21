@@ -1,19 +1,19 @@
 # Review Request
 Task: 11BA-T02
-Revision: 1
+Revision: 2
 Plan: docs/plan/ready/11b-a-moka-provider-foundation.md
 Phases: A-P3–A-P4
-Status: IN_PROGRESS
+Status: COMPLETED
 Branch: codex/11ba-t02
 Base: main@25679a8d64cb6f447a76370a2eae1d3fe2824634
 Plan completion claim: NO
 
 ## Phase outcomes
-- A-P3 — DONE — Bounded runtime-only Moka HTTP client; exact CheckKey/money vectors and external-emulator success/decline/timeout/malformed/late-query tests pass.
-- A-P4 — DONE — local-moka profile/config selection, fail-closed startup guards, and the unchanged query-first durable relay were validated with external transport coverage and payment integration tests.
+- A-P3 — DONE — Review delta adds authenticated/bounded pool approve/query probe facts, explicitly non-final, plus contradictory NOT_FOUND fail-closed mapping.
+- A-P4 — DONE — Existing durable query-first relay and no-transaction regression remain covered; Moka external-emulator client coverage now includes probe approve/query facts.
 
 ## Validation
-- `mvn -q -Dtest=MokaTransportSafetyTest,MokaEmulatorClientIntegrationTest,MokaPaymentProviderBootstrapGuardTest,SandboxPaymentProviderBootstrapGuardTest,ModuleArchitectureTest,PaymentFundingIntegrationTest test` — PASS
+- `mvn -q -Dtest=MokaTransportSafetyTest,MokaEmulatorClientIntegrationTest,ModuleArchitectureTest test` — PASS
 - `git diff --check` — PASS
 - `zero contract/frontend/migration diff` — PASS
 
@@ -21,4 +21,4 @@ Plan completion claim: NO
 - None
 
 ## Deviation or risk
-- External-emulator test needs a local loopback port; it passed in the permitted test environment. Emulator evidence remains non-production-only and does not close G1.
+- Emulator evidence remains non-production-only and does not close G1.

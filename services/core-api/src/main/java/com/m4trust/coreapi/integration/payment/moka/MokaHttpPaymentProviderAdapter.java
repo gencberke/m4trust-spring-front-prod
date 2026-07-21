@@ -22,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 public final class MokaHttpPaymentProviderAdapter implements PaymentProviderPort {
     private static final String INITIATE_PATH = "/PaymentDealer/DoDirectPayment";
     private static final String QUERY_PATH = "/PaymentDealer/GetDealerPaymentTrxDetailList";
+    private static final String POOL_APPROVE_PATH = "/PaymentDealer/DoApprovePoolPayment";
     private static final Pattern SAFE_REFERENCE = Pattern.compile("[A-Za-z0-9._:-]{1,128}");
 
     private final MokaTransportSettings settings;
@@ -53,6 +54,21 @@ public final class MokaHttpPaymentProviderAdapter implements PaymentProviderPort
         return exchange(QUERY_PATH, Map.of(
                 "PaymentDealerAuthentication", authentication(),
                 "OtherTrxCode", request.providerKey()));
+    }
+
+    PoolProbeFact approvePoolProbe(String providerKey) {
+        return probe(POOL_APPROVE_PATH, providerKey);
+    }
+
+    PoolProbeFact queryPoolProbe(String providerKey) {
+        return probe(QUERY_PATH, providerKey);
+    }
+
+    private PoolProbeFact probe(String path, String providerKey) {
+        if (!SAFE_REFERENCE.matcher(providerKey).matches()) {
+            throw new IllegalArgumentException("providerKey must be a safe opaque reference");
+        }
+        return exchangeProbe(path, Map.of("PaymentDealerAuthentication", authentication(), "OtherTrxCode", providerKey));
     }
 
     private Map<String, String> authentication() {
@@ -88,7 +104,7 @@ public final class MokaHttpPaymentProviderAdapter implements PaymentProviderPort
         }
     }
 
-    private ProviderResult parse(byte[] responseBody) {
+    ProviderResult parse(byte[] responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
             if (root == null || !root.isObject() || !root.path("IsSuccessful").isBoolean()
@@ -96,12 +112,13 @@ public final class MokaHttpPaymentProviderAdapter implements PaymentProviderPort
                 return unknown();
             }
             String code = root.path("ResultCode").textValue();
-            if ("NOT_FOUND".equals(code)) {
+            if (!root.path("IsSuccessful").booleanValue() && "NOT_FOUND".equals(code)
+                    && root.path("VirtualPosOrderId").isMissingNode() && root.path("OtherTrxCode").isMissingNode()) {
                 return new ProviderResult(Outcome.NOT_FOUND, null);
             }
-            String reference = safeReference(root.path("VirtualPosOrderId").textValue());
+            String reference = safeReference(safeText(root.path("VirtualPosOrderId")));
             if (reference == null) {
-                reference = safeReference(root.path("OtherTrxCode").textValue());
+                reference = safeReference(safeText(root.path("OtherTrxCode")));
             }
             if (root.path("IsSuccessful").booleanValue() && "SUCCESS".equals(code) && reference != null) {
                 return new ProviderResult(Outcome.SUCCEEDED, reference);
@@ -112,6 +129,38 @@ public final class MokaHttpPaymentProviderAdapter implements PaymentProviderPort
             return unknown();
         } catch (JacksonException exception) {
             return unknown();
+        }
+    }
+
+    private PoolProbeFact exchangeProbe(String path, Map<String, ?> payload) {
+        try {
+            byte[] body = objectMapper.writeValueAsBytes(payload);
+            if (body.length > settings.maxRequestBytes()) {
+                return PoolProbeFact.unknown();
+            }
+            HttpResponse<InputStream> response = httpClient.send(HttpRequest.newBuilder(resolve(path))
+                    .timeout(settings.readTimeout()).header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build(), HttpResponse.BodyHandlers.ofInputStream());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                close(response.body());
+                return PoolProbeFact.unknown();
+            }
+            JsonNode root = objectMapper.readTree(readBounded(response.body()));
+            if (root == null || !root.isObject() || !root.path("IsSuccessful").isBoolean()
+                    || !root.path("ResultCode").isTextual()) {
+                return PoolProbeFact.unknown();
+            }
+            if (!root.path("IsSuccessful").booleanValue() && "NOT_FOUND".equals(root.path("ResultCode").textValue())
+                    && root.path("VirtualPosOrderId").isMissingNode() && root.path("OtherTrxCode").isMissingNode()) {
+                return PoolProbeFact.notFound();
+            }
+            String reference = safeReference(safeText(root.path("VirtualPosOrderId")));
+            if (reference == null) reference = safeReference(safeText(root.path("OtherTrxCode")));
+            return root.path("IsSuccessful").booleanValue() && reference != null
+                    ? PoolProbeFact.accepted(reference) : PoolProbeFact.unknown();
+        } catch (IOException | InterruptedException exception) {
+            if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
+            return PoolProbeFact.unknown();
         }
     }
 
@@ -141,7 +190,20 @@ public final class MokaHttpPaymentProviderAdapter implements PaymentProviderPort
         return candidate != null && SAFE_REFERENCE.matcher(candidate).matches() ? candidate : null;
     }
 
+    private static String safeText(JsonNode node) {
+        return node.isTextual() ? node.textValue() : null;
+    }
+
     private static ProviderResult unknown() {
         return new ProviderResult(Outcome.UNCONFIRMED, null);
     }
+
+    /** A probe observation only: provider acceptance is explicitly not settlement/finality truth. */
+    record PoolProbeFact(PoolProbeOutcome outcome, String opaqueReference) {
+        static PoolProbeFact accepted(String reference) { return new PoolProbeFact(PoolProbeOutcome.ACCEPTED_NOT_FINAL, reference); }
+        static PoolProbeFact notFound() { return new PoolProbeFact(PoolProbeOutcome.NOT_FOUND, null); }
+        static PoolProbeFact unknown() { return new PoolProbeFact(PoolProbeOutcome.UNKNOWN, null); }
+    }
+
+    enum PoolProbeOutcome { ACCEPTED_NOT_FINAL, NOT_FOUND, UNKNOWN }
 }

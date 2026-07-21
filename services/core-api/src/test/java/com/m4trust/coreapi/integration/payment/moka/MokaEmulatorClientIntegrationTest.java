@@ -52,6 +52,11 @@ class MokaEmulatorClientIntegrationTest {
         PaymentProviderPort.ProviderResult successResult = client.initiate(success);
         assertEquals(PaymentProviderPort.Outcome.SUCCEEDED, successResult.outcome());
         assertEquals("emulator-success-1", successResult.providerReference());
+        MokaPoolProbeClient probe = new MokaPoolProbeClient(client);
+        assertEquals(MokaHttpPaymentProviderAdapter.PoolProbeOutcome.ACCEPTED_NOT_FINAL,
+                probe.approve("success-1").outcome());
+        assertEquals(MokaHttpPaymentProviderAdapter.PoolProbeOutcome.ACCEPTED_NOT_FINAL,
+                probe.query("success-1").outcome());
 
         PaymentProviderPort.ProviderResult decline = client.initiate(request("decline-1"));
         assertEquals(PaymentProviderPort.Outcome.DECLINED, decline.outcome());
@@ -66,6 +71,14 @@ class MokaEmulatorClientIntegrationTest {
         PaymentProviderPort.ProviderResult malformed = client.initiate(request("malformed-1"));
         assertEquals(PaymentProviderPort.Outcome.UNCONFIRMED, malformed.outcome());
         assertNull(malformed.providerReference());
+    }
+
+    @Test
+    void contradictoryNotFoundIsUnknownAndCannotAuthorizeInitiation() {
+        PaymentProviderPort.ProviderResult contradictory = client.parse(
+                "{\"IsSuccessful\":true,\"ResultCode\":\"NOT_FOUND\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertEquals(PaymentProviderPort.Outcome.UNCONFIRMED, contradictory.outcome());
+        assertNull(contradictory.providerReference());
     }
 
     private static PaymentProviderPort.ProviderRequest request(String key) {
