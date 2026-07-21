@@ -9,6 +9,7 @@ Bu rehber mevcut monorepo yerleşimini ve Windows/PowerShell başlangıç sıras
 frontend/                  Vite + React istemcisi
 services/core-api/         Spring Boot Core API
 tools/mock-ai-worker/      Yerel contract-valid document extraction test worker'ı
+tools/moka-emulator/       Yerel/CI dış-process Moka HTTP transport emulatorü
 contracts/                 OpenAPI, AsyncAPI, JSON Schema ve örnekler
 infra/                     Yerel PostgreSQL, RabbitMQ ve MinIO Compose tanımı
 scripts/                   Yerel reset ve seed giriş noktaları
@@ -23,6 +24,7 @@ Bileşen rehberleri:
 - [Frontend](../frontend/README.md)
 - [Contract'lar](../contracts/README.md)
 - [Mock AI Worker](../tools/mock-ai-worker/README.md)
+- [Moka HTTP Emulator](../tools/moka-emulator/README.md)
 - [Tamamlanmış Slice 0 planı](plan/done/00-platform-foundation.md)
 - [Tamamlanmış Slice 1 planı](plan/done/01-authentication.md)
 - [Tamamlanmış Slice 2 planı](plan/done/02-organization-and-membership.md)
@@ -33,10 +35,15 @@ Bileşen rehberleri:
 - [Tamamlanmış Slice 6 planı](plan/done/06-document-upload.md)
 - [Tamamlanmış Slice 8 planı](plan/done/08-ai-document-extraction.md)
 - [Tamamlanmış Slice 7 staging planı](plan/done/07-staging-deployment.md)
-- [Hazır Slice 9 manual review planı](plan/ready/09-manual-review-and-ruleset.md)
-- [Hazır Slice 10 ratification planı](plan/ready/10-ratification.md)
-- [Hazır Slice 11 funding foundation planı](plan/ready/11-funding-and-payment.md)
+- [Tamamlanmış Slice 9 manual review planı](plan/done/09-manual-review-and-ruleset.md)
+- [Tamamlanmış Slice 10 ratification planı](plan/done/10-ratification.md)
+- [Tamamlanmış Slice 11 funding foundation planı](plan/done/11-funding-and-payment.md)
 - [Tamamlanmış Slice 11B-A Moka provider foundation planı](plan/done/11b-a-moka-provider-foundation.md)
+- [Tamamlanmış Slice 12 fulfillment planı](plan/done/12-fulfillment-and-evidence.md)
+- [Tamamlanmış Slice 13 video analysis planı](plan/done/13-video-analysis.md)
+- [Tamamlanmış Slice 14A dispute/casework planı](plan/done/14a-dispute-and-casework-foundation.md)
+- [Planlanan Slice 11B-B gerçek Moka/G1 planı](plan/planning/11b-b-moka-staging-and-g1.md)
+- [Planlanan Slice 14B settlement/release planı](plan/planning/14b-settlement-and-release.md)
 
 ## Slice 8 yerel analiz akışı
 

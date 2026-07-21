@@ -69,7 +69,7 @@ As of this runbook's creation:
 | C2/G4b — Slice 7 | ACCEPTED | Preserve acceptance evidence; do not replay by default |
 | G2 | ACCEPTED | Preserve non-production authority and unresolved-risk boundary |
 | G3 | ACCEPTED | Preserve v1/v2 compatibility and immutable completedAt decision |
-| C3–C4/G4c — Slice 11B | BLOCKED | 11B-A/B accepted and archived |
+| C3–C4/G4c — Slice 11B | BLOCKED | Preserve accepted 11B-A; accept and archive 11B-B |
 | G1 — provider release/finality | BLOCKED | Redacted real-provider evidence; emulator never counts |
 | C6 — ADR-014 | BLOCKED | Draft only after G1–G4; explicit human acceptance |
 | C7 — 14B ready | BLOCKED | ADR-aligned eight-section plan + explicit human approval |

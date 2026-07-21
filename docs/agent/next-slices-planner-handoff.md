@@ -1,6 +1,8 @@
-# Planner Handoff — Slice 14A Sonrası
+# Planner Handoff — Settlement/Release Roadmap
 
 Hazırlanma tarihi: 21 Temmuz 2026
+
+Son güncelleme: 22 Temmuz 2026
 
 Kabul branch'i: `feature/14a-dispute-casework-foundation`
 
