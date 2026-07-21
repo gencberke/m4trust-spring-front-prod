@@ -61,8 +61,11 @@ movement do not yet exist in accepted project state.
 - Moka is only a research candidate. No provider release/capture, settlement
   finality, status-query, callback, duplicate, timeout, dispute-after-dispatch,
   void, credential, or operational behavior is accepted.
-- No custody, marketplace/sub-dealer, KYC, fee/split, Law 6493, manual
-  intervention, or payout-ownership decision is accepted.
+- G2/G3 were accepted on 21 July 2026. Non-production readiness uses the
+  standard-merchant-pool model; production KYC/custody/fee/split/Law 6493/
+  payout questions remain explicitly unresolved. Ratification schema v2 and
+  immutable fulfillment `completedAt` compatibility are fixed by
+  `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`.
 - Existing ratification packages contain no `disputeWindowDays` term. They
   must remain release-ineligible rather than being silently reinterpreted.
 - Refund, reversal, chargeback, and post-settlement recovery remain a separate
@@ -607,8 +610,8 @@ provider tests do not replace this section.
 ## 8. Done Definition
 
 - [ ] G1 provider capability evidence is complete and human-accepted
-- [ ] G2 legal and operational approval is recorded and human-accepted
-- [ ] G3 ratification contract/version rollout is decision-complete and accepted
+- [x] G2 non-production operating-model decision is recorded and human-accepted
+- [x] G3 ratification contract/version rollout is decision-complete and accepted
 - [x] G4a Slice 14A prerequisite is accepted
 - [x] G4b Slice 7 staging prerequisite is accepted
 - [ ] G4c Slice 11B real-provider prerequisite is accepted

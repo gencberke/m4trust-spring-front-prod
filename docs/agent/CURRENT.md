@@ -234,6 +234,13 @@ accepted as gate C0 on 2026-07-21
   Flyway V22 pre-deploy, disposable failure gate, compatible rollback,
   release identity, HTTPS/security topology, and the real two-context browser
   flow passed. Evidence: `docs/agent/slice-07-acceptance-2026-07-21.md`.
+- Gates G2/G3 were accepted on 2026-07-21. Non-production Moka work uses the
+  standard-merchant-pool model only; production legal/KYC/custody/fee/split/
+  payout questions remain explicitly unresolved. Ratification compatibility
+  uses additive schema v2 with immutable `disputeWindowDays` and a new
+  server-owned fulfillment `completedAt`; schema v1 remains readable and
+  permanently release-ineligible. Evidence:
+  `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`.
 
 ## Not yet stable or accepted
 
@@ -241,11 +248,11 @@ accepted as gate C0 on 2026-07-21
 
 ## Active work
 
-No implementation task is currently active. Slice 14A and Slice 7 are accepted
-and merged into `main`; V22 is frozen accepted history. Gates C0, G4a and
-C2/G4b are retired. Slice 14B remains a gated planning draft and cannot
-authorize implementation until its real-provider, legal/operational,
-ratification-contract, ADR-014, and human-approval gates close.
+Slice 11B-A is human-approved under `docs/plan/ready/`; its external-emulator
+and Moka transport foundation may now receive phased task packets. Slice 14A
+and Slice 7 are accepted and merged into `main`; V22 is frozen accepted
+history. Gates C0, G4a, C2/G4b, G2 and G3 are retired. Slice 14B remains gated
+until Slice 11B/G1, ADR-014 and final human approval close.
 
 ## Known blockers
 
@@ -254,10 +261,10 @@ acceptance debt remains.
 
 ## Next likely capability
 
-The next prerequisite track is the founder G2/G3 decision correction and
-acceptance, followed by Slice 11B real-provider planning/implementation and G1
-evidence. Slice 14B remains non-ready until those gates, ADR-014, and explicit
-human approval close.
+The next implementation capability is Slice 11B-A: external non-production
+Moka emulator, authenticated transport client and existing funding port over
+HTTP. Slice 11B-B/G1 follows only after 11B-A acceptance. Slice 14B remains
+non-ready until Slice 11B/G1, ADR-014 and explicit final approval close.
 
 ## Update rule
 
