@@ -214,6 +214,23 @@ CREATE TABLE dispute_comment (
 CREATE INDEX dispute_comment_case_created_at_id_idx
     ON dispute_comment(dispute_case_id, created_at ASC, id ASC);
 
+CREATE OR REPLACE FUNCTION dispute_case_insert_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.status = 'RESOLVED' THEN
+        RAISE EXCEPTION 'RESOLVED disputes are unreachable in Slice 14A';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER dispute_case_insert_guard
+BEFORE INSERT ON dispute_case
+FOR EACH ROW
+EXECUTE FUNCTION dispute_case_insert_guard();
+
 CREATE OR REPLACE FUNCTION dispute_case_mutation_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -221,10 +238,6 @@ AS $$
 BEGIN
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'dispute case history is retained';
-    END IF;
-
-    IF TG_OP = 'INSERT' AND NEW.status = 'RESOLVED' THEN
-        RAISE EXCEPTION 'RESOLVED disputes are unreachable in Slice 14A';
     END IF;
 
     IF TG_OP = 'UPDATE' THEN
@@ -249,7 +262,8 @@ BEGIN
         END IF;
     END IF;
 
-    IF OLD.id IS DISTINCT FROM NEW.id
+    IF TG_OP = 'UPDATE'
+        AND (OLD.id IS DISTINCT FROM NEW.id
         OR OLD.deal_id IS DISTINCT FROM NEW.deal_id
         OR OLD.tenant_id IS DISTINCT FROM NEW.tenant_id
         OR OLD.fulfillment_id IS DISTINCT FROM NEW.fulfillment_id
@@ -266,7 +280,7 @@ BEGIN
         OR OLD.opening_user_id IS DISTINCT FROM NEW.opening_user_id
         OR OLD.opening_legal_name IS DISTINCT FROM NEW.opening_legal_name
         OR OLD.opened_at IS DISTINCT FROM NEW.opened_at
-        OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+        OR OLD.created_at IS DISTINCT FROM NEW.created_at) THEN
         RAISE EXCEPTION 'only dispute case lifecycle fields are mutable';
     END IF;
     RETURN NEW;

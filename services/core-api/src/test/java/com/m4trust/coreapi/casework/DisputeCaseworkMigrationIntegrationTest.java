@@ -77,6 +77,20 @@ class DisputeCaseworkMigrationIntegrationTest {
                         """, firstCase),
                 "RESOLVED transition is rejected in Slice 14A");
 
+        assertThrows(DataAccessException.class,
+                () -> jdbc.update("""
+                        INSERT INTO dispute_case (
+                            id, deal_id, tenant_id, fulfillment_id, milestone_id, ratification_package_id,
+                            fulfillment_status_at_open, fulfillment_version_at_open, milestone_version_at_open,
+                            reason_code, subject, statement, status, opening_tenant_id, opening_legal_entity_id,
+                            opening_user_id, opening_legal_name, opened_at, version, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, 'REVIEW_REQUIRED', 0, 0, 'NON_DELIVERY', 'subject', 'statement', 'RESOLVED',
+                            ?, ?, ?, 'Buyer', CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """, UUID.randomUUID(), fixture.dealId(), fixture.tenant(), open.fulfillmentId(),
+                        open.milestoneId(), open.packageId(), open.actorTenantId(), open.openingLegalEntityId(),
+                        open.openingUserId()),
+                "RESOLVED insert is rejected in Slice 14A");
+
         UUID rejectedEvidence = rejectedEvidence(open.dealId(), open.milestoneId(), open.fulfillmentId());
         assertDoesNotThrow(() -> jdbc.update("""
                 INSERT INTO dispute_evidence_snapshot (

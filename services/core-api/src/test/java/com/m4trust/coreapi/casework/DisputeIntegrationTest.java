@@ -17,7 +17,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -437,20 +436,9 @@ class DisputeIntegrationTest {
     }
 
     @Test
-    void openingPinsCommittedVideoResultAndExcludesQueuedJob() throws Exception {
+    void terminalWriterWinsWhenResultCommitsBeforeOpen() throws Exception {
         PreparedVideoDeal prepared = prepareVideoReviewRequiredDeal();
-        UUID resultId = UUID.randomUUID();
-        jdbc.update("""
-                INSERT INTO fulfillment_video_analysis_result (id, job_id, schema_version, canonical_result, created_at)
-                VALUES (?, ?, '1.0.0',
-                    '{"result":{"durationMs":1,"observations":[],"anomalies":[],"summary":{}},"warnings":[]}'::jsonb,
-                    CURRENT_TIMESTAMP)
-                """, resultId, prepared.videoJobId());
-        jdbc.update("""
-                UPDATE fulfillment_video_analysis_job
-                SET status = 'RESULT_AVAILABLE', completed_at = CURRENT_TIMESTAMP, version = version + 1
-                WHERE id = ?
-                """, prepared.videoJobId());
+        UUID resultId = completeVideoJob(prepared.videoJobId());
 
         mockMvc.perform(post("/api/v1/deals/" + prepared.dealId() + "/disputes")
                         .with(user(buyerAdmin.userId.toString())).with(csrf())
@@ -463,68 +451,76 @@ class DisputeIntegrationTest {
                 .andExpect(jsonPath("$.openingSnapshot.videoAnalysis.length()").value(1))
                 .andExpect(jsonPath("$.openingSnapshot.videoAnalysis[0].jobId").value(prepared.videoJobId().toString()))
                 .andExpect(jsonPath("$.openingSnapshot.videoAnalysis[0].resultId").value(resultId.toString()));
-
-        UUID queuedOnlyDeal = prepareVideoReviewRequiredDeal().dealId();
-        long dealVersion = dealVersion(queuedOnlyDeal);
-        long fulfillmentVersion = fulfillmentVersion(queuedOnlyDeal);
-        mockMvc.perform(post("/api/v1/deals/" + queuedOnlyDeal + "/disputes")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(openRequest("EVIDENCE_QUALITY", "Video issue", "Analysis pending.",
-                                dealVersion, fulfillmentVersion)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.openingSnapshot.videoAnalysis.length()").value(0));
     }
 
     @Test
-    void openingBlocksUntilVideoJobRowLockIsReleased() throws Exception {
+    void openingWinsConcurrentRaceAgainstTerminalWriter() throws Exception {
         PreparedVideoDeal prepared = prepareVideoReviewRequiredDeal();
-        CountDownLatch lockHeld = new CountDownLatch(1);
-        CountDownLatch releaseLock = new CountDownLatch(1);
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        Future<?> locker = executor.submit(() -> {
-            jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
-                connection.setAutoCommit(false);
-                try (var statement = connection.prepareStatement("""
-                        SELECT id FROM fulfillment_video_analysis_job
-                        WHERE id = ? FOR UPDATE
-                        """)) {
-                    statement.setObject(1, prepared.videoJobId());
-                    statement.executeQuery();
-                    lockHeld.countDown();
-                    releaseLock.await(10, TimeUnit.SECONDS);
-                    connection.commit();
-                } catch (Exception exception) {
-                    connection.rollback();
-                    throw new RuntimeException(exception);
-                }
-                return null;
-            });
-        });
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch externalLockHeld = new CountDownLatch(1);
+        CountDownLatch releaseExternalLock = new CountDownLatch(1);
 
-        assertTrue(lockHeld.await(10, TimeUnit.SECONDS));
-        Future<?> openFuture = executor.submit(() -> {
-            try {
-                mockMvc.perform(post("/api/v1/deals/" + prepared.dealId() + "/disputes")
+        Future<?> locker = executor.submit(() -> jdbc.execute(
+                (org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+                    connection.setAutoCommit(false);
+                    try (var statement = connection.prepareStatement("""
+                            SELECT id FROM fulfillment_video_analysis_job
+                            WHERE id = ? FOR UPDATE
+                            """)) {
+                        statement.setObject(1, prepared.videoJobId());
+                        statement.executeQuery();
+                        externalLockHeld.countDown();
+                        releaseExternalLock.await(10, TimeUnit.SECONDS);
+                        connection.commit();
+                    } catch (Exception exception) {
+                        connection.rollback();
+                        throw new RuntimeException(exception);
+                    }
+                    return null;
+                }));
+
+        assertTrue(externalLockHeld.await(10, TimeUnit.SECONDS));
+
+        Future<MvcResult> openFuture = executor.submit(() -> mockMvc.perform(
+                        post("/api/v1/deals/" + prepared.dealId() + "/disputes")
                                 .with(user(buyerAdmin.userId.toString())).with(csrf())
                                 .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
                                 .header("Idempotency-Key", UUID.randomUUID())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(openRequest("EVIDENCE_QUALITY", "Video issue", "Race test.",
                                         prepared.dealVersion(), prepared.fulfillmentVersion())))
-                        .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.openingSnapshot.videoAnalysis.length()").value(0));
-            } catch (Exception exception) {
-                throw new RuntimeException(exception);
-            }
-        });
+                .andExpect(status().isCreated())
+                .andReturn());
+
         Thread.sleep(200);
-        releaseLock.countDown();
-        openFuture.get(15, TimeUnit.SECONDS);
+        Future<?> completeFuture = executor.submit(() -> completeVideoJob(prepared.videoJobId()));
+
+        releaseExternalLock.countDown();
+
+        MvcResult openResult = openFuture.get(15, TimeUnit.SECONDS);
         locker.get(15, TimeUnit.SECONDS);
+        completeFuture.get(15, TimeUnit.SECONDS);
         executor.shutdown();
+
+        assertEquals(0, ((Number) JsonPath.read(
+                openResult.getResponse().getContentAsString(),
+                "$.openingSnapshot.videoAnalysis.length()")).intValue());
+    }
+
+    private UUID completeVideoJob(UUID jobId) {
+        UUID resultId = UUID.randomUUID();
+        jdbc.update("""
+                UPDATE fulfillment_video_analysis_job
+                SET status = 'RESULT_AVAILABLE', completed_at = CURRENT_TIMESTAMP, version = version + 1
+                WHERE id = ? AND status = 'QUEUED'
+                """, jobId);
+        jdbc.update("""
+                INSERT INTO fulfillment_video_analysis_result (id, job_id, schema_version, canonical_result, created_at)
+                VALUES (?, ?, '1.0.0',
+                    '{"result":{"durationMs":1,"observations":[],"anomalies":[],"summary":{}},"warnings":[]}'::jsonb,
+                    CURRENT_TIMESTAMP)
+                """, resultId, jobId);
+        return resultId;
     }
 
     private PreparedDeal prepareReviewRequiredDeal() throws Exception {
