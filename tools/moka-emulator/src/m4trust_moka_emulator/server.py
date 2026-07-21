@@ -1,6 +1,7 @@
 import json
 import re
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, replace
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -22,28 +23,38 @@ class EmulatorState:
         self._settings = settings
         self._operations = {}
         self._next_scenario = 0
+        self._lock = threading.Lock()
 
     def initiate(self, other_trx_code: str):
-        operation = self._operations.get(other_trx_code)
-        if operation is not None:
-            return operation, True
-        scenario = self._settings.scenarios[self._next_scenario % len(self._settings.scenarios)]
-        self._next_scenario += 1
-        operation = Operation(other_trx_code, scenario)
-        self._operations[other_trx_code] = operation
-        return operation, False
+        with self._lock:
+            operation = self._operations.get(other_trx_code)
+            if operation is not None:
+                return replace(operation), True
+            scenario = self._settings.scenarios[self._next_scenario % len(self._settings.scenarios)]
+            self._next_scenario += 1
+            operation = Operation(other_trx_code, scenario)
+            self._operations[other_trx_code] = operation
+            return replace(operation), False
 
     def query(self, other_trx_code: str):
-        operation = self._operations.get(other_trx_code)
-        if operation is not None:
-            operation.query_count += 1
-        return operation
+        with self._lock:
+            operation = self._operations.get(other_trx_code)
+            if operation is not None:
+                operation.query_count += 1
+                return replace(operation)
+            return None
 
     def approve_pool_probe(self, other_trx_code: str):
-        operation = self._operations.get(other_trx_code)
-        if operation is not None:
-            operation.pool_approved = True
-        return operation
+        with self._lock:
+            operation = self._operations.get(other_trx_code)
+            if operation is not None:
+                operation.pool_approved = True
+                return replace(operation)
+            return None
+
+    def snapshot(self):
+        with self._lock:
+            return {key: replace(operation) for key, operation in self._operations.items()}, self._next_scenario
 
 
 class MokaEmulatorServer(ThreadingHTTPServer):

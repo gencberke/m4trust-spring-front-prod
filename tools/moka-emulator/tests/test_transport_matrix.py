@@ -26,11 +26,12 @@ class TransportMatrixTest(unittest.TestCase):
         matrix = load_matrix()
 
         self.assertEqual(matrix["money"]["examples"], [
-            {"amountMinor": 0, "currency": "TRY", "providerAmount": "0.00"},
             {"amountMinor": 1, "currency": "TRY", "providerAmount": "0.01"},
             {"amountMinor": 2750, "currency": "TRY", "providerAmount": "27.50"},
             {"amountMinor": 123456789, "currency": "USD", "providerAmount": "1234567.89"},
         ])
+        self.assertEqual(matrix["money"]["minimumAcceptedAmountMinor"], 1)
+        self.assertTrue(all(example["amountMinor"] >= 1 for example in matrix["money"]["examples"]))
         self.assertEqual(matrix["limits"]["maxRequestBytes"], 8192)
         self.assertEqual(matrix["limits"]["maxResponseBytes"], 16384)
         self.assertTrue({"CONNECT_TIMEOUT", "READ_TIMEOUT", "MALFORMED_RESPONSE", "SANITIZED_PROVIDER_ERROR", "NOT_FOUND"} <= set(matrix["limits"].values()))

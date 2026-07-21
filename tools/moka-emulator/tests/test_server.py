@@ -1,5 +1,6 @@
 import http.client
 import json
+import queue
 import sys
 import threading
 import unittest
@@ -50,7 +51,8 @@ class EmulatorServerTest(unittest.TestCase):
         status, duplicate = self.request("/PaymentDealer/DoDirectPayment", {"OtherTrxCode": "operation-1"})
         self.assertEqual(status, 200)
         self.assertTrue(json.loads(duplicate)["Duplicate"])
-        self.assertEqual(self.server.state._next_scenario, 1)
+        _, next_scenario = self.server.state.snapshot()
+        self.assertEqual(next_scenario, 1)
         status, declined = self.request("/PaymentDealer/DoDirectPayment", {"OtherTrxCode": "operation-2"})
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(declined)["ResultCode"], "DECLINED")
@@ -63,15 +65,17 @@ class EmulatorServerTest(unittest.TestCase):
         with self.assertRaises(http.client.RemoteDisconnected):
             connection.getresponse()
         connection.close()
-        self.assertIn("late-key", self.server.state._operations)
+        operations, _ = self.server.state.snapshot()
+        self.assertIn("late-key", operations)
         status, unresolved = self.request("/PaymentDealer/GetDealerPaymentTrxDetailList", {"OtherTrxCode": "late-key"})
         self.assertEqual((status, json.loads(unresolved)["ResultCode"]), (200, "UNCONFIRMED"))
         status, resolved = self.request("/PaymentDealer/GetDealerPaymentTrxDetailList", {"OtherTrxCode": "late-key"})
         self.assertEqual((status, json.loads(resolved)["ResultCode"]), (200, "SUCCESS"))
         restarted = self.start_server("success,decline,timeout_then_late_success")
         try:
-            self.assertEqual(restarted.state._operations, {})
-            self.assertEqual(restarted.state._next_scenario, 0)
+            operations, next_scenario = restarted.state.snapshot()
+            self.assertEqual(operations, {})
+            self.assertEqual(next_scenario, 0)
         finally:
             restarted.shutdown()
             restarted.server_close()
@@ -100,6 +104,36 @@ class EmulatorServerTest(unittest.TestCase):
         self.assertEqual((status, json.loads(body)), (400, {"code": "INVALID_OTHER_TRX_CODE"}))
         status, body = self.request("/PaymentDealer/DoDirectPayment", {"OtherTrxCode": "unsafe message\n"})
         self.assertEqual((status, json.loads(body)), (400, {"code": "INVALID_OTHER_TRX_CODE"}))
+
+    def test_concurrent_same_identity_consumes_one_scenario_and_returns_one_canonical_result(self):
+        request_count = 12
+        start = threading.Barrier(request_count)
+        results = queue.Queue()
+
+        def initiate():
+            try:
+                start.wait(timeout=2)
+                results.put(self.request("/PaymentDealer/DoDirectPayment", {"OtherTrxCode": "concurrent-key"}))
+            except Exception as error:
+                results.put(error)
+
+        threads = [threading.Thread(target=initiate) for _ in range(request_count)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=3)
+
+        observed = [results.get_nowait() for _ in range(request_count)]
+        self.assertFalse(any(isinstance(result, Exception) for result in observed))
+        payloads = [json.loads(body) for status, body in observed]
+        self.assertEqual({status for status, _ in observed}, {200})
+        self.assertEqual(sum(not payload["Duplicate"] for payload in payloads), 1)
+        self.assertEqual(sum(payload["Duplicate"] for payload in payloads), request_count - 1)
+        self.assertEqual({payload["ResultCode"] for payload in payloads}, {"SUCCESS"})
+        self.assertEqual({payload["VirtualPosOrderId"] for payload in payloads}, {"emulator-concurrent-key"})
+        operations, next_scenario = self.server.state.snapshot()
+        self.assertEqual(set(operations), {"concurrent-key"})
+        self.assertEqual(next_scenario, 1)
 
 
 class ConfigurationTest(unittest.TestCase):

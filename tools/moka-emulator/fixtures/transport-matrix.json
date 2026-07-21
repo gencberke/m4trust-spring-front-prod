@@ -27,8 +27,8 @@
   "money": {
     "internalRepresentation": "integer minor units",
     "providerRepresentation": "decimal major-unit string with dot separator",
+    "minimumAcceptedAmountMinor": 1,
     "examples": [
-      {"amountMinor": 0, "currency": "TRY", "providerAmount": "0.00"},
       {"amountMinor": 1, "currency": "TRY", "providerAmount": "0.01"},
       {"amountMinor": 2750, "currency": "TRY", "providerAmount": "27.50"},
       {"amountMinor": 123456789, "currency": "USD", "providerAmount": "1234567.89"}
