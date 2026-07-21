@@ -56,8 +56,8 @@ movement do not yet exist in accepted project state.
   inherited Slice 13 historical VIDEO/MP4 observation on 21 July 2026. Evidence:
   `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`. Do not restate that
   matrix as open debt for 14B acceptance.
-- Slice 7 staging and Slice 11B real-provider integration are deferred and not
-  accepted.
+- Slice 7 staging and C2/G4b were accepted on 21 July 2026; Slice 11B
+  real-provider integration remains deferred and unaccepted.
 - Moka is only a research candidate. No provider release/capture, settlement
   finality, status-query, callback, duplicate, timeout, dispute-after-dispatch,
   void, credential, or operational behavior is accepted.
@@ -609,7 +609,9 @@ provider tests do not replace this section.
 - [ ] G1 provider capability evidence is complete and human-accepted
 - [ ] G2 legal and operational approval is recorded and human-accepted
 - [ ] G3 ratification contract/version rollout is decision-complete and accepted
-- [ ] G4 Slice 7, Slice 11B, and Slice 14A prerequisites are accepted
+- [x] G4a Slice 14A prerequisite is accepted
+- [x] G4b Slice 7 staging prerequisite is accepted
+- [ ] G4c Slice 11B real-provider prerequisite is accepted
 - [ ] ADR-014 is decision-complete and human-accepted
 - [ ] This revised 14B plan is human-approved and moved to `ready/`
 - [ ] Ratified dispute-window terms are immutable, versioned, and canonical-hash inputs

@@ -1,16 +1,23 @@
 # Slice 7 — Staging Deployment (Railway)
 
-- Durum: ready (kısmen uygulandı — bkz. erteleme notu)
+- Durum: done — accepted 21 July 2026
 - Slice sırası: operasyonel slice; 04–06 local geliştirmesiyle paralel yürüyebilir
 - Öncül: ADR-007; kabul edilmiş uygulama slice'ları
 - Ardıl: production kurulumu ve AI servislerinin staging'e eklenmesi
-- **Erteleme notu (2026-07-18, insan kararı):** config-as-code kısmı (Dockerfile'lar,
+- **Tarihsel erteleme notu (2026-07-18, insan kararı):** config-as-code kısmı (Dockerfile'lar,
   Caddyfile, railway.json, one-shot migrate komutu, CI image smoke) PR #13 ile
   merge edildi. Railway kurulumu ve buna bağlı tüm kabul maddeleri (§7 browser
   smoke, migration failure gate, rollback provası, `docker run <image> migrate`
   launcher smoke'u, X-Forwarded-Proto zincir doğrulaması) bilinçli olarak
   ertelendi ve [issue #15](https://github.com/gencberke/m4trust-spring-front-prod/issues/15)
-  ile takip edilir. Plan, kurulum yapılıp kabul koşulana kadar `ready/`de kalır.
+  ile takip edildi.
+- **Kabul kaydı (2026-07-21):** Railway staging, failure gate, immutable
+  rollback, main-bound release identity, browser/security acceptance and secret/
+  network checks passed. Evidence:
+  `../../agent/slice-07-acceptance-2026-07-21.md`.
+- **Kabul edilen sapma:** RabbitMQ, object storage and AI workers remain outside
+  this plan's staging scope. Core readiness and the accepted HTTP/browser path
+  are healthy; RabbitMQ-dependent asynchronous behavior is not claimed.
 
 ## 1. Amaç ve kullanıcı sonucu
 
@@ -135,12 +142,12 @@ Yeni business invariant testi yoktur.
 
 ## 10. Done tanımı
 
-- [ ] Core-api ve web-edge immutable image'ları CI'da build oluyor
-- [ ] Public edge, private core-api ve private PostgreSQL ayakta
-- [ ] Flyway yalnız pre-deploy adımında çalışıyor
-- [ ] Failure gate disposable ortamda kanıtlandı
-- [ ] Production cookie ve forwarded-header davranışı doğrulandı
-- [ ] Commit SHA release identity olarak görünür
-- [ ] §7 browser smoke tamamlandı
-- [ ] Şema-uyumlu rollback provası yapıldı
-- [ ] Secret'lar repo/image/bundle dışında ve DEVELOPMENT.md güncel
+- [x] Core-api ve web-edge immutable image'ları CI'da build oluyor
+- [x] Public edge, private core-api ve private PostgreSQL ayakta
+- [x] Flyway yalnız pre-deploy adımında çalışıyor
+- [x] Failure gate disposable ortamda kanıtlandı
+- [x] Production cookie ve forwarded-header davranışı doğrulandı
+- [x] Commit SHA release identity olarak görünür
+- [x] §7 browser smoke tamamlandı
+- [x] Şema-uyumlu rollback provası yapıldı
+- [x] Secret'lar repo/image/bundle dışında ve DEVELOPMENT.md güncel

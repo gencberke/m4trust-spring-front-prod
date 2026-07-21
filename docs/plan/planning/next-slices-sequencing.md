@@ -36,11 +36,12 @@ Sıralama şu ölçütlerle değerlendirilmiştir:
 
 | Aday | Neden ayrıldı | Yeniden açılma kapısı |
 | --- | --- | --- |
-| Slice 7 — Railway staging | Tamamen deployment/runtime hattıdır; aktif içerik sırasını etkilemez | Kullanıcı deployment çalışmasını yeniden başlattığında mevcut `ready/07-staging-deployment.md` üzerinden |
+| Slice 7 — Railway staging | 21 Temmuz 2026'da tamamlandı; C2/G4b kabul edildi | `done/07-staging-deployment.md` ve `docs/agent/slice-07-acceptance-2026-07-21.md` |
 | Slice 11B — Gerçek provider | Domain adapter işi içerse de staging, dış provider test ortamı, credential, 3DS ve operasyonel kabul gerektirir | Slice 7/staging ve provider-hukuk kapıları ayrı çalışma olarak açıldığında |
 
-Bu iki aday için bu kararda başlangıç tarihi, paralel implementasyon veya task
-paketi önerilmez. Mevcut ready/deferred durumları korunur.
+Bu sequencing kararı hazırlandığında iki aday da ertelenmişti. Slice 7 daha
+sonra ayrı deployment hattında tamamlanıp kabul edildi; Slice 11B ertelenmiş
+durumunu korur.
 
 ## 3. Önerilen yürütme sırası
 
@@ -68,8 +69,9 @@ fail-closed kalmalı ve gerçek provider/hukuk kapısından önce açılamamalı
 
 ### Sonraya bırakılan hat
 
-- **Slice 7 Railway staging** ve **Slice 11B gerçek provider** bu içerik
-  planlamasının dışında tutulur ve şimdi başlatılmaz.
+- **Slice 7 Railway staging** bu içerik planlamasının dışında ayrı hatta
+  tamamlanmıştır. **Slice 11B gerçek provider** sıradaki açık entegrasyon
+  hattıdır.
 - **Slice 14B — Settlement and Release** deployment işi değildir; ancak
   ertelenen Slice 11B ile hukuk/operasyon kararlarına bağımlı olduğu için aktif
   içerik batch'ine alınmaz.

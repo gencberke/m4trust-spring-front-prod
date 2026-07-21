@@ -17,7 +17,7 @@ yerine geçmez. Plan ile ADR çelişirse ADR kazanır; yönlendirme için
   - [`04-deal-invitations-and-participation.md`](../04-deal-invitations-and-participation.md)
   - [`05-deal-parties-and-activation.md`](../05-deal-parties-and-activation.md)
   - [`06-document-upload.md`](../06-document-upload.md)
-  - [`../../ready/07-staging-deployment.md`](../../ready/07-staging-deployment.md) (kısmen uygulandı)
+  - [`../07-staging-deployment.md`](../07-staging-deployment.md) (bu inceleme tarihinde kısmen uygulandı; daha sonra tamamlandı)
 - Kabul durumu özeti: [`docs/agent/CURRENT.md`](../../../agent/CURRENT.md)
 
 ## 2. Slice'lar arası oluşan omurga
