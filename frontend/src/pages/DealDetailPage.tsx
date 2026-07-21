@@ -37,6 +37,7 @@ import {
 import { DealDocumentManagement } from "../features/documents/DealDocumentManagement";
 import { DealFundingPanel } from "../features/funding/DealFundingPanel";
 import { DealFulfillmentPanel } from "../features/fulfillment/DealFulfillmentPanel";
+import { DealCaseworkPanel } from "../features/casework/DealCaseworkPanel";
 import { DealInvitationManagement } from "../features/invitations/DealInvitationManagement";
 import { DealRatificationPanel } from "../features/ratification/DealRatificationPanel";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
@@ -688,6 +689,8 @@ export function DealDetailPage() {
         <DealFundingPanel deal={deal} legalEntityId={selectedLegalEntityId} />
 
         <DealFulfillmentPanel deal={deal} legalEntityId={selectedLegalEntityId} />
+
+        <DealCaseworkPanel deal={deal} legalEntityId={selectedLegalEntityId} />
 
         <DealInvitationManagement
           deal={deal}

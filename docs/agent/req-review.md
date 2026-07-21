@@ -1,8 +1,8 @@
 # Review Request
 Task: 14A
-Revision: 5
+Revision: 6
 Plan: docs/plan/ready/14a-dispute-and-casework-foundation.md
-Phases: P5
+Phases: P6
 Status: COMPLETED
 Branch: feature/14a-dispute-casework-foundation
 Base: main@dbcad17949b9063b9ef385a858f728d1d0f94536
@@ -14,10 +14,13 @@ Plan completion claim: NO
 - P3 — DONE — Added `DisputeController`, `DisputeService`, DTOs, `DisputeQuery`, `CaseworkExceptions`/`CaseworkExceptionHandler`, `RequestedOperation` dispute ops, deal/fulfillment projection adapters, repository pagination/bulk insert, and `DisputeIntegrationTest`. Review deltas applied: V22 REJECTED snapshot lifecycle, actor tenant FK integrity, cross-evidence video trigger, insert guard for `RESOLVED`, monotonic version/status mutation guard, video job lock-all-then-pin adapter with concurrent race tests, open auth 404 vs 403 split, semantic validation codes, idempotency-after-lock order, and OpenAPI `DisputeOpenForbidden` clarification.
 - P4 — DONE — Added paginated comment list/create, acknowledge, and withdraw endpoints with DTOs, `DisputeCommentQuery`, versioned case-lock mutations, idempotency, audit, `UserDisplayNames` port/adapter, forbidden exception mappings, and expanded `DisputeIntegrationTest` lifecycle/concurrency coverage; `mvn test-compile` PASS and `ModuleArchitectureTest` PASS. `DisputeIntegrationTest` requires Docker/Testcontainers locally.
 - P5 — DONE — Added `CaseworkDealProjectionPort` with adapter, `DealCaseworkSummary`, `canOpenDispute` on `DealAvailableActions`, actor-aware `DISPUTE` lifecycle overlay in `DealService`/`DealLifecycleProjectionCalculator`, and Deal projection tests in `DealStatusTest`, `DisputeIntegrationTest`, and updated Deal service unit tests; `DealStatusTest` PASS and `ModuleArchitectureTest` PASS. `DisputeIntegrationTest` requires Docker/Testcontainers locally.
+- P6 — DONE — Added `frontend/src/features/casework/` API/query/error layer and `DealCaseworkPanel` after fulfillment on Deal detail with backend-driven open/comment/acknowledge/withdraw actions, paginated comments, immutable snapshot evidence download reuse, withdrawn history, idempotency/retry/stale handling, and casework panel styles; `npm run typecheck` PASS and `npm run build` PASS.
 
 ## Validation
 - `python3 contracts/scripts/validate_contracts.py` — PASS (unchanged from P1)
-- `./mvnw -Dtest=DealStatusTest,ModuleArchitectureTest test` — PASS
+- `./mvnw -Dtest=DealStatusTest,ModuleArchitectureTest test` — PASS (from P5)
+- `npm run typecheck` — PASS
+- `npm run build` — PASS
 - `./mvnw -Dtest=DisputeIntegrationTest test` — NOT_RUN (Docker unavailable in agent environment)
 - `./mvnw -Dtest=DisputeCaseworkMigrationIntegrationTest test` — NOT_RUN (Docker unavailable in agent environment)
 - AI/messaging/payment contract byte-identity — NOT_RUN (pending P8)

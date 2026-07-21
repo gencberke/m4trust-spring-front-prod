@@ -3103,7 +3103,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
-        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the buyer or seller entity, or the caller is not an ADMIN of that entity (DISPUTE_OPEN_FORBIDDEN). MEMBER membership, initiator-only entity, and other participant visibility never grant dispute opening authority. */
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is the buyer or seller but the caller is not an ADMIN of that entity (DISPUTE_OPEN_FORBIDDEN). Initiator-only entities, other Deal participants, and nonparticipants receive non-disclosing 404 CASEWORK_NOT_FOUND_OR_HIDDEN instead of this response. MEMBER membership never grants dispute opening authority. */
         DisputeOpenForbidden: {
             headers: {
                 [name: string]: unknown;
