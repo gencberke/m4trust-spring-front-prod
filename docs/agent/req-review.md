@@ -6,9 +6,10 @@ Reviewed: main@0282c0e103a2fd3c0cacd32b11cb639c098b803c
 
 Findings:
 - None requiring an implementation fix.
-- Accepted material deviation: planner-owned Section 6 browser acceptance was
-  not run. The user explicitly transferred the complete matrix and inherited
-  Slice 13 historical VIDEO/MP4 observation to the next relevant 14B phase.
+- Accepted material deviation at 14A closure: planner-owned Section 6 browser
+  acceptance was not run and was transferred forward. That transferred debt was
+  later retired by gate C0 on 21 July 2026
+  (`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
 Validation:
 - Approved plan, ADR-013, and FORBIDDEN scope review — PASS

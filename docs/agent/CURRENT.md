@@ -77,18 +77,19 @@ RabbitMQ result routing, and the local-only Mock AI Worker verifies the exact
 version-pinned MinIO object. Results never accept/reject evidence, complete the
 Deal, release money, call a provider, or create dispute/casework state. Browser
 acceptance found and corrected canonical-result, cross-tenant tenant/FK, MIME
-wire-serialization, and historical-panel defects. The final historical-panel
-post-fix browser observation was explicitly waived by the user and is recorded
-as regression debt in the Slice 13 acceptance record.
+wire-serialization, and historical-panel defects. The previously waived
+historical VIDEO/MP4 panel observation was later retired by gate C0 on
+2026-07-21 (`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
 Slice 14A Dispute and Casework Foundation is accepted under
 `docs/plan/done/`. Buyer/seller ADMIN dispute opening, party-only read/comment,
 counterparty acknowledgement, opener withdrawal, immutable evidence/video
 snapshotting, actor-aware non-disclosing `DISPUTE` lifecycle, V22 authority,
 and frontend casework are implemented. The reported contract, backend, focused
-regression, frontend, and diff validations passed. At the user's explicit
-direction, the planner-owned real-browser matrix was not run and is transferred
-to the next relevant 14B acceptance phase as recorded debt.
+regression, frontend, and diff validations passed. The planner-owned real
+browser Section 6 matrix that was deferred at 14A closure was completed and
+accepted as gate C0 on 2026-07-21
+(`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
 ## Accepted foundations
 
@@ -216,9 +217,9 @@ to the next relevant 14B acceptance phase as recorded debt.
   frontend typecheck/build passing, V15–V21 unchanged, and `git diff --check`
   passing. The planner did not rerun these commands under the user's closure
   direction.
-- Slice 14A browser acceptance was explicitly not run. Its complete Section 6
-  matrix and the inherited Slice 13 historical VIDEO/MP4 observation are
-  acceptance debt assigned to the next relevant 14B browser phase.
+- Gate C0 (14A §6 + Slice 13 historical VIDEO panel) passed on 2026-07-21
+  against the local stack on Deal `DL-0000000017`. Evidence:
+  `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`.
 
 ## Not yet stable or accepted
 
@@ -228,26 +229,22 @@ to the next relevant 14B acceptance phase as recorded debt.
 ## Active work
 
 No implementation task is currently active. Slice 14A is accepted and merged
-into `main`; V22 is frozen accepted history. Slice 14B remains a gated planning
-draft and cannot authorize implementation until its provider, legal,
-ratification-contract, staging, real-provider, ADR-014, and human-approval
-gates close.
+into `main`; V22 is frozen accepted history. Gate C0 browser debt is retired.
+Slice 14B remains a gated planning draft and cannot authorize implementation
+until its provider, legal, ratification-contract, staging, real-provider,
+ADR-014, and human-approval gates close.
 
 ## Known blockers
 
-No architectural or implementation blocker. Accepted browser debt remains for
-the complete Slice 14A Section 6 matrix and the inherited Slice 13 historical
-VIDEO/MP4 advisory-panel observation. Both must be explicitly exercised and
-retired in the next relevant Slice 14B browser acceptance; neither is recorded
-as having passed.
+No architectural or implementation blocker. No open 14A/Slice 13 browser
+acceptance debt remains.
 
 ## Next likely capability
 
 The next planning capability is gated Slice 14B Settlement and Release. It is
 not implementation-ready: staging, real-provider, legal/operational,
 ratification-contract, and ADR-014 decisions must be closed and explicitly
-human-approved first. The transferred 14A/Slice 13 browser debt must be included
-in its eventual acceptance.
+human-approved first.
 
 ## Update rule
 

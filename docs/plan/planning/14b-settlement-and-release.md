@@ -52,11 +52,10 @@ movement do not yet exist in accepted project state.
   order with payment operations.
 - Accepted Slice 14A and ADR-013 define the future active-dispute gate. The
   implementation is merged into `main`; V22 is frozen accepted history.
-- Slice 14A was accepted with its planner-owned browser matrix unrun at the
-  user's explicit direction. The complete archived 14A Section 6 matrix,
-  including the inherited Slice 13 historical VIDEO/MP4 observation, is
-  mandatory debt for the next relevant 14B browser acceptance and must not be
-  reported as previously passed.
+- Gate C0 retired the transferred Slice 14A Section 6 browser debt and the
+  inherited Slice 13 historical VIDEO/MP4 observation on 21 July 2026. Evidence:
+  `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`. Do not restate that
+  matrix as open debt for 14B acceptance.
 - Slice 7 staging and Slice 11B real-provider integration are deferred and not
   accepted.
 - Moka is only a research candidate. No provider release/capture, settlement
@@ -551,10 +550,11 @@ Owner: planner. This section is blocked until G1–G4 and B-P1–B-P7 are accept
 Use accepted staging plus the approved provider sandbox. Never use production
 credentials or real money.
 
-Before or as part of this section, run and record the complete browser matrix
-from `docs/plan/done/14a-dispute-and-casework-foundation.md` §6. This explicitly
-retires both the transferred Slice 14A browser debt and the inherited Slice 13
-historical VIDEO/MP4 advisory-panel debt.
+Before or as part of this section, confirm gate C0 remains accepted:
+`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` already retires the
+transferred Slice 14A §6 matrix and Slice 13 historical VIDEO/MP4 debt. Do not
+re-open that debt as a 14B prerequisite; produce settlement/release browser
+evidence separately.
 
 1. Create and ratify a new package version containing the accepted dispute
    window term and verify its canonical hash/projection.
@@ -627,5 +627,5 @@ provider tests do not replace this section.
 - [ ] Implementer reports all phases with `Plan completion claim: NO`
 - [ ] Planner independently reviews the complete diff and evidence
 - [ ] Planner-owned staging/provider-sandbox browser acceptance passes
-- [ ] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired
+- [x] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired (gate C0; `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`)
 - [ ] The plan is archived only after every gate, phase, invariant, browser step, validation, and Done item is proven

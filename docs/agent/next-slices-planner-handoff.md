@@ -48,19 +48,15 @@ Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıç
 
 ## Kabul edilmiş browser borcu
 
-Kullanıcı Slice 14A kapanışında testlerin yeniden koşulmamasını ve
-planner-owned gerçek browser matrisinin tamamının 14B'ye aktarılmasını açıkça
-yönlendirdi. Bu, Slice 14A kabulünü bloke etmeyen kayıtlı material deviation'dır;
-browser kabulü geçmiş gibi raporlanmamalıdır.
+Slice 14A kapanışında planner-owned §6 matrisi ve Slice 13 historical VIDEO/MP4
+gözlemi 14B'ye aktarılmıştı. Bu borç **gate C0** ile 21 Temmuz 2026'da kapatıldı.
 
-Bir sonraki ilgili 14B browser kabulünde archived Slice 14A planı §6 eksiksiz
-koşulmalıdır. Bu koşu ayrıca Slice 13'ten devreden şu borcu kapatmalıdır:
+Kanıt: `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` (Deal
+`DL-0000000017`). Historical Slice 13 / 14A acceptance kayıtları yeniden
+yazılmadı; borç yalnızca current/future planner state'ten kaldırıldı.
 
-1. ACCEPTED veya REJECTED historical VIDEO/MP4 satırı retained advisory paneli
-   ve sonucu gösterir.
-2. Historical panel manual review veya başka business-state mutation kontrolü
-   sunmaz.
-3. Current SUBMITTED evidence paneli historical listede duplicate render olmaz.
+14B acceptance artık bu matrisi açık borç olarak taşımaz; kendi settlement/
+release kabul kanıtını üretmelidir.
 
 ## Sonraki içerik hattı
 
