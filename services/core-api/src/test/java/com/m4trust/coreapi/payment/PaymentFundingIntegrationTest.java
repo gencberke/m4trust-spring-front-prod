@@ -267,7 +267,8 @@ class PaymentFundingIntegrationTest {
                     emulator.baseUri(), "DEALER-001", "fixture-user", "fixture-password", Duration.ofSeconds(1),
                     Duration.ofMillis(400), 8_192, 16_384)));
 
-            UUID successUnit = planUnitId(createPlan(createActiveDeal(2_500, "TRY"), 3)
+            UUID successDeal = createActiveDeal(2_500, "TRY");
+            UUID successUnit = planUnitId(createPlan(successDeal, 3)
                     .andExpect(status().isCreated()).andReturn());
             UUID successOperation = operationId(initiate(successUnit, 0).andExpect(status().isAccepted()).andReturn());
             String successKey = providerKeyFor(successOperation);
@@ -276,8 +277,16 @@ class PaymentFundingIntegrationTest {
                     String.class, successOperation));
             assertEquals(1, provider.queryCallCount(successKey));
             assertEquals(1, provider.initiateCallCount(successKey));
+            mockMvc.perform(get("/api/v1/deals/" + successDeal + "/funding-plan")
+                            .with(user(buyerAdmin.userId.toString()))
+                            .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.fundingStatus").value("FUNDED"))
+                    .andExpect(jsonPath("$.fundingUnit.status").value("FUNDED"))
+                    .andExpect(jsonPath("$.fundingUnit.availableActions.canInitiatePayment").value(false));
 
-            UUID timeoutUnit = planUnitId(createPlan(createActiveDeal(2_600, "TRY"), 3)
+            UUID timeoutDeal = createActiveDeal(2_600, "TRY");
+            UUID timeoutUnit = planUnitId(createPlan(timeoutDeal, 3)
                     .andExpect(status().isCreated()).andReturn());
             UUID timeoutOperation = operationId(initiate(timeoutUnit, 0).andExpect(status().isAccepted()).andReturn());
             String timeoutKey = providerKeyFor(timeoutOperation);
@@ -286,6 +295,16 @@ class PaymentFundingIntegrationTest {
                     String.class, timeoutOperation));
             assertEquals(1, provider.queryCallCount(timeoutKey));
             assertEquals(1, provider.initiateCallCount(timeoutKey));
+            mockMvc.perform(get("/api/v1/deals/" + timeoutDeal + "/funding-plan")
+                            .with(user(buyerAdmin.userId.toString()))
+                            .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.fundingStatus").value("PENDING"))
+                    .andExpect(jsonPath("$.fundingUnit.status").value("PENDING"))
+                    .andExpect(jsonPath("$.fundingUnit.availableActions.canInitiatePayment").value(false));
+            initiate(timeoutUnit, 1)
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("PAYMENT_OPERATION_IN_FLIGHT"));
 
             reconcile(timeoutOperation, operationVersion(timeoutOperation)).andExpect(status().isAccepted());
             relay.relayOnce();
@@ -302,6 +321,13 @@ class PaymentFundingIntegrationTest {
             assertEquals(1, provider.initiateCallCount(timeoutKey), "late recovery must not initiate again");
             assertEquals(List.of(timeoutKey, timeoutKey, timeoutKey), provider.queryKeys(timeoutKey));
             assertFalse(provider.sawOpenTransaction(), "external HTTP runs after the durable claim transaction closes");
+            mockMvc.perform(get("/api/v1/deals/" + timeoutDeal)
+                            .with(user(buyerAdmin.userId.toString()))
+                            .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"))
+                    .andExpect(jsonPath("$.funding.fundingStatus").value("FUNDED"))
+                    .andExpect(jsonPath("$.funding.amountMinor").value(2600));
         }
     }
 
