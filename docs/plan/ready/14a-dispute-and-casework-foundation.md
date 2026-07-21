@@ -1,14 +1,14 @@
 # Slice 14A — Dispute and Casework Foundation
 
-- Status: planning
+- Status: ready — human-approved 21 July 2026
 - Draft date: 21 July 2026
-- Repository baseline: `main@476afe676383b959f8db147d0115606091ad5c1e`
+- Repository baseline: `main@dbcad17949b9063b9ef385a858f728d1d0f94536`
 - Predecessor: accepted Slice 13 Video Analysis
-- Proposed decision:
+- Accepted decision:
   `../../../architecture-decisions/ADR-013-Dispute-and-Casework-Foundation.md`
 - Successor: gated Slice 14B Settlement and Release
-- Approval boundary: this plan and ADR-013 require explicit human approval
-  before moving to `ready/` or producing an implementer task packet.
+- Approval record: ADR-013 and this decision-complete plan were human-approved
+  on 21 July 2026. Implementer work still requires a planner-issued task packet.
 - Execution ownership:
   - The implementer executes P1–P8 only after ADR-013 and this plan are
     human-approved.
@@ -71,8 +71,13 @@ evidence and advisory video-analysis history.
   - `EVIDENCE_REJECTION`
   - `CONTRACT_NON_CONFORMANCE`
   - `OTHER`
-- A bounded subject and opening statement.
-- Buyer/seller `ADMIN` and `MEMBER` read and append-only comment access.
+- A trimmed plaintext subject of 1–200 characters and opening statement of
+  1–4000 characters; blank values are invalid. `OTHER` uses the statement and
+  adds no second free-text field.
+- Buyer/seller `ADMIN` and `MEMBER` read active and withdrawn history and have
+  append-only active-case comment access. Comment bodies are trimmed plaintext,
+  1–4000 characters, and public attribution snapshots the author legal entity
+  ID/name and display name without email or internal actor identity.
 - Explicit counterparty-`ADMIN` acknowledgement:
   `OPEN -> UNDER_REVIEW`.
 - Opening-entity-`ADMIN` withdrawal:
@@ -148,6 +153,10 @@ Opening captures in one transaction:
 - successful immutable video-analysis job/result IDs already available at
   opening.
 
+Pinned successful video results are read only as the existing safe advisory
+projection through a fulfillment-owned port keyed by the stored job/result IDs.
+Casework never resolves a live latest result for historical detail.
+
 Do not copy binary content, object key, presigned URL, canonical AI payload,
 provider/model metadata, credential, or raw video. Pending uploads and later
 evidence/results are not attached automatically. Evidence download remains a
@@ -181,12 +190,20 @@ relational rather than being hidden only in JSONB.
 Opening uses:
 
 ```text
-Deal -> fulfillment -> milestone -> finalized evidence in deterministic ID order
+Deal -> fulfillment -> milestone
+     -> finalized evidence in deterministic ID order
+     -> those evidence records' video-analysis jobs in deterministic ID order
 ```
 
 The atomic transaction contains case, snapshot, audit, and HTTP idempotency
 claim/result. It serializes against evidence accept/reject and captures a
 complete pre- or post-review view without blocking later manual review.
+
+Video job rows are locked through a fulfillment-owned port. If terminal result
+application wins first, opening sees the committed result; if opening wins the
+job lock, the later result is excluded permanently from that snapshot. New
+analysis requests already serialize through the Deal/fulfillment/evidence lock
+path. No casework code accesses a fulfillment/video repository directly.
 
 Acknowledge, withdraw, and comment lock the case, require `expectedVersion`,
 and atomically write mutation, audit, idempotency result, and the new case
@@ -213,31 +230,47 @@ POST /api/v1/deals/{dealId}/disputes/{disputeId}/withdraw
 
 - Create request: `reasonCode`, `subject`, `statement`,
   `expectedDealVersion`, and `expectedFulfillmentVersion`.
-- Comment request: bounded `body` and `expectedVersion`.
+- Comment request: trimmed plaintext `body` of 1–4000 characters and
+  `expectedVersion`.
 - Acknowledge/withdraw request: `expectedVersion`.
 - Every mutation requires session, CSRF, legal-entity context, and
   `Idempotency-Key`.
 - Create returns `201 Created` and `Location`; actions return the updated
   projection; list/comments use stable pagination and ordering.
-- Detail exposes safe snapshot metadata and backend-derived `canComment`,
-  `canAcknowledge`, and `canWithdraw`.
+- Summary exposes identity, status, reason, subject, opening legal entity,
+  lifecycle timestamps, version, and required backend-derived `canComment`,
+  `canAcknowledge`, and `canWithdraw`. Detail adds the opening statement and
+  safe immutable snapshot; comments remain separately paged.
 - Deal detail gains an optional actor-aware `casework` summary and a
   backend-derived `canOpenDispute`; absent/unknown values are fail-closed.
 - Public DTOs expose no object key, presigned URL, raw AI payload, provider
   detail, or internal entity/repository shape.
 
-Stable errors cover at least:
+Dispute and comment collections use the standard zero-based public page DTO,
+default `size=20`, and maximum `size=100`. Disputes include active and withdrawn
+history, allow only `openedAt,asc|desc`, and default to `openedAt,desc` with an
+`id` tie-break. Comments allow only `createdAt,asc|desc` and default to
+`createdAt,asc` with an `id` tie-break. V1 adds no status filter or free-text
+search.
+
+The exact stable casework business errors are:
 
 - malformed path/header/body (400);
 - session and active-entity failures (401/403/404 as established);
-- hidden Deal/case/evidence references (404);
-- open/comment/acknowledge/withdraw forbidden (403);
-- stale Deal, fulfillment, or case version (409);
-- ineligible Deal/fulfillment status (409);
-- active dispute already exists (409);
-- terminal or invalid transition (409);
-- idempotency-key reuse (409); and
-- bounded field/semantic validation (422).
+- hidden collection/target: `CASEWORK_NOT_FOUND_OR_HIDDEN` or
+  `DISPUTE_NOT_FOUND_OR_HIDDEN` (404);
+- wrong actor: `DISPUTE_OPEN_FORBIDDEN`, `DISPUTE_COMMENT_FORBIDDEN`,
+  `DISPUTE_ACKNOWLEDGE_FORBIDDEN`, or `DISPUTE_WITHDRAW_FORBIDDEN` (403);
+- stale targets: `DEAL_STALE_VERSION`, `FULFILLMENT_STALE_VERSION`, or
+  `DISPUTE_STALE_VERSION` (409);
+- state/cardinality: `DEAL_STATE_CONFLICT`, `FULFILLMENT_STATE_CONFLICT`,
+  `DISPUTE_ACTIVE_CASE_EXISTS`, or `DISPUTE_STATE_CONFLICT` (409);
+- different-request key reuse: `IDEMPOTENCY_KEY_REUSED` (409); and
+- semantic fields: `VALIDATION_FAILED` with `REQUIRED`, `OUT_OF_RANGE`, or
+  `INVALID_ENUM` field errors (422).
+
+An authorized actor facing terminal/invalid state receives 409; a valid-state
+wrong actor receives 403; a hidden or mismatched target receives 404.
 
 ### Deal lifecycle and side-effect boundary
 
@@ -258,16 +291,16 @@ A required resolution/operator/payment/provider/messaging capability, a
 FORBIDDEN boundary, or an ADR conflict is a `BLOCKED` report, not permission to
 improvise.
 
-### P1 — Accepted decision and reviewed public contract
+### P1 — Implement the accepted public contract
 
 Objective:
 Lock complete Slice 14A behavior before runtime code.
 
 Exact scope and likely boundaries:
 
-- Finalize ADR-013, the additive casework paths/schemas, optional Deal casework
-  projection, action availability, pagination, headers, status codes, and
-  stable error codes.
+- Implement ADR-013's accepted additive casework paths/schemas, optional Deal
+  casework projection, action availability, pagination, headers, status codes,
+  stable errors, exact text bounds, history ordering, and attribution contract.
 - Update `contracts/openapi/core-api-v1.yaml`, exact validator expectations,
   `contracts/README.md`, `contracts/CHANGELOG.md`, and generated frontend types
   as one review unit.
@@ -301,7 +334,7 @@ Stop/escalation conditions:
   semantics.
 
 Planner review checkpoint:
-ADR-013 and the complete public contract must be reviewed before P2.
+The committed public contract must be reviewed against accepted ADR-013 before P2.
 
 ### P2 — V22 persistence and module boundary
 
@@ -357,8 +390,10 @@ Exact scope and likely boundaries:
   source ports/adapters, DTOs, Problem Details mapping, and paginated reads.
 - Perform preflight visibility/eligibility reads, then lock/revalidate using the
   Section 4 order.
-- Build the full server-owned snapshot; ignore no current finalized history and
-  accept no client-supplied evidence/storage/AI identity.
+- Build the full server-owned snapshot; ignore no current finalized history,
+  lock related video jobs through the fulfillment-owned port, pin only the
+  lock-point successful results, and accept no client-supplied
+  evidence/storage/AI identity.
 - Write case, snapshot, audit, and idempotency result atomically.
 - Return actor-aware action projections and hidden-resource behavior.
 
@@ -376,7 +411,8 @@ Frontend states:
 
 Tests and validation:
 
-- Cover every eligible and ineligible fulfillment status; buyer/seller ADMIN,
+- Cover every eligible and ineligible fulfillment status; exact text bounds,
+  buyer/seller ADMIN,
   MEMBER, initiator-only, other participant, nonparticipant, cross-Deal IDs,
   stale versions, same-key replay, different-request reuse, transaction
   rollback, and concurrent distinct-key opens.
@@ -404,8 +440,10 @@ Exact scope and likely boundaries:
 
 - Add append-only paginated comments, explicit acknowledge, and withdraw
   actions with their DTOs, repositories, actions, and errors.
-- Comment body is bounded; comments are immutable and ordered by stable server
-  fields.
+- Comment body uses the accepted exact bound; comments are immutable and
+  ordered by stable server fields. Public attribution is the immutable
+  legal-entity/display-name snapshot and exposes no email or internal actor
+  identity.
 - Acknowledge changes only `OPEN -> UNDER_REVIEW`.
 - Withdraw changes only `OPEN | UNDER_REVIEW -> WITHDRAWN` and retains history.
 
@@ -425,7 +463,8 @@ Frontend states:
 Tests and validation:
 
 - Cover same/opposite entity, MEMBER limits, hidden actors, terminal comments,
-  replay/reuse, stale versions, comment-vs-withdraw,
+  exact bounds, page ordering/tie-breaks, replay/reuse, stale versions,
+  comment-vs-withdraw,
   acknowledge-vs-withdraw, two-comment concurrency, immutable comments, and
   rollback atomicity.
 - Run focused transition/concurrency tests.
@@ -543,8 +582,8 @@ Prove the agreed invariants against accepted Slice 12/13 behavior.
 Exact scope and likely boundaries:
 
 - Test open racing evidence accept/reject in both lock orders.
-- Verify late video results do not attach to an existing snapshot or mutate a
-  case.
+- Test both video-terminal/open job-lock winners and verify late video results
+  do not attach to an existing snapshot or mutate a case.
 - Verify comments/actions change no Deal, fulfillment, evidence, funding,
   payment, settlement, provider, outbox, or AI row/state.
 - Regress cross-tenant Deal visibility, evidence history/download,
@@ -678,16 +717,16 @@ replace this section.
 - If only assigned phases are accepted, this plan remains in `ready/`.
 - No implementation acceptance alone completes the plan. Section 6, all
   invariants, full validation, and every Done item require proof.
-- The plan remains under `planning/` until ADR-013 and the whole plan receive
-  explicit human approval. It must not be moved to `ready/` automatically.
+- ADR-013 and this plan were human-approved on 21 July 2026; the accepted plan
+  remains in `ready/` until every completion condition is proven.
 - Only after complete acceptance may the planner move it to `done/`, record
   material deviations, and update `docs/agent/CURRENT.md` if accepted project
   state materially changed.
 
 ## 8. Done Definition
 
-- [ ] ADR-013 is human-accepted and ADR index/README/FORBIDDEN are synchronized
-- [ ] This complete plan is human-approved and moved to `ready/`
+- [x] ADR-013 is human-accepted and ADR index/README/FORBIDDEN are synchronized
+- [x] This complete plan is human-approved and moved to `ready/`
 - [ ] P1 public OpenAPI, validator, docs, and generated types are complete
 - [ ] V22 applies forward-only and V15–V21 remain unchanged
 - [ ] Casework owns disputes, snapshots, comments, authorization, and public behavior

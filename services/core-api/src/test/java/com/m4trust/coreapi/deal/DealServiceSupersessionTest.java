@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
+import com.m4trust.coreapi.casework.CaseworkDealProjectionPort;
 import com.m4trust.coreapi.fulfillment.FulfillmentProjectionPort;
 import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.LegalEntityRole;
@@ -51,11 +52,12 @@ class DealServiceSupersessionTest {
             mock(RatificationSupersessionPort.class);
     private final FundingProjectionPort fundingProjections = mock(FundingProjectionPort.class);
     private final FulfillmentProjectionPort fulfillmentProjections = mock(FulfillmentProjectionPort.class);
+    private final CaseworkDealProjectionPort caseworkProjections = mock(CaseworkDealProjectionPort.class);
     private final AuditAppendPort audit = mock(AuditAppendPort.class);
     private final DealService service = new DealService(
             repository, policy, legalEntities, documents, analysis, ruleSets,
             ratificationProjections, supersessions, fundingProjections, fulfillmentProjections,
-            audit, Clock.fixed(NOW, ZoneOffset.UTC));
+            caseworkProjections, audit, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void titleChangeLocksDealThenSupersedesBeforePersistingTheDeal() {
@@ -111,7 +113,7 @@ class DealServiceSupersessionTest {
         stubFundingProjection();
         when(policy.availableActions(any(), eq(context))).thenReturn(new DealAvailableActions(
                 true, true, true, true, true, false, false, false, false, false, false, false, false,
-                false, false, false, false));
+                false, false, false, false, false));
         when(policy.isInitiator(any(), eq(context))).thenReturn(true);
         when(repository.updateParties(any(), any(), any(), any(Long.class),
                 any(), any(), any())).thenReturn(true);
@@ -155,7 +157,7 @@ class DealServiceSupersessionTest {
         stubFundingProjection();
         when(policy.availableActions(any(), eq(context))).thenReturn(new DealAvailableActions(
                 true, true, true, true, true, false, false, false, false, false, false, false, false,
-                false, false, false, false));
+                false, false, false, false, false));
         when(policy.isInitiator(any(), eq(context))).thenReturn(true);
     }
 
@@ -167,6 +169,7 @@ class DealServiceSupersessionTest {
 
     {
         when(fulfillmentProjections.summarize(any())).thenReturn(null);
+        when(caseworkProjections.forActor(any())).thenReturn(CaseworkDealProjectionPort.ActorSummary.hidden());
     }
 
     /** The current-package pointer is always set in these fixtures, so the

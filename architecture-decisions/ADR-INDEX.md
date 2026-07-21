@@ -60,6 +60,8 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Fulfillment V1 | `ACTIVE + FUNDED`, tek fulfillment/primary milestone; seller ADMIN/MEMBER submit, buyer ADMIN review | ADR-011 §2.1–§2.3 |
 | Fulfillment completion | Manual buyer ADMIN kararı; Deal ACTIVE kalır, release/settlement/provider side effect yok | ADR-011 §2.5 |
 | Video Analysis V1 | Current finalized VIDEO/MP4 için buyer ADMIN explicit request/retry; participant read; sonuç advisory-only | ADR-012 §2.1–§2.5 |
+| Dispute/Casework V1 | ACTIVE + started fulfillment; buyer/seller ADMIN open, party users read/comment, counterparty ADMIN acknowledge, opener ADMIN withdraw | ADR-013 §2.1–§2.3 |
+| Dispute disclosure | Yalnız buyer/seller; diğer participant casework ve actor-aware DISPUTE lifecycle'ını göremez | ADR-013 §2.3, §2.8 |
 | Transaction | Mutation + audit + outbox aynı PostgreSQL transaction | ADR-003 §24 |
 | External çağrı | DB transaction açıkken yapılmaz | ADR-003 §24 |
 | Concurrency | Mutable aggregate `version`; sessiz last-write-wins yasak | ADR-003 §25 |
@@ -113,7 +115,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | ratification | ADR-003 §11, §20; ADR-009 §2.3–2.6; ADR-010 §2.1 | Onaylı Slice 10 scope'u bağlayıcı; sapma ESKALASYON |
 | authorization / yetki | ADR-003 §28; ADR-005 §21; ADR-009 | Operation bazlı, application katmanında |
 | Deal state / lifecycle | ADR-003 §8–9, §16; ADR-009 | Projection authoritative state değildir |
-| dispute / casework | ADR-003 §15; ADR-009 §2.5 | ACTIVE cancellation için yetkili resolution yolu |
+| dispute / casework | ADR-003 §15; ADR-009 §2.5; ADR-013 | Slice 14A foundation open/comment/acknowledge/withdraw; resolution ve cancellation hâlâ sonraki karar |
 | audit | ADR-003 §4.10, §24 | Security event logundan ayrı |
 | version / stale | ADR-003 §25; ADR-006 §21–23 | Optimistic concurrency |
 | idempotency (HTTP) | ADR-006 §24–25 | Claim server-side, double-click korumasından fazlası |
@@ -178,6 +180,9 @@ ilerler; kapsam sapması yine eskalasyondur.
 `ADR-012` kabul edilmiştir. Video Analysis V1 actor, trigger, job/history,
 messaging reuse ve advisory-only manual-review sınırı için bağlayıcıdır.
 
+`ADR-013` kabul edilmiştir. Dispute/Casework V1 actor, party-only disclosure,
+opening snapshot, concurrency ve no-side-effect sınırı için bağlayıcıdır.
+
 ---
 
 ## Sözlük
@@ -212,6 +217,7 @@ messaging reuse ve advisory-only manual-review sınırı için bağlayıcıdır.
 | ADR-010 | Ratification commercial terms ve provider-bağımsız funding/payment foundation |
 | ADR-011 | Fulfillment V1 actor, evidence, state ve completion sınırı |
 | ADR-012 | Video Analysis V1 subject, actor, job/result ve advisory sınırı |
+| ADR-013 | Dispute/Casework V1 actor, lifecycle, snapshot, disclosure ve no-side-effect sınırı |
 
 ## Reading rules
 

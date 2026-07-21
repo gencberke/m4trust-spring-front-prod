@@ -25,9 +25,18 @@ final class DealLifecycleProjectionCalculator {
 
     static DealLifecycleProjection calculate(DealStatus dealStatus,
             String analysisStatus, boolean currentDocumentExists, String fundingStatus) {
+        return calculate(dealStatus, analysisStatus, currentDocumentExists, fundingStatus, false);
+    }
+
+    static DealLifecycleProjection calculate(DealStatus dealStatus,
+            String analysisStatus, boolean currentDocumentExists, String fundingStatus,
+            boolean activeDisputeForParty) {
         Objects.requireNonNull(dealStatus, "dealStatus must not be null");
         Objects.requireNonNull(analysisStatus, "analysisStatus must not be null");
         Objects.requireNonNull(fundingStatus, "fundingStatus must not be null");
+        if (dealStatus == DealStatus.ACTIVE && activeDisputeForParty) {
+            return DealLifecycleProjection.DISPUTE;
+        }
         return switch (dealStatus) {
             case ARCHIVED -> DealLifecycleProjection.ARCHIVED;
             case CANCELLED -> DealLifecycleProjection.CANCELLED;

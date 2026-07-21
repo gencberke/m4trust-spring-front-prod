@@ -25,6 +25,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Manual acceptance olmadan AI sonucundan RuleSetVersion veya Deal current rule-set pointer üretmek | ADR-003 §17–§19; ADR-010 §1 |
 | Yeni current document'a geçerken eski RuleSetVersion'ı current/ratification-ready bırakmak | ADR-003 §18–§20 |
 | Video/AI sonucunun otomatik fulfillment completion, evidence kabul/red, dispute veya payment release üretmesi | ADR-002 §10.1; ADR-003 §22; ADR-012 §2.4 |
+| AI/video sonucunun dispute/casework açması, acknowledge/comment/withdraw/resolve etmesi veya priority/state değiştirmesi | ADR-012 §2.4; ADR-013 §2.9 |
 | Ratify edilmemiş AI `deliveryRequirements` çıktısını contractual checklist, milestone veya completion kuralı saymak | ADR-011 §1, §2.1 |
 | Broker mesajında provider-specific payload, raw doküman/video, secret, credential, session token taşımak | ADR-001 §20; ADR-002 §29 |
 | Contract'ı tek taraflı değiştirmek (FastAPI model gerekçesiyle, Spring yeni required alan dayatarak) | ADR-001 §9; ADR-002 §28 |
@@ -67,6 +68,8 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Participant satırını entity'nin kendi tenant bağı olmadan yazmak; cross-tenant katılımı kullanıcıyı deal tenant'ına üye yaparak sağlamak | ADR-008 §2.3, §4 |
 | Initiator legal entity'yi hosting tenant, creator user veya participant sırasından çıkarmak | ADR-009 §2.2, §4 |
 | Participant görünürlüğünü update/cancel/invite/party/activation yetkisi saymak | ADR-009 §2.2, §4 |
+| Initiator-only entity, diğer participant veya nonparticipant'a dispute varlığı, casework summary/comment/snapshot ya da actor-aware `DISPUTE` lifecycle açıklamak | ADR-013 §2.3, §2.8 |
+| Slice 14A casework mutation'ından Deal, fulfillment, milestone, evidence, funding, payment, settlement, provider veya AI state'i değiştirmek ya da kabul edilmiş fulfillment action'larını kapatmak | ADR-013 §2.8 |
 | Davet kabulünü buyer/seller rolü veya contractual consent saymak | ADR-009 §2.1, §4 |
 | Buyer ve seller aynı immutable ratification package sürümünü onaylamadan Deal'i ACTIVE yapmak | ADR-009 §2.3, §4 |
 | Aynı legal entity'deki birden fazla ADMIN onayını birden fazla taraf onayı saymak | ADR-009 §2.3, §4 |

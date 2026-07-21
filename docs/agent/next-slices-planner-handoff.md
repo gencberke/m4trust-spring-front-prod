@@ -17,6 +17,9 @@ Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıç
 - Slice 13 planı `docs/plan/done/13-video-analysis.md` altındadır.
 - Kabul kanıtı `docs/agent/slice-13-acceptance-2026-07-21.md` içindedir.
 - ADR-012 Accepted durumundadır ve Video Analysis V1 için otoritatiftir.
+- ADR-013 Accepted durumundadır; human-approved Slice 14A planı
+  `docs/plan/ready/14a-dispute-and-casework-foundation.md` altındadır ve henüz
+  implementasyon task'ı verilmemiştir.
 - V15–V21 kabul edilmiş, donmuş migration history'dir. Yeni DB ihtiyacı yeni
   forward-only migration kullanmalıdır.
 - Slice 13, Slice 12'nin immutable finalized VIDEO/MP4 evidence kaydından
@@ -57,11 +60,11 @@ kanıtlanmalıdır:
 
 ## Sonraki içerik hattı
 
-Mevcut sequencing kararına göre sıradaki olası içerik Slice 14A'dır. Yeni
-dispute/casework/settlement kapsamı başlamadan önce ADR yeterliliği çıkarılmalı,
-gerekli kararlar insan onayına sunulmalı ve sekiz bölümlü plan
-`docs/plan/planning/` altında hazırlanmalıdır. İnsan onayı olmadan `ready/`
-altına taşınmamalı veya implementer task paketi verilmemelidir.
+Mevcut sequencing kararına göre sıradaki içerik Slice 14A'dır. ADR-013 ve
+sekiz bölümlü plan 21 Temmuz 2026'da insan-onaylıdır; plan
+`docs/plan/ready/14a-dispute-and-casework-foundation.md` altındadır.
+Implementasyon henüz başlamamıştır ve yalnız planner-issued task packet ile
+başlayabilir. İlk persistence migration'ı V22'dir; V15–V21 donmuş kalır.
 
 Payment release/settlement/refund, gerçek provider entegrasyonu ve Railway
 deployment/staging kullanıcı yeniden açmadıkça kapsam dışıdır. Kullanıcı tüm

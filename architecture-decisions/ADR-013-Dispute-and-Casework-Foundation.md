@@ -1,6 +1,6 @@
 # ADR-013: Dispute and Casework Foundation
 
-- Status: Proposed
+- Status: Accepted
 - Date: 21 July 2026
 - Decision owners: M4Trust architecture team
 - Scope: Dispute-case ownership, actor model, lifecycle, evidence snapshot,
@@ -80,15 +80,25 @@ before Slice 14A can become implementation-ready.
   - `EVIDENCE_REJECTION`
   - `CONTRACT_NON_CONFORMANCE`
   - `OTHER`
-- Opening carries a bounded subject and statement. It does not accept a client
-  supplied storage, evidence, AI-result, provider, or settlement identity.
+- Opening carries a required subject of 1–200 characters and a required
+  statement of 1–4000 characters after trimming. Blank values are rejected.
+  Both are plaintext; rich text, Markdown, and HTML are outside V1. The request
+  does not accept a client-supplied storage, evidence, AI-result, provider, or
+  settlement identity. `OTHER` uses the statement and adds no second free-text
+  field.
 
 ### 2.3 Visibility, comments, and mutation authority
 
 - Buyer and seller legal entity `ADMIN` and `MEMBER` users may read dispute
-  summaries, detail, immutable snapshots, and comments.
+  summaries, detail, immutable snapshots, and comments, including retained
+  `WITHDRAWN` history.
 - Buyer and seller `ADMIN` and `MEMBER` users may append comments while a case
   is `OPEN` or `UNDER_REVIEW`.
+- A comment body is required, plaintext, trimmed, and 1–4000 characters.
+  Whitespace-only or out-of-range input is semantic validation failure.
+- Public comment attribution snapshots the author legal entity ID/name and
+  user display name at creation. Email and internal actor tenant/user identity
+  are not exposed; the full actor identity remains in persistence and audit.
 - Only a counterparty legal entity `ADMIN` may acknowledge an `OPEN` case.
 - Any `ADMIN` of the legal entity that opened the case may withdraw it while
   `OPEN` or `UNDER_REVIEW`.
@@ -125,6 +135,12 @@ snapshot.
 Evidence download continues through the fulfillment-owned, re-authorized,
 short-lived download boundary. Casework does not own object storage.
 
+For a pinned successful video result, casework reads only the existing safe
+advisory projection through a fulfillment-owned port keyed by the stored
+job/result IDs. It never resolves a live “latest result” for a historical case,
+and it neither stores nor exposes canonical AI JSON, provider/model/prompt
+metadata, or internal storage identity.
+
 ### 2.5 Persistence and tenant integrity
 
 New persistence is forward-only after accepted V21. V15–V21 are frozen.
@@ -159,11 +175,18 @@ being hidden only in JSONB.
 Opening follows the established lock order:
 
 ```text
-Deal -> fulfillment -> milestone -> finalized evidence in deterministic ID order
+Deal -> fulfillment -> milestone
+     -> finalized evidence in deterministic ID order
+     -> those evidence records' video-analysis jobs in deterministic ID order
 ```
 
 This serializes opening against evidence accept/reject and produces a complete
-pre-review or post-review snapshot. It does not block later manual review.
+pre-review or post-review snapshot. Video jobs are locked through a narrow
+fulfillment-owned port, never through foreign repository access. A job whose
+terminal writer wins first is observed in its committed state; a terminal
+writer that loses the job lock completes only after opening and is excluded.
+New analysis requests already serialize through the Deal/fulfillment/evidence
+lock path. Opening does not block later manual review or later AI completion.
 
 One opening transaction contains:
 
@@ -184,7 +207,46 @@ invariant remains authoritative under concurrent distinct keys.
 Casework performs no external call and publishes no RabbitMQ message or outbox
 event in Slice 14A.
 
-### 2.7 Deal lifecycle and no-side-effect boundary
+### 2.7 Public contract and history semantics
+
+- Subject, statement, and comment bounds are the exact V1 validation contract
+  from §§2.2–2.3. Invalid enums, blank values, and bounds violations return
+  `422 VALIDATION_FAILED` with field errors.
+- Dispute and comment collections use ADR-006 page-based pagination: zero-based
+  `page`, default `size=20`, maximum `size=100`, and the stable public page DTO.
+- Dispute history includes active and withdrawn cases. Its only V1 sort
+  allowlist is `openedAt,asc|desc`, defaulting to `openedAt,desc`, with `id` as
+  the deterministic same-direction tie-break.
+- Comment history defaults to `createdAt,asc`; its only V1 allowlist is
+  `createdAt,asc|desc`, with `id` as the deterministic same-direction tie-break.
+  V1 exposes no dispute status filter or free-text search.
+- Summary exposes identity, status, reason, subject, opening legal entity,
+  lifecycle timestamps, version, and required backend-derived
+  `canComment`/`canAcknowledge`/`canWithdraw` actions. Detail adds the opening
+  statement and immutable opening snapshot; comments remain separately paged.
+- Deal detail may expose a minimal active-case summary only to buyer/seller
+  actors. Withdrawn history is read from the dispute collection. Additive
+  `canOpenDispute` is backend-derived; absent or unknown remains false.
+- Safe evidence snapshot output omits object keys, presigned URLs, canonical AI
+  payloads, provider/model/prompt data, credentials, and internal actor identity.
+
+The closed casework business error set is:
+
+- 404: `CASEWORK_NOT_FOUND_OR_HIDDEN`, `DISPUTE_NOT_FOUND_OR_HIDDEN`;
+- 403: `DISPUTE_OPEN_FORBIDDEN`, `DISPUTE_COMMENT_FORBIDDEN`,
+  `DISPUTE_ACKNOWLEDGE_FORBIDDEN`, `DISPUTE_WITHDRAW_FORBIDDEN`;
+- 409: `DEAL_STALE_VERSION`, `FULFILLMENT_STALE_VERSION`,
+  `DISPUTE_STALE_VERSION`, `DEAL_STATE_CONFLICT`,
+  `FULFILLMENT_STATE_CONFLICT`, `DISPUTE_ACTIVE_CASE_EXISTS`,
+  `DISPUTE_STATE_CONFLICT`, and `IDEMPOTENCY_KEY_REUSED`; and
+- 422: `VALIDATION_FAILED` with established field error codes including
+  `REQUIRED`, `OUT_OF_RANGE`, and `INVALID_ENUM`.
+
+An authorized actor facing a terminal/invalid transition receives 409; a valid
+state with the wrong actor receives 403; a hidden or mismatched target receives
+non-disclosing 404. Idempotent replay semantics remain those of ADR-006 §25.
+
+### 2.8 Deal lifecycle and no-side-effect boundary
 
 - An active case means status `OPEN` or `UNDER_REVIEW`.
 - Buyer/seller Deal projections show lifecycle `DISPUTE` while an active case
@@ -201,7 +263,7 @@ event in Slice 14A.
 - An active dispute may be a future fail-closed settlement/release input, but
   Slice 14A contains no settlement hold or money mutation.
 
-### 2.8 AI and deployment boundary
+### 2.9 AI and deployment boundary
 
 - AI/video output remains advisory.
 - No AI event, anomaly, confidence value, warning, failure, or late result may
@@ -229,9 +291,9 @@ event in Slice 14A.
 - A new module, migration, public API surface, and frontend panel are required,
   together with focused cross-tenant and concurrency testing.
 
-## 4. Acceptance gates
+## 4. Acceptance
 
-This ADR may move to `Accepted` only when human review approves:
+Human review accepted this decision on 21 July 2026 after confirming:
 
 1. one `DisputeCase` aggregate and the foundation-only reachable lifecycle;
 2. post-fulfillment ACTIVE eligibility and one-active-per-Deal cardinality;
@@ -243,6 +305,7 @@ This ADR may move to `Accepted` only when human review approves:
 8. no fulfillment, payment, settlement, provider, cancellation, messaging, or
    AI side effect.
 
-Until those gates and the accompanying Slice 14A plan receive explicit human
-approval, no implementation task may be issued and neither document may move
-to an accepted/ready state.
+The accompanying Slice 14A plan is the implementation authority for phase scope
+and acceptance. Later resolution, assignment, cancellation, settlement,
+release, refund, or operator authority still requires a separate accepted
+decision and plan.

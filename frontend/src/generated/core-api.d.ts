@@ -750,6 +750,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List dispute history for a Deal
+         * @description Buyer and seller legal entity ADMIN and MEMBER read access to active and withdrawn dispute history. Initiator-only entities, other Deal participants, and nonparticipants receive non-disclosing 404. History includes withdrawn cases; V1 exposes no status filter or free-text search. Default sort is newest opening time first with id as the deterministic tie-break.
+         */
+        get: operations["listDisputes"];
+        put?: never;
+        /**
+         * Open a dispute case for an ACTIVE Deal after fulfillment has started
+         * @description Buyer or seller legal entity ADMIN-only action. Idempotency-Key is required: replaying this same canonical request with the same key returns the original created case, while key reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. The request carries reasonCode, trimmed plaintext subject and statement, expectedDealVersion, and expectedFulfillmentVersion; it never accepts client-supplied evidence, storage, AI-result, or settlement identity. The backend re-authorizes buyer/seller ADMIN authority, Deal ACTIVE state, eligible fulfillment status, absence of another OPEN or UNDER_REVIEW case, and builds the immutable opening snapshot atomically with audit and idempotency recording. Opening never blocks or mutates fulfillment, evidence, funding, payment, settlement, provider, or AI state.
+         */
+        post: operations["openDispute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/disputes/{disputeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get dispute detail with immutable opening snapshot
+         * @description Buyer and seller legal entity ADMIN and MEMBER read access, including retained WITHDRAWN history. Comments remain separately paged. Hidden actors receive non-disclosing 404 even when a case exists.
+         */
+        get: operations["getDispute"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/disputes/{disputeId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List append-only dispute comments
+         * @description Buyer and seller legal entity ADMIN and MEMBER read access while the case exists. Default sort is oldest comment first with id as the deterministic tie-break. Hidden actors receive non-disclosing 404.
+         */
+        get: operations["listDisputeComments"];
+        put?: never;
+        /**
+         * Append an immutable comment to an active dispute
+         * @description Buyer and seller legal entity ADMIN and MEMBER append-only action while the case is OPEN or UNDER_REVIEW. Idempotency-Key is required: replaying this same canonical request with the same key returns the original comment, while key reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. Comments on WITHDRAWN or terminal cases are rejected. Public attribution snapshots legal entity id/name and display name only; email and internal actor identity are never exposed.
+         */
+        post: operations["createDisputeComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/disputes/{disputeId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explicitly acknowledge an OPEN dispute
+         * @description Counterparty legal entity ADMIN-only action changing OPEN to UNDER_REVIEW. Idempotency-Key is required and expectedVersion is checked under case lock. Comments are unaffected. Replay returns the original or equivalent result; different-request key reuse returns 409 IDEMPOTENCY_KEY_REUSED.
+         */
+        post: operations["acknowledgeDispute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/disputes/{disputeId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw an OPEN or UNDER_REVIEW dispute
+         * @description Any ADMIN of the legal entity that opened the case may withdraw while OPEN or UNDER_REVIEW. Idempotency-Key is required and expectedVersion is checked under case lock. Withdrawal retains case, snapshot, comments, and audit history. Replay returns the original or equivalent result; different-request key reuse returns 409 IDEMPOTENCY_KEY_REUSED.
+         */
+        post: operations["withdrawDispute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/{dealId}/invitations": {
         parameters: {
             query?: never;
@@ -1766,6 +1874,8 @@ export interface components {
             canAcceptEvidence?: boolean;
             /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the fulfillment has current SUBMITTED evidence awaiting review. Absent or unknown means false/read-only. */
             canRejectEvidence?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer or seller entity ADMIN when the Deal is ACTIVE, fulfillment exists in an eligible opening status, and no OPEN or UNDER_REVIEW case exists. Absent or unknown means false/read-only. */
+            canOpenDispute?: boolean;
         };
         /**
          * Format: date-time
@@ -1838,6 +1948,8 @@ export interface components {
             funding?: components["schemas"]["DealFundingSummary"] | null;
             /** @description Optional backend-owned fulfillment summary. Null-tolerant: null means fulfillment has not started for this Deal; absence is tolerated for additive compatibility with clients predating Slice 12. */
             fulfillment?: components["schemas"]["DealFulfillmentSummary"] | null;
+            /** @description Optional backend-owned active dispute summary for buyer/seller actors only. Null-tolerant: null means no active OPEN or UNDER_REVIEW case is currently projected for this actor; absence is tolerated for additive compatibility. Other participants never receive this field. */
+            casework?: components["schemas"]["DealCaseworkSummary"] | null;
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -2242,6 +2354,193 @@ export interface components {
             version: number;
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        /**
+         * @description Closed V1 dispute opening reason set.
+         * @enum {string}
+         */
+        DisputeReasonCode: "NON_DELIVERY" | "EVIDENCE_QUALITY" | "EVIDENCE_REJECTION" | "CONTRACT_NON_CONFORMANCE" | "OTHER";
+        /**
+         * @description Closed dispute status set from ADR-003. RESOLVED remains part of the public enum but is unreachable in Slice 14A.
+         * @enum {string}
+         */
+        DisputeStatus: "OPEN" | "UNDER_REVIEW" | "RESOLVED" | "WITHDRAWN";
+        /** @description Immutable opening-party legal entity snapshot for public attribution. */
+        DisputeOpeningLegalEntity: {
+            /** Format: uuid */
+            legalEntityId: string;
+            legalName: string;
+        };
+        DisputeAvailableActions: {
+            /** @description Backend-derived append-only comment availability while the case is active. Absent or unknown values must be treated as false. */
+            canComment: boolean;
+            /** @description Backend-derived counterparty ADMIN acknowledgement availability for OPEN cases. Absent or unknown values must be treated as false. */
+            canAcknowledge: boolean;
+            /** @description Backend-derived opening-entity ADMIN withdrawal availability while OPEN or UNDER_REVIEW. Absent or unknown values must be treated as false. */
+            canWithdraw: boolean;
+        };
+        DisputeSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            status: components["schemas"]["DisputeStatus"];
+            reasonCode: components["schemas"]["DisputeReasonCode"];
+            /** @description Trimmed plaintext opening subject. */
+            subject: string;
+            openingLegalEntity: components["schemas"]["DisputeOpeningLegalEntity"];
+            openedAt: components["schemas"]["UtcTimestamp"];
+            acknowledgedAt: components["schemas"]["UtcTimestamp"] | null;
+            withdrawnAt: components["schemas"]["UtcTimestamp"] | null;
+            /** Format: int64 */
+            version: number;
+            availableActions: components["schemas"]["DisputeAvailableActions"];
+        };
+        /** @description Immutable finalized evidence metadata captured at dispute opening. It omits object keys, presigned URLs, canonical AI payloads, provider metadata, credentials, and raw video content. */
+        DisputeEvidenceSnapshotEntry: {
+            /** Format: uuid */
+            evidenceSubmissionId: string;
+            /** @enum {string} */
+            statusAtOpen: "SUBMITTED" | "ACCEPTED" | "REJECTED";
+            /** Format: int64 */
+            versionAtOpen: number;
+            evidenceType: components["schemas"]["EvidenceType"];
+            mediaType: components["schemas"]["EvidenceMediaType"];
+            fileName: string;
+            /** @description Opaque immutable object-storage version reference; never an object key. */
+            objectVersion: string;
+            /** Format: int64 */
+            verifiedSizeBytes: number;
+            verifiedSha256: components["schemas"]["Sha256"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+            submittedAt: components["schemas"]["UtcTimestamp"] | null;
+            acceptedAt: components["schemas"]["UtcTimestamp"] | null;
+            rejectedAt: components["schemas"]["UtcTimestamp"] | null;
+            rejectionReason: string | null;
+        };
+        /** @description Immutable pinned successful video-analysis reference captured at dispute opening. The result is the existing safe advisory projection only; it never resolves a live latest result or exposes storage identity, canonical AI JSON, or provider/model metadata. */
+        DisputeVideoAnalysisSnapshotEntry: {
+            /** Format: uuid */
+            evidenceSubmissionId: string;
+            /** Format: uuid */
+            jobId: string;
+            /** Format: uuid */
+            resultId: string;
+            result: components["schemas"]["VideoAnalysisResult"];
+        };
+        /** @description Server-built immutable opening snapshot. Later evidence, status changes, comments, AI completion, or replacement evidence never change it. */
+        DisputeOpeningSnapshot: {
+            /** Format: uuid */
+            ratificationPackageId: string;
+            /** Format: uuid */
+            fulfillmentId: string;
+            fulfillmentStatusAtOpen: components["schemas"]["FulfillmentStatus"];
+            /** Format: int64 */
+            fulfillmentVersionAtOpen: number;
+            /** Format: uuid */
+            milestoneId: string;
+            /** Format: int64 */
+            milestoneVersionAtOpen: number;
+            /** @description Every finalized evidence record present at opening; never null. */
+            evidence: components["schemas"]["DisputeEvidenceSnapshotEntry"][];
+            /** @description Successful immutable video-analysis results pinned at opening; never null. */
+            videoAnalysis: components["schemas"]["DisputeVideoAnalysisSnapshotEntry"][];
+        };
+        DisputeDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            status: components["schemas"]["DisputeStatus"];
+            reasonCode: components["schemas"]["DisputeReasonCode"];
+            subject: string;
+            /** @description Trimmed plaintext opening statement. */
+            statement: string;
+            openingLegalEntity: components["schemas"]["DisputeOpeningLegalEntity"];
+            openedAt: components["schemas"]["UtcTimestamp"];
+            acknowledgedAt: components["schemas"]["UtcTimestamp"] | null;
+            withdrawnAt: components["schemas"]["UtcTimestamp"] | null;
+            openingSnapshot: components["schemas"]["DisputeOpeningSnapshot"];
+            /** Format: int64 */
+            version: number;
+            availableActions: components["schemas"]["DisputeAvailableActions"];
+        };
+        DisputePage: {
+            /** @description Buyer/seller-visible dispute summaries; never null. */
+            items: components["schemas"]["DisputeSummary"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        /** @description Immutable public comment attribution snapshot. Email and internal actor tenant or user identity are never exposed. */
+        DisputeCommentAuthorAttribution: {
+            /** Format: uuid */
+            legalEntityId: string;
+            legalName: string;
+            displayName: string;
+        };
+        DisputeComment: {
+            /** Format: uuid */
+            id: string;
+            /** @description Trimmed plaintext immutable comment body. */
+            body: string;
+            authorAttribution: components["schemas"]["DisputeCommentAuthorAttribution"];
+            createdAt: components["schemas"]["UtcTimestamp"];
+        };
+        DisputeCommentPage: {
+            /** @description Immutable dispute comments in stable server order; never null. */
+            items: components["schemas"]["DisputeComment"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        OpenDisputeRequest: {
+            reasonCode: components["schemas"]["DisputeReasonCode"];
+            /** @description Trimmed plaintext opening subject. */
+            subject: string;
+            /** @description Trimmed plaintext opening statement. */
+            statement: string;
+            /** Format: int64 */
+            expectedDealVersion: number;
+            /** Format: int64 */
+            expectedFulfillmentVersion: number;
+        };
+        CreateDisputeCommentRequest: {
+            /** @description Trimmed plaintext comment body. */
+            body: string;
+            /** Format: int64 */
+            expectedVersion: number;
+        };
+        AcknowledgeDisputeRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+        };
+        WithdrawDisputeRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+        };
+        /** @description Optional backend-owned active dispute summary for buyer/seller actors. Withdrawn history is read from the dispute collection instead. */
+        DealCaseworkSummary: {
+            /** Format: uuid */
+            disputeId: string;
+            status: components["schemas"]["DisputeStatus"];
+            reasonCode: components["schemas"]["DisputeReasonCode"];
+            subject: string;
+            openingLegalEntity: components["schemas"]["DisputeOpeningLegalEntity"];
+            openedAt: components["schemas"]["UtcTimestamp"];
+            acknowledgedAt: components["schemas"]["UtcTimestamp"] | null;
+            /** Format: int64 */
+            version: number;
         };
         /** @description RFC 9457 Problem Details with stable M4Trust error identity and correlation context. */
         ProblemDetail: {
@@ -2786,6 +3085,78 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description The Deal is hidden from the active legal entity, casework is not visible to this actor, or the collection target does not exist (CASEWORK_NOT_FOUND_OR_HIDDEN). */
+        CaseworkNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The dispute does not exist, is not visible to this actor, or does not belong to the visible Deal (DISPUTE_NOT_FOUND_OR_HIDDEN). */
+        DisputeNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is the buyer or seller but the caller is not an ADMIN of that entity (DISPUTE_OPEN_FORBIDDEN). Initiator-only entities, other Deal participants, and nonparticipants receive non-disclosing 404 CASEWORK_NOT_FOUND_OR_HIDDEN instead of this response. MEMBER membership never grants dispute opening authority. */
+        DisputeOpenForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the buyer or seller entity (DISPUTE_COMMENT_FORBIDDEN). Initiator-only entity and other participant visibility never grant comment authority. */
+        DisputeCommentForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the counterparty entity, or the caller is not an ADMIN of the counterparty entity (DISPUTE_ACKNOWLEDGE_FORBIDDEN). Opening entity, MEMBER membership, initiator-only entity, and other participant visibility never grant acknowledgement authority. */
+        DisputeAcknowledgeForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is not the opening legal entity, or the caller is not an ADMIN of the opening legal entity (DISPUTE_WITHDRAW_FORBIDDEN). MEMBER membership, counterparty entity, initiator-only entity, and other participant visibility never grant withdrawal authority. */
+        DisputeWithdrawForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the supplied fulfillment expectedVersion is stale (FULFILLMENT_STALE_VERSION), the Deal is not ACTIVE (DEAL_STATE_CONFLICT), fulfillment is not in an eligible opening status (FULFILLMENT_STATE_CONFLICT), another OPEN or UNDER_REVIEW case already exists (DISPUTE_ACTIVE_CASE_EXISTS), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        DisputeOpenConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied dispute expectedVersion is stale (DISPUTE_STALE_VERSION), the case is terminal or otherwise in an invalid state for the action (DISPUTE_STATE_CONFLICT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        DisputeMutationConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
     };
     parameters: {
         /** @description Public UUID of the requested legal entity. */
@@ -2808,6 +3179,8 @@ export interface components {
         PaymentOperationId: string;
         /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
         EvidenceSubmissionId: string;
+        /** @description Public UUID of a DisputeCase for a Deal. */
+        DisputeId: string;
         /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
         IdempotencyKey: string;
         /** @description Optional exact Deal status filter. */
@@ -2818,6 +3191,10 @@ export interface components {
         PageSize: number;
         /** @description Single allowlisted Deal sort. The public value is not a persistence property name. Defaults to newest creation time first. */
         DealSort: "createdAt,asc" | "createdAt,desc" | "title,asc" | "title,desc";
+        /** @description Single allowlisted dispute history sort. Defaults to newest opening time first with id as the deterministic same-direction tie-break. */
+        DisputeSort: "openedAt,asc" | "openedAt,desc";
+        /** @description Single allowlisted dispute comment sort. Defaults to oldest comment first with id as the deterministic same-direction tie-break. */
+        DisputeCommentSort: "createdAt,asc" | "createdAt,desc";
     };
     requestBodies: never;
     headers: {
@@ -4297,6 +4674,276 @@ export interface operations {
             403: components["responses"]["VideoAnalysisRequestForbidden"];
             404: components["responses"]["EvidenceNotFoundOrHidden"];
             409: components["responses"]["VideoAnalysisRequestConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listDisputes: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Requested number of items per page. */
+                size?: components["parameters"]["PageSize"];
+                /** @description Single allowlisted dispute history sort. Defaults to newest opening time first with id as the deterministic same-direction tie-break. */
+                sort?: components["parameters"]["DisputeSort"];
+            };
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Page of dispute summaries visible to buyer/seller actors; items is never null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputePage"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["CaseworkNotFoundOrHidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    openDispute: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenDisputeRequest"];
+            };
+        };
+        responses: {
+            /** @description Dispute case created with immutable opening snapshot. */
+            201: {
+                headers: {
+                    /** @description Same-origin path of the created dispute case. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DisputeOpenForbidden"];
+            404: components["responses"]["CaseworkNotFoundOrHidden"];
+            409: components["responses"]["DisputeOpenConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getDispute: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of a DisputeCase for a Deal. */
+                disputeId: components["parameters"]["DisputeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dispute detail with opening statement and immutable snapshot. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DisputeNotFoundOrHidden"];
+        };
+    };
+    listDisputeComments: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Requested number of items per page. */
+                size?: components["parameters"]["PageSize"];
+                /** @description Single allowlisted dispute comment sort. Defaults to oldest comment first with id as the deterministic same-direction tie-break. */
+                sort?: components["parameters"]["DisputeCommentSort"];
+            };
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of a DisputeCase for a Deal. */
+                disputeId: components["parameters"]["DisputeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Page of immutable dispute comments; items is never null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeCommentPage"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["DisputeNotFoundOrHidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createDisputeComment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of a DisputeCase for a Deal. */
+                disputeId: components["parameters"]["DisputeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDisputeCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description Immutable comment appended. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeComment"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DisputeCommentForbidden"];
+            404: components["responses"]["DisputeNotFoundOrHidden"];
+            409: components["responses"]["DisputeMutationConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    acknowledgeDispute: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of a DisputeCase for a Deal. */
+                disputeId: components["parameters"]["DisputeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcknowledgeDisputeRequest"];
+            };
+        };
+        responses: {
+            /** @description Dispute acknowledged and status is UNDER_REVIEW. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DisputeAcknowledgeForbidden"];
+            404: components["responses"]["DisputeNotFoundOrHidden"];
+            409: components["responses"]["DisputeMutationConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    withdrawDispute: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of a DisputeCase for a Deal. */
+                disputeId: components["parameters"]["DisputeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawDisputeRequest"];
+            };
+        };
+        responses: {
+            /** @description Dispute withdrawn; history and snapshot remain immutable. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["DisputeWithdrawForbidden"];
+            404: components["responses"]["DisputeNotFoundOrHidden"];
+            409: components["responses"]["DisputeMutationConflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };

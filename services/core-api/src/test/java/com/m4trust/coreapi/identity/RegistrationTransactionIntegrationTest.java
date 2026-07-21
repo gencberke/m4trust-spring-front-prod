@@ -45,7 +45,7 @@ class RegistrationTransactionIntegrationTest {
     void cleanDatabase() {
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
-                    fulfillment_video_analysis_result,
+                    dispute_comment, dispute_evidence_snapshot, dispute_case, fulfillment_video_analysis_result,
                     fulfillment_video_analysis_job,
                     fulfillment_evidence_submission,
                     fulfillment_milestone_rule_reference,

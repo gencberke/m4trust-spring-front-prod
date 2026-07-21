@@ -81,9 +81,13 @@ wire-serialization, and historical-panel defects. The final historical-panel
 post-fix browser observation was explicitly waived by the user and is recorded
 as regression debt in the Slice 13 acceptance record.
 
+ADR-013 Dispute and Casework Foundation and the decision-complete Slice 14A
+plan are human-approved. The plan is under `docs/plan/ready/`; implementation
+has not started.
+
 ## Accepted foundations
 
-- ADR-001 through ADR-012 are accepted and remain authoritative.
+- ADR-001 through ADR-013 are accepted and remain authoritative.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
 - Slice 2 organization and membership is accepted under `docs/plan/done/`.
@@ -202,10 +206,12 @@ as regression debt in the Slice 13 acceptance record.
 
 ## Active work
 
-No content slice is currently active. Slice 13 is accepted on
-`codex/slice-13-video-analysis`; its plan is archived to `done/` and V21 is
-frozen accepted history. Railway staging and real-provider integration remain
-explicitly deferred until the user reopens that work.
+No implementation task is currently active. Slice 14A Dispute and Casework
+Foundation is human-approved under `docs/plan/ready/` and may be assigned only
+through planner-issued task packets. V21 remains frozen accepted history;
+Slice 14A's first new persistence version is V22. Railway staging and
+real-provider integration remain explicitly deferred until the user reopens
+that work.
 
 ## Known blockers
 
@@ -216,11 +222,10 @@ confirm the final historical VIDEO/MP4 advisory panel fix recorded in the Slice
 
 ## Next likely capability
 
-The next proposed content capability is Slice 14A Dispute and Casework
-Foundation. It requires a new decision-complete ADR and explicit human-approved
-plan before implementation. Settlement/release/refund/provider work, Railway
-staging, and real-provider integration remain separate and deferred until the
-user explicitly reopens them.
+The next implementation capability is the ready Slice 14A Dispute and Casework
+Foundation plan under accepted ADR-013. Settlement/release/refund/provider work,
+Railway staging, and real-provider integration remain separate and deferred
+until the user explicitly reopens them.
 
 ## Update rule
 

@@ -78,6 +78,16 @@ class DealStatusTest {
     }
 
     @Test
+    void activeDisputeOverridesFulfillmentLifecycleForPartyActors() {
+        assertEquals(DealLifecycleProjection.DISPUTE,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", true));
+        assertEquals(DealLifecycleProjection.FULFILLMENT,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false));
+    }
+
+    @Test
     void fundedActiveDealsAdvanceToFulfillment() {
         assertEquals(DealLifecycleProjection.FULFILLMENT,
                 DealLifecycleProjectionCalculator.calculate(
