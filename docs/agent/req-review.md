@@ -1,24 +1,22 @@
 # Review Request
-Task: 11BA-T02
-Revision: 2
+Task: 11BA-T03
+Revision: 1
 Plan: docs/plan/ready/11b-a-moka-provider-foundation.md
-Phases: A-P3–A-P4
-Status: COMPLETED
-Branch: codex/11ba-t02
-Base: main@25679a8d64cb6f447a76370a2eae1d3fe2824634
+Phases: A-P5–A-P6
+Status: IN_PROGRESS
+Branch: codex/11ba-t03
+Base: main@3b52f60128ab05b94df34b1bc6e62c076f3db527
 Plan completion claim: NO
 
 ## Phase outcomes
-- A-P3 — DONE — Review delta adds authenticated/bounded pool approve/query probe facts, explicitly non-final, plus contradictory NOT_FOUND fail-closed mapping.
-- A-P4 — DONE — A Spring durable relay test uses a counting test-only port decorator over the real external Moka HTTP adapter: success and timeout→two-query recovery preserve one key/initiate and observe no active DB transaction during HTTP.
+- A-P5 — DONE — Real Core API → durable relay → separate Python emulator success and timeout→query recovery prove fixed-key call counts, transaction-free external calls, in-flight blocking, and unchanged funding projections.
+- A-P6 — IN_PROGRESS — Running the proportional focused validation and preparing the review handoff.
 
 ## Validation
-- `mvn -q -Dtest=MokaTransportSafetyTest,MokaEmulatorClientIntegrationTest,MokaPaymentProviderBootstrapGuardTest,SandboxPaymentProviderBootstrapGuardTest,ModuleArchitectureTest,PaymentFundingIntegrationTest test` — PASS
-- `git diff --check` — PASS
-- `zero contract/frontend/migration diff` — PASS
+- `mvn -q -Dtest=PaymentFundingIntegrationTest test` — PASS (11 tests; required Docker/Testcontainers access)
 
 ## Decisions needed
 - None
 
 ## Deviation or risk
-- Emulator evidence remains non-production-only and does not close G1.
+- Emulator evidence is local-only and does not close G1 or establish real-provider behavior.
