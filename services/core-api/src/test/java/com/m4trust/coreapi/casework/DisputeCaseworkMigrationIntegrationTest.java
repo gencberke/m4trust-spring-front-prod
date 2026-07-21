@@ -25,6 +25,8 @@ class DisputeCaseworkMigrationIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
     static JdbcTemplate jdbc;
+    private static final java.util.concurrent.atomic.AtomicLong NEXT_DEAL_REFERENCE =
+            new java.util.concurrent.atomic.AtomicLong(1L);
 
     @BeforeAll
     static void migrate() {
@@ -123,7 +125,7 @@ class DisputeCaseworkMigrationIntegrationTest {
                 () -> comment(firstCase, fixture.otherDealId(), fixture),
                 "comments must reference the same Deal as the case");
 
-        UUID withdrawnCase = disputeCase(open, "WITHDRAWN", null, Instant.now());
+        UUID withdrawnCase = disputeCase(open, "WITHDRAWN", null, Instant.now().plusSeconds(1));
         assertDoesNotThrow(() -> jdbc.update("""
                 UPDATE dispute_case
                 SET status='WITHDRAWN', withdrawn_at=CURRENT_TIMESTAMP, version=1, updated_at=CURRENT_TIMESTAMP
@@ -182,17 +184,22 @@ class DisputeCaseworkMigrationIntegrationTest {
         Fixture fixture = fixture();
         OpenContext open = openContext(fixture);
         UUID actorTenant = fixture.actorTenant();
+        UUID crossUser = UUID.randomUUID();
         UUID crossEntity = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO identity_user(id, email, password_hash, display_name, enabled)
+                VALUES (?, ?, 'x', 'Cross User', true)
+                """, crossUser, crossUser + "@example.com");
+        jdbc.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)",
+                crossUser, actorTenant);
         jdbc.update("""
                 INSERT INTO legal_entity (id, tenant_id, legal_name, registration_number)
                 VALUES (?, ?, 'Cross Buyer', ?)
                 """, crossEntity, actorTenant, "REG-" + crossEntity);
-        jdbc.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)",
-                fixture.userId(), actorTenant);
         jdbc.update("""
                 INSERT INTO legal_entity_membership (id, tenant_id, legal_entity_id, user_id, role)
                 VALUES (?, ?, ?, ?, 'ADMIN')
-                """, UUID.randomUUID(), actorTenant, crossEntity, fixture.userId());
+                """, UUID.randomUUID(), actorTenant, crossEntity, crossUser);
         jdbc.update("""
                 INSERT INTO deal_participant (deal_id, tenant_id, legal_entity_id, legal_entity_tenant_id)
                 VALUES (?, ?, ?, ?)
@@ -207,7 +214,7 @@ class DisputeCaseworkMigrationIntegrationTest {
                 ) VALUES (?, ?, ?, ?, ?, ?, 'REVIEW_REQUIRED', 0, 0, 'NON_DELIVERY', 'subject', 'statement', 'OPEN',
                     ?, ?, ?, 'Cross Buyer', CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, UUID.randomUUID(), fixture.dealId(), fixture.tenant(), open.fulfillmentId(),
-                open.milestoneId(), open.packageId(), actorTenant, crossEntity, fixture.userId()));
+                open.milestoneId(), open.packageId(), actorTenant, crossEntity, crossUser));
     }
 
     @Test
@@ -235,17 +242,33 @@ class DisputeCaseworkMigrationIntegrationTest {
         Fixture fixture = fixture();
         OpenContext open = openContext(fixture);
         UUID caseId = disputeCase(open, "OPEN", null, null);
+        String videoSha = "c".repeat(64);
+        jdbc.update("""
+                UPDATE fulfillment_evidence_submission
+                SET evidence_type = 'VIDEO',
+                    media_type = 'video/mp4',
+                    file_name = 'clip.mp4',
+                    client_size_bytes = 2048,
+                    verified_size_bytes = 2048,
+                    client_sha256 = ?,
+                    verified_sha256 = ?
+                WHERE id = ?
+                """, videoSha, videoSha, open.otherDealEvidenceId());
+        UUID otherFulfillmentId = jdbc.queryForObject(
+                "SELECT id FROM fulfillment WHERE deal_id = ?", UUID.class, fixture.otherDealId());
+        UUID otherMilestoneId = jdbc.queryForObject(
+                "SELECT id FROM fulfillment_milestone WHERE deal_id = ?", UUID.class, fixture.otherDealId());
         UUID jobId = UUID.randomUUID();
         UUID resultId = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO fulfillment_video_analysis_job (
                     id, tenant_id, deal_id, fulfillment_id, milestone_id, evidence_submission_id,
                     object_version, input_sha256, input_size_bytes, input_media_type, input_file_name,
-                    status, requested_at, version
-                ) VALUES (?, ?, ?, ?, ?, ?, 'version-1', ?, 12, 'application/pdf', 'invoice.pdf',
-                    'RESULT_AVAILABLE', CURRENT_TIMESTAMP, 0)
-                """, jobId, fixture.tenant(), fixture.dealId(), open.fulfillmentId(), open.milestoneId(),
-                open.otherDealEvidenceId(), "a".repeat(64));
+                    status, requested_at, completed_at, version
+                ) VALUES (?, ?, ?, ?, ?, ?, 'version-1', ?, 2048, 'video/mp4', 'clip.mp4',
+                    'RESULT_AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+                """, jobId, fixture.tenant(), fixture.otherDealId(), otherFulfillmentId, otherMilestoneId,
+                open.otherDealEvidenceId(), videoSha);
         jdbc.update("""
                 INSERT INTO fulfillment_video_analysis_result (id, job_id, schema_version, canonical_result, created_at)
                 VALUES (?, ?, '1.0.0', '{"result":{"durationMs":1,"observations":[],"anomalies":[],"summary":{}}}'::jsonb,
@@ -407,8 +430,8 @@ class DisputeCaseworkMigrationIntegrationTest {
                     UUID.randomUUID(), tenant, entity, user);
         }
 
-        deal(deal, tenant, buyer, user, "DL-0000000001");
-        deal(otherDeal, tenant, buyer, user, "DL-0000000002");
+        deal(deal, tenant, buyer, user, nextDealReference());
+        deal(otherDeal, tenant, buyer, user, nextDealReference());
         for (UUID d : java.util.List.of(deal, otherDeal)) {
             for (UUID entity : java.util.List.of(buyer, seller)) {
                 jdbc.update("""
@@ -418,6 +441,10 @@ class DisputeCaseworkMigrationIntegrationTest {
             }
         }
         return new Fixture(tenant, actorTenant, user, buyer, seller, deal, otherDeal);
+    }
+
+    private static String nextDealReference() {
+        return "DL-" + String.format("%010d", NEXT_DEAL_REFERENCE.getAndIncrement());
     }
 
     private static void deal(UUID id, UUID tenant, UUID entity, UUID user, String reference) {

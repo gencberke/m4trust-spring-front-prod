@@ -1,6 +1,36 @@
 import { ApiError } from "../../app/coreApi";
 
-export type CaseworkFieldError = Record<string, string>;
+export type CaseworkField =
+  | "reasonCode"
+  | "subject"
+  | "statement"
+  | "body"
+  | "expectedVersion";
+
+function isCaseworkField(field: string): field is CaseworkField {
+  return (
+    field === "reasonCode" ||
+    field === "subject" ||
+    field === "statement" ||
+    field === "body" ||
+    field === "expectedVersion"
+  );
+}
+
+function validationMessage(code: string): string {
+  switch (code) {
+    case "REQUIRED":
+      return "Bu alan zorunludur.";
+    case "OUT_OF_RANGE":
+      return "Bu alanın uzunluğunu kontrol edin.";
+    case "INVALID_ENUM":
+      return "Seçilen değer desteklenmiyor.";
+    default:
+      return "Bu alanın değerini kontrol edin.";
+  }
+}
+
+export type CaseworkFieldError = Partial<Record<CaseworkField, string>>;
 
 export function isCaseworkNotFound(error: unknown): boolean {
   return (
@@ -11,15 +41,17 @@ export function isCaseworkNotFound(error: unknown): boolean {
 }
 
 export function getCaseworkFieldErrors(error: unknown): CaseworkFieldError {
-  if (!(error instanceof ApiError) || error.code !== "VALIDATION_FAILED")
+  if (!(error instanceof ApiError) || error.code !== "VALIDATION_FAILED") {
     return {};
-  return (error.problem?.errors ?? []).reduce<CaseworkFieldError>(
-    (result, fieldError) => {
-      if (!result[fieldError.field]) result[fieldError.field] = fieldError.message;
-      return result;
-    },
-    {},
-  );
+  }
+  const result: CaseworkFieldError = {};
+  for (const fieldError of error.problem?.errors ?? []) {
+    if (!isCaseworkField(fieldError.field) || result[fieldError.field]) {
+      continue;
+    }
+    result[fieldError.field] = validationMessage(fieldError.code);
+  }
+  return result;
 }
 
 export function getCaseworkErrorMessage(error: unknown): string {

@@ -67,7 +67,7 @@ class DealIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
-                    fulfillment_video_analysis_result,
+                    dispute_comment, dispute_evidence_snapshot, dispute_case, fulfillment_video_analysis_result,
                     fulfillment_video_analysis_job,
                     fulfillment_evidence_submission,
                     fulfillment_milestone_rule_reference,
@@ -120,7 +120,7 @@ class DealIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(header().string("Location",
                         matchesPattern("/api/v1/deals/[0-9a-f-]{36}")))
-                .andExpect(jsonPath("$.*", hasSize(19)))
+                .andExpect(jsonPath("$.*", hasSize(20)))
                 .andExpect(jsonPath("$.reference")
                         .value(matchesPattern("DL-[0-9]{10}")))
                 .andExpect(jsonPath("$.title").value("Equipment Purchase"))

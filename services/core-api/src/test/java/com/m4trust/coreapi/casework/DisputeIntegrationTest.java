@@ -320,13 +320,15 @@ class DisputeIntegrationTest {
         UUID dealId = createActiveFundedDeal();
         startFulfillment(dealId);
         String submissionId = submitEvidence(dealId);
+        long rejectDealVersion = dealVersion(dealId);
         mockMvc.perform(post("/api/v1/deals/" + dealId
                         + "/fulfillment/evidence/" + submissionId + "/reject")
                         .with(user(buyerAdmin.userId.toString())).with(csrf())
                         .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
                         .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 0, \"expectedEvidenceVersion\": 1, \"reason\": \"Missing tax number\"}"))
+                        .content("{\"expectedVersion\": " + rejectDealVersion
+                                + ", \"expectedEvidenceVersion\": 1, \"reason\": \"Missing tax number\"}"))
                 .andExpect(status().isOk());
         long dealVersion = dealVersion(dealId);
         long fulfillmentVersion = fulfillmentVersion(dealId);
@@ -449,6 +451,7 @@ class DisputeIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.authorAttribution.legalName").value("Seller Co"))
                 .andExpect(jsonPath("$.body").value("Seller follow-up"));
+        long afterCommentVersion = opened.version() + 1;
 
         mockMvc.perform(get("/api/v1/deals/" + opened.dealId() + "/disputes/" + opened.disputeId() + "/comments")
                         .with(user(buyerMember.userId.toString()))
@@ -457,12 +460,12 @@ class DisputeIntegrationTest {
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].body").value("Seller follow-up"));
 
-        MvcResult acknowledged = mockMvc.perform(post(acknowledgePath(opened), opened.version())
+        MvcResult acknowledged = mockMvc.perform(post(acknowledgePath(opened), afterCommentVersion)
                         .with(user(sellerAdmin.userId.toString())).with(csrf())
                         .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
                         .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(versionRequest(opened.version())))
+                        .content(versionRequest(afterCommentVersion)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UNDER_REVIEW"))
                 .andExpect(jsonPath("$.availableActions.canAcknowledge").value(false))
@@ -762,6 +765,385 @@ class DisputeIntegrationTest {
                 "$.openingSnapshot.videoAnalysis.length()")).intValue());
     }
 
+    @Test
+    void terminalWriterWinsConcurrentRaceWhenOpenWaitsOnVideoJobLock() throws Exception {
+        PreparedVideoDeal prepared = prepareVideoReviewRequiredDeal();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch externalLockHeld = new CountDownLatch(1);
+        CountDownLatch releaseExternalLock = new CountDownLatch(1);
+        UUID[] resultIdHolder = new UUID[1];
+
+        Future<?> locker = executor.submit(() -> jdbc.execute(
+                (org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+                    connection.setAutoCommit(false);
+                    try (var lockStatement = connection.prepareStatement("""
+                            SELECT id FROM fulfillment_video_analysis_job
+                            WHERE id = ? FOR UPDATE
+                            """);
+                            var updateStatement = connection.prepareStatement("""
+                            UPDATE fulfillment_video_analysis_job
+                            SET status = 'RESULT_AVAILABLE', completed_at = CURRENT_TIMESTAMP, version = version + 1
+                            WHERE id = ? AND status = 'QUEUED'
+                            """);
+                            var insertStatement = connection.prepareStatement("""
+                            INSERT INTO fulfillment_video_analysis_result (id, job_id, schema_version, canonical_result, created_at)
+                            VALUES (?, ?, '1.0.0',
+                                '{"result":{"durationMs":1,"observations":[],"anomalies":[],"summary":{}},"warnings":[]}'::jsonb,
+                                CURRENT_TIMESTAMP)
+                            """)) {
+                        lockStatement.setObject(1, prepared.videoJobId());
+                        lockStatement.executeQuery();
+                        externalLockHeld.countDown();
+                        releaseExternalLock.await(10, TimeUnit.SECONDS);
+                        UUID resultId = UUID.randomUUID();
+                        updateStatement.setObject(1, prepared.videoJobId());
+                        updateStatement.executeUpdate();
+                        insertStatement.setObject(1, resultId);
+                        insertStatement.setObject(2, prepared.videoJobId());
+                        insertStatement.executeUpdate();
+                        connection.commit();
+                        resultIdHolder[0] = resultId;
+                    } catch (Exception exception) {
+                        connection.rollback();
+                        throw new RuntimeException(exception);
+                    }
+                    return null;
+                }));
+
+        assertTrue(externalLockHeld.await(10, TimeUnit.SECONDS));
+
+        Future<MvcResult> openFuture = executor.submit(() -> mockMvc.perform(
+                        post("/api/v1/deals/" + prepared.dealId() + "/disputes")
+                                .with(user(buyerAdmin.userId.toString())).with(csrf())
+                                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                                .header("Idempotency-Key", UUID.randomUUID())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(openRequest("EVIDENCE_QUALITY", "Video issue", "Race test.",
+                                        prepared.dealVersion(), prepared.fulfillmentVersion())))
+                .andReturn());
+
+        Thread.sleep(200);
+        releaseExternalLock.countDown();
+
+        MvcResult openResult = openFuture.get(15, TimeUnit.SECONDS);
+        locker.get(15, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertEquals(201, openResult.getResponse().getStatus());
+        assertEquals(1, ((Number) JsonPath.read(
+                openResult.getResponse().getContentAsString(),
+                "$.openingSnapshot.videoAnalysis.length()")).intValue());
+        assertEquals(prepared.videoJobId().toString(), JsonPath.read(
+                openResult.getResponse().getContentAsString(),
+                "$.openingSnapshot.videoAnalysis[0].jobId"));
+        assertEquals(resultIdHolder[0].toString(), JsonPath.read(
+                openResult.getResponse().getContentAsString(),
+                "$.openingSnapshot.videoAnalysis[0].resultId"));
+    }
+
+    @Test
+    void lateVideoResultDoesNotMutateOpenedCaseSnapshot() throws Exception {
+        PreparedVideoDeal prepared = prepareVideoReviewRequiredDeal();
+        MvcResult created = mockMvc.perform(post("/api/v1/deals/" + prepared.dealId() + "/disputes")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(openRequest("EVIDENCE_QUALITY", "Video issue", "Opened before result.",
+                                prepared.dealVersion(), prepared.fulfillmentVersion())))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String disputeId = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+        int snapshotVideoRowsBefore = countSnapshotVideoRows(UUID.fromString(disputeId));
+
+        completeVideoJob(prepared.videoJobId());
+
+        mockMvc.perform(get("/api/v1/deals/" + prepared.dealId() + "/disputes/" + disputeId)
+                        .with(user(buyerMember.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerMember.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openingSnapshot.videoAnalysis.length()").value(0));
+        assertEquals(snapshotVideoRowsBefore, countSnapshotVideoRows(UUID.fromString(disputeId)));
+    }
+
+    @Test
+    void evidenceAcceptWinsBeforeOpenCapturesAcceptedSnapshot() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        String submissionId = currentEvidenceSubmissionId(prepared.dealId()).toString();
+
+        runMutationWhileDealLocked(prepared.dealId(), () -> {
+            try {
+                mockMvc.perform(post("/api/v1/deals/" + prepared.dealId()
+                                + "/fulfillment/evidence/" + submissionId + "/accept")
+                                .with(user(buyerAdmin.userId.toString())).with(csrf())
+                                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                                .header("Idempotency-Key", UUID.randomUUID())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"expectedVersion\": " + prepared.dealVersion()
+                                        + ", \"expectedEvidenceVersion\": 1}"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.status").value("ACCEPTED"));
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+        });
+
+        mockMvc.perform(post("/api/v1/deals/" + prepared.dealId() + "/disputes")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(openRequest("EVIDENCE_QUALITY", "Accepted evidence", "Captured after accept.",
+                                dealVersion(prepared.dealId()), fulfillmentVersion(prepared.dealId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.openingSnapshot.evidence[0].statusAtOpen").value("ACCEPTED"));
+    }
+
+    @Test
+    void openWinsBeforeEvidenceAcceptCapturesSubmittedSnapshot() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        String submissionId = currentEvidenceSubmissionId(prepared.dealId()).toString();
+
+        MvcResult openResult = openFirstWhileDealLocked(prepared);
+        assertEquals(201, openResult.getResponse().getStatus());
+        assertEquals("SUBMITTED", JsonPath.read(
+                openResult.getResponse().getContentAsString(),
+                "$.openingSnapshot.evidence[0].statusAtOpen"));
+
+        mockMvc.perform(post("/api/v1/deals/" + prepared.dealId()
+                        + "/fulfillment/evidence/" + submissionId + "/accept")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\": " + dealVersion(prepared.dealId())
+                                + ", \"expectedEvidenceVersion\": 1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+    }
+
+    @Test
+    void evidenceRejectWinsBeforeOpenCapturesRejectedSnapshot() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        String submissionId = currentEvidenceSubmissionId(prepared.dealId()).toString();
+
+        runMutationWhileDealLocked(prepared.dealId(), () -> {
+            try {
+                mockMvc.perform(post("/api/v1/deals/" + prepared.dealId()
+                                + "/fulfillment/evidence/" + submissionId + "/reject")
+                                .with(user(buyerAdmin.userId.toString())).with(csrf())
+                                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                                .header("Idempotency-Key", UUID.randomUUID())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"expectedVersion\": " + prepared.dealVersion()
+                                        + ", \"expectedEvidenceVersion\": 1, \"reason\": \"Blurry scan\"}"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.status").value("REJECTED"));
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+        });
+
+        mockMvc.perform(post("/api/v1/deals/" + prepared.dealId() + "/disputes")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(openRequest("EVIDENCE_REJECTION", "Rejected evidence", "Captured after reject.",
+                                dealVersion(prepared.dealId()), fulfillmentVersion(prepared.dealId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.openingSnapshot.evidence[0].statusAtOpen").value("REJECTED"));
+    }
+
+    @Test
+    void openWinsBeforeEvidenceRejectCapturesSubmittedSnapshot() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        String submissionId = currentEvidenceSubmissionId(prepared.dealId()).toString();
+
+        MvcResult openResult = openFirstWhileDealLocked(prepared);
+        assertEquals(201, openResult.getResponse().getStatus());
+        assertEquals("SUBMITTED", JsonPath.read(
+                openResult.getResponse().getContentAsString(),
+                "$.openingSnapshot.evidence[0].statusAtOpen"));
+
+        mockMvc.perform(post("/api/v1/deals/" + prepared.dealId()
+                        + "/fulfillment/evidence/" + submissionId + "/reject")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\": " + dealVersion(prepared.dealId())
+                                + ", \"expectedEvidenceVersion\": 1, \"reason\": \"Too late\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"));
+    }
+
+    @Test
+    void caseworkLifecycleLeavesUnrelatedBusinessStateUnchanged() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        BusinessSnapshot before = captureBusinessSnapshot(prepared.dealId());
+        OpenedDispute opened = openDispute(prepared);
+
+        mockMvc.perform(post(commentPath(opened), opened.version())
+                        .with(user(sellerMember.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Lifecycle check", opened.version())))
+                .andExpect(status().isCreated());
+        long afterCommentVersion = opened.version() + 1;
+
+        MvcResult acknowledged = mockMvc.perform(post(acknowledgePath(opened), afterCommentVersion)
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(afterCommentVersion)))
+                .andExpect(status().isOk())
+                .andReturn();
+        long acknowledgedVersion = ((Number) JsonPath.read(
+                acknowledged.getResponse().getContentAsString(), "$.version")).longValue();
+
+        mockMvc.perform(post(withdrawPath(opened), acknowledgedVersion)
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(acknowledgedVersion)))
+                .andExpect(status().isOk());
+
+        assertBusinessSnapshotUnchanged(before, captureBusinessSnapshot(prepared.dealId()));
+    }
+
+    @Test
+    void fulfillmentReviewRemainsAvailableDuringActiveDispute() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        openDispute(prepared);
+        String submissionId = currentEvidenceSubmissionId(prepared.dealId()).toString();
+
+        mockMvc.perform(post("/api/v1/deals/" + prepared.dealId()
+                        + "/fulfillment/evidence/" + submissionId + "/accept")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\": " + dealVersion(prepared.dealId())
+                                + ", \"expectedEvidenceVersion\": 1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+    }
+
+    private int countSnapshotVideoRows(UUID disputeId) {
+        return jdbc.queryForObject("""
+                SELECT COUNT(*) FROM dispute_evidence_snapshot
+                WHERE dispute_case_id = ? AND video_job_id IS NOT NULL
+                """, Integer.class, disputeId);
+    }
+
+    private UUID currentEvidenceSubmissionId(UUID dealId) {
+        return jdbc.queryForObject("""
+                SELECT id FROM fulfillment_evidence_submission
+                WHERE deal_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """, UUID.class, dealId);
+    }
+
+    private void runMutationWhileDealLocked(UUID dealId, Runnable mutation) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch lockHeld = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
+        Future<?> locker = executor.submit(() -> holdDealRowLock(dealId, lockHeld, releaseLock));
+        assertTrue(lockHeld.await(10, TimeUnit.SECONDS));
+
+        Future<?> mutationFuture = executor.submit(() -> {
+            try {
+                mutation.run();
+            } catch (RuntimeException exception) {
+                throw exception;
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+        });
+        Thread.sleep(200);
+        releaseLock.countDown();
+        locker.get(15, TimeUnit.SECONDS);
+        mutationFuture.get(15, TimeUnit.SECONDS);
+        executor.shutdown();
+    }
+
+    private MvcResult openFirstWhileDealLocked(PreparedDeal prepared) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch lockHeld = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
+        Future<?> locker = executor.submit(() -> holdDealRowLock(prepared.dealId(), lockHeld, releaseLock));
+        assertTrue(lockHeld.await(10, TimeUnit.SECONDS));
+
+        Future<MvcResult> openFuture = executor.submit(() -> {
+            try {
+                return mockMvc.perform(post("/api/v1/deals/" + prepared.dealId() + "/disputes")
+                                .with(user(buyerAdmin.userId.toString())).with(csrf())
+                                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                                .header("Idempotency-Key", UUID.randomUUID())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(openRequest("OTHER", "Race winner", "Open first.",
+                                        prepared.dealVersion(), prepared.fulfillmentVersion())))
+                        .andReturn();
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+        });
+        Thread.sleep(200);
+        releaseLock.countDown();
+        locker.get(15, TimeUnit.SECONDS);
+        MvcResult openResult = openFuture.get(15, TimeUnit.SECONDS);
+        executor.shutdown();
+        return openResult;
+    }
+
+    private void holdDealRowLock(UUID dealId, CountDownLatch lockHeld, CountDownLatch releaseLock) {
+        jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+            connection.setAutoCommit(false);
+            try (var statement = connection.prepareStatement("SELECT id FROM deal WHERE id = ? FOR UPDATE")) {
+                statement.setObject(1, dealId);
+                statement.executeQuery();
+                lockHeld.countDown();
+                releaseLock.await(10, TimeUnit.SECONDS);
+                connection.commit();
+            } catch (Exception exception) {
+                connection.rollback();
+                throw new RuntimeException(exception);
+            }
+            return null;
+        });
+    }
+
+    private BusinessSnapshot captureBusinessSnapshot(UUID dealId) {
+        UUID submissionId = currentEvidenceSubmissionId(dealId);
+        return new BusinessSnapshot(
+                jdbc.queryForObject("SELECT deal_status FROM deal WHERE id = ?", String.class, dealId),
+                jdbc.queryForObject("SELECT version FROM deal WHERE id = ?", Long.class, dealId),
+                jdbc.queryForObject("""
+                        SELECT status FROM funding_unit
+                        WHERE funding_plan_id IN (SELECT id FROM funding_plan WHERE deal_id = ?)
+                        LIMIT 1
+                        """, String.class, dealId),
+                jdbc.queryForObject("SELECT status FROM fulfillment WHERE deal_id = ?", String.class, dealId),
+                jdbc.queryForObject("SELECT version FROM fulfillment WHERE deal_id = ?", Long.class, dealId),
+                jdbc.queryForObject("SELECT status FROM fulfillment_evidence_submission WHERE id = ?",
+                        String.class, submissionId),
+                jdbc.queryForObject("SELECT version FROM fulfillment_evidence_submission WHERE id = ?",
+                        Long.class, submissionId),
+                jdbc.queryForObject("SELECT COUNT(*) FROM payment_dispatch", Integer.class),
+                jdbc.queryForObject("SELECT COUNT(*) FROM payment_operation", Integer.class),
+                jdbc.queryForObject("SELECT COUNT(*) FROM integration_outbox_event", Integer.class),
+                jdbc.queryForObject("SELECT COUNT(*) FROM contract_intelligence_analysis_job", Integer.class));
+    }
+
+    private void assertBusinessSnapshotUnchanged(BusinessSnapshot before, BusinessSnapshot after) {
+        assertEquals(before, after);
+    }
+
     private UUID completeVideoJob(UUID jobId) {
         UUID resultId = UUID.randomUUID();
         jdbc.update("""
@@ -868,7 +1250,7 @@ class DisputeIntegrationTest {
                         .content("{\"expectedEvidenceVersion\": 1}"))
                 .andExpect(status().isAccepted())
                 .andReturn();
-        UUID jobId = UUID.fromString(JsonPath.read(requested.getResponse().getContentAsString(), "$.id"));
+        UUID jobId = UUID.fromString(JsonPath.read(requested.getResponse().getContentAsString(), "$.jobId"));
         return new PreparedVideoDeal(dealId, dealVersion, fulfillmentVersion, jobId);
     }
 
@@ -1157,6 +1539,20 @@ class DisputeIntegrationTest {
     }
 
     private record OpenedDispute(UUID dealId, UUID disputeId, long version) {
+    }
+
+    private record BusinessSnapshot(
+            String dealStatus,
+            long dealVersion,
+            String fundingUnitStatus,
+            String fulfillmentStatus,
+            long fulfillmentVersion,
+            String evidenceStatus,
+            long evidenceVersion,
+            int paymentDispatchCount,
+            int paymentOperationCount,
+            int outboxCount,
+            int analysisJobCount) {
     }
 
     private static final class Principal {

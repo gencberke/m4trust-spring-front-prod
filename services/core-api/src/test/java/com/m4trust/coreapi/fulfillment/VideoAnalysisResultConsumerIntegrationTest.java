@@ -85,6 +85,9 @@ class VideoAnalysisResultConsumerIntegrationTest {
         failAudit.set(false);
         jdbc.execute("""
                 TRUNCATE TABLE
+                    dispute_comment,
+                    dispute_evidence_snapshot,
+                    dispute_case,
                     fulfillment_video_analysis_result,
                     fulfillment_video_analysis_job,
                     fulfillment_evidence_submission,

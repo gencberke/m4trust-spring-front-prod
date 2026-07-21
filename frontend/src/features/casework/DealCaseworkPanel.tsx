@@ -69,14 +69,15 @@ interface Props {
   legalEntityId: string;
 }
 
-export function DealCaseworkPanel({ deal, legalEntityId }: Props) {
-  const showPanel =
-    deal.casework != null || deal.availableActions.canOpenDispute === true;
-  if (!showPanel) return null;
+export function DealCaseworkPanel(props: Props) {
+  return <DealCaseworkPanelBody {...props} />;
+}
 
+function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
   const queryClient = useQueryClient();
   const activeSummary = deal.casework ?? null;
   const activeDisputeId = activeSummary?.disputeId;
+  const hasActiveCase = activeSummary != null;
   const canOpen = deal.availableActions.canOpenDispute === true;
 
   const [notice, setNotice] = useState<string>();
@@ -309,6 +310,18 @@ export function DealCaseworkPanel({ deal, legalEntityId }: Props) {
     ? getCaseworkFieldErrors(openMutation.error)
     : {};
 
+  const partyReader = historyQuery.isSuccess;
+  const visible = canOpen || hasActiveCase || partyReader;
+  const showEmptyState =
+    partyReader &&
+    !canOpen &&
+    !hasActiveCase &&
+    (historyQuery.data?.totalElements ?? 0) === 0;
+
+  if (!visible) {
+    return null;
+  }
+
   return (
     <section className="workspace-panel casework-panel" aria-labelledby="casework-title">
       <div className="panel-heading">
@@ -317,6 +330,12 @@ export function DealCaseworkPanel({ deal, legalEntityId }: Props) {
       </div>
 
       {notice ? <p className="success-notice workspace-notice">{notice}</p> : null}
+
+      {showEmptyState ? (
+        <p className="muted-copy invitation-empty">
+          Henüz bu Deal için uyuşmazlık kaydı yok.
+        </p>
+      ) : null}
 
       {canOpen ? (
         <form className="casework-open-form" onSubmit={handleOpenSubmit}>
