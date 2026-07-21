@@ -1,0 +1,80 @@
+{
+  "fixtureVersion": 1,
+  "purpose": "Local/CI transport fixture only. It is not Moka evidence and does not assert production semantics or G1 finality.",
+  "authentication": {
+    "documentedFields": ["DealerCode", "Username", "Password", "CheckKey"],
+    "checkKey": {
+      "algorithm": "SHA-256",
+      "inputOrder": ["DealerCode", "MK", "Username", "PD", "Password"],
+      "examples": [
+        {
+          "dealerCode": "DEALER-001",
+          "username": "fixture-user",
+          "password": "fixture-password",
+          "input": "DEALER-001MKfixture-userPDfixture-password",
+          "sha256LowerHex": "c58ed4af37993f564d88aa9a6560fc59e07fc4f07bbd1153a3a15924a38738c0"
+        },
+        {
+          "dealerCode": "dealer-42",
+          "username": "merchant.user",
+          "password": "not-a-secret",
+          "input": "dealer-42MKmerchant.userPDnot-a-secret",
+          "sha256LowerHex": "cfc237ded22892af9564f624070cf3264689967bdd409f7eddc7842d6e8d639f"
+        }
+      ]
+    }
+  },
+  "money": {
+    "internalRepresentation": "integer minor units",
+    "providerRepresentation": "decimal major-unit string with dot separator",
+    "minimumAcceptedAmountMinor": 1,
+    "examples": [
+      {"amountMinor": 1, "currency": "TRY", "providerAmount": "0.01"},
+      {"amountMinor": 2750, "currency": "TRY", "providerAmount": "27.50"},
+      {"amountMinor": 123456789, "currency": "USD", "providerAmount": "1234567.89"}
+    ],
+    "forbidden": ["floating point", "client-supplied scenario selection"]
+  },
+  "limits": {
+    "maxRequestBytes": 8192,
+    "maxResponseBytes": 16384,
+    "connectTimeoutCategory": "CONNECT_TIMEOUT",
+    "readTimeoutCategory": "READ_TIMEOUT",
+    "malformedResponseCategory": "MALFORMED_RESPONSE",
+    "sanitizedProviderErrorCategory": "SANITIZED_PROVIDER_ERROR",
+    "notFoundCategory": "NOT_FOUND"
+  },
+  "routes": {
+    "health": "GET /health",
+    "fundingInitiate": "POST /PaymentDealer/DoDirectPayment",
+    "fundingQuery": "POST /PaymentDealer/GetDealerPaymentTrxDetailList",
+    "poolApproveProbeOnly": "POST /PaymentDealer/DoApprovePoolPayment",
+    "poolQueryProbeOnly": "POST /PaymentDealer/GetDealerPaymentTrxDetailList"
+  },
+  "scenarios": {
+    "startupConfigurationOnly": true,
+    "sequence": ["success", "decline", "timeout_then_late_success", "malformed_error", "not_found"],
+    "categories": {
+      "success": "Clean synchronous result; query returns the same terminal result.",
+      "decline": "Definitive declined result; query returns the same terminal result.",
+      "duplicate": "A second initiate using the same OtherTrxCode returns the original identity/result and never creates a second record.",
+      "not_found": "Query explicitly reports no record for OtherTrxCode.",
+      "timeout": "Initiate closes or delays the response; no terminal outcome is inferred from transport failure.",
+      "malformed_sanitized_error": "A malformed body or unsafe upstream-like message is emitted only by the emulator and must map to a stable sanitized category.",
+      "late_query_resolution": "Timeout-created state is queryable as unresolved before the configured query count and terminal afterward."
+    }
+  },
+  "redaction": {
+    "neverLogOrReturn": ["Password", "CheckKey", "raw request body", "raw response body", "unsafe provider message"],
+    "safeErrorShape": ["category", "stableCode", "opaqueReference"],
+    "safeOpaqueReference": "ASCII [A-Za-z0-9._:-], maximum 128 characters"
+  },
+  "unknown": [
+    "Production DoDirectPayment duplicate-OtherTrxCode semantics.",
+    "Pool status/finality representation and settlement truth.",
+    "Pool approve/query request and response semantics beyond the point-in-time research.",
+    "Pooled-unapproved void/refund behavior, holding duration and automatic expiry.",
+    "3D redirect hash verification and any server-to-server callback.",
+    "Test hostname discrepancy and production endpoint behavior."
+  ]
+}
