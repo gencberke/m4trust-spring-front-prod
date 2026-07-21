@@ -79,6 +79,20 @@ class ModuleArchitectureTest {
     }
 
     @Test
+    void paymentBusinessServicesDoNotReachProviderIntegrationCapabilities() {
+        JavaClasses productionClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages("com.m4trust.coreapi");
+
+        noClasses()
+                .that().resideInAPackage("com.m4trust.coreapi.payment..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage("com.m4trust.coreapi.integration.payment..")
+                .because("payment business services own only the neutral funding port; Moka pool probes stay integration-only")
+                .check(productionClasses);
+    }
+
+    @Test
     void caseworkDoesNotDependOnDealOrFulfillmentModules() {
         JavaClasses productionClasses = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)

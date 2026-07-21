@@ -11,6 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Duration;
+import java.net.ServerSocket;
+import java.net.URI;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.jayway.jsonpath.JsonPath;
+import com.m4trust.coreapi.integration.payment.moka.MokaHttpPaymentProviderAdapter;
+import com.m4trust.coreapi.integration.payment.moka.MokaTransportSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -256,6 +261,51 @@ class PaymentFundingIntegrationTest {
     }
 
     @Test
+    void durableRelayUsesRealExternalMokaHttpQueryFirstWithoutDuplicateInitiate() throws Exception {
+        try (ExternalMokaEmulator emulator = ExternalMokaEmulator.start("success,timeout_then_late_success")) {
+            provider.delegateTo(new MokaHttpPaymentProviderAdapter(new MokaTransportSettings(
+                    emulator.baseUri(), "DEALER-001", "fixture-user", "fixture-password", Duration.ofSeconds(1),
+                    Duration.ofMillis(400), 8_192, 16_384)));
+
+            UUID successUnit = planUnitId(createPlan(createActiveDeal(2_500, "TRY"), 3)
+                    .andExpect(status().isCreated()).andReturn());
+            UUID successOperation = operationId(initiate(successUnit, 0).andExpect(status().isAccepted()).andReturn());
+            String successKey = providerKeyFor(successOperation);
+            relay.relayOnce();
+            assertEquals("SUCCEEDED", jdbc.queryForObject("SELECT status FROM payment_operation WHERE id = ?",
+                    String.class, successOperation));
+            assertEquals(1, provider.queryCallCount(successKey));
+            assertEquals(1, provider.initiateCallCount(successKey));
+
+            UUID timeoutUnit = planUnitId(createPlan(createActiveDeal(2_600, "TRY"), 3)
+                    .andExpect(status().isCreated()).andReturn());
+            UUID timeoutOperation = operationId(initiate(timeoutUnit, 0).andExpect(status().isAccepted()).andReturn());
+            String timeoutKey = providerKeyFor(timeoutOperation);
+            relay.relayOnce();
+            assertEquals("UNCONFIRMED", jdbc.queryForObject("SELECT status FROM payment_operation WHERE id = ?",
+                    String.class, timeoutOperation));
+            assertEquals(1, provider.queryCallCount(timeoutKey));
+            assertEquals(1, provider.initiateCallCount(timeoutKey));
+
+            reconcile(timeoutOperation, operationVersion(timeoutOperation)).andExpect(status().isAccepted());
+            relay.relayOnce();
+            assertEquals("UNCONFIRMED", jdbc.queryForObject("SELECT status FROM payment_operation WHERE id = ?",
+                    String.class, timeoutOperation));
+            reconcile(timeoutOperation, operationVersion(timeoutOperation)).andExpect(status().isAccepted());
+            relay.relayOnce();
+
+            assertEquals("SUCCEEDED", jdbc.queryForObject("SELECT status FROM payment_operation WHERE id = ?",
+                    String.class, timeoutOperation));
+            assertEquals("FUNDED", jdbc.queryForObject("SELECT status FROM funding_unit WHERE id = ?",
+                    String.class, timeoutUnit));
+            assertEquals(3, provider.queryCallCount(timeoutKey), "initial query plus two reconciliation queries");
+            assertEquals(1, provider.initiateCallCount(timeoutKey), "late recovery must not initiate again");
+            assertEquals(List.of(timeoutKey, timeoutKey, timeoutKey), provider.queryKeys(timeoutKey));
+            assertFalse(provider.sawOpenTransaction(), "external HTTP runs after the durable claim transaction closes");
+        }
+    }
+
+    @Test
     void createdOperationCannotBeReconciledBeforeItsInitialDispatch() throws Exception {
         UUID dealId = createActiveDeal(2_600, "TRY");
         UUID unitId = planUnitId(createPlan(dealId, 3).andExpect(status().isCreated()).andReturn());
@@ -489,6 +539,10 @@ class PaymentFundingIntegrationTest {
                 .content("{\"expectedVersion\": " + expectedVersion + "}"));
     }
 
+    private long operationVersion(UUID operationId) {
+        return jdbc.queryForObject("SELECT version FROM payment_operation WHERE id = ?", Long.class, operationId);
+    }
+
     private UUID planUnitId(MvcResult planResult) throws Exception {
         return UUID.fromString(JsonPath.read(planResult.getResponse().getContentAsString(), "$.fundingUnit.id"));
     }
@@ -675,6 +729,9 @@ class PaymentFundingIntegrationTest {
         private final Map<String, AtomicInteger> initiateCalls = new ConcurrentHashMap<>();
         private final java.util.Set<String> known = ConcurrentHashMap.newKeySet();
         private final AtomicBoolean openTransactionObserved = new AtomicBoolean(false);
+        private final Map<String, AtomicInteger> queryCalls = new ConcurrentHashMap<>();
+        private final Map<String, List<String>> queryKeys = new ConcurrentHashMap<>();
+        private volatile PaymentProviderPort delegate;
 
         void reset() {
             initiateOutcome.clear();
@@ -682,7 +739,12 @@ class PaymentFundingIntegrationTest {
             initiateCalls.clear();
             known.clear();
             openTransactionObserved.set(false);
+            queryCalls.clear();
+            queryKeys.clear();
+            delegate = null;
         }
+
+        void delegateTo(PaymentProviderPort delegate) { this.delegate = delegate; }
 
         void scriptSuccess(String key) {
             initiateOutcome.put(key, new ProviderResult(Outcome.SUCCEEDED, "sandbox-" + key));
@@ -702,6 +764,9 @@ class PaymentFundingIntegrationTest {
             return initiateCalls.getOrDefault(key, new AtomicInteger(0)).get();
         }
 
+        int queryCallCount(String key) { return queryCalls.getOrDefault(key, new AtomicInteger()).get(); }
+        List<String> queryKeys(String key) { return queryKeys.getOrDefault(key, List.of()); }
+
         boolean sawOpenTransaction() {
             return openTransactionObserved.get();
         }
@@ -711,6 +776,7 @@ class PaymentFundingIntegrationTest {
             observeTransaction();
             known.add(request.providerKey());
             initiateCalls.computeIfAbsent(request.providerKey(), k -> new AtomicInteger()).incrementAndGet();
+            if (delegate != null) return delegate.initiate(request);
             return initiateOutcome.getOrDefault(request.providerKey(),
                     new ProviderResult(Outcome.SUCCEEDED, "sandbox-" + request.providerKey()));
         }
@@ -718,6 +784,10 @@ class PaymentFundingIntegrationTest {
         @Override
         public ProviderResult queryStatus(ProviderRequest request) {
             observeTransaction();
+            queryCalls.computeIfAbsent(request.providerKey(), k -> new AtomicInteger()).incrementAndGet();
+            queryKeys.computeIfAbsent(request.providerKey(), k -> new java.util.concurrent.CopyOnWriteArrayList<>())
+                    .add(request.providerKey());
+            if (delegate != null) return delegate.queryStatus(request);
             if (!known.contains(request.providerKey())) {
                 return new ProviderResult(Outcome.NOT_FOUND, null);
             }
@@ -734,5 +804,36 @@ class PaymentFundingIntegrationTest {
                 openTransactionObserved.set(true);
             }
         }
+    }
+
+    private static final class ExternalMokaEmulator implements AutoCloseable {
+        private final Process process;
+        private final URI baseUri;
+        private ExternalMokaEmulator(Process process, URI baseUri) { this.process = process; this.baseUri = baseUri; }
+        static ExternalMokaEmulator start(String scenarios) throws Exception {
+            int port;
+            try (ServerSocket socket = new ServerSocket(0)) { port = socket.getLocalPort(); }
+            ProcessBuilder builder = new ProcessBuilder("python3", "-m", "m4trust_moka_emulator");
+            builder.directory(java.nio.file.Path.of("..", "..", "tools", "moka-emulator").toFile());
+            builder.environment().put("PYTHONPATH", "src");
+            builder.environment().put("M4TRUST_MOKA_EMULATOR_ENABLED", "true");
+            builder.environment().put("M4TRUST_MOKA_EMULATOR_PORT", Integer.toString(port));
+            builder.environment().put("M4TRUST_MOKA_EMULATOR_SCENARIOS", scenarios);
+            Process process = builder.start();
+            URI baseUri = URI.create("http://127.0.0.1:" + port);
+            Instant deadline = Instant.now().plusSeconds(5);
+            while (Instant.now().isBefore(deadline)) {
+                try {
+                    if (java.net.http.HttpClient.newHttpClient().send(java.net.http.HttpRequest.newBuilder(
+                            baseUri.resolve("/health")).GET().build(), java.net.http.HttpResponse.BodyHandlers.discarding())
+                            .statusCode() == 200) return new ExternalMokaEmulator(process, baseUri);
+                } catch (java.io.IOException ignored) { }
+                Thread.sleep(50);
+            }
+            process.destroyForcibly();
+            throw new IllegalStateException("Moka emulator did not become healthy");
+        }
+        URI baseUri() { return baseUri; }
+        @Override public void close() { process.destroyForcibly(); }
     }
 }
