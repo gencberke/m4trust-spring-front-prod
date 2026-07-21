@@ -23,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 class FulfillmentController {
 
     private final FulfillmentService service;
+    private final VideoAnalysisService videoAnalysisService;
 
-    FulfillmentController(FulfillmentService service) {
+    FulfillmentController(FulfillmentService service, VideoAnalysisService videoAnalysisService) {
         this.service = service;
+        this.videoAnalysisService = videoAnalysisService;
     }
 
     @PostMapping("/deals/{dealId}/fulfillment")
@@ -112,6 +114,34 @@ class FulfillmentController {
             @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
         return service.rejectEvidence(context, uuid(dealId), uuid(evidenceSubmissionId),
                 request, uuid(idempotencyKey), uuid(correlationId));
+    }
+
+    @GetMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis")
+    VideoAnalysisDetail getVideoAnalysis(
+            @ResolvedOperationContext(RequestedOperation.VIDEO_ANALYSIS_READ)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String evidenceSubmissionId) {
+        return videoAnalysisService.get(context, uuid(dealId), uuid(evidenceSubmissionId));
+    }
+
+    @PostMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis")
+    ResponseEntity<VideoAnalysisDetail> requestVideoAnalysis(
+            @ResolvedOperationContext(RequestedOperation.VIDEO_ANALYSIS_REQUEST)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String evidenceSubmissionId,
+            @Valid @RequestBody RequestVideoAnalysisRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        UUID parsedDealId = uuid(dealId);
+        UUID parsedEvidenceId = uuid(evidenceSubmissionId);
+        VideoAnalysisDetail accepted = videoAnalysisService.request(context, parsedDealId, parsedEvidenceId,
+                request, uuid(idempotencyKey), uuid(correlationId));
+        return ResponseEntity.accepted()
+                .location(URI.create("/api/v1/deals/" + parsedDealId
+                        + "/fulfillment/evidence/" + parsedEvidenceId + "/video-analysis"))
+                .body(accepted);
     }
 
     private UUID uuid(String value) {

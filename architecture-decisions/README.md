@@ -77,12 +77,11 @@ Fulfillment V1 actor modelini, tek primary milestone/evidence akışını,
 direct-storage bütünlüğünü, manual buyer acceptance'ı ve fulfillment
 completion'ın Deal/payment/settlement üzerindeki fail-closed sınırını tanımlar.
 
-### ADR-012 — Video Analysis V1 (Proposed)
+### ADR-012 — Video Analysis V1
 
 Slice 12'nin immutable VIDEO/MP4 evidence kaydına karşı explicit buyer ADMIN
 analysis action'ını, fulfillment-owned job/result history'sini, mevcut video
-messaging contract eşlemesini ve advisory-only/no-side-effect sınırını önerir.
-`Accepted` olana kadar implementasyon yetkisi vermez.
+messaging contract eşlemesini ve advisory-only/no-side-effect sınırını tanımlar.
 
 ## ADR durumu
 

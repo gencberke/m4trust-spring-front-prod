@@ -4,6 +4,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+ALLOWED_ENVIRONMENTS = {"local"}
+ALLOWED_SCENARIOS = {"auto", "success", "warning", "retryable_failure", "duplicate"}
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -38,9 +41,9 @@ class Settings:
     def validate_startup(self) -> None:
         if not self.enabled:
             raise RuntimeError("Mock AI Worker requires M4TRUST_MOCK_AI_ENABLED=true")
-        if self.environment in {"prod", "production"}:
-            raise RuntimeError("Mock AI Worker is forbidden in production")
-        if self.scenario not in {"auto", "success", "retryable_failure", "duplicate"}:
+        if self.environment not in ALLOWED_ENVIRONMENTS:
+            raise RuntimeError("Mock AI Worker is forbidden outside local environments")
+        if self.scenario not in ALLOWED_SCENARIOS:
             raise RuntimeError("Unsupported mock scenario configuration")
         if self.download_max_attempts < 1 or self.download_max_attempts > 10:
             raise RuntimeError("Download attempts must be between 1 and 10")

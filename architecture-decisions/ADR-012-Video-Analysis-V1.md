@@ -1,7 +1,8 @@
 # ADR-012: Video Analysis V1
 
-- Status: Proposed
+- Status: Accepted
 - Date: 20 July 2026
+- Accepted: 21 July 2026
 - Decision owners: M4Trust architecture team
 - Scope: Video-analysis subject, actor model, job/result lifecycle, advisory
   boundary, messaging reuse, and fulfillment ownership

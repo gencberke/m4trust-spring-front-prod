@@ -1,4 +1,4 @@
-package com.m4trust.coreapi.contractintelligence;
+package com.m4trust.coreapi.integration.messaging;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -8,17 +8,17 @@ import static org.mockito.Mockito.mock;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 
-class AnalysisResultRabbitListenerTest {
+class AiResultsRabbitListenerTest {
 
     @Test
     void integrationViolationIsRejectedWithoutExposingTheRawPayload() {
-        AnalysisResultConsumer consumer = mock(AnalysisResultConsumer.class);
+        AiResultsMessageRouter router = mock(AiResultsMessageRouter.class);
         String raw = "sensitive-raw-provider-payload";
-        doThrow(new AnalysisResultConsumer.IntegrationViolation()).when(consumer).consume(raw);
+        doThrow(new IntegrationViolation()).when(router).consume(raw);
 
         AmqpRejectAndDontRequeueException thrown = assertThrows(
                 AmqpRejectAndDontRequeueException.class,
-                () -> new AnalysisResultRabbitListener(consumer).onMessage(raw));
+                () -> new AiResultsRabbitListener(router).onMessage(raw));
 
         assertFalse(thrown.getMessage().contains(raw));
     }

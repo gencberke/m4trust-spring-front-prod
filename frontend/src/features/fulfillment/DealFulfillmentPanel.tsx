@@ -27,6 +27,7 @@ import {
   fulfillmentDetailQueryKey,
   fulfillmentDetailQueryOptions,
 } from "./fulfillmentQueries";
+import { EvidenceVideoAnalysisPanel } from "../videoAnalysis/EvidenceVideoAnalysisPanel";
 import {
   ACCEPTED_EVIDENCE_FILE_INPUT_ACCEPT,
   computeSha256Hex,
@@ -94,6 +95,10 @@ function evidenceStatusLabel(status: string): string {
 
 function evidenceTypeLabel(type: string): string {
   return EVIDENCE_TYPE_LABELS[type] ?? type;
+}
+
+function isVideoMp4Evidence(submission: EvidenceSubmission): boolean {
+  return submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4";
 }
 
 type UploadStage =
@@ -601,6 +606,14 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
             <div className="current-evidence">
               <h4>Mevcut evidence</h4>
               <EvidenceSummary submission={currentEvidence} />
+              {isVideoMp4Evidence(currentEvidence) && (
+                <EvidenceVideoAnalysisPanel
+                  legalEntityId={legalEntityId}
+                  dealId={deal.id}
+                  evidenceSubmissionId={currentEvidence.id}
+                  expectedEvidenceVersion={currentEvidence.version}
+                />
+              )}
               {canAccept && (
                 <div className="review-actions">
                   {reviewError && (
@@ -660,6 +673,15 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
                 {fulfillment.history.map((submission) => (
                   <li key={submission.id}>
                     <EvidenceSummary submission={submission} />
+                    {isVideoMp4Evidence(submission)
+                      && submission.id !== currentEvidence?.id && (
+                      <EvidenceVideoAnalysisPanel
+                        legalEntityId={legalEntityId}
+                        dealId={deal.id}
+                        evidenceSubmissionId={submission.id}
+                        expectedEvidenceVersion={submission.version}
+                      />
+                    )}
                     {submission.availableActions.canDownload && (
                       <button
                         type="button"

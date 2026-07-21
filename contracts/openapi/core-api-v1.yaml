@@ -29,8 +29,9 @@ tags:
       creation, polling-first payment operation initiation, and reconciliation.
   - name: Fulfillment
     description: >
-      Seller direct-to-private-storage evidence upload and buyer-ADMIN manual
-      review for one V1 primary milestone after a Deal is ACTIVE and FUNDED.
+      Seller direct-to-private-storage evidence upload, buyer-ADMIN manual
+      review, and optional buyer-ADMIN explicit video analysis for one V1 primary
+      milestone after a Deal is ACTIVE and FUNDED.
 paths:
   /auth/register:
     post:
@@ -1473,6 +1474,84 @@ paths:
         '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
         '409': {$ref: '#/components/responses/EvidenceReviewConflict'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis:
+    get:
+      operationId: getVideoAnalysis
+      tags: [Fulfillment]
+      summary: Get the per-evidence video analysis projection
+      description: >
+        Returns the backend-derived video analysis projection for a finalized VIDEO
+        MP4 evidence submission to every Deal participant. Observations, anomalies,
+        confidence, warnings, and advisoryOutcome are advisory only; they never
+        approve or reject evidence, complete fulfillment, change the Deal, open a
+        dispute, or release money. When no job exists for eligible evidence, status
+        is NOT_REQUESTED. PENDING uploads, non-video evidence, and other ineligible
+        resources remain non-disclosing 404s. The projection never exposes storage
+        identifiers, presigned URLs, event payloads, provider metadata, or raw video
+        content.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/EvidenceSubmissionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+      responses:
+        '200':
+          description: Per-evidence video analysis projection visible to the active Deal participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoAnalysisDetail'
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/LegalEntityAccessDenied'}
+        '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
+    post:
+      operationId: requestVideoAnalysis
+      tags: [Fulfillment]
+      summary: Request asynchronous advisory video analysis for finalized evidence
+      description: >
+        Buyer legal entity ADMIN-only explicit action. Idempotency-Key is required:
+        retrying this same canonical request with the same key returns the original
+        accepted projection, while key reuse for a different request returns 409
+        IDEMPOTENCY_KEY_REUSED. The request carries only expectedEvidenceVersion;
+        Spring derives all AI input from the verified evidence record and never waits
+        for RabbitMQ, storage download, or AI processing. The backend re-authorizes
+        buyer ADMIN authority, current SUBMITTED VIDEO MP4 eligibility, fulfillment
+        REVIEW_REQUIRED state, and absence of active or completed jobs even when
+        canRequest was previously true. Manual buyer accept/reject remains
+        independent and authoritative.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/EvidenceSubmissionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestVideoAnalysisRequest'
+      responses:
+        '202':
+          description: Video analysis request accepted and queued; idempotent replay returns this original projection.
+          headers:
+            Location:
+              description: Same-origin path of this per-evidence video analysis projection.
+              schema: {type: string, format: uri-reference}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoAnalysisDetail'
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/VideoAnalysisRequestForbidden'}
+        '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/VideoAnalysisRequestConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /deals/{dealId}/invitations:
     post:
       operationId: createDealInvitation
@@ -2380,6 +2459,29 @@ components:
         (EVIDENCE_STALE_VERSION), the submission is not the current SUBMITTED
         evidence awaiting review (EVIDENCE_STATE_CONFLICT), the fulfillment is
         already COMPLETED (FULFILLMENT_COMPLETED), or Idempotency-Key was reused for a
+        different request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    VideoAnalysisRequestForbidden:
+      description: >
+        CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context
+        is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal
+        entity is visible on the Deal but is not the buyer entity, or the caller is
+        not an ADMIN of the buyer entity (VIDEO_ANALYSIS_REQUEST_FORBIDDEN). Seller
+        entity, buyer MEMBER, initiator-only entity, and other participant visibility
+        never grant video analysis request authority.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    VideoAnalysisRequestConflict:
+      description: >
+        The evidence is not the current SUBMITTED VIDEO MP4 evidence while fulfillment
+        is REVIEW_REQUIRED, manual review has already decided, or the resource is
+        otherwise ineligible (VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE); the supplied
+        expectedEvidenceVersion is stale (EVIDENCE_STALE_VERSION); a queued job already
+        exists (VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS); a successful result already exists
+        (VIDEO_ANALYSIS_ALREADY_COMPLETED); or Idempotency-Key was reused for a
         different request (IDEMPOTENCY_KEY_REUSED).
       content:
         application/problem+json:
@@ -4822,6 +4924,244 @@ components:
           description: Short-lived presigned GET link for the immutable object version; never persist or expose as a stable URL.
         expiresAt:
           $ref: '#/components/schemas/UtcTimestamp'
+    VideoAnalysisStatus:
+      type: string
+      description: >
+        Per-evidence advisory video analysis state. There is no progress event and
+        therefore no synthetic PROCESSING transition. Terminal states are advisory
+        only and never approve evidence or release payment.
+      enum: [NOT_REQUESTED, QUEUED, RESULT_AVAILABLE, FAILED]
+    VideoAnalysisFailureSummary:
+      type: object
+      additionalProperties: false
+      description: >
+        Safe terminal failure projection for a video analysis job. It deliberately
+        excludes provider messages, stack traces, technical metadata, storage
+        identifiers, and raw worker error details.
+      required: [code, retryRecommended]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Stable canonical AI technical or invalid-input failure code.
+        retryRecommended:
+          type: boolean
+          description: Advisory retry eligibility from the canonical failure result; a retry always creates a new job.
+    VideoAnalysisTimeRange:
+      type: object
+      additionalProperties: false
+      required: [startMs, endMs]
+      properties:
+        startMs:
+          type: integer
+          minimum: 0
+        endMs:
+          type: integer
+          minimum: 0
+          description: End millisecond after startMs; semantic ordering is validated by the backend.
+    VideoAnalysisObservationType:
+      type: string
+      enum: [OBJECT_COUNT, OBJECT_PRESENCE, SEQUENCE, VISIBILITY, OTHER, UNKNOWN]
+    VideoAnalysisObservation:
+      type: object
+      additionalProperties: false
+      required: [observationReference, type, label, observedValue, confidence, timeRange]
+      properties:
+        observationReference:
+          type: string
+          minLength: 1
+        type:
+          $ref: '#/components/schemas/VideoAnalysisObservationType'
+        label:
+          type: string
+          minLength: 1
+        observedValue:
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        timeRange:
+          $ref: '#/components/schemas/VideoAnalysisTimeRange'
+    VideoAnalysisAnomalySeverity:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, UNKNOWN]
+    VideoAnalysisAnomaly:
+      type: object
+      additionalProperties: false
+      required: [anomalyReference, type, severity, description, confidence, timeRange]
+      properties:
+        anomalyReference:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          minLength: 1
+          description: Canonical anomaly classification, not a provider-native class name.
+        severity:
+          $ref: '#/components/schemas/VideoAnalysisAnomalySeverity'
+        description:
+          type: string
+          minLength: 1
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        timeRange:
+          $ref: '#/components/schemas/VideoAnalysisTimeRange'
+    VideoAnalysisAdvisoryOutcome:
+      type: string
+      description: Advisory only; it cannot approve delivery, release payment, or resolve disputes.
+      enum: [NO_ISSUE_DETECTED, REVIEW_SUGGESTED, INSUFFICIENT_EVIDENCE, UNKNOWN]
+    VideoAnalysisSummary:
+      type: object
+      additionalProperties: false
+      required: [advisoryOutcome, reviewReasons]
+      properties:
+        advisoryOutcome:
+          $ref: '#/components/schemas/VideoAnalysisAdvisoryOutcome'
+        reviewReasons:
+          type: array
+          description: Advisory review reasons; never null.
+          items:
+            type: string
+            minLength: 1
+    VideoAnalysisWarningSeverity:
+      type: string
+      enum: [INFO, WARNING]
+    VideoAnalysisWarningDetails:
+      type: object
+      additionalProperties: false
+      properties:
+        field:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        expected:
+          type: string
+          minLength: 1
+        observed:
+          type: string
+          minLength: 1
+    VideoAnalysisWarning:
+      type: object
+      additionalProperties: false
+      required: [code, message, severity, path, details]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Stable warning code. Open for forward-compatible advisory additions.
+        message:
+          type: string
+          minLength: 1
+          description: Safe human-readable message without secrets, provider-native text, or PII.
+        severity:
+          $ref: '#/components/schemas/VideoAnalysisWarningSeverity'
+        path:
+          type: [string, 'null']
+          description: JSON Pointer-like path to the affected canonical field, when known.
+        details:
+          anyOf:
+            - $ref: '#/components/schemas/VideoAnalysisWarningDetails'
+            - type: 'null'
+    VideoAnalysisResult:
+      type: object
+      additionalProperties: false
+      description: >
+        Safe public advisory result for a completed video analysis job. It is a
+        use-case DTO, not the internal event payload, and omits technical metadata,
+        provider/model/prompt details, storage identifiers, credentials, and raw
+        video content.
+      required: [durationMs, observations, anomalies, summary, warnings]
+      properties:
+        durationMs:
+          type: integer
+          minimum: 0
+        observations:
+          type: array
+          description: Canonical advisory observations; never null.
+          items:
+            $ref: '#/components/schemas/VideoAnalysisObservation'
+        anomalies:
+          type: array
+          description: Canonical advisory anomalies; never null.
+          items:
+            $ref: '#/components/schemas/VideoAnalysisAnomaly'
+        summary:
+          $ref: '#/components/schemas/VideoAnalysisSummary'
+        warnings:
+          type: array
+          description: Safe advisory warnings; never null.
+          items:
+            $ref: '#/components/schemas/VideoAnalysisWarning'
+    RequestVideoAnalysisRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedEvidenceVersion]
+      properties:
+        expectedEvidenceVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 9007199254740991
+          description: Optimistic evidence submission version checked under lock before queueing analysis.
+    VideoAnalysisAvailableActions:
+      type: object
+      additionalProperties: false
+      required: [canRequest]
+      properties:
+        canRequest:
+          type: boolean
+          description: >
+            Backend-derived buyer ADMIN request/retry availability for the current
+            evidence snapshot. Absent or unknown values must be treated as false.
+    VideoAnalysisDetail:
+      type: object
+      additionalProperties: false
+      description: >
+        Participant-readable per-evidence video analysis projection. Actions and
+        outcomes are advisory only and never gate manual buyer accept/reject.
+      required: [evidenceSubmissionId, jobId, status, requestedAt, completedAt, failedAt, failure, result, availableActions]
+      properties:
+        evidenceSubmissionId:
+          type: string
+          format: uuid
+        jobId:
+          type: [string, 'null']
+          format: uuid
+          description: Current or latest job identity, or null when status is NOT_REQUESTED.
+        status:
+          $ref: '#/components/schemas/VideoAnalysisStatus'
+        requestedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        completedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        failedAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+        failure:
+          anyOf:
+            - $ref: '#/components/schemas/VideoAnalysisFailureSummary'
+            - type: 'null'
+        result:
+          description: Safe advisory result when analysis completed; null before completion or after FAILED.
+          anyOf:
+            - $ref: '#/components/schemas/VideoAnalysisResult'
+            - type: 'null'
+        availableActions:
+          $ref: '#/components/schemas/VideoAnalysisAvailableActions'
     DealFulfillmentSummary:
       type: object
       additionalProperties: false

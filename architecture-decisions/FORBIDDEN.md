@@ -24,7 +24,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | AI sonucunun doğrudan Deal state'ine uygulanması / deterministik validasyonun atlanması | ADR-001 §20; ADR-003 §17, §31 |
 | Manual acceptance olmadan AI sonucundan RuleSetVersion veya Deal current rule-set pointer üretmek | ADR-003 §17–§19; ADR-010 §1 |
 | Yeni current document'a geçerken eski RuleSetVersion'ı current/ratification-ready bırakmak | ADR-003 §18–§20 |
-| Video/AI sonucunun otomatik fulfillment completion, dispute veya payment release üretmesi | ADR-002 §10.1; ADR-003 §22 |
+| Video/AI sonucunun otomatik fulfillment completion, evidence kabul/red, dispute veya payment release üretmesi | ADR-002 §10.1; ADR-003 §22; ADR-012 §2.4 |
 | Ratify edilmemiş AI `deliveryRequirements` çıktısını contractual checklist, milestone veya completion kuralı saymak | ADR-011 §1, §2.1 |
 | Broker mesajında provider-specific payload, raw doküman/video, secret, credential, session token taşımak | ADR-001 §20; ADR-002 §29 |
 | Contract'ı tek taraflı değiştirmek (FastAPI model gerekçesiyle, Spring yeni required alan dayatarak) | ADR-001 §9; ADR-002 §28 |

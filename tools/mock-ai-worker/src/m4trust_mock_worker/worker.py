@@ -15,7 +15,8 @@ from .processing import DocumentDownloader, Processor, ScenarioSelector
 COMMANDS_EXCHANGE = "m4trust.ai.commands"
 EVENTS_EXCHANGE = "m4trust.ai.events"
 DEAD_LETTER_EXCHANGE = "m4trust.ai.dead-letter"
-REQUEST_QUEUE = "m4trust.ai.document-extraction.v1"
+DOCUMENT_REQUEST_QUEUE = "m4trust.ai.document-extraction.v1"
+VIDEO_REQUEST_QUEUE = "m4trust.ai.video-analysis.v1"
 RESULTS_QUEUE = "m4trust.core.ai-results.v1"
 DEAD_LETTER_QUEUE = "m4trust.ai.dead-letter.v1"
 
@@ -26,12 +27,19 @@ def declare_topology(channel: pika.channel.Channel) -> None:
     for exchange in (COMMANDS_EXCHANGE, EVENTS_EXCHANGE, DEAD_LETTER_EXCHANGE):
         channel.exchange_declare(exchange=exchange, exchange_type="topic", durable=True)
     arguments = {"x-dead-letter-exchange": DEAD_LETTER_EXCHANGE}
-    channel.queue_declare(queue=REQUEST_QUEUE, durable=True, arguments=arguments)
+    channel.queue_declare(queue=DOCUMENT_REQUEST_QUEUE, durable=True, arguments=arguments)
+    channel.queue_declare(queue=VIDEO_REQUEST_QUEUE, durable=True, arguments=arguments)
     channel.queue_declare(queue=RESULTS_QUEUE, durable=True, arguments=arguments)
     channel.queue_declare(queue=DEAD_LETTER_QUEUE, durable=True)
-    channel.queue_bind(REQUEST_QUEUE, COMMANDS_EXCHANGE, "ai.document-extraction.requested.v1")
-    channel.queue_bind(RESULTS_QUEUE, EVENTS_EXCHANGE, "ai.document-extraction.completed.v1")
-    channel.queue_bind(RESULTS_QUEUE, EVENTS_EXCHANGE, "ai.document-extraction.failed.v1")
+    channel.queue_bind(DOCUMENT_REQUEST_QUEUE, COMMANDS_EXCHANGE, "ai.document-extraction.requested.v1")
+    channel.queue_bind(VIDEO_REQUEST_QUEUE, COMMANDS_EXCHANGE, "ai.video-analysis.requested.v1")
+    for routing_key in (
+        "ai.document-extraction.completed.v1",
+        "ai.document-extraction.failed.v1",
+        "ai.video-analysis.completed.v1",
+        "ai.video-analysis.failed.v1",
+    ):
+        channel.queue_bind(RESULTS_QUEUE, EVENTS_EXCHANGE, routing_key)
     channel.queue_bind(DEAD_LETTER_QUEUE, DEAD_LETTER_EXCHANGE, "#")
 
 
@@ -54,8 +62,9 @@ class RabbitWorker:
         declare_topology(channel)
         channel.confirm_delivery()
         channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(queue=REQUEST_QUEUE, on_message_callback=self._handle)
-        LOGGER.info("Mock worker ready queue=%s", REQUEST_QUEUE)
+        channel.basic_consume(queue=DOCUMENT_REQUEST_QUEUE, on_message_callback=self._handle)
+        channel.basic_consume(queue=VIDEO_REQUEST_QUEUE, on_message_callback=self._handle)
+        LOGGER.info("Mock worker ready queues=%s,%s", DOCUMENT_REQUEST_QUEUE, VIDEO_REQUEST_QUEUE)
         channel.start_consuming()
 
     def _handle(self, channel: Any, method: Any, properties: Any, body: bytes) -> None:
@@ -66,8 +75,6 @@ class RabbitWorker:
                 identifiers = {key: request.get(key) for key in ("eventId", "jobId", "correlationId")}
             messages = self._processor.process(request)
             for routing_key, event in messages:
-                # BlockingChannel publisher confirms raise on nack/unroutable;
-                # successful confirmed publishes have no meaningful return value.
                 channel.basic_publish(
                     exchange=EVENTS_EXCHANGE,
                     routing_key=routing_key,
@@ -87,8 +94,6 @@ class RabbitWorker:
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
             LOGGER.warning("Rejected contract-invalid request eventId=%s jobId=%s", identifiers.get("eventId"), identifiers.get("jobId"))
         except Exception:
-            # One broker redelivery is enough for an uncertain publish/connection
-            # failure. A repeatedly failing delivery is poison and goes to the DLQ.
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=not method.redelivered)
             LOGGER.error("Processing failed eventId=%s jobId=%s", identifiers.get("eventId"), identifiers.get("jobId"))
 

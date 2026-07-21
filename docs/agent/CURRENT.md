@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Phase
 
@@ -69,9 +69,21 @@ completion leaves the Deal ACTIVE and creates no release, settlement, refund,
 provider-payment, dispute, or AI side effect. Deployment/provider work remains
 deferred.
 
+Slice 13 Video Analysis is accepted under `docs/plan/done/`. Buyer ADMIN can
+explicitly request/retry analysis for immutable current VIDEO/MP4 evidence;
+participants read safe advisory results, including accepted/rejected history.
+Fulfillment-owned jobs/results reuse the Slice 8 outbox/inbox and shared
+RabbitMQ result routing, and the local-only Mock AI Worker verifies the exact
+version-pinned MinIO object. Results never accept/reject evidence, complete the
+Deal, release money, call a provider, or create dispute/casework state. Browser
+acceptance found and corrected canonical-result, cross-tenant tenant/FK, MIME
+wire-serialization, and historical-panel defects. The final historical-panel
+post-fix browser observation was explicitly waived by the user and is recorded
+as regression debt in the Slice 13 acceptance record.
+
 ## Accepted foundations
 
-- ADR-001 through ADR-011 are accepted and remain authoritative.
+- ADR-001 through ADR-012 are accepted and remain authoritative.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
 - Slice 2 organization and membership is accepted under `docs/plan/done/`.
@@ -87,7 +99,8 @@ deferred.
 - Slice 10 Ratification is accepted under `docs/plan/done/`.
 - Slice 11 Funding Foundation is accepted under `docs/plan/done/`.
 - Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
-- V15–V20 migrations are frozen accepted history; future database changes use
+- Slice 13 Video Analysis is accepted under `docs/plan/done/`.
+- V15–V21 migrations are frozen accepted history; future database changes use
   new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
@@ -110,7 +123,10 @@ deferred.
   atomic Deal activation, provider-independent funding plans/units/payment
   operations, durable payment dispatch and query-first reconciliation,
   fulfillment/milestone/evidence state with immutable private-storage object
-  identity, buyer review and fail-closed completion, append-only audit,
+  identity, buyer review and fail-closed completion, evidence-bound video
+  analysis jobs/results with explicit buyer-ADMIN request/retry, shared
+  document/video terminal routing, immutable canonical advisory history,
+  append-only audit,
   centralized legal-entity authorization, Problem Details, structured logging,
   health probes, and module-cycle checks.
 - `frontend`: generated OpenAPI types, TanStack Query-backed authentication and
@@ -126,21 +142,23 @@ deferred.
   participants), ratification package creation/approve/reject/history and
   actor-aware funding/payment/reconciliation panels, and a fulfillment panel
   for seller start, direct evidence upload/finalize, history/download, buyer
-  accept/reject, replacement, and terminal state,
+  accept/reject, replacement, and terminal state, plus current and historical
+  VIDEO/MP4 advisory analysis panels with queued polling, safe failure/retry,
+  observations/anomalies/warnings, and backend-derived action availability,
   session-expiry handling, and logout against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
-  with health checks, persistent volumes, optional Mock AI Worker profile, and
-  PowerShell reset/seed entrypoints.
-- `contracts/`: reviewed Core API OpenAPI and AI extraction AsyncAPI/JSON Schema
-  contracts, fixtures and validators.
+  with health checks, persistent volumes, optional document/video Mock AI
+  Worker profile, and PowerShell reset/seed entrypoints.
+- `contracts/`: reviewed Core API OpenAPI plus document/video AI
+  AsyncAPI/JSON Schema contracts, fixtures and validators.
 
 ## Validation state
 
-- Contract validation passes for the accepted Slice 12 additive OpenAPI,
+- Contract validation passes for the accepted Slice 13 additive OpenAPI,
   fixtures, generated types, and all expected-invalid checks.
-- Core API `mvn verify` passes 250/250 against Testcontainers PostgreSQL,
-  including module architecture and ratification/payment/fulfillment
-  concurrency tests.
+- Core API `mvn verify` passes 292/292 against Testcontainers PostgreSQL,
+  including module architecture, cross-tenant video analysis, messaging,
+  ratification/payment/fulfillment, and concurrency tests.
 - Frontend `npm run typecheck` and production `npm run build` pass.
 - Slice 4 invitation/participation regression and Slice 5 real two-browser
   acceptance passed on 2026-07-18.
@@ -167,31 +185,42 @@ deferred.
   remained immutable. Targeted reviewer tests passed 17/17 and frontend
   production build passed. Evidence:
   `docs/agent/slice-12-acceptance-2026-07-20.md`.
-- Mock AI Worker tests remain 14/14; frontend typecheck/build pass.
+- Slice 13 planner review and combined real-browser acceptance passed on
+  2026-07-21 against PostgreSQL, RabbitMQ, MinIO, the rebuilt Mock AI Worker,
+  Core API, and frontend. Cross-tenant request, participant authorization,
+  queued/result/failure/retry/duplicate flows, manual-review races,
+  replacement isolation, no-side-effect behavior, and Slice 8/12 regressions
+  passed. The user explicitly waived only the final post-fix browser observation
+  of the historical VIDEO/MP4 panel; that exact regression debt is recorded in
+  `docs/agent/slice-13-acceptance-2026-07-21.md`.
+- Mock AI Worker tests pass 27/27; frontend typecheck/build pass.
 
 ## Not yet stable or accepted
 
 - FastAPI AI service skeleton
 - Railway service configuration
-- Slice 13 Video Analysis
 
 ## Active work
 
-No content slice is currently active. Slice 12 is accepted on
-`codex/slice-12-fulfillment`; its ready plan is archived to `done/` and V20 is
+No content slice is currently active. Slice 13 is accepted on
+`codex/slice-13-video-analysis`; its plan is archived to `done/` and V21 is
 frozen accepted history. Railway staging and real-provider integration remain
 explicitly deferred until the user reopens that work.
 
 ## Known blockers
 
-No architectural, implementation, or acceptance blocker.
+No architectural or implementation blocker. One accepted browser regression
+debt remains: the next relevant fulfillment-history browser run must visibly
+confirm the final historical VIDEO/MP4 advisory panel fix recorded in the Slice
+13 acceptance record.
 
 ## Next likely capability
 
-Plan Slice 13 Video Analysis as the next content capability, using Slice 12's
-immutable evidence version as input and preserving the advisory-only AI
-boundary. Deployment and real-provider work are not part of the active content
-line.
+The next proposed content capability is Slice 14A Dispute and Casework
+Foundation. It requires a new decision-complete ADR and explicit human-approved
+plan before implementation. Settlement/release/refund/provider work, Railway
+staging, and real-provider integration remain separate and deferred until the
+user explicitly reopens them.
 
 ## Update rule
 

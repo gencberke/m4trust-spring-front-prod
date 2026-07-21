@@ -1,6 +1,7 @@
 package com.m4trust.coreapi.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -45,5 +46,35 @@ class ModuleArchitectureTest {
                     .allowEmptyShould(true)
                     .check(productionClasses);
         }
+    }
+
+    @Test
+    void fulfillmentDoesNotDependOnContractIntelligenceOrDocumentModules() {
+        JavaClasses productionClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages("com.m4trust.coreapi");
+
+        noClasses()
+                .that().resideInAPackage("com.m4trust.coreapi.fulfillment..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "com.m4trust.coreapi.contractintelligence..",
+                        "com.m4trust.coreapi.document..")
+                .because("fulfillment owns video analysis without reusing document-analysis ownership")
+                .check(productionClasses);
+    }
+
+    @Test
+    void fulfillmentDoesNotDependOnIntegrationModule() {
+        JavaClasses productionClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages("com.m4trust.coreapi");
+
+        noClasses()
+                .that().resideInAPackage("com.m4trust.coreapi.fulfillment..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage("com.m4trust.coreapi.integration..")
+                .because("fulfillment owns video analysis commands through a fulfillment port implemented by integration")
+                .check(productionClasses);
     }
 }

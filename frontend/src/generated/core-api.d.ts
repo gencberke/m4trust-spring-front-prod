@@ -726,6 +726,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the per-evidence video analysis projection
+         * @description Returns the backend-derived video analysis projection for a finalized VIDEO MP4 evidence submission to every Deal participant. Observations, anomalies, confidence, warnings, and advisoryOutcome are advisory only; they never approve or reject evidence, complete fulfillment, change the Deal, open a dispute, or release money. When no job exists for eligible evidence, status is NOT_REQUESTED. PENDING uploads, non-video evidence, and other ineligible resources remain non-disclosing 404s. The projection never exposes storage identifiers, presigned URLs, event payloads, provider metadata, or raw video content.
+         */
+        get: operations["getVideoAnalysis"];
+        put?: never;
+        /**
+         * Request asynchronous advisory video analysis for finalized evidence
+         * @description Buyer legal entity ADMIN-only explicit action. Idempotency-Key is required: retrying this same canonical request with the same key returns the original accepted projection, while key reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. The request carries only expectedEvidenceVersion; Spring derives all AI input from the verified evidence record and never waits for RabbitMQ, storage download, or AI processing. The backend re-authorizes buyer ADMIN authority, current SUBMITTED VIDEO MP4 eligibility, fulfillment REVIEW_REQUIRED state, and absence of active or completed jobs even when canRequest was previously true. Manual buyer accept/reject remains independent and authoritative.
+         */
+        post: operations["requestVideoAnalysis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/{dealId}/invitations": {
         parameters: {
             query?: never;
@@ -2083,6 +2107,112 @@ export interface components {
             downloadUrl: string;
             expiresAt: components["schemas"]["UtcTimestamp"];
         };
+        /**
+         * @description Per-evidence advisory video analysis state. There is no progress event and therefore no synthetic PROCESSING transition. Terminal states are advisory only and never approve evidence or release payment.
+         * @enum {string}
+         */
+        VideoAnalysisStatus: "NOT_REQUESTED" | "QUEUED" | "RESULT_AVAILABLE" | "FAILED";
+        /** @description Safe terminal failure projection for a video analysis job. It deliberately excludes provider messages, stack traces, technical metadata, storage identifiers, and raw worker error details. */
+        VideoAnalysisFailureSummary: {
+            /** @description Stable canonical AI technical or invalid-input failure code. */
+            code: string;
+            /** @description Advisory retry eligibility from the canonical failure result; a retry always creates a new job. */
+            retryRecommended: boolean;
+        };
+        VideoAnalysisTimeRange: {
+            startMs: number;
+            /** @description End millisecond after startMs; semantic ordering is validated by the backend. */
+            endMs: number;
+        };
+        /** @enum {string} */
+        VideoAnalysisObservationType: "OBJECT_COUNT" | "OBJECT_PRESENCE" | "SEQUENCE" | "VISIBILITY" | "OTHER" | "UNKNOWN";
+        VideoAnalysisObservation: {
+            observationReference: string;
+            type: components["schemas"]["VideoAnalysisObservationType"];
+            label: string;
+            observedValue: string | number | boolean;
+            confidence: number;
+            timeRange: components["schemas"]["VideoAnalysisTimeRange"];
+        };
+        /** @enum {string} */
+        VideoAnalysisAnomalySeverity: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+        VideoAnalysisAnomaly: {
+            anomalyReference: string;
+            /** @description Canonical anomaly classification, not a provider-native class name. */
+            type: string;
+            severity: components["schemas"]["VideoAnalysisAnomalySeverity"];
+            description: string;
+            confidence: number;
+            timeRange: components["schemas"]["VideoAnalysisTimeRange"];
+        };
+        /**
+         * @description Advisory only; it cannot approve delivery, release payment, or resolve disputes.
+         * @enum {string}
+         */
+        VideoAnalysisAdvisoryOutcome: "NO_ISSUE_DETECTED" | "REVIEW_SUGGESTED" | "INSUFFICIENT_EVIDENCE" | "UNKNOWN";
+        VideoAnalysisSummary: {
+            advisoryOutcome: components["schemas"]["VideoAnalysisAdvisoryOutcome"];
+            /** @description Advisory review reasons; never null. */
+            reviewReasons: string[];
+        };
+        /** @enum {string} */
+        VideoAnalysisWarningSeverity: "INFO" | "WARNING";
+        VideoAnalysisWarningDetails: {
+            field?: string;
+            reason?: string;
+            expected?: string;
+            observed?: string;
+        };
+        VideoAnalysisWarning: {
+            /** @description Stable warning code. Open for forward-compatible advisory additions. */
+            code: string;
+            /** @description Safe human-readable message without secrets, provider-native text, or PII. */
+            message: string;
+            severity: components["schemas"]["VideoAnalysisWarningSeverity"];
+            /** @description JSON Pointer-like path to the affected canonical field, when known. */
+            path: string | null;
+            details: components["schemas"]["VideoAnalysisWarningDetails"] | null;
+        };
+        /** @description Safe public advisory result for a completed video analysis job. It is a use-case DTO, not the internal event payload, and omits technical metadata, provider/model/prompt details, storage identifiers, credentials, and raw video content. */
+        VideoAnalysisResult: {
+            durationMs: number;
+            /** @description Canonical advisory observations; never null. */
+            observations: components["schemas"]["VideoAnalysisObservation"][];
+            /** @description Canonical advisory anomalies; never null. */
+            anomalies: components["schemas"]["VideoAnalysisAnomaly"][];
+            summary: components["schemas"]["VideoAnalysisSummary"];
+            /** @description Safe advisory warnings; never null. */
+            warnings: components["schemas"]["VideoAnalysisWarning"][];
+        };
+        RequestVideoAnalysisRequest: {
+            /**
+             * Format: int64
+             * @description Optimistic evidence submission version checked under lock before queueing analysis.
+             */
+            expectedEvidenceVersion: number;
+        };
+        VideoAnalysisAvailableActions: {
+            /** @description Backend-derived buyer ADMIN request/retry availability for the current evidence snapshot. Absent or unknown values must be treated as false. */
+            canRequest: boolean;
+        };
+        /** @description Participant-readable per-evidence video analysis projection. Actions and outcomes are advisory only and never gate manual buyer accept/reject. */
+        VideoAnalysisDetail: {
+            /** Format: uuid */
+            evidenceSubmissionId: string;
+            /**
+             * Format: uuid
+             * @description Current or latest job identity, or null when status is NOT_REQUESTED.
+             */
+            jobId: string | null;
+            status: components["schemas"]["VideoAnalysisStatus"];
+            requestedAt: components["schemas"]["UtcTimestamp"] | null;
+            completedAt: components["schemas"]["UtcTimestamp"] | null;
+            failedAt: components["schemas"]["UtcTimestamp"] | null;
+            failure: components["schemas"]["VideoAnalysisFailureSummary"] | null;
+            /** @description Safe advisory result when analysis completed; null before completion or after FAILED. */
+            result: components["schemas"]["VideoAnalysisResult"] | null;
+            availableActions: components["schemas"]["VideoAnalysisAvailableActions"];
+        };
         /** @description Optional backend-owned Deal fulfillment summary; independent of the full fulfillment detail. */
         DealFulfillmentSummary: {
             status: components["schemas"]["FulfillmentStatus"];
@@ -2631,6 +2761,24 @@ export interface components {
         };
         /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the supplied evidence submission expectedVersion is stale (EVIDENCE_STALE_VERSION), the submission is not the current SUBMITTED evidence awaiting review (EVIDENCE_STATE_CONFLICT), the fulfillment is already COMPLETED (FULFILLMENT_COMPLETED), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
         EvidenceReviewConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the buyer entity, or the caller is not an ADMIN of the buyer entity (VIDEO_ANALYSIS_REQUEST_FORBIDDEN). Seller entity, buyer MEMBER, initiator-only entity, and other participant visibility never grant video analysis request authority. */
+        VideoAnalysisRequestForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The evidence is not the current SUBMITTED VIDEO MP4 evidence while fulfillment is REVIEW_REQUIRED, manual review has already decided, or the resource is otherwise ineligible (VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE); the supplied expectedEvidenceVersion is stale (EVIDENCE_STALE_VERSION); a queued job already exists (VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS); a successful result already exists (VIDEO_ANALYSIS_ALREADY_COMPLETED); or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        VideoAnalysisRequestConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -4075,6 +4223,80 @@ export interface operations {
             403: components["responses"]["EvidenceReviewForbidden"];
             404: components["responses"]["EvidenceNotFoundOrHidden"];
             409: components["responses"]["EvidenceReviewConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getVideoAnalysis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+                evidenceSubmissionId: components["parameters"]["EvidenceSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per-evidence video analysis projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoAnalysisDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["EvidenceNotFoundOrHidden"];
+        };
+    };
+    requestVideoAnalysis: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+                evidenceSubmissionId: components["parameters"]["EvidenceSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestVideoAnalysisRequest"];
+            };
+        };
+        responses: {
+            /** @description Video analysis request accepted and queued; idempotent replay returns this original projection. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of this per-evidence video analysis projection. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoAnalysisDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["VideoAnalysisRequestForbidden"];
+            404: components["responses"]["EvidenceNotFoundOrHidden"];
+            409: components["responses"]["VideoAnalysisRequestConflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };

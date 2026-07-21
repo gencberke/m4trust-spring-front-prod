@@ -85,6 +85,8 @@ class FulfillmentIntegrationTest {
         jdbc.update("DELETE FROM spring_session");
         jdbc.execute("""
                 TRUNCATE TABLE
+                    fulfillment_video_analysis_result,
+                    fulfillment_video_analysis_job,
                     fulfillment_evidence_submission,
                     fulfillment_milestone_rule_reference,
                     fulfillment_milestone,
@@ -116,6 +118,30 @@ class FulfillmentIntegrationTest {
         sellerAdmin = insertPrincipal("seller-admin@example.test", "Seller Co", "ADMIN");
         sellerMember = insertMember(sellerAdmin, "seller-member@example.test");
         outsider = insertPrincipal("outsider@example.test", "Outsider Co", "ADMIN");
+    }
+
+    @Test
+    void fulfillmentResponsesSerializeEvidenceMediaTypeAsMimeWireValues() throws Exception {
+        UUID videoDealId = createActiveFundedDeal();
+        startFulfillment(videoDealId, sellerAdmin);
+        String videoSubmissionId = submitEvidence(videoDealId, sellerAdmin, "VIDEO", "delivery.mp4", "video/mp4", 2048);
+        mockMvc.perform(get("/api/v1/deals/" + videoDealId + "/fulfillment")
+                        .with(user(buyerAdmin.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentEvidence.id").value(videoSubmissionId))
+                .andExpect(jsonPath("$.currentEvidence.mediaType").value("video/mp4"));
+
+        UUID pdfDealId = createActiveFundedDeal();
+        startFulfillment(pdfDealId, sellerAdmin);
+        String pdfSubmissionId = submitEvidence(pdfDealId, sellerAdmin, "DELIVERY_NOTE", "receipt.pdf",
+                "application/pdf");
+        mockMvc.perform(get("/api/v1/deals/" + pdfDealId + "/fulfillment")
+                        .with(user(buyerAdmin.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentEvidence.id").value(pdfSubmissionId))
+                .andExpect(jsonPath("$.currentEvidence.mediaType").value("application/pdf"));
     }
 
     @Test
@@ -412,17 +438,22 @@ class FulfillmentIntegrationTest {
 
     private String submitEvidence(UUID dealId, Principal seller, String evidenceType,
             String fileName, String mediaType) throws Exception {
+        return submitEvidence(dealId, seller, evidenceType, fileName, mediaType, 12);
+    }
+
+    private String submitEvidence(UUID dealId, Principal seller, String evidenceType,
+            String fileName, String mediaType, long sizeBytes) throws Exception {
         MvcResult intentResult = mockMvc.perform(post("/api/v1/deals/" + dealId
                         + "/fulfillment/evidence/upload-intents")
                         .with(user(seller.userId.toString())).with(csrf())
                         .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest(evidenceType, fileName, mediaType)))
+                        .content(uploadIntentRequest(evidenceType, fileName, mediaType, sizeBytes)))
                 .andExpect(status().isCreated())
                 .andReturn();
         String submissionId = JsonPath.read(intentResult.getResponse().getContentAsString(), "$.evidence.id");
 
-        storage.setVerified(new FulfillmentObjectStorage.VerifiedObject(12, SHA, "immutable-version", mediaType));
+        storage.setVerified(new FulfillmentObjectStorage.VerifiedObject(sizeBytes, SHA, "immutable-version", mediaType));
 
         mockMvc.perform(post("/api/v1/deals/" + dealId
                         + "/fulfillment/evidence/" + submissionId + "/finalize")
@@ -430,7 +461,7 @@ class FulfillmentIntegrationTest {
                         .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
                         .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sizeBytes\": 12, \"sha256\": \"" + SHA + "\"}"))
+                        .content("{\"sizeBytes\": " + sizeBytes + ", \"sha256\": \"" + SHA + "\"}"))
                 .andExpect(status().isOk());
         return submissionId;
     }
@@ -469,15 +500,19 @@ class FulfillmentIntegrationTest {
     }
 
     private String uploadIntentRequest(String evidenceType, String fileName, String mediaType) {
+        return uploadIntentRequest(evidenceType, fileName, mediaType, 12);
+    }
+
+    private String uploadIntentRequest(String evidenceType, String fileName, String mediaType, long sizeBytes) {
         return """
                 {
                   "evidenceType": "%s",
                   "mediaType": "%s",
                   "fileName": "%s",
-                  "sizeBytes": 12,
+                  "sizeBytes": %d,
                   "sha256": "%s"
                 }
-                """.formatted(evidenceType, mediaType, fileName, SHA);
+                """.formatted(evidenceType, mediaType, fileName, sizeBytes, SHA);
     }
 
     private UUID createActiveFundedDeal() throws Exception {

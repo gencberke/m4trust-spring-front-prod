@@ -65,6 +65,12 @@ class AuthenticationIntegrationTest {
         jdbcTemplate.update("DELETE FROM spring_session");
         jdbcTemplate.execute("""
                 TRUNCATE TABLE
+                    fulfillment_video_analysis_result,
+                    fulfillment_video_analysis_job,
+                    fulfillment_evidence_submission,
+                    fulfillment_milestone_rule_reference,
+                    fulfillment_milestone,
+                    fulfillment,
                     payment_dispatch,
                     payment_operation,
                     funding_unit,

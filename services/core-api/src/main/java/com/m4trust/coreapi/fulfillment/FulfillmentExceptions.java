@@ -22,6 +22,10 @@ class FulfillmentExceptions {
         private static final long serialVersionUID = 1L;
     }
 
+    static class RequestForbidden extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
+
     static class Conflict extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
