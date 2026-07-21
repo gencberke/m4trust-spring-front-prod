@@ -1,12 +1,15 @@
 # Slice 13 — Video Analysis
 
-- Status: planning
+- Status: done
 - Draft date: 20 July 2026
+- Completion date: 21 July 2026
+- Accepted implementation HEAD:
+  `codex/slice-13-video-analysis@cdfb97a4dbb65644a42e16a7c26eb120cf8980c5`
 - Repository baseline: `codex/slice-12-fulfillment@43b14391aaeec964d6a1379397ba91dc8cf2d65e`
 - Predecessor: accepted Slice 12 Fulfillment and Evidence
 - Successor: proposed Slice 14A Dispute and Casework Foundation
-- Required pre-ready decision: human acceptance of proposed
-  `architecture-decisions/ADR-012-Video-Analysis-V1.md` and this complete plan
+- Accepted decision: `../../../architecture-decisions/ADR-012-Video-Analysis-V1.md`
+  and this complete plan are human-accepted.
 - Contract boundary: additive public Core API design is included. The committed
   video-analysis v1 JSON Schemas, fixtures, AsyncAPI, and AI-internal OpenAPI
   are sufficient and must remain unchanged.
@@ -19,6 +22,20 @@
   - P7 is implementer-owned automated validation and review handoff.
   - The implementer does not execute or claim the real-browser acceptance in
     Section 6. The planner owns it after implementation review.
+
+### Completion evidence and accepted deviation
+
+Planner review, automated validation, and the real-browser runs are recorded in
+`../../agent/slice-13-acceptance-2026-07-21.md`.
+
+Browser acceptance found three defects before closure: canonical result
+retention, genuine cross-tenant job persistence/runtime MIME serialization, and
+historical VIDEO/MP4 panel visibility. All three were corrected. At the user's
+explicit direction, the final historical-panel fix was not followed by one more
+scoped browser observation. Repository inspection plus frontend typecheck/build
+is accepted for that final delta, with the exact regression debt retained in the
+acceptance record. All other Section 6 paths were exercised through the combined
+real-browser runs.
 
 ## 1. Purpose and user outcome
 
@@ -342,11 +359,11 @@ Direction:
 - Add exact validator allowlists for paths, operation IDs, parameters,
   response codes, required headers, required/optional members, closed enums,
   error components/codes, and forbidden AI/business-side-effect fields.
-- Update `contracts/README.md` and `contracts/CHANGELOG.md` in the same review
+- Update `../../../contracts/README.md` and `../../../contracts/CHANGELOG.md` in the same review
   unit and regenerate committed frontend types only from OpenAPI.
-- Do not modify `contracts/schemas/`, video fixtures,
-  `contracts/asyncapi/m4trust-ai-v1.yaml`, or
-  `contracts/openapi/ai-internal-v1.yaml`.
+- Do not modify `../../../contracts/schemas`, video fixtures,
+  `../../../contracts/asyncapi/m4trust-ai-v1.yaml`, or
+  `../../../contracts/openapi/ai-internal-v1.yaml`.
 
 Depends on:
 None after ADR-012 and plan approval.
@@ -570,7 +587,7 @@ Direction:
   base-to-HEAD diff.
 - Fix in-scope failures; report `PARTIAL` or `BLOCKED` rather than weakening
   checks or changing contracts/ADR scope.
-- Replace `docs/agent/req-review.md` using the implementer workflow.
+- Replace `../../agent/req-review.md` using the implementer workflow.
 - Report P1-P7 outcomes, exact validation counts, branch/base/HEAD, migration,
   public contract changes, shared router refactor, and known deviations.
 - Set `Plan completion claim: NO`; Section 6 remains planner-owned.
@@ -701,42 +718,42 @@ After P1-P6 and the full validation pass:
 - Inspect `git status --short` and the complete approved-base-to-HEAD file list.
 - Confirm V15-V20, shared video AI contracts, Railway/deployment, payment/
   provider, settlement, dispute/casework, ready/done plans,
-  `docs/agent/CURRENT.md`, and unrelated user files did not change.
+  `../../agent/CURRENT.md`, and unrelated user files did not change.
 
 ## 8. Done definition
 
-- [ ] ADR-012 is human-accepted; ADR index/README/FORBIDDEN are synchronized as
+- [x] ADR-012 is human-accepted; ADR index/README/FORBIDDEN are synchronized as
       required
-- [ ] This eight-section plan is human-approved and moved to `ready/`
-- [ ] P1 additive Core API contract, exact validator/docs, and generated types
+- [x] This eight-section plan is human-approved and moved to `ready/`
+- [x] P1 additive Core API contract, exact validator/docs, and generated types
       are complete; shared AI contracts remain unchanged
-- [ ] New forward-only persistence is complete; V15-V20 remain unchanged
-- [ ] Fulfillment owns exact evidence-bound jobs/results and module boundaries
+- [x] New forward-only persistence is complete; V15-V20 remain unchanged
+- [x] Fulfillment owns exact evidence-bound jobs/results and module boundaries
       remain acyclic
-- [ ] Buyer ADMIN explicit request/read/retry, idempotency, lock/revalidation,
+- [x] Buyer ADMIN explicit request/read/retry, idempotency, lock/revalidation,
       and one-active/one-result behavior work
-- [ ] Shared result router and committed-schema validator support both job types
+- [x] Shared result router and committed-schema validator support both job types
       without document extraction regression
-- [ ] Completed/failed/duplicate/late/invalid events obey inbox atomicity,
+- [x] Completed/failed/duplicate/late/invalid events obey inbox atomicity,
       immutable history, and first-terminal-wins behavior
-- [ ] Mock AI Worker downloads/verifies real video evidence and produces
+- [x] Mock AI Worker downloads/verifies real video evidence and produces
       contract-valid success/warning/failure/duplicate outcomes locally
-- [ ] Participant frontend states use the real API and visibly preserve the
+- [x] Participant frontend states use the real API and visibly preserve the
       advisory-only/manual-review distinction
-- [ ] Request-vs-review, authorization, retry, contract, persistence, and
+- [x] Request-vs-review, authorization, retry, contract, persistence, and
       no-side-effect invariants pass automated validation
-- [ ] Implementer-owned full validation and final fast check pass
-- [ ] Implementer reports P1-P7 `COMPLETED` with
+- [x] Implementer-owned full validation and final fast check pass
+- [x] Implementer reports P1-P7 `COMPLETED` with
       `Plan completion claim: NO`
-- [ ] Planner independently reviews the real diff and validation evidence
-- [ ] Planner completes Section 6 with real PostgreSQL, RabbitMQ, MinIO, Mock AI
-      Worker, and browser contexts
-- [ ] Deal remains ACTIVE/FULFILLMENT and no release, settlement, refund,
+- [x] Planner independently reviews the real diff and validation evidence
+- [x] Planner accepts the combined Section 6 evidence with real PostgreSQL,
+      RabbitMQ, MinIO, Mock AI Worker, and browser contexts; the user-directed
+      final scoped rerun waiver is recorded as regression debt
+- [x] Deal remains ACTIVE/FULFILLMENT and no release, settlement, refund,
       provider, dispute, casework, or automatic business side effect exists
-- [ ] Planner accepts the complete plan, records any material deviation, moves
+- [x] Planner accepts the complete plan, records the material deviation, moves
       it to `done/`, and updates `CURRENT.md` only if accepted project state
       materially changes
 
-Implementer completion of P1-P7 is not plan completion. This plan remains in
-`planning/` until explicit human approval and remains in `ready/` until every
-phase, invariant, validation, browser step, and Done item is proven.
+Slice 13 is accepted and archived. Future changes must not rewrite V21 or this
+historical done plan; new database needs use a forward-only migration.

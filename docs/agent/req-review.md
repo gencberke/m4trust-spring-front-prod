@@ -2,12 +2,19 @@
 
 Task: 13-T01
 Revision: 11
-Plan: docs/plan/ready/13-video-analysis.md
+Plan: docs/plan/done/13-video-analysis.md
 Phases: P1-P7 + browser-acceptance fix (D1, D2, D3)
-Status: FIX
+Status: COMPLETED
 Branch: codex/slice-13-video-analysis
 Base: main@d342b01
 Plan completion claim: NO
+
+Planner disposition: ACCEPTED on 2026-07-21 at
+`cdfb97a4dbb65644a42e16a7c26eb120cf8980c5`. Combined browser evidence and the
+user-directed waiver of the final post-D3 historical-panel browser rerun are
+recorded in `docs/agent/slice-13-acceptance-2026-07-21.md`. The implementer's
+plan-completion claim remains `NO`; archival and accepted-state updates are
+planner-owned closure actions.
 
 ## Phase outcomes
 

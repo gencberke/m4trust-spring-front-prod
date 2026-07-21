@@ -1,7 +1,10 @@
-# Planner Handoff — Slice 12 Sonrası
+# Planner Handoff — Slice 13 Sonrası
 
-Hazırlanma tarihi: 20 Temmuz 2026
-Kabul branch'i: `codex/slice-12-fulfillment`
+Hazırlanma tarihi: 21 Temmuz 2026
+
+Kabul branch'i: `codex/slice-13-video-analysis`
+
+Kabul edilen implementation HEAD: `cdfb97a4dbb65644a42e16a7c26eb120cf8980c5`
 
 Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıçta
 `docs/agent/WORKFLOW.md`, `docs/agent/CURRENT.md`, `docs/plan/README.md`,
@@ -10,51 +13,56 @@ Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıç
 
 ## Kabul edilmiş durum
 
-- Slice 0–12 kabul edilmiştir.
-- Slice 12 planı `docs/plan/done/12-fulfillment-and-evidence.md` altındadır.
-- Kabul kanıtı `docs/agent/slice-12-acceptance-2026-07-20.md` içindedir.
-- V15–V20 kabul edilmiş ve donmuş migration history'dir; yeni DB değişiklikleri
-  yeni forward-only migration kullanır.
-- Slice 12; seller start, tek fulfillment/primary milestone, immutable evidence
-  object version, direct MinIO upload/finalize, participant read/history,
-  buyer accept/reject/replacement ve fail-closed `COMPLETED` sınırını kurdu.
-- Fulfillment completion Deal'i tamamlamaz ve ödeme release/settlement/refund,
-  provider çağrısı, dispute veya AI işi üretmez.
-- Browser kabulünde kullanıcı minimum kapsam istedi. Kritik iki taraflı akış
-  gerçek PostgreSQL ve MinIO ile geçti; tam rol/yarış matrisi browser'da tekrar
-  edilmedi ve bu sapma done planı ile kabul kaydında açıkça yazıldı.
+- Slice 0–13 kabul edilmiştir.
+- Slice 13 planı `docs/plan/done/13-video-analysis.md` altındadır.
+- Kabul kanıtı `docs/agent/slice-13-acceptance-2026-07-21.md` içindedir.
+- ADR-012 Accepted durumundadır ve Video Analysis V1 için otoritatiftir.
+- V15–V21 kabul edilmiş, donmuş migration history'dir. Yeni DB ihtiyacı yeni
+  forward-only migration kullanmalıdır.
+- Slice 13, Slice 12'nin immutable finalized VIDEO/MP4 evidence kaydından
+  yalnız buyer ADMIN tarafından açıkça başlatılan ve retry edilen video analizi
+  kurdu. RabbitMQ outbox/inbox ile Mock AI Worker deseni yeniden kullanılır.
+- Sonuç advisory-only'dir. Deal, fulfillment, evidence review, payment,
+  dispute/casework veya settlement state'ini otomatik değiştiremez.
+- Katılımcılar durum ve güvenli advisory sonucu okuyabilir; talep/retry yetkisi
+  backend `canRequest` kararıyla sınırlıdır. Teknik model/provider/prompt/storage
+  ayrıntıları public response'a sızmaz.
+
+## Planner review düzeltmeleri ve kabul
+
+- D1: Gerçek cross-tenant Deal akışındaki tenant/FK uyumsuzluğu giderildi.
+- D2: Evidence media type response'u enum adı yerine committed MIME değeri
+  (`video/mp4`, `application/pdf`) üretir.
+- D3: Historical VIDEO/MP4 evidence satırları retained video-analysis durumunu
+  ve sonucunu gösterir; current evidence paneli iki kez render edilmez.
+- Full backend verify 292 test, focused backend matrix 65 test, Mock AI Worker
+  27 test, contract validator, frontend typecheck/build ve Compose config geçti.
+- Browser kabulünün cross-tenant request, gerçek worker sonucu, rol sınırları,
+  retry/idempotency, manual review ve non-video regresyon kısımları geçti.
+
+## Kabul edilmiş browser borcu
+
+Kullanıcı, D3 frontend düzeltmesinden sonra yalnız historical paneli tekrar
+eden son scoped browser koşusunu açıkça erteledi. Bu, Slice 13 kabulünü bloke
+etmeyen kayıtlı borçtur; koşulmuş gibi raporlanmamalıdır.
+
+Historical evidence alanına dokunan ilk ilgili browser regresyonunda şunlar
+kanıtlanmalıdır:
+
+1. ACCEPTED veya REJECTED historical VIDEO/MP4 satırı retained advisory paneli
+   ve sonucu gösterir.
+2. Historical panel manual review veya başka business-state mutation kontrolü
+   sunmaz.
+3. Current SUBMITTED evidence paneli historical listede duplicate render olmaz.
 
 ## Sonraki içerik hattı
 
-Önerilen sıra mevcut `docs/plan/planning/next-slices-sequencing.md` kararıyla
-uyumludur:
+Mevcut sequencing kararına göre sıradaki olası içerik Slice 14A'dır. Yeni
+dispute/casework/settlement kapsamı başlamadan önce ADR yeterliliği çıkarılmalı,
+gerekli kararlar insan onayına sunulmalı ve sekiz bölümlü plan
+`docs/plan/planning/` altında hazırlanmalıdır. İnsan onayı olmadan `ready/`
+altına taşınmamalı veya implementer task paketi verilmemelidir.
 
-1. Slice 13 — Video Analysis
-2. Dispute/Settlement için önce gerekli ADR ve insan onayı
-3. Gerçek payment provider entegrasyonu ayrı bir hat
-
-Railway deployment/staging ile gerçek provider işleri kullanıcı tarafından
-özellikle ertelenmiştir. Yeni içerik planına karıştırılmamalıdır.
-
-## Slice 13 planlama bağları
-
-- Girdi, Slice 12'nin immutable ve finalize edilmiş video evidence kaydıdır.
-- Slice 8'in RabbitMQ outbox/inbox ve Mock AI Worker desenleri yeniden
-  kullanılmalıdır.
-- AI sonucu advisory kalır; fulfillment, Deal, payment veya dispute state'ini
-  otomatik değiştiremez.
-- Public Core API değişikliği contract-first tasarlanır. AI JSON
-  Schema/fixture, AsyncAPI veya AI-internal OpenAPI değişikliği gerekiyorsa
-  mevcut insan onayının kapsamına varsayılmaz; açık eskalasyon gerekir.
-- Modül erişimi dar port + adapter yönünde kalmalı ve
-  `ModuleArchitectureTest` ile korunmalıdır.
-- Deployment, production object storage, secret yönetimi ve provider release
-  bu planın dışındadır.
-
-## Planner'ın sıradaki işi
-
-Kullanıcı yeni planlama istediğinde önce accepted ADR'lerde Video Analysis
-kararlarının yeterli olup olmadığını denetle. Eksik yüksek-etkili kararları
-eskalasyon listesine çıkar; ardından sekiz bölümlü Slice 13 taslağını
-`docs/plan/planning/` altında hazırla. İnsan onayı olmadan `ready/` altına taşıma
-ve implementer task paketi üretme.
+Payment release/settlement/refund, gerçek provider entegrasyonu ve Railway
+deployment/staging kullanıcı yeniden açmadıkça kapsam dışıdır. Kullanıcı tüm
+planner/implementer handoff'larının sahibidir.
