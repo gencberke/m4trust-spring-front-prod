@@ -1,8 +1,11 @@
 # Slice 14A — Dispute and Casework Foundation
 
-- Status: ready — human-approved 21 July 2026
+- Status: done — accepted 21 July 2026
 - Draft date: 21 July 2026
 - Repository baseline: `main@dbcad17949b9063b9ef385a858f728d1d0f94536`
+- Accepted implementation:
+  `feature/14a-dispute-casework-foundation@e30c185733a601014d8ebbc8413b3cc6a1b2c85d`
+- Merged to `main` by `0282c0e103a2fd3c0cacd32b11cb639c098b803c`
 - Predecessor: accepted Slice 13 Video Analysis
 - Accepted decision:
   `../../../architecture-decisions/ADR-013-Dispute-and-Casework-Foundation.md`
@@ -15,6 +18,10 @@
   - P8 is implementer-owned automated validation and review handoff.
   - Section 6 real-browser acceptance is planner-owned and must not be claimed
     by the implementer.
+- Material acceptance deviation: at the user's explicit direction, Section 6
+  was not run for 14A. Its complete browser matrix, including retirement of the
+  Slice 13 historical VIDEO/MP4 debt, is transferred to the next relevant 14B
+  acceptance phase and must not be represented as having passed in 14A.
 
 ## 1. Goal
 
@@ -663,6 +670,11 @@ Stop/escalation conditions:
 
 Owner: planner. The implementer must not execute or claim this section.
 
+Closure note: this section was not run. On 21 July 2026 the user explicitly
+accepted the implementation and directed the planner to defer the complete
+matrix below to the next relevant 14B phase. This is recorded acceptance debt,
+not browser evidence.
+
 Run against real PostgreSQL, MinIO, RabbitMQ, the Mock AI Worker, Core API, and
 frontend with separate buyer ADMIN, seller ADMIN, buyer/seller MEMBER, other
 participant, and nonparticipant contexts.
@@ -714,33 +726,31 @@ replace this section.
   - comment/acknowledge/withdraw races;
   - actor-aware lifecycle and withdrawal restoration; and
   - Slice 13 advisory/history regression.
-- If only assigned phases are accepted, this plan remains in `ready/`.
-- No implementation acceptance alone completes the plan. Section 6, all
-  invariants, full validation, and every Done item require proof.
-- ADR-013 and this plan were human-approved on 21 July 2026; the accepted plan
-  remains in `ready/` until every completion condition is proven.
-- Only after complete acceptance may the planner move it to `done/`, record
-  material deviations, and update `docs/agent/CURRENT.md` if accepted project
-  state materially changed.
+- P1–P8 were accepted from the reviewed implementation and reported validation.
+- The normal completion rule requires Section 6, all invariants, full
+  validation, and every Done item to be proven.
+- The user explicitly accepted the unrun Section 6 matrix as transferred debt.
+  The planner therefore records that material deviation, moves the plan to
+  `done/`, and updates `docs/agent/CURRENT.md`; no browser pass is claimed.
 
 ## 8. Done Definition
 
 - [x] ADR-013 is human-accepted and ADR index/README/FORBIDDEN are synchronized
 - [x] This complete plan is human-approved and moved to `ready/`
-- [ ] P1 public OpenAPI, validator, docs, and generated types are complete
-- [ ] V22 applies forward-only and V15–V21 remain unchanged
-- [ ] Casework owns disputes, snapshots, comments, authorization, and public behavior
-- [ ] Module ownership and consumer-owned port directions are enforced
-- [ ] Open/list/detail, comments, acknowledge, and withdraw work as specified
-- [ ] One-active, immutable snapshot/comment, version, and tenant invariants hold
-- [ ] Authorization and non-disclosure matrix passes
-- [ ] Actor-aware DISPUTE lifecycle does not leak case existence
-- [ ] AI/video output never creates, advances, or mutates casework
-- [ ] Deal, fulfillment, evidence, funding, payment, and accepted actions remain unchanged
-- [ ] No resolution, assignment, cancellation, settlement, release, refund, provider, messaging, or deployment work exists
-- [ ] Implementer-owned full validation and final focused matrix pass
-- [ ] Implementer reports P1–P8 with `Plan completion claim: NO`
-- [ ] Planner independently reviews the complete diff and validation evidence
-- [ ] Planner-owned real-browser acceptance passes
-- [ ] Historical VIDEO/MP4 regression debt is visibly retired
-- [ ] Planner archives the plan only after every phase, invariant, browser step, validation, and Done item is proven
+- [x] P1 public OpenAPI, validator, docs, and generated types are complete
+- [x] V22 applies forward-only and V15–V21 remain unchanged
+- [x] Casework owns disputes, snapshots, comments, authorization, and public behavior
+- [x] Module ownership and consumer-owned port directions are enforced
+- [x] Open/list/detail, comments, acknowledge, and withdraw work as specified
+- [x] One-active, immutable snapshot/comment, version, and tenant invariants hold
+- [x] Authorization and non-disclosure matrix passes in automated validation
+- [x] Actor-aware DISPUTE lifecycle does not leak case existence in automated validation
+- [x] AI/video output never creates, advances, or mutates casework
+- [x] Deal, fulfillment, evidence, funding, payment, and accepted actions remain unchanged
+- [x] No resolution, assignment, cancellation, settlement, release, refund, provider, messaging, or deployment work exists
+- [x] Implementer-owned full validation and final focused matrix pass
+- [x] Implementer reports P1–P8 with `Plan completion claim: NO`
+- [x] Planner reviews the complete diff and recorded validation evidence
+- [ ] Planner-owned real-browser acceptance passes — explicitly deferred to 14B
+- [ ] Historical VIDEO/MP4 regression debt is visibly retired — transferred to 14B
+- [x] Planner archives the plan with the explicit user-approved browser deviation recorded

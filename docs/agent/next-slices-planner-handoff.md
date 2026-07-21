@@ -1,10 +1,13 @@
-# Planner Handoff — Slice 13 Sonrası
+# Planner Handoff — Slice 14A Sonrası
 
 Hazırlanma tarihi: 21 Temmuz 2026
 
-Kabul branch'i: `codex/slice-13-video-analysis`
+Kabul branch'i: `feature/14a-dispute-casework-foundation`
 
-Kabul edilen implementation HEAD: `cdfb97a4dbb65644a42e16a7c26eb120cf8980c5`
+Kabul edilen implementation HEAD:
+`e30c185733a601014d8ebbc8413b3cc6a1b2c85d`
+
+Main merge commit'i: `0282c0e103a2fd3c0cacd32b11cb639c098b803c`
 
 Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıçta
 `docs/agent/WORKFLOW.md`, `docs/agent/CURRENT.md`, `docs/plan/README.md`,
@@ -13,14 +16,12 @@ Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıç
 
 ## Kabul edilmiş durum
 
-- Slice 0–13 kabul edilmiştir.
-- Slice 13 planı `docs/plan/done/13-video-analysis.md` altındadır.
-- Kabul kanıtı `docs/agent/slice-13-acceptance-2026-07-21.md` içindedir.
-- ADR-012 Accepted durumundadır ve Video Analysis V1 için otoritatiftir.
-- ADR-013 Accepted durumundadır; human-approved Slice 14A planı
-  `docs/plan/ready/14a-dispute-and-casework-foundation.md` altındadır ve henüz
-  implementasyon task'ı verilmemiştir.
-- V15–V21 kabul edilmiş, donmuş migration history'dir. Yeni DB ihtiyacı yeni
+- Slice 0–14A kabul edilmiştir.
+- Slice 14A planı
+  `docs/plan/done/14a-dispute-and-casework-foundation.md` altındadır.
+- Kabul kanıtı `docs/agent/slice-14a-acceptance-2026-07-21.md` içindedir.
+- ADR-013 Accepted durumundadır ve Dispute/Casework V1 için otoritatiftir.
+- V15–V22 kabul edilmiş, donmuş migration history'dir. Yeni DB ihtiyacı yeni
   forward-only migration kullanmalıdır.
 - Slice 13, Slice 12'nin immutable finalized VIDEO/MP4 evidence kaydından
   yalnız buyer ADMIN tarafından açıkça başlatılan ve retry edilen video analizi
@@ -31,41 +32,38 @@ Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıç
   backend `canRequest` kararıyla sınırlıdır. Teknik model/provider/prompt/storage
   ayrıntıları public response'a sızmaz.
 
-## Planner review düzeltmeleri ve kabul
+## Slice 14A kabul özeti
 
-- D1: Gerçek cross-tenant Deal akışındaki tenant/FK uyumsuzluğu giderildi.
-- D2: Evidence media type response'u enum adı yerine committed MIME değeri
-  (`video/mp4`, `application/pdf`) üretir.
-- D3: Historical VIDEO/MP4 evidence satırları retained video-analysis durumunu
-  ve sonucunu gösterir; current evidence paneli iki kez render edilmez.
-- Full backend verify 292 test, focused backend matrix 65 test, Mock AI Worker
-  27 test, contract validator, frontend typecheck/build ve Compose config geçti.
-- Browser kabulünün cross-tenant request, gerçek worker sonucu, rol sınırları,
-  retry/idempotency, manual review ve non-video regresyon kısımları geçti.
+- Buyer/seller ADMIN open, party ADMIN/MEMBER read-comment, counterparty ADMIN
+  acknowledge ve opener ADMIN withdraw akışları kabul edilmiştir.
+- Opening snapshot fulfillment/milestone, finalized evidence ve mevcut başarılı
+  video sonucu provenance'ını immutable saklar.
+- Other participant casework varlığını veya `DISPUTE` lifecycle'ını göremez.
+- Casework Deal, fulfillment, evidence, funding, payment, settlement, provider,
+  messaging veya AI state'i değiştirmez.
+- Implementer contract validator, 331-test full backend verify, focused
+  migration/authorization/concurrency/regression matrix ve frontend
+  typecheck/build sonuçlarını PASS raporladı. Kapanışta kullanıcı yönlendirmesi
+  gereği planner bu komutları yeniden koşmadı.
 
 ## Kabul edilmiş browser borcu
 
-Kullanıcı, D3 frontend düzeltmesinden sonra yalnız historical paneli tekrar
-eden son scoped browser koşusunu açıkça erteledi. Bu, Slice 13 kabulünü bloke
-etmeyen kayıtlı borçtur; koşulmuş gibi raporlanmamalıdır.
+Slice 14A kapanışında planner-owned §6 matrisi ve Slice 13 historical VIDEO/MP4
+gözlemi 14B'ye aktarılmıştı. Bu borç **gate C0** ile 21 Temmuz 2026'da kapatıldı.
 
-Historical evidence alanına dokunan ilk ilgili browser regresyonunda şunlar
-kanıtlanmalıdır:
+Kanıt: `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` (Deal
+`DL-0000000017`). Historical Slice 13 / 14A acceptance kayıtları yeniden
+yazılmadı; borç yalnızca current/future planner state'ten kaldırıldı.
 
-1. ACCEPTED veya REJECTED historical VIDEO/MP4 satırı retained advisory paneli
-   ve sonucu gösterir.
-2. Historical panel manual review veya başka business-state mutation kontrolü
-   sunmaz.
-3. Current SUBMITTED evidence paneli historical listede duplicate render olmaz.
+14B acceptance artık bu matrisi açık borç olarak taşımaz; kendi settlement/
+release kabul kanıtını üretmelidir.
 
 ## Sonraki içerik hattı
 
-Mevcut sequencing kararına göre sıradaki içerik Slice 14A'dır. ADR-013 ve
-sekiz bölümlü plan 21 Temmuz 2026'da insan-onaylıdır; plan
-`docs/plan/ready/14a-dispute-and-casework-foundation.md` altındadır.
-Implementasyon henüz başlamamıştır ve yalnız planner-issued task packet ile
-başlayabilir. İlk persistence migration'ı V22'dir; V15–V21 donmuş kalır.
+Sıradaki içerik Slice 14B Settlement and Release planlamasıdır.
+`docs/plan/planning/14b-settlement-and-release.md` henüz implementation-authorizing
+değildir. Provider capability, legal/operational model, ratification contract,
+Slice 7 staging, Slice 11B real-provider, ADR-014 ve human approval gate'leri
+kapanmadan `ready/` durumuna geçemez veya task packet üretemez.
 
-Payment release/settlement/refund, gerçek provider entegrasyonu ve Railway
-deployment/staging kullanıcı yeniden açmadıkça kapsam dışıdır. Kullanıcı tüm
-planner/implementer handoff'larının sahibidir.
+Kullanıcı tüm planner/implementer handoff'larının sahibidir.

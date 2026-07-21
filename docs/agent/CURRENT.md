@@ -77,13 +77,19 @@ RabbitMQ result routing, and the local-only Mock AI Worker verifies the exact
 version-pinned MinIO object. Results never accept/reject evidence, complete the
 Deal, release money, call a provider, or create dispute/casework state. Browser
 acceptance found and corrected canonical-result, cross-tenant tenant/FK, MIME
-wire-serialization, and historical-panel defects. The final historical-panel
-post-fix browser observation was explicitly waived by the user and is recorded
-as regression debt in the Slice 13 acceptance record.
+wire-serialization, and historical-panel defects. The previously waived
+historical VIDEO/MP4 panel observation was later retired by gate C0 on
+2026-07-21 (`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
-ADR-013 Dispute and Casework Foundation and the decision-complete Slice 14A
-plan are human-approved. The plan is under `docs/plan/ready/`; implementation
-has not started.
+Slice 14A Dispute and Casework Foundation is accepted under
+`docs/plan/done/`. Buyer/seller ADMIN dispute opening, party-only read/comment,
+counterparty acknowledgement, opener withdrawal, immutable evidence/video
+snapshotting, actor-aware non-disclosing `DISPUTE` lifecycle, V22 authority,
+and frontend casework are implemented. The reported contract, backend, focused
+regression, frontend, and diff validations passed. The planner-owned real
+browser Section 6 matrix that was deferred at 14A closure was completed and
+accepted as gate C0 on 2026-07-21
+(`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
 ## Accepted foundations
 
@@ -104,7 +110,9 @@ has not started.
 - Slice 11 Funding Foundation is accepted under `docs/plan/done/`.
 - Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
 - Slice 13 Video Analysis is accepted under `docs/plan/done/`.
-- V15–V21 migrations are frozen accepted history; future database changes use
+- Slice 14A Dispute and Casework Foundation is accepted under
+  `docs/plan/done/`.
+- V15–V22 migrations are frozen accepted history; future database changes use
   new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
@@ -130,6 +138,9 @@ has not started.
   identity, buyer review and fail-closed completion, evidence-bound video
   analysis jobs/results with explicit buyer-ADMIN request/retry, shared
   document/video terminal routing, immutable canonical advisory history,
+  dispute casework with immutable opening evidence/video snapshots,
+  party-only authorization and disclosure, append-only comments, explicit
+  acknowledgement/withdrawal, actor-aware lifecycle projection,
   append-only audit,
   centralized legal-entity authorization, Problem Details, structured logging,
   health probes, and module-cycle checks.
@@ -149,6 +160,8 @@ has not started.
   accept/reject, replacement, and terminal state, plus current and historical
   VIDEO/MP4 advisory analysis panels with queued polling, safe failure/retry,
   observations/anomalies/warnings, and backend-derived action availability,
+  plus a generated-type-driven party-only dispute panel for open/history,
+  snapshot, comment, acknowledge, withdraw, stale recovery and evidence access,
   session-expiry handling, and logout against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
   with health checks, persistent volumes, optional document/video Mock AI
@@ -198,6 +211,15 @@ has not started.
   of the historical VIDEO/MP4 panel; that exact regression debt is recorded in
   `docs/agent/slice-13-acceptance-2026-07-21.md`.
 - Mock AI Worker tests pass 27/27; frontend typecheck/build pass.
+- Slice 14A implementer validation reports contract validation passing
+  21 schemas and 13 fixtures, Core API `mvn verify` passing 331 tests, the
+  focused migration/authorization/concurrency/regression matrix passing,
+  frontend typecheck/build passing, V15–V21 unchanged, and `git diff --check`
+  passing. The planner did not rerun these commands under the user's closure
+  direction.
+- Gate C0 (14A §6 + Slice 13 historical VIDEO panel) passed on 2026-07-21
+  against the local stack on Deal `DL-0000000017`. Evidence:
+  `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`.
 
 ## Not yet stable or accepted
 
@@ -206,26 +228,23 @@ has not started.
 
 ## Active work
 
-No implementation task is currently active. Slice 14A Dispute and Casework
-Foundation is human-approved under `docs/plan/ready/` and may be assigned only
-through planner-issued task packets. V21 remains frozen accepted history;
-Slice 14A's first new persistence version is V22. Railway staging and
-real-provider integration remain explicitly deferred until the user reopens
-that work.
+No implementation task is currently active. Slice 14A is accepted and merged
+into `main`; V22 is frozen accepted history. Gate C0 browser debt is retired.
+Slice 14B remains a gated planning draft and cannot authorize implementation
+until its provider, legal, ratification-contract, staging, real-provider,
+ADR-014, and human-approval gates close.
 
 ## Known blockers
 
-No architectural or implementation blocker. One accepted browser regression
-debt remains: the next relevant fulfillment-history browser run must visibly
-confirm the final historical VIDEO/MP4 advisory panel fix recorded in the Slice
-13 acceptance record.
+No architectural or implementation blocker. No open 14A/Slice 13 browser
+acceptance debt remains.
 
 ## Next likely capability
 
-The next implementation capability is the ready Slice 14A Dispute and Casework
-Foundation plan under accepted ADR-013. Settlement/release/refund/provider work,
-Railway staging, and real-provider integration remain separate and deferred
-until the user explicitly reopens them.
+The next planning capability is gated Slice 14B Settlement and Release. It is
+not implementation-ready: staging, real-provider, legal/operational,
+ratification-contract, and ADR-014 decisions must be closed and explicitly
+human-approved first.
 
 ## Update rule
 
