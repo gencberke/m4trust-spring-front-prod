@@ -6,8 +6,8 @@ Phases: §5 Image and network; §5 Migration — successful pre-deploy path; §5
 Status: COMPLETED
 Branch: codex/slice-07-staging-foundation
 Base: main@555e8e427be9b11cc219bffdfe149cd84ac60df3
-HEAD: this commit; the preceding staging-evidence commit
-`163d9095593f2918c8a93d15b99bbaa8acc41f1e` is pushed to
+HEAD: this commit; every preceding commit on this branch, through
+`c1485a09dca04bb1269764b4bf517c6396321c8f`, is pushed to
 `origin/codex/slice-07-staging-foundation`
 Plan completion claim: NO
 
@@ -30,11 +30,14 @@ fix. The only changed file on this branch is this review request.
 ## Deployed revision
 - Core API is deployed from source revision
   `555e8e427be9b11cc219bffdfe149cd84ac60df3`.
-- The web edge is deployed from its connected GitHub source at this branch's
-  head; its release identity variables are pinned to that same commit.
-- Release identity: build version `0.1.0-staging.555e8e4`, full commit SHA, staging
-  environment label and build time, carried as image labels, `/actuator/info`
-  fields and every structured log line.
+- The web edge is deployed from its connected GitHub source at
+  `c1485a09dca04bb1269764b4bf517c6396321c8f`, and its release identity variables
+  are pinned to that same commit. Later commits on this branch are documentation
+  only and do not match its declared watch patterns, so they do not change the
+  deployed web-edge revision.
+- Release identity for each service is its build version, full commit SHA,
+  staging environment label and build time, carried as image labels, and for the
+  Core API additionally through `/actuator/info` and every structured log line.
 - `latest` is not used as release or rollback identity; image tags and OCI
   `image.revision` labels carry the exact commit SHA.
 
@@ -107,5 +110,6 @@ fix. The only changed file on this branch is this review request.
 - RabbitMQ is not provisioned in staging and the deployed Core API logs a
   repeating broker connection failure. Readiness is unaffected. Messaging is
   outside this task's scope.
-- Deployments are upload-based rather than GitHub-triggered, so staging does not
-  yet redeploy automatically on merge to main.
+- Neither service deploys automatically on merge to `main`; the web edge tracks
+  this task branch and the Core API is deployed manually from uploads. Wiring
+  staging to `main` remains open.
