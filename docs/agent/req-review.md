@@ -1,9 +1,9 @@
 # Review Request
 
 Task: 13-T01
-Revision: 10
+Revision: 11
 Plan: docs/plan/ready/13-video-analysis.md
-Phases: P1-P7 + browser-acceptance fix (D1, D2)
+Phases: P1-P7 + browser-acceptance fix (D1, D2, D3)
 Status: FIX
 Branch: codex/slice-13-video-analysis
 Base: main@d342b01
@@ -17,8 +17,9 @@ Plan completion claim: NO
 - P4 — DONE — Shared AI terminal routing (`AiResultsMessageRouter`, `AiResultsRabbitListener`, `AiTerminalResultHandler`); document handler extracted; integration-layer committed-event validator; video terminal consumption ports/adapters.
 - P5 — DONE — Mock AI Worker `VIDEO_ANALYSIS` dispatch/fixtures; advisory frontend panel/labels; canonical payload persisted at completion; public DTO built only on read.
 - P6 — DONE — Hardening matrix: latch-ordered concurrent review/request races, FAILED-first late COMPLETED, authorization boundaries (seller/buyer member, other participant, initiator-only non-buyer/seller), HTTP VIDEO finalize without auto-job, ACTIVE/FULFILLMENT lifecycle assertions, duplicate-terminal idempotency.
-- P7 — DONE — Full implementer validation (`mvn verify` 290 tests), final fast check, regression truncate fixes for V21 FK tables across 13 legacy integration tests, review handoff. Section 6 browser acceptance not run (planner-owned).
+- P7 — DONE — Full implementer validation (`mvn verify` 292 tests), final fast check, regression truncate fixes for V21 FK tables across 13 legacy integration tests, review handoff. Section 6 browser acceptance not run (planner-owned).
 - Browser-acceptance fix — DONE — Corrected V21 tenant integrity model and `EvidenceMediaType` wire serialization; added genuine cross-tenant HTTP integration coverage and MockMvc MIME regression tests. Section 6 browser acceptance not re-run here (planner-owned).
+- Historical video-analysis visibility fix — DONE — `DealFulfillmentPanel` now renders `EvidenceVideoAnalysisPanel` under every historical VIDEO/`video/mp4` evidence item; request/retry remains gated on backend `canRequest === true` only. Section 6 browser acceptance not re-run here (planner-owned).
 
 ## Browser-discovered defects and regression coverage
 
@@ -39,6 +40,13 @@ Plan completion claim: NO
 - **Fix:** `@JsonValue` on `EvidenceMediaType.value()`; no OpenAPI or generated type change.
 - **Regression:** `FulfillmentIntegrationTest.fulfillmentResponsesSerializeEvidenceMediaTypeAsMimeWireValues` — MockMvc asserts finalized VIDEO evidence returns `"video/mp4"` and PDF evidence returns `"application/pdf"`.
 
+### D3 — Historical VIDEO/MP4 evidence hides video-analysis panel
+
+- **Symptom:** After evidence moved to ACCEPTED/REJECTED history, prior VIDEO/`video/mp4` submissions showed no video-analysis status/result even when backend retained read access and advisory data.
+- **Root cause:** `DealFulfillmentPanel` rendered `EvidenceVideoAnalysisPanel` only for `currentEvidence` in `SUBMITTED` state; historical list showed summary/download only.
+- **Fix:** Render `EvidenceVideoAnalysisPanel` beneath each historical evidence item where `evidenceType === "VIDEO"` and `mediaType === "video/mp4"`, skipping the active `currentEvidence` row to preserve existing SUBMITTED behavior without duplicate panels. Panel continues to show backend status as-is, poll only while `QUEUED`, and expose request/retry solely when `availableActions.canRequest === true`.
+- **Regression:** Frontend-only; `npm run typecheck` and `npm run build` on focused `DealFulfillmentPanel` change; no OpenAPI/generated-type drift.
+
 ## Validation
 
 - `python contracts/scripts/validate_contracts.py` — PASS
@@ -48,6 +56,10 @@ Plan completion claim: NO
 - `python -m pytest tools/mock-ai-worker/tests` — PASS (27 tests)
 - `docker compose -f infra/compose.yaml config` — PASS
 - `git diff --check` — PASS
+- Focused historical visibility fix (frontend-only) — PASS:
+  - `npm run typecheck` — PASS (no generated-type drift in `src/generated/core-api.d.ts`)
+  - `npm run build` — PASS
+  - `git diff --check` — PASS
 - Focused browser-acceptance fix tests — PASS:
   - `VideoAnalysisCrossTenantIntegrationTest` — 1
   - `VideoAnalysisMigrationIntegrationTest` — 3 (includes D1 migration boundary)

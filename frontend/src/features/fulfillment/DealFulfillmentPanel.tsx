@@ -97,6 +97,10 @@ function evidenceTypeLabel(type: string): string {
   return EVIDENCE_TYPE_LABELS[type] ?? type;
 }
 
+function isVideoMp4Evidence(submission: EvidenceSubmission): boolean {
+  return submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4";
+}
+
 type UploadStage =
   | "idle"
   | "hashing"
@@ -602,8 +606,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
             <div className="current-evidence">
               <h4>Mevcut evidence</h4>
               <EvidenceSummary submission={currentEvidence} />
-              {currentEvidence.evidenceType === "VIDEO"
-                && currentEvidence.mediaType === "video/mp4" && (
+              {isVideoMp4Evidence(currentEvidence) && (
                 <EvidenceVideoAnalysisPanel
                   legalEntityId={legalEntityId}
                   dealId={deal.id}
@@ -670,6 +673,15 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
                 {fulfillment.history.map((submission) => (
                   <li key={submission.id}>
                     <EvidenceSummary submission={submission} />
+                    {isVideoMp4Evidence(submission)
+                      && submission.id !== currentEvidence?.id && (
+                      <EvidenceVideoAnalysisPanel
+                        legalEntityId={legalEntityId}
+                        dealId={deal.id}
+                        evidenceSubmissionId={submission.id}
+                        expectedEvidenceVersion={submission.version}
+                      />
+                    )}
                     {submission.availableActions.canDownload && (
                       <button
                         type="button"
