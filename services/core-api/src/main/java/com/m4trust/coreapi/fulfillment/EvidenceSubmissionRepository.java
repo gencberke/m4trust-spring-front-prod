@@ -74,6 +74,23 @@ class EvidenceSubmissionRepository {
                 """, this::mapSubmission, fulfillmentId).stream().findFirst();
     }
 
+    List<EvidenceSubmission.EvidenceSubmissionRecord> findFinalizedByDealIdOrderById(UUID dealId) {
+        return jdbcTemplate.query("""
+                SELECT * FROM fulfillment_evidence_submission
+                WHERE deal_id = ? AND status IN ('SUBMITTED', 'ACCEPTED', 'REJECTED')
+                ORDER BY id ASC
+                """, this::mapSubmission, dealId);
+    }
+
+    List<EvidenceSubmission.EvidenceSubmissionRecord> findFinalizedByDealIdOrderByIdForUpdate(UUID dealId) {
+        return jdbcTemplate.query("""
+                SELECT * FROM fulfillment_evidence_submission
+                WHERE deal_id = ? AND status IN ('SUBMITTED', 'ACCEPTED', 'REJECTED')
+                ORDER BY id ASC
+                FOR UPDATE
+                """, this::mapSubmission, dealId);
+    }
+
     boolean update(EvidenceSubmission.EvidenceSubmissionRecord submission, long previousVersion) {
         return jdbcTemplate.update("""
                 UPDATE fulfillment_evidence_submission

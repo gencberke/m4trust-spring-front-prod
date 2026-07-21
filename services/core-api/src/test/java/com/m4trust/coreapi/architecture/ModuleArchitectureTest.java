@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class ModuleArchitectureTest {
 
     private static final String[] MODULES = {
-        "api", "audit", "contractintelligence", "deal", "document", "fulfillment", "idempotency",
+        "api", "audit", "casework", "contractintelligence", "deal", "document", "fulfillment", "idempotency",
         "identity", "integration", "organization", "payment", "ratification", "sharedkernel"
     };
 
@@ -75,6 +75,22 @@ class ModuleArchitectureTest {
                 .should().dependOnClassesThat()
                 .resideInAnyPackage("com.m4trust.coreapi.integration..")
                 .because("fulfillment owns video analysis commands through a fulfillment port implemented by integration")
+                .check(productionClasses);
+    }
+
+    @Test
+    void caseworkDoesNotDependOnDealOrFulfillmentModules() {
+        JavaClasses productionClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages("com.m4trust.coreapi");
+
+        noClasses()
+                .that().resideInAPackage("com.m4trust.coreapi.casework..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "com.m4trust.coreapi.deal..",
+                        "com.m4trust.coreapi.fulfillment..")
+                .because("casework collaborates through consumer-owned ports implemented by deal and fulfillment")
                 .check(productionClasses);
     }
 }

@@ -83,6 +83,12 @@ Slice 12'nin immutable VIDEO/MP4 evidence kaydına karşı explicit buyer ADMIN
 analysis action'ını, fulfillment-owned job/result history'sini, mevcut video
 messaging contract eşlemesini ve advisory-only/no-side-effect sınırını tanımlar.
 
+### ADR-013 — Dispute and Casework Foundation
+
+Buyer/seller party-only dispute foundation'ını; open, comment, acknowledge ve
+withdraw actor modelini; immutable opening snapshot'ını; actor-aware lifecycle
+disclosure, concurrency ve no-side-effect sınırlarını tanımlar.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:

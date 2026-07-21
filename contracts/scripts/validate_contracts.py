@@ -317,6 +317,41 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"202", "400", "401", "403", "404", "409", "422"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/disputes", "post"): {
+        "operationId": "openDispute",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/disputes", "get"): {
+        "operationId": "listDisputes",
+        "responses": {"200", "400", "401", "403", "404", "422"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/disputes/{disputeId}", "get"): {
+        "operationId": "getDispute",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "get"): {
+        "operationId": "listDisputeComments",
+        "responses": {"200", "400", "401", "403", "404", "422"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post"): {
+        "operationId": "createDisputeComment",
+        "responses": {"201", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post"): {
+        "operationId": "acknowledgeDispute",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post"): {
+        "operationId": "withdrawDispute",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
 }
 EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
@@ -344,6 +379,10 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post"): "#/components/schemas/AcceptEvidenceRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post"): "#/components/schemas/RejectEvidenceRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post"): "#/components/schemas/RequestVideoAnalysisRequest",
+    ("/deals/{dealId}/disputes", "post"): "#/components/schemas/OpenDisputeRequest",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post"): "#/components/schemas/CreateDisputeCommentRequest",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post"): "#/components/schemas/AcknowledgeDisputeRequest",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post"): "#/components/schemas/WithdrawDisputeRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
@@ -395,6 +434,13 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "200"): "#/components/schemas/RejectedEvidenceSubmission",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "200"): "#/components/schemas/VideoAnalysisDetail",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "202"): "#/components/schemas/VideoAnalysisDetail",
+    ("/deals/{dealId}/disputes", "post", "201"): "#/components/schemas/DisputeDetail",
+    ("/deals/{dealId}/disputes", "get", "200"): "#/components/schemas/DisputePage",
+    ("/deals/{dealId}/disputes/{disputeId}", "get", "200"): "#/components/schemas/DisputeDetail",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "get", "200"): "#/components/schemas/DisputeCommentPage",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "201"): "#/components/schemas/DisputeComment",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "200"): "#/components/schemas/DisputeDetail",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "200"): "#/components/schemas/DisputeDetail",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -611,6 +657,44 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "404"): "EvidenceNotFoundOrHidden",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "409"): "VideoAnalysisRequestConflict",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/disputes", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/disputes", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/disputes", "post", "403"): "DisputeOpenForbidden",
+    ("/deals/{dealId}/disputes", "post", "404"): "CaseworkNotFoundOrHidden",
+    ("/deals/{dealId}/disputes", "post", "409"): "DisputeOpenConflict",
+    ("/deals/{dealId}/disputes", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/disputes", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/disputes", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/disputes", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/disputes", "get", "404"): "CaseworkNotFoundOrHidden",
+    ("/deals/{dealId}/disputes", "get", "422"): "ValidationFailed",
+    ("/deals/{dealId}/disputes/{disputeId}", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/disputes/{disputeId}", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/disputes/{disputeId}", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/disputes/{disputeId}", "get", "404"): "DisputeNotFoundOrHidden",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "get", "404"): "DisputeNotFoundOrHidden",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "get", "422"): "ValidationFailed",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "403"): "DisputeCommentForbidden",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "404"): "DisputeNotFoundOrHidden",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "409"): "DisputeMutationConflict",
+    ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "403"): "DisputeAcknowledgeForbidden",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "404"): "DisputeNotFoundOrHidden",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "409"): "DisputeMutationConflict",
+    ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "403"): "DisputeWithdrawForbidden",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "404"): "DisputeNotFoundOrHidden",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "409"): "DisputeMutationConflict",
+    ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "422"): "ValidationFailed",
 }
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
@@ -651,6 +735,11 @@ REQUIRED_CORE_API_SCHEMAS = {
     "VideoAnalysisResult", "RequestVideoAnalysisRequest", "VideoAnalysisAvailableActions",
     "VideoAnalysisDetail",
     "DealFulfillmentSummary", "FulfillmentDetail",
+    "DisputeReasonCode", "DisputeStatus", "DisputeOpeningLegalEntity", "DisputeAvailableActions",
+    "DisputeSummary", "DisputeEvidenceSnapshotEntry", "DisputeVideoAnalysisSnapshotEntry",
+    "DisputeOpeningSnapshot", "DisputeDetail", "DisputePage", "DisputeCommentAuthorAttribution",
+    "DisputeComment", "DisputeCommentPage", "OpenDisputeRequest", "CreateDisputeCommentRequest",
+    "AcknowledgeDisputeRequest", "WithdrawDisputeRequest", "DealCaseworkSummary",
 }
 
 
@@ -871,6 +960,7 @@ def validate_contract_documents(failures: list[str]) -> None:
             "canReviewExtraction", "canCreateRatificationPackage", "canApproveRatification", "canRejectRatification",
             "canCreateFundingPlan", "canInitiateFunding", "canReconcilePaymentOperation",
             "canStartFulfillment", "canUploadEvidence", "canAcceptEvidence", "canRejectEvidence",
+            "canOpenDispute",
         )
         if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
                 or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"} | set(optional_deal_actions)
@@ -915,7 +1005,7 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
             failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
-        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet", "ratification", "funding", "fulfillment"}
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet", "ratification", "funding", "fulfillment", "casework"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
         detail_buyer = detail.get("properties", {}).get("buyer", {})
@@ -936,7 +1026,11 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or detail.get("properties", {}).get("ratification", {}).get("anyOf")
                 != [{"$ref": "#/components/schemas/RatificationProjection"}, {"type": "null"}]
                 or detail.get("properties", {}).get("funding", {}).get("anyOf")
-                != [{"$ref": "#/components/schemas/DealFundingSummary"}, {"type": "null"}]):
+                != [{"$ref": "#/components/schemas/DealFundingSummary"}, {"type": "null"}]
+                or detail.get("properties", {}).get("fulfillment", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/DealFulfillmentSummary"}, {"type": "null"}]
+                or detail.get("properties", {}).get("casework", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/DealCaseworkSummary"}, {"type": "null"}]):
             failures.append("FAIL Core API DealDetail: party and participant-role projection changed")
 
         ratification_terms = core_components.get("schemas", {}).get("RatificationCommercialTerms", {})
@@ -1471,6 +1565,49 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/LegalEntityContext",
                 "#/components/parameters/IdempotencyKey",
             },
+            ("/deals/{dealId}/disputes", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/disputes", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/Page",
+                "#/components/parameters/PageSize",
+                "#/components/parameters/DisputeSort",
+            },
+            ("/deals/{dealId}/disputes/{disputeId}", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/DisputeId",
+                "#/components/parameters/LegalEntityContext",
+            },
+            ("/deals/{dealId}/disputes/{disputeId}/comments", "get"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/DisputeId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/Page",
+                "#/components/parameters/PageSize",
+                "#/components/parameters/DisputeCommentSort",
+            },
+            ("/deals/{dealId}/disputes/{disputeId}/comments", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/DisputeId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/DisputeId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
+            ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/DisputeId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
             ("/deals/{dealId}/invitations", "post"): {
                 "#/components/parameters/DealId",
                 "#/components/parameters/LegalEntityContext",
@@ -1744,6 +1881,121 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or "never waits" not in request_video_analysis_description
                 or "expectedEvidenceVersion" not in request_video_analysis_description):
             failures.append("FAIL Core API request video analysis: idempotency, optimistic version, or async semantics missing")
+
+        dispute_reason_code = core_components.get("schemas", {}).get("DisputeReasonCode", {})
+        dispute_status = core_components.get("schemas", {}).get("DisputeStatus", {})
+        dispute_actions = core_components.get("schemas", {}).get("DisputeAvailableActions", {})
+        open_dispute_request = core_components.get("schemas", {}).get("OpenDisputeRequest", {})
+        create_dispute_comment = core_components.get("schemas", {}).get("CreateDisputeCommentRequest", {})
+        acknowledge_dispute = core_components.get("schemas", {}).get("AcknowledgeDisputeRequest", {})
+        withdraw_dispute = core_components.get("schemas", {}).get("WithdrawDisputeRequest", {})
+        dispute_detail = core_components.get("schemas", {}).get("DisputeDetail", {})
+        dispute_snapshot = core_components.get("schemas", {}).get("DisputeOpeningSnapshot", {})
+        dispute_evidence_snapshot = core_components.get("schemas", {}).get("DisputeEvidenceSnapshotEntry", {})
+        dispute_video_snapshot = core_components.get("schemas", {}).get("DisputeVideoAnalysisSnapshotEntry", {})
+        dispute_comment = core_components.get("schemas", {}).get("DisputeComment", {})
+        deal_casework_summary = core_components.get("schemas", {}).get("DealCaseworkSummary", {})
+        dispute_open_forbidden = core_components.get("responses", {}).get("DisputeOpenForbidden", {})
+        dispute_open_conflict = core_components.get("responses", {}).get("DisputeOpenConflict", {})
+        dispute_mutation_conflict = core_components.get("responses", {}).get("DisputeMutationConflict", {})
+        casework_not_found = core_components.get("responses", {}).get("CaseworkNotFoundOrHidden", {})
+        dispute_not_found = core_components.get("responses", {}).get("DisputeNotFoundOrHidden", {})
+        forbidden_dispute_snapshot_fields = {
+            "objectKey", "downloadUrl", "storageUrl", "presignedUrl", "payload", "providerReference",
+            "modelProvider", "modelFamily", "modelVersion", "promptVersion", "technicalMetadata",
+        }
+        dispute_closed_fields = {
+            "DisputeOpeningLegalEntity": {"legalEntityId", "legalName"},
+            "DisputeAvailableActions": {"canComment", "canAcknowledge", "canWithdraw"},
+            "DisputeSummary": {
+                "id", "dealId", "status", "reasonCode", "subject", "openingLegalEntity",
+                "openedAt", "acknowledgedAt", "withdrawnAt", "version", "availableActions",
+            },
+            "DisputeEvidenceSnapshotEntry": {
+                "evidenceSubmissionId", "statusAtOpen", "versionAtOpen", "evidenceType", "mediaType",
+                "fileName", "objectVersion", "verifiedSizeBytes", "verifiedSha256", "createdAt",
+                "submittedAt", "acceptedAt", "rejectedAt", "rejectionReason",
+            },
+            "DisputeVideoAnalysisSnapshotEntry": {"evidenceSubmissionId", "jobId", "resultId", "result"},
+            "DisputeOpeningSnapshot": {
+                "ratificationPackageId", "fulfillmentId", "fulfillmentStatusAtOpen",
+                "fulfillmentVersionAtOpen", "milestoneId", "milestoneVersionAtOpen",
+                "evidence", "videoAnalysis",
+            },
+            "DisputeDetail": {
+                "id", "dealId", "status", "reasonCode", "subject", "statement", "openingLegalEntity",
+                "openedAt", "acknowledgedAt", "withdrawnAt", "openingSnapshot", "version", "availableActions",
+            },
+            "DisputeCommentAuthorAttribution": {"legalEntityId", "legalName", "displayName"},
+            "DisputeComment": {"id", "body", "authorAttribution", "createdAt"},
+            "OpenDisputeRequest": {"reasonCode", "subject", "statement", "expectedDealVersion", "expectedFulfillmentVersion"},
+            "CreateDisputeCommentRequest": {"body", "expectedVersion"},
+            "AcknowledgeDisputeRequest": {"expectedVersion"},
+            "WithdrawDisputeRequest": {"expectedVersion"},
+            "DealCaseworkSummary": {
+                "disputeId", "status", "reasonCode", "subject", "openingLegalEntity",
+                "openedAt", "acknowledgedAt", "version",
+            },
+        }
+        if (dispute_reason_code.get("enum")
+                != ["NON_DELIVERY", "EVIDENCE_QUALITY", "EVIDENCE_REJECTION", "CONTRACT_NON_CONFORMANCE", "OTHER"]
+                or dispute_status.get("enum") != ["OPEN", "UNDER_REVIEW", "RESOLVED", "WITHDRAWN"]
+                or set(dispute_actions.get("required", [])) != {"canComment", "canAcknowledge", "canWithdraw"}
+                or set(dispute_actions.get("properties", {})) != {"canComment", "canAcknowledge", "canWithdraw"}
+                or dispute_actions.get("additionalProperties") is not False
+                or set(open_dispute_request.get("required", []))
+                != {"reasonCode", "subject", "statement", "expectedDealVersion", "expectedFulfillmentVersion"}
+                or set(open_dispute_request.get("properties", {}))
+                != {"reasonCode", "subject", "statement", "expectedDealVersion", "expectedFulfillmentVersion"}
+                or open_dispute_request.get("properties", {}).get("subject", {}).get("maxLength") != 200
+                or open_dispute_request.get("properties", {}).get("statement", {}).get("maxLength") != 4000
+                or set(create_dispute_comment.get("required", [])) != {"body", "expectedVersion"}
+                or create_dispute_comment.get("properties", {}).get("body", {}).get("maxLength") != 4000
+                or set(acknowledge_dispute.get("required", [])) != {"expectedVersion"}
+                or set(withdraw_dispute.get("required", [])) != {"expectedVersion"}
+                or set(dispute_detail.get("required", [])) != dispute_closed_fields["DisputeDetail"]
+                or forbidden_dispute_snapshot_fields & set(dispute_evidence_snapshot.get("properties", {}))
+                or forbidden_dispute_snapshot_fields & set(dispute_video_snapshot.get("properties", {}))
+                or "email" in str(dispute_comment.get("properties", {}))
+                or "CASEWORK_NOT_FOUND_OR_HIDDEN" not in casework_not_found.get("description", "")
+                or "DISPUTE_NOT_FOUND_OR_HIDDEN" not in dispute_not_found.get("description", "")
+                or "DISPUTE_OPEN_FORBIDDEN" not in dispute_open_forbidden.get("description", "")
+                or "DEAL_STALE_VERSION" not in dispute_open_conflict.get("description", "")
+                or "FULFILLMENT_STALE_VERSION" not in dispute_open_conflict.get("description", "")
+                or "DISPUTE_ACTIVE_CASE_EXISTS" not in dispute_open_conflict.get("description", "")
+                or "DISPUTE_STALE_VERSION" not in dispute_mutation_conflict.get("description", "")
+                or "DISPUTE_STATE_CONFLICT" not in dispute_mutation_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in dispute_open_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in dispute_mutation_conflict.get("description", "")):
+            failures.append("FAIL Core API Slice 14A casework: enums, actions, bounds, disclosure, or stable conflicts changed")
+        for schema_name, expected_fields in dispute_closed_fields.items():
+            schema = core_components.get("schemas", {}).get(schema_name, {})
+            if (schema.get("additionalProperties") is not False
+                    or set(schema.get("properties", {})) != expected_fields
+                    or set(schema.get("required", [])) != expected_fields):
+                failures.append(f"FAIL Core API Slice 14A {schema_name}: closed field set changed")
+        dispute_sort = core_parameters.get("DisputeSort", {}).get("schema", {})
+        dispute_comment_sort = core_parameters.get("DisputeCommentSort", {}).get("schema", {})
+        if (dispute_sort.get("default") != "openedAt,desc"
+                or dispute_sort.get("enum") != ["openedAt,asc", "openedAt,desc"]):
+            failures.append("FAIL Core API DisputeSort: single allowlisted sort contract changed")
+        if (dispute_comment_sort.get("default") != "createdAt,asc"
+                or dispute_comment_sort.get("enum") != ["createdAt,asc", "createdAt,desc"]):
+            failures.append("FAIL Core API DisputeCommentSort: single allowlisted sort contract changed")
+        dispute_id = core_parameters.get("DisputeId", {})
+        if ((dispute_id.get("name"), dispute_id.get("in"), dispute_id.get("required"),
+                dispute_id.get("schema", {}).get("format")) != ("disputeId", "path", True, "uuid")):
+            failures.append("FAIL Core API DisputeId: required UUID path contract changed")
+        open_dispute_location = (core_paths.get("/deals/{dealId}/disputes", {}).get("post", {}).get("responses", {})
+                .get("201", {}).get("headers", {}).get("Location", {}))
+        if open_dispute_location.get("schema", {}).get("format") != "uri-reference":
+            failures.append("FAIL Core API open dispute: 201 Location header is required")
+        open_dispute_description = core_paths.get("/deals/{dealId}/disputes", {}).get("post", {}).get("description", "")
+        if ("IDEMPOTENCY_KEY_REUSED" not in open_dispute_description
+                or "expectedDealVersion" not in open_dispute_description
+                or "expectedFulfillmentVersion" not in open_dispute_description
+                or "never accepts client-supplied" not in open_dispute_description.lower()):
+            failures.append("FAIL Core API open dispute: idempotency, optimistic version, or snapshot-input semantics missing")
 
         for (path, method), expected_ref in EXPECTED_CORE_REQUEST_SCHEMAS.items():
             actual_ref = (core_paths.get(path, {}).get(method, {}).get("requestBody", {})

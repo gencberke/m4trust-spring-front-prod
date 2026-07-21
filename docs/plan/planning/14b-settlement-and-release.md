@@ -50,8 +50,8 @@ movement do not yet exist in accepted project state.
 - ADR-011 keeps fulfillment completion independent of release, settlement, and
   Deal completion and requires the future Deal-completion plan to align lock
   order with payment operations.
-- Proposed Slice 14A supplies the future active-dispute gate but cannot be used
-  until accepted.
+- Human-approved Slice 14A and accepted ADR-013 define the future active-dispute
+  gate, but Slice 14A implementation is not yet accepted and cannot be consumed.
 - Slice 7 staging and Slice 11B real-provider integration are deferred and not
   accepted.
 - Moka is only a research candidate. No provider release/capture, settlement
