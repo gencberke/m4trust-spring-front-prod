@@ -32,7 +32,7 @@ Bileşen rehberleri:
 - [Tamamlanmış Slice 5 planı](plan/done/05-deal-parties-and-activation.md)
 - [Tamamlanmış Slice 6 planı](plan/done/06-document-upload.md)
 - [Tamamlanmış Slice 8 planı](plan/done/08-ai-document-extraction.md)
-- [Paralel yürütülen Slice 7 staging planı](plan/ready/07-staging-deployment.md)
+- [Tamamlanmış Slice 7 staging planı](plan/done/07-staging-deployment.md)
 - [Hazır Slice 9 manual review planı](plan/ready/09-manual-review-and-ruleset.md)
 - [Hazır Slice 10 ratification planı](plan/ready/10-ratification.md)
 - [Hazır Slice 11 funding foundation planı](plan/ready/11-funding-and-payment.md)
@@ -85,12 +85,11 @@ $env:PYTHONPATH = "tools/mock-ai-worker/src"
 python -m pytest tools/mock-ai-worker/tests
 ```
 
-## Paralel Slice 7 notu
+## Kabul edilmiş Slice 7 staging
 
-Railway staging hazırlığı Slice 7 kapsamında ayrı dalda ve Slice 8'den bağımsız
-olarak yürütülmektedir. Aşağıdaki bölüm staging config-as-code ve operatör
-akışını belgeler; Slice 8'in yerel kabulü Railway deployment kabulü anlamına
-gelmez.
+Railway staging Slice 7 kapsamında 21 Temmuz 2026'da kabul edilmiştir. Aşağıdaki
+bölüm kabul edilen config-as-code ve operatör akışını belgeler. Güncel kabul
+kanıtı `agent/slice-07-acceptance-2026-07-21.md` içindedir.
 
 ## Railway staging hazırlığı
 
@@ -101,8 +100,8 @@ Repository iki deploy edilebilir OCI image tanımlar:
 - `m4trust-web-edge`: React production bundle'ını sunan ve yalnız `/api/*`
   isteklerini private Core API'ye ileten Caddy edge'i.
 
-Bu bölüm yalnız repository/config-as-code sözleşmesidir. Railway project,
-service, domain, database veya credential oluşturmaz ve gerçek deploy yapmaz.
+Bu bölüm repository/config-as-code ve operatör sözleşmesidir. Gerçek değerler
+Railway Variables/Secrets içinde tutulur; dokümantasyon credential içermez.
 
 ### Service kaynak ve config yolları
 

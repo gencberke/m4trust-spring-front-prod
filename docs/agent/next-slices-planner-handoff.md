@@ -63,7 +63,8 @@ release kabul kanıtını üretmelidir.
 Sıradaki içerik Slice 14B Settlement and Release planlamasıdır.
 `docs/plan/planning/14b-settlement-and-release.md` henüz implementation-authorizing
 değildir. Provider capability, legal/operational model, ratification contract,
-Slice 7 staging, Slice 11B real-provider, ADR-014 ve human approval gate'leri
-kapanmadan `ready/` durumuna geçemez veya task packet üretemez.
+Slice 7 staging ve C2/G4b 21 Temmuz 2026'da kabul edilmiştir. Slice 11B
+real-provider, G1–G3, ADR-014 ve human approval gate'leri kapanmadan plan
+`ready/` durumuna geçemez veya task packet üretemez.
 
 Kullanıcı tüm planner/implementer handoff'larının sahibidir.

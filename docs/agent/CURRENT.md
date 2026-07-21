@@ -35,6 +35,14 @@ at the DB level, initiator-only mutation with participant read/download,
 history and short-lived download links, and the real two-browser acceptance
 flow (§7.1–7.8, initiator + participant) passed against real MinIO.
 
+Slice 7 Railway Staging Deployment is accepted under `docs/plan/done/`.
+Main-bound immutable core/web deployments, public HTTPS edge with private Core
+API/PostgreSQL, one-shot Flyway pre-deploy, isolated migration failure gate,
+schema-compatible immutable rollback, release identity, secret/network checks,
+and the real two-context browser/security flow passed. Evidence:
+`docs/agent/slice-07-acceptance-2026-07-21.md`. RabbitMQ, object storage and AI
+workers remain outside this staging slice.
+
 Slice 8 AI Document Extraction is accepted under `docs/plan/done/`. The
 OpenAPI analysis surface, transactional outbox, idempotent inbox, RabbitMQ
 topology, contractintelligence flow, local-only Mock AI Worker, lifecycle
@@ -103,6 +111,7 @@ accepted as gate C0 on 2026-07-21
 - Slice 5 Deal parties and activation readiness is accepted under
   `docs/plan/done/`.
 - Slice 6 Document upload is accepted under `docs/plan/done/`.
+- Slice 7 Railway Staging Deployment is accepted under `docs/plan/done/`.
 - Slice 8 AI Document Extraction is accepted under `docs/plan/done/`.
 - Slice 9 Manual Review and RuleSetVersion is accepted under
   `docs/plan/done/`.
@@ -220,19 +229,23 @@ accepted as gate C0 on 2026-07-21
 - Gate C0 (14A §6 + Slice 13 historical VIDEO panel) passed on 2026-07-21
   against the local stack on Deal `DL-0000000017`. Evidence:
   `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`.
+- Slice 7 Railway staging passed on 2026-07-21 at
+  `main@832cccab8e6f4e2c32bed8230520bdc76ec9df82`: core/web immutable deploys,
+  Flyway V22 pre-deploy, disposable failure gate, compatible rollback,
+  release identity, HTTPS/security topology, and the real two-context browser
+  flow passed. Evidence: `docs/agent/slice-07-acceptance-2026-07-21.md`.
 
 ## Not yet stable or accepted
 
 - FastAPI AI service skeleton
-- Railway service configuration
 
 ## Active work
 
-No implementation task is currently active. Slice 14A is accepted and merged
-into `main`; V22 is frozen accepted history. Gate C0 browser debt is retired.
-Slice 14B remains a gated planning draft and cannot authorize implementation
-until its provider, legal, ratification-contract, staging, real-provider,
-ADR-014, and human-approval gates close.
+No implementation task is currently active. Slice 14A and Slice 7 are accepted
+and merged into `main`; V22 is frozen accepted history. Gates C0, G4a and
+C2/G4b are retired. Slice 14B remains a gated planning draft and cannot
+authorize implementation until its real-provider, legal/operational,
+ratification-contract, ADR-014, and human-approval gates close.
 
 ## Known blockers
 
@@ -241,10 +254,10 @@ acceptance debt remains.
 
 ## Next likely capability
 
-The next planning capability is gated Slice 14B Settlement and Release. It is
-not implementation-ready: staging, real-provider, legal/operational,
-ratification-contract, and ADR-014 decisions must be closed and explicitly
-human-approved first.
+The next prerequisite track is the founder G2/G3 decision correction and
+acceptance, followed by Slice 11B real-provider planning/implementation and G1
+evidence. Slice 14B remains non-ready until those gates, ADR-014, and explicit
+human approval close.
 
 ## Update rule
 

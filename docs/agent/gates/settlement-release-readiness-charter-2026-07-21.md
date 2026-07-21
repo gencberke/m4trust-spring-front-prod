@@ -25,7 +25,7 @@ production access, real money movement, or an implementer task packet.
 | --- | --- | --- | --- |
 | C0 — 14A/Slice 13 browser debt | `ACCEPTED` | Planner | Complete archived Slice 14A §6 against the real local stack, visibly retire the Slice 13 historical VIDEO/MP4 debt, record evidence, and remove the debt from current-state documents. Accepted 21 July 2026; evidence `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` on Deal `DL-0000000017`. |
 | G4a — Slice 14A prerequisite | `ACCEPTED` | User/planner | Slice 14A implementation is merged at `main@0282c0e`; acceptance record is `docs/agent/slice-14a-acceptance-2026-07-21.md`; V22 is frozen accepted history. This does not claim the C0 browser debt passed. |
-| C2/G4b — Slice 7 staging | `BLOCKED` | User/planner | Every Done item in `docs/plan/ready/07-staging-deployment.md`, including Railway HTTPS smoke, controlled migration, failure gate, release identity, secret/network checks, and schema-compatible rollback, is independently accepted; plan moves to `done/`. |
+| C2/G4b — Slice 7 staging | `ACCEPTED` | User/planner | Accepted 21 July 2026. Every Done item in `docs/plan/done/07-staging-deployment.md` passed, including Railway HTTPS smoke, controlled migration, disposable failure gate, exact release identity, secret/network checks, and schema-compatible immutable rollback. Evidence: `docs/agent/slice-07-acceptance-2026-07-21.md`. |
 | C3–C4/G4c — Slice 11B provider foundation | `BLOCKED` | User/planner | A separate eight-section 11B plan is human-approved before implementation. Real-provider funding, Moka transport/security/query behavior, staging sandbox validation, and full acceptance pass; 11B moves to `done/`. Release aggregate/API behavior remains 14B scope. |
 | G1 — Moka pool-release capability | `BLOCKED` | User/planner | Redacted, reproducible Moka test-environment evidence proves request identity, duplicate behavior, authoritative status query, settlement finality, timeout/crash recovery, callback/redirect authority, pending duration/cutoffs, and safe reference handling. Local emulation is not provider evidence. |
 | G2 — Non-production risk and operations | `BLOCKED` | Founder/user | A signed non-production decision selects standard merchant pool or marketplace/sub-dealer, limits authority to local/CI/staging sandbox, names incident/unknown-outcome ownership, and records unresolved KYC/custody/fee/split/payout risks. It is not a legal opinion and grants no production or real-money authority. |
@@ -297,7 +297,8 @@ dispute `55c8248a-94fe-43a0-a70f-895f35624643`:
   21-comment pagination / withdraw to `FULFILLMENT` with retained history /
   stale `409` / withdraw DB side-effect empty-diff / desktop+mobile UI.
 
-Remaining charter gates (G1–G3, C2/G4b, C3–C4/G4c, C6, C7) stay `BLOCKED`.
+At that checkpoint, charter gates G1–G3, C2/G4b, C3–C4/G4c, C6 and C7
+remained `BLOCKED`.
 No Slice 14B implementation authority is granted.
 
 ## Execution checkpoint — C0 second-control FIX on 21 July 2026
@@ -322,3 +323,18 @@ Second control required `FIX` before C0 could remain accepted. Completed:
    acceptance evidence instead of open transferred debt.
 
 Gate C0 remains `ACCEPTED` with the corrected evidence set.
+
+## Execution checkpoint — C2/G4b ACCEPTED on 21 July 2026
+
+Slice 7 Railway Staging Deployment is independently accepted and archived at
+`docs/plan/done/07-staging-deployment.md`. Acceptance evidence:
+`docs/agent/slice-07-acceptance-2026-07-21.md`.
+
+Accepted evidence covers main-bound immutable core/web deployments, public-edge
+and private-service topology, one-shot Flyway V22 pre-deploy, isolated migration
+failure containment, schema-compatible platform rollback, exact release SHA,
+production-cookie/same-origin browser behavior, deep-link fallback,
+authorization non-disclosure, actuator blocking, and secret/bundle checks.
+
+Gate C2/G4b is retired. Remaining charter gates G1–G3, C3–C4/G4c, C6 and C7
+stay `BLOCKED`; no Slice 14B implementation authority is granted.

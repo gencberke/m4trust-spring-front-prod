@@ -1,7 +1,7 @@
 # Review Request
 Task: 07-T03
 Revision: 1
-Plan: docs/plan/ready/07-staging-deployment.md
+Plan: docs/plan/done/07-staging-deployment.md
 Phases: §5 main-bound release wiring; §5 Runtime security; §6 Frontend; §7 browser/security acceptance
 Status: COMPLETED
 Branch: codex/slice-07-staging-foundation
