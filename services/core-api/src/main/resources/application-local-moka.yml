@@ -1,0 +1,17 @@
+# Local/CI transport-emulator configuration only. Required values have no
+# defaults: startup fails closed when a selected adapter lacks its credentials
+# or endpoint. Emulator credentials are non-secret test placeholders.
+app:
+  payment:
+    dispatch:
+      relay:
+        enabled: true
+    moka:
+      base-uri: ${MOKA_BASE_URI}
+      dealer-code: ${MOKA_DEALER_CODE}
+      username: ${MOKA_USERNAME}
+      password: ${MOKA_PASSWORD}
+      connect-timeout: ${MOKA_CONNECT_TIMEOUT:1s}
+      read-timeout: ${MOKA_READ_TIMEOUT:2s}
+      max-request-bytes: ${MOKA_MAX_REQUEST_BYTES:8192}
+      max-response-bytes: ${MOKA_MAX_RESPONSE_BYTES:16384}
