@@ -1,7 +1,10 @@
 # Slice 11B-B — Real Moka Staging Funding and G1 Capability Evidence
 
-- Status: planning; provider-evidence gate must close before implementation
-  phases can be made ready
+- Status: `SUPERSEDED` on 22 July 2026; historical planning artifact only
+- Superseded by:
+  `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`
+- Execution prohibition: no phase in this file may receive a task packet,
+  credential, provider probe, staging activation or browser run
 - Sequence: accepted 11B-A → provider probe gate B-G0 → human-approved 11B-B
   implementation phases → planner closure
 - Predecessors: accepted Slice 7, accepted G2 decision, accepted 11B-A, access

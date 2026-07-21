@@ -9,6 +9,10 @@
 - Explicit non-authority: no production credentials, no real-money movement, no
   Law 6493 legal opinion, no ADR-014 draft, no Slice 14B ready approval, no
   application/migration/public-contract change
+- Supersession note: G2's standard-merchant-pool/test-credential route was
+  superseded on 22 July 2026 by
+  `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`. This file
+  remains historical evidence; G3 remains authoritative and unchanged.
 
 ## Purpose
 

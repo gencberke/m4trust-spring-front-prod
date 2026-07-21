@@ -10,6 +10,12 @@
 Bu dokümanın onayı yalnız yol haritası sırasını kabul eder. Bir slice planını
 `ready/` durumuna taşımaz ve implementer task paketi üretme yetkisi vermez.
 
+> **Superseded route notice — 22 July 2026:** the founder selected
+> simulation-only payment/release. The real-provider Slice 11B route below is
+> preserved as historical sequencing context but is no longer actionable.
+> Current authority is
+> `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
+
 ## 1. Karar ölçütleri
 
 Sıralama şu ölçütlerle değerlendirilmiştir:

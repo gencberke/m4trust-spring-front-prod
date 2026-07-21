@@ -26,23 +26,23 @@ production access, real money movement, or an implementer task packet.
 | C0 — 14A/Slice 13 browser debt | `ACCEPTED` | Planner | Complete archived Slice 14A §6 against the real local stack, visibly retire the Slice 13 historical VIDEO/MP4 debt, record evidence, and remove the debt from current-state documents. Accepted 21 July 2026; evidence `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` on Deal `DL-0000000017`. |
 | G4a — Slice 14A prerequisite | `ACCEPTED` | User/planner | Slice 14A implementation is merged at `main@0282c0e`; acceptance record is `docs/agent/slice-14a-acceptance-2026-07-21.md`; V22 is frozen accepted history. This does not claim the C0 browser debt passed. |
 | C2/G4b — Slice 7 staging | `ACCEPTED` | User/planner | Accepted 21 July 2026. Every Done item in `docs/plan/done/07-staging-deployment.md` passed, including Railway HTTPS smoke, controlled migration, disposable failure gate, exact release identity, secret/network checks, and schema-compatible immutable rollback. Evidence: `docs/agent/slice-07-acceptance-2026-07-21.md`. |
-| C3–C4/G4c — Slice 11B provider foundation | `BLOCKED` | User/planner | Slice 11B-A is accepted at `docs/plan/done/11b-a-moka-provider-foundation.md` with evidence `docs/agent/slice-11b-a-acceptance-2026-07-22.md`. Slice 11B-B B-G0, evidence-derived ready approval, real-provider staging validation and full 11B closure remain. Release aggregate/API behavior remains 14B scope. |
-| G1 — Moka pool-release capability | `BLOCKED` | User/planner | Redacted, reproducible Moka test-environment evidence proves request identity, duplicate behavior, authoritative status query, settlement finality, timeout/crash recovery, callback/redirect authority, pending duration/cutoffs, and safe reference handling. Local emulation is not provider evidence. |
-| G2 — Non-production risk and operations | `ACCEPTED` | Founder/user | Accepted 21 July 2026 by explicit delegation to the planner. Standard merchant pool is selected only for local/CI/staging sandbox; incident ownership and unresolved production KYC/custody/fee/split/payout/Law 6493 risks remain bounded in `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`. No production or real-money authority is granted. |
+| C3–C4/G4c — simulation transport foundation | `ACCEPTED` | Founder/user/planner | Accepted 22 July 2026 for simulation scope only. Slice 11B-A and its external emulator evidence are accepted; real-provider Slice 11B-B is superseded and cannot receive work. Evidence: `docs/agent/slice-11b-a-acceptance-2026-07-22.md` and `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`. |
+| G1-S — simulation safety | `ACCEPTED` | Founder/user | Replaces historical real-provider G1 for this product scope. Only a profile-gated deterministic simulator may act; terminal release is query-verified `SIMULATED_SETTLED`, visibly `SIMULATED`, and never a real Moka/money/finality claim. Unknown remains fail-closed. Evidence: `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`. |
+| G2 — non-production risk and operations | `ACCEPTED / SUPERSEDED IN PART` | Founder/user | The 21 July merchant-pool/test-credential route is historical and superseded. Simulation-only authority and prohibited claims are fixed by `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`; G2's production/legal/custody/fee/split/payout non-claims remain binding. |
 | G3 — Ratification compatibility | `ACCEPTED` | Founder/user | Accepted 21 July 2026. Schema-v2 `disputeWindowDays`, additive v1 compatibility, immutable server-owned `completedAt`, accepted-evidence-only historical backfill, exact UTC boundary, canonical hash input and client transition are fixed by `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`. |
-| C6 — ADR-014 | `BLOCKED` | User | After G1–G4 close, ADR-014 has no open provider, legal/operational, state, race, authorization, idempotency, transaction, compatibility, or finality decision; it is human-accepted and ADR index/README/FORBIDDEN are synchronized. |
+| C6 — ADR-014 | `BLOCKED` | User | Convert accepted G1-S/G2/G3/G4 inputs into exact simulation state, race, authorization, idempotency, transaction, compatibility and completion decisions; human-accept ADR-014 and synchronize ADR index/README/FORBIDDEN. |
 | C7 — Slice 14B ready approval | `BLOCKED` | User | The provisional/circular parts of the planning draft are replaced with ADR-014 decisions, implementation phases start after the ready gate, the eight-section format passes review, and explicit human approval moves the plan from `planning/` to `ready/`. |
 
 ## Sequencing rules
 
 1. C0 is retired independently before 14B acceptance work.
-2. Slice 7 and 11B use their own approved plans and acceptance records.
-3. Slice 11B may establish real-provider funding plus shared Moka
-   transport/query primitives. It must not implement settlement eligibility,
-   release aggregates, or 14B public endpoints.
-4. Provider release probes may collect G1 evidence without creating 14B
-   application behavior.
-5. ADR-014 is drafted only after G1–G4 evidence is accepted.
+2. Slice 7 and accepted 11B-A keep their approval/evidence records.
+3. Real-provider Slice 11B-B and historical G1 are superseded; no credential,
+   provider probe, 3D/callback, real-provider staging or provider browser run is
+   allowed.
+4. Simulation transport evidence is not real-provider evidence. G1-S permits
+   only the explicitly simulated semantics in its founder decision.
+5. ADR-014 is the next work after accepted G1-S/G2/G3/G4 inputs.
 6. Public contract design and 14B implementation phases follow accepted
    ADR-014 and explicit 14B ready approval; they are not a pre-ready
    implementer phase.
@@ -51,14 +51,14 @@ production access, real money movement, or an implementer task packet.
 
 ## Stop rules
 
-Return `NO-GO` and do not issue a 14B task packet if any gate is `BLOCKED`, if
-Moka query finality is not proved, or if the proposed behavior needs optimistic
-settlement, a new provider key for an unknown operation, approve-then-refund,
-invented contractual consent, production credentials, or real money movement.
+Return `NO-GO` and do not issue a 14B task packet if any current gate is
+`BLOCKED`, if simulated mode is not explicit, or if behavior needs a new key for
+an unknown operation, optimistic success, invented contractual consent,
+production enablement, provider credentials or real money movement.
 
 ## GO definition
 
-Slice 14B receives `GO` only when C0, G1, G2, G3, G4a–G4c, C6, and C7 are all
+Slice 14B receives `GO` only when C0, G1-S, G2, G3, G4a–G4c, C6, and C7 are all
 `ACCEPTED`, the repository baseline is clean, and every evidence link remains
 reviewable and redacted. Until then, only the specific readiness work needed to
 close the next blocked gate may proceed.
@@ -368,3 +368,15 @@ remain `BLOCKED` pending Slice 11B-B B-G0 real-provider evidence, revised ready
 approval, staging funding acceptance and independent finality decision. C6 and
 C7 remain `BLOCKED`; no release, settlement, production or real-money authority
 is granted.
+
+## Execution checkpoint — simulation-only route ACCEPTED on 22 July 2026
+
+The founder/user explicitly decided that Moka payment and release exist only as
+simulation and approved successful simulated release completing the demo Deal.
+`docs/agent/gates/simulation-only-payment-decision-2026-07-22.md` supersedes the
+real-provider 11B-B/G1 route without rewriting the historical checkpoint above.
+
+G1-S and C3–C4/G4c are `ACCEPTED` for simulation scope. The former G1 provider
+gate and Slice 11B-B are `SUPERSEDED`, not falsely accepted as provider proof.
+G3 remains binding. C6 and C7 remain `BLOCKED`; ADR-014 is now the next allowed
+decision work and no Slice 14B task packet exists yet.
