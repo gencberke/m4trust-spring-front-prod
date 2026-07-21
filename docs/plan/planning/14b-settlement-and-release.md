@@ -3,7 +3,7 @@
 - Status: planning — gated future work; not implementation-authorizing
 - Draft date: 21 July 2026
 - Current repository baseline:
-  `main@476afe676383b959f8db147d0115606091ad5c1e`
+  `main@0282c0e103a2fd3c0cacd32b11cb639c098b803c`
 - Required predecessors:
   - accepted Slice 14A Dispute and Casework Foundation;
   - accepted Slice 7 staging deployment;
@@ -50,8 +50,13 @@ movement do not yet exist in accepted project state.
 - ADR-011 keeps fulfillment completion independent of release, settlement, and
   Deal completion and requires the future Deal-completion plan to align lock
   order with payment operations.
-- Human-approved Slice 14A and accepted ADR-013 define the future active-dispute
-  gate, but Slice 14A implementation is not yet accepted and cannot be consumed.
+- Accepted Slice 14A and ADR-013 define the future active-dispute gate. The
+  implementation is merged into `main`; V22 is frozen accepted history.
+- Slice 14A was accepted with its planner-owned browser matrix unrun at the
+  user's explicit direction. The complete archived 14A Section 6 matrix,
+  including the inherited Slice 13 historical VIDEO/MP4 observation, is
+  mandatory debt for the next relevant 14B browser acceptance and must not be
+  reported as previously passed.
 - Slice 7 staging and Slice 11B real-provider integration are deferred and not
   accepted.
 - Moka is only a research candidate. No provider release/capture, settlement
@@ -546,6 +551,11 @@ Owner: planner. This section is blocked until G1–G4 and B-P1–B-P7 are accept
 Use accepted staging plus the approved provider sandbox. Never use production
 credentials or real money.
 
+Before or as part of this section, run and record the complete browser matrix
+from `docs/plan/done/14a-dispute-and-casework-foundation.md` §6. This explicitly
+retires both the transferred Slice 14A browser debt and the inherited Slice 13
+historical VIDEO/MP4 advisory-panel debt.
+
 1. Create and ratify a new package version containing the accepted dispute
    window term and verify its canonical hash/projection.
 2. Activate, fund through the accepted real-provider sandbox adapter, and
@@ -617,4 +627,5 @@ provider tests do not replace this section.
 - [ ] Implementer reports all phases with `Plan completion claim: NO`
 - [ ] Planner independently reviews the complete diff and evidence
 - [ ] Planner-owned staging/provider-sandbox browser acceptance passes
+- [ ] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired
 - [ ] The plan is archived only after every gate, phase, invariant, browser step, validation, and Done item is proven

@@ -1,42 +1,30 @@
-# Review Request
+# Review Result
+
+Decision: ACCEPT
 Task: 14A
-Revision: 9
-Plan: docs/plan/ready/14a-dispute-and-casework-foundation.md
-Phases: P1–P8
-Status: COMPLETED
-Branch: feature/14a-dispute-casework-foundation
-Base: main@dbcad17949b9063b9ef385a858f728d1d0f94536
-HEAD: 9eba0d95733b876dd399e52d0d2e116cb2d46530
-Plan completion claim: NO
+Reviewed: main@0282c0e103a2fd3c0cacd32b11cb639c098b803c
 
-## Phase outcomes
-- P1 — DONE — Slice 14A OpenAPI paths/schemas, Deal casework projection fields, validator allowlists, contracts README/CHANGELOG, regenerated frontend types.
-- P2 — DONE — V22 casework tables/triggers, casework aggregates/repositories, source ports/adapters, architecture test inclusion.
-- P3 — DONE — Open/list/detail vertical with snapshot locking, idempotency, auth matrix, concurrent open races, and review deltas (insert guard, video lock races, semantic validation).
-- P4 — DONE — Comments, acknowledge, withdraw with versioned case locks, attribution, forbidden mappings, concurrency coverage.
-- P5 — DONE — Actor-aware Deal `DISPUTE` lifecycle, `DealCaseworkSummary`, `canOpenDispute`, party-only disclosure.
-- P6 — DONE — Frontend casework panel on Deal detail; review deltas for unconditional hooks, partyReader-driven empty visibility, stable-code field errors.
-- P7 — DONE — Open-vs-evidence and video-terminal lock-order races, late-result immutability, no-side-effect business snapshot asserts, V22 TRUNCATE cleanup across Slice 12/13 suites, migration-test fixture fixes.
-- P8 — DONE — Full implementer validation and review handoff completed; Section 6 browser acceptance not run/claimed.
+Findings:
+- None requiring an implementation fix.
+- Accepted material deviation: planner-owned Section 6 browser acceptance was
+  not run. The user explicitly transferred the complete matrix and inherited
+  Slice 13 historical VIDEO/MP4 observation to the next relevant 14B phase.
 
-## Validation
-- `python3 contracts/scripts/validate_contracts.py` — PASS (21 schemas, 13 fixtures; via workspace venv)
-- `./mvnw --batch-mode --no-transfer-progress verify` — PASS (331 tests, 0 failures, 0 errors)
-- `npm run typecheck` — PASS
-- `npm run build` — PASS
-- `git diff --check` — PASS
-- Focused re-run (`DisputeIntegrationTest`, `DisputeCaseworkMigrationIntegrationTest`, `DealStatusTest`, `ModuleArchitectureTest`, `VideoAnalysisHardeningIntegrationTest`, `FulfillmentIntegrationTest`, `PaymentFundingIntegrationTest`, `DealIntegrationTest`, `IdempotencyServiceIntegrationTest`) — PASS
-- AI/messaging/AsyncAPI/examples byte-identity vs base — PASS (no schema/asyncapi/examples diffs)
-- V15–V21 migrations vs base — PASS (unchanged; only V22 added)
+Validation:
+- Approved plan, ADR-013, and FORBIDDEN scope review — PASS
+- Branch/base/implementation/merge ancestry verification — PASS
+- Complete `dbcad179...e30c185` changed-file and `git diff --check` review — PASS
+- V22 and frozen V15–V21 boundary inspection — PASS
+- Material backend authorization, transaction, snapshot, and no-side-effect
+  path inspection — PASS
+- Material generated-type frontend action/error/state path inspection — PASS
+- Implementer contract validation report: 21 schemas, 13 fixtures — PASS
+- Implementer Core API full verify report: 331 tests, 0 failures/errors — PASS
+- Implementer focused regression matrix report — PASS
+- Implementer frontend typecheck/build report — PASS
+- Planner-owned real-browser acceptance — NOT RUN, explicitly deferred
 
-## Contract / migration summary
-- Public Core API OpenAPI gains dispute/casework paths and Deal `casework` / `canOpenDispute` projection fields.
-- Persistence: forward-only `V22__dispute_casework_foundation.sql` only; V15–V21 untouched.
-- AI/messaging contracts, AsyncAPI, fixtures, payment/provider, and deployment surfaces unchanged.
-
-## Decisions needed
-- None
-
-## Deviation or risk
-- `docs/agent/CURRENT.md` was updated in early branch commit `eb63b8a` (P1–P3 bundle). Planner should decide whether that project-state update stays with acceptance or is reverted before merge. Ready plan `docs/plan/ready/14a-dispute-and-casework-foundation.md` is present on the branch as the approved execution plan.
-- Section 6 real-browser acceptance remains planner-owned and is not claimed.
+Plan state:
+- archived to done; CURRENT updated
+- acceptance evidence:
+  `docs/agent/slice-14a-acceptance-2026-07-21.md`
