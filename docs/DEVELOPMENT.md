@@ -42,8 +42,9 @@ Bileşen rehberleri:
 - [Tamamlanmış Slice 12 fulfillment planı](plan/done/12-fulfillment-and-evidence.md)
 - [Tamamlanmış Slice 13 video analysis planı](plan/done/13-video-analysis.md)
 - [Tamamlanmış Slice 14A dispute/casework planı](plan/done/14a-dispute-and-casework-foundation.md)
-- [Planlanan Slice 11B-B gerçek Moka/G1 planı](plan/planning/11b-b-moka-staging-and-g1.md)
+- [Superseded Slice 11B-B gerçek Moka/G1 taslağı](plan/planning/11b-b-moka-staging-and-g1.md)
 - [Planlanan Slice 14B settlement/release planı](plan/planning/14b-settlement-and-release.md)
+- [Kabul edilmiş simulation-only payment/release kararı](agent/gates/simulation-only-payment-decision-2026-07-22.md)
 
 ## Slice 8 yerel analiz akışı
 

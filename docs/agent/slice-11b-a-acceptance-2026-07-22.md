@@ -64,3 +64,11 @@ The next allowed work is Slice 11B-B phase B-G0: explicitly authorized,
 redacted Moka test-environment funding and pool capability probes. No B-P1
 implementation task may start until B-G0 evidence revises the 11B-B plan and
 that evidence-derived plan receives ready approval.
+
+## Subsequent scope decision
+
+Later on 22 July 2026, the founder selected simulation-only payment/release.
+The next-work paragraph above is retained as the acceptance-time record but is
+superseded by
+`docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`. No real
+provider Slice 11B-B phase is actionable.

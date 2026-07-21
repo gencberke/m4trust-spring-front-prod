@@ -66,9 +66,10 @@ Sıradaki içerik Slice 14B Settlement and Release planlamasıdır.
 `docs/plan/planning/14b-settlement-and-release.md` henüz implementation-authorizing
 değildir. Provider capability, legal/operational model, ratification contract,
 Slice 7/C2-G4b ile G2/G3 21 Temmuz 2026'da, Slice 11B-A ise 22 Temmuz
-2026'da kabul edilmiştir. Sıradaki iş Slice 11B-B B-G0 gerçek Moka
-test-environment kanıt kapısıdır; henüz implementasyon task packet'i değildir.
-Slice 14B; Slice 11B/G1, ADR-014 ve final human approval kapanmadan `ready/`
+2026'da kabul edilmiştir. Founder 22 Temmuz'da payment/release için
+simulation-only kapsamı seçti; gerçek-provider Slice 11B-B/G1 rotası
+superseded oldu. G1-S ve G4c simulation scope için kabul edildi. Sıradaki iş
+ADR-014'tür. Slice 14B; ADR-014 ve final human approval kapanmadan `ready/`
 durumuna geçemez veya task packet üretemez.
 
 Kullanıcı tüm planner/implementer handoff'larının sahibidir.

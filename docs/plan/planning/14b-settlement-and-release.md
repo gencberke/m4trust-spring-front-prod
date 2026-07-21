@@ -1,38 +1,39 @@
 # Slice 14B — Settlement and Release
 
 - Status: planning — gated future work; not implementation-authorizing
-- Draft date: 21 July 2026
+- Draft date: 21 July 2026; simulation-only replan started 22 July 2026
 - Current repository baseline:
-  `main@0282c0e103a2fd3c0cacd32b11cb639c098b803c`
+  `main@7e597c0ae48ec7e40b51373cfc7c606cf2aa282f`
 - Required predecessors:
   - accepted Slice 14A Dispute and Casework Foundation;
   - accepted Slice 7 staging deployment;
-  - accepted Slice 11B real-provider integration; and
-  - accepted provider, legal, operational, and ratification-contract decisions.
+  - accepted Slice 11B-A simulation transport foundation;
+  - accepted simulation-only founder decision/G1-S/G4c; and
+  - accepted ratification-contract decision G3.
 - Future decision: ADR-014 Settlement and Release must be created from accepted
   gate evidence before this plan can become decision-complete or move to
   `ready/`.
-- Approval boundary: no implementer task packet may be produced from this plan
-  while any G1–G4 gate remains unresolved.
-- Deployment/payment boundary: planning is reopened, but implementation,
-  credentials, staging operations, provider calls, and real money movement are
-  not authorized by this document.
+- Approval boundary: no implementer task packet may be produced until ADR-014
+  is accepted and this eight-section plan receives separate ready approval.
+- Deployment/payment boundary: no Moka account, credential, provider call,
+  production enablement or real money movement exists in this scope.
 
 ## 1. Goal
 
-After provider-verified funding and fulfillment completion, allow the buyer
+After simulated funding and fulfillment completion, allow the buyer
 legal entity `ADMIN` to explicitly initiate release after an immutable,
 ratified dispute window has expired.
 
 An active dispute blocks release before dispatch. A release already dispatched
-when a dispute opens is handled through query-first provider reconciliation and
-is never assumed cancelled. Only provider-verified final settlement may change
-the Deal from `ACTIVE` to `COMPLETED`.
+when a dispute opens is handled through query-first simulator reconciliation
+and is never assumed cancelled. Only query-verified `SIMULATED_SETTLED` may
+change the demo Deal from `ACTIVE` to `COMPLETED`.
 
 This document plans the complete dependency, decision, implementation,
 validation, and acceptance sequence. It deliberately remains gated because the
-provider, legal, operational, and contract facts required to specify safe money
-movement do not yet exist in accepted project state.
+ADR-014 must still fix exact state, race, authorization, cardinality,
+idempotency, lock and transaction decisions. This plan never claims real money
+movement or financial settlement.
 
 ## 2. Current State and Accepted Inputs
 
@@ -56,15 +57,17 @@ movement do not yet exist in accepted project state.
   inherited Slice 13 historical VIDEO/MP4 observation on 21 July 2026. Evidence:
   `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`. Do not restate that
   matrix as open debt for 14B acceptance.
-- Slice 7 staging and C2/G4b were accepted on 21 July 2026; Slice 11B
-  real-provider integration remains deferred and unaccepted.
-- Moka is only a research candidate. No provider release/capture, settlement
-  finality, status-query, callback, duplicate, timeout, dispute-after-dispatch,
-  void, credential, or operational behavior is accepted.
-- G2/G3 were accepted on 21 July 2026. Non-production readiness uses the
-  standard-merchant-pool model; production KYC/custody/fee/split/Law 6493/
-  payout questions remain explicitly unresolved. Ratification schema v2 and
-  immutable fulfillment `completedAt` compatibility are fixed by
+- Slice 7 staging/C2/G4b and Slice 11B-A were accepted. The real-provider
+  Slice 11B-B/G1 route is superseded; no credential or provider evidence is
+  required or allowed.
+- The founder accepted simulation-only payment/release on 22 July 2026. G1-S
+  and G4c are accepted for that scope. Moka is only an internal emulator label;
+  it conveys no provider or financial claim. Authority:
+  `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
+- G3 remains accepted. G2's former merchant-pool route is superseded while its
+  production KYC/custody/fee/split/Law 6493/payout non-claims remain.
+  Ratification schema v2 and immutable fulfillment `completedAt` compatibility
+  are fixed by
   `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`.
 - Existing ratification packages contain no `disputeWindowDays` term. They
   must remain release-ineligible rather than being silently reinterpreted.
@@ -76,36 +79,36 @@ movement do not yet exist in accepted project state.
 ### Target scope after every gate closes
 
 - Immutable, versioned, party-ratified `disputeWindowDays` commercial term.
-- Exactly one settlement aggregate per funded unit/Deal under the accepted V1
-  single-plan/single-unit model.
+- Exactly one simulated-settlement aggregate per funded unit/Deal under the
+  accepted V1 single-plan/single-unit model.
 - Explicit buyer-ADMIN release request only when:
   - Deal remains `ACTIVE`;
-  - funding is provider-verified `FUNDED`;
+  - funding is simulator-query-verified `FUNDED` in `SIMULATED` mode;
   - fulfillment is `COMPLETED`;
   - the ratified dispute window has elapsed;
   - no active Slice 14A dispute exists; and
   - no release/settlement operation is already active or terminal.
-- Durable provider release dispatch with a lifetime-fixed provider idempotency
-  identity.
+- Durable simulator release dispatch with a lifetime-fixed operation identity.
 - Query-first reconciliation for crashes, timeout, unknown outcome, duplicate
-  delivery/callback, restart, and release-first/dispute-later races.
+  delivery, restart, and release-first/dispute-later races.
 - Participant-readable safe settlement projection with backend-derived
   actions; buyer ADMIN remains the sole mutation actor.
-- Deal `ACTIVE -> COMPLETED` only when the approved provider query proves final
-  settlement.
+- Deal `ACTIVE -> COMPLETED` only when simulator query proves
+  `SIMULATED_SETTLED`; this is demo workflow completion, not financial finality.
 - Contract-first Core API, forward-only persistence, audit, concurrency,
-  staging/provider-sandbox validation, and planner-owned browser acceptance.
+  staging-simulation validation, and planner-owned browser acceptance.
 
 ### Permanently out of scope for 14B
 
 - Automatic release on fulfillment completion, window expiry, scheduler, AI
   output, callback, or browser redirect.
 - Refund, reversal, chargeback, approve-then-refund, or post-settlement recovery.
-- Production credentials, production money movement, or production deployment.
+- Production simulator enablement, provider credentials, real money movement,
+  or production payment/release deployment.
 - Platform-held/manual-payout assumption without accepted legal approval.
 - AI involvement.
 - Case resolution, mutual cancellation, or casework-driven ACTIVE cancellation.
-- Provider-specific behavior not proven by an accepted sandbox probe.
+- Any provider-specific behavior or claim of provider/financial finality.
 - Implementer-run staging/browser acceptance.
 
 ## 4. Architecture and Contract Decisions
@@ -114,52 +117,37 @@ movement do not yet exist in accepted project state.
 
 - Release is an explicit buyer legal entity `ADMIN` action. Fulfillment
   completion and dispute-window expiry create eligibility only; they create no
-  provider operation.
+  simulator operation.
 - The dispute window is an immutable ratification-package term approved by both
   parties. Existing packages without the term remain release-ineligible.
 - Refund/reversal is separate later work.
 - Dispute-first wins the agreed Deal lock and prevents release intent/dispatch.
-- Release-first followed by a dispute never implies external cancellation. The
-  provider is queried and local state remains fail-closed until verified.
-- Only provider-verified final settlement produces SettlementStatus `SETTLED`
-  and DealStatus `COMPLETED`.
-- Redirects, callbacks, release acceptance, local dispatch completion, timeout,
-  or a provider-native “success” string are not finality unless ADR-014 maps
-  them from accepted probe evidence.
+- Release-first followed by a dispute never implies cancellation. The same
+  simulated operation is queried and local state remains fail-closed.
+- Financial `SETTLED` is unreachable. Only query-verified
+  `SIMULATED_SETTLED` may produce demo DealStatus `COMPLETED`.
+- Release acceptance, local dispatch completion, synchronous success-like
+  response, timeout or callback-like input is not terminal simulation proof.
 
-### G1 — Provider capability gate
+### G1-S — Accepted simulation safety gate
 
-Human acceptance must identify one provider and retain reproducible sandbox
-evidence for:
+Accepted by the founder/user on 22 July 2026:
 
-- release/capture initiation and exact request identity;
-- authoritative status query and settlement finality;
-- duplicate provider-key behavior;
-- decline versus unknown/timeout behavior;
-- crash before call and crash after call/before local commit;
-- callback/redirect authentication and whether either is authoritative;
-- dispute appearing before and after external dispatch;
-- maximum pending/processing duration and operational recovery;
-- safe provider-reference persistence/public projection; and
-- credential, PII, and raw-payload handling.
+- deterministic external simulator only in local/CI/staging simulation modes;
+- no production fallback or runtime scenario-control surface;
+- lifetime-fixed operation identity and query-only terminal proof;
+- explicit `SIMULATED` projection and `SIMULATED_SETTLED` terminal state;
+- unknown/timeout/crash remains reconcilable and blocks another release; and
+- no Moka/provider/financial/custody/payout claim.
 
-If query-first finality cannot be proved, stop. Do not implement optimistic
-release, automatic retry with a new key, or approve-then-refund.
+Evidence: `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
 
-### G2 — Legal and operational gate
+### G2 — Accepted non-claims
 
-Human acceptance must record:
-
-- custody, marketplace, sub-dealer, or other legal payment model;
-- KYC/onboarding responsibility;
-- fee, split, payout, and settlement ownership;
-- Law 6493 and related legal review;
-- buyer release authority and dispute-window enforceability;
-- manual intervention role, authorization, audit, and escalation;
-- provider-operation cutoffs and finality expectations; and
-- support/incident ownership for unknown outcomes.
-
-No platform-held/manual-payout or operator-authority default may be inferred.
+The former merchant-pool/test-credential selection is superseded. No custody,
+marketplace, sub-dealer, KYC, fee, split, payout, Law 6493, real settlement or
+manual-payout conclusion is made. Buyer-ADMIN authority is a demo workflow
+rule, not a legal/payment-services opinion.
 
 ### G3 — Ratification contract compatibility gate
 
@@ -177,21 +165,22 @@ Human acceptance must choose and fully specify:
 Existing accepted packages remain release-ineligible. A migration must not
 invent contractual consent for them.
 
-### G4 — Prerequisite acceptance gate
+### G4 — Accepted prerequisite gate
 
 Before ADR-014 or a ready plan:
 
 - Slice 7 staging is accepted;
-- Slice 11B real-provider integration is accepted;
+- Slice 11B-A simulation transport foundation is accepted;
 - Slice 14A is accepted;
-- the accepted provider adapter exposes the exact verified operations through
-  provider-neutral ports; and
-- no provider unknown, refund workaround, or unresolved legal decision remains.
+- the accepted external emulator/adapter exposes query-first provider-neutral
+  primitives; and
+- no real-provider, credential, refund workaround or legal-compliance claim is
+  introduced.
 
 ### Target ownership and module boundaries
 
 - `payment` owns settlement eligibility, settlement/release aggregates,
-  provider operation state, durable dispatch, reconciliation, and public
+  simulated operation state, durable dispatch, reconciliation, and public
   settlement projections.
 - `deal` owns the Deal lock/status transition through a consumer-owned port;
   payment never reads DealRepository directly.
@@ -199,12 +188,12 @@ Before ADR-014 or a ready plan:
   projection; payment never reads casework tables or repositories directly.
 - `ratification` owns the versioned contractual window; payment consumes a
   stable immutable projection rather than interpreting rule text or AI output.
-- `integration` owns provider adapters and relay mechanics and makes no release,
-  eligibility, dispute, or finality decision.
-- Provider calls occur after durable intent commit and outside database
+- `integration` owns simulator adapters and relay mechanics and makes no release,
+  eligibility, dispute, or terminal-state decision.
+- Simulator calls occur after durable intent commit and outside database
   transactions.
 
-### Target public API — provisional until G1–G4 and ADR-014
+### Target public API — provisional until ADR-014
 
 ```text
 GET  /api/v1/deals/{dealId}/settlement
@@ -215,113 +204,116 @@ POST /api/v1/release-operations/{operationId}/reconcile
 ```
 
 - Release/reconcile return `202 Accepted`, `Location`, and a safe operation
-  projection; neither waits for the provider.
+  projection; neither waits for the simulator.
 - Mutations require session, CSRF, legal-entity context, `Idempotency-Key`, and
   the exact expected versions ADR-014 assigns.
 - Deal participants may read a safe settlement summary; only buyer ADMIN may
   request release or reconciliation.
-- Public DTOs omit credentials, raw provider payloads, internal ledger data,
-  unsafe provider messages, and full provider references.
+- Public DTOs omit raw simulator payloads, internal ledger data, unsafe
+  transport messages, and full internal operation references.
+- Public settlement projections expose exact mode `SIMULATED`; the frontend
+  visibly states that no real money movement occurred.
 - Backend actions include `canRequestRelease` and `canReconcileRelease`.
 - Stable errors distinguish missing contractual window, unelapsed window,
   active dispute, stale state, operation already active, terminal settlement,
-  unknown provider state, forbidden actor, hidden resource, validation, and
+  unknown simulated outcome, forbidden actor, hidden resource, validation, and
   idempotency reuse.
 
-Exact schema, enum, provider mapping, state transitions, and compatibility
-cannot be finalized until G1–G4. This section is a target boundary, not an
-implementation contract.
+Exact schema, operation states, lock order and compatibility remain ADR-014
+work. This section is a target boundary, not an implementation contract.
 
 ### Target state, transactions, and persistence
 
 - SettlementStatus follows ADR-003:
   `NOT_READY`, `READY`, `PROCESSING`, `ON_HOLD`, `SETTLED`, `FAILED`, and
   `CANCELLED`.
-- ADR-014 must define which values are reachable in 14B and the exact verified
-  provider mappings. No generic free status setter is permitted.
-- A durable release operation distinguishes local intent, external dispatch,
-  unknown outcome, verified provider result, and final settlement.
+- ADR-014 adds `SIMULATED_SETTLED`. Financial `SETTLED`, refund/reversal states
+  and production paths are unreachable in 14B. No generic free status setter is
+  permitted.
+- A durable release operation distinguishes local intent, simulator dispatch,
+  unknown outcome, query-verified simulated result and terminal simulation.
 - Unknown/timeout/crash state remains reconcilable and never becomes automatic
   success or failure.
 - The migration version is allocated only from the then-current accepted
   Flyway history; no existing migration is rewritten.
 - Eligibility/release intent, audit, HTTP idempotency, and durable dispatch are
-  atomic. Provider application and settlement finality each use short,
+  atomic. Simulator-result application and terminal completion each use short,
   separately verified transactions.
-- The final settlement transaction locks in the ADR-014 order, applies
-  SettlementStatus `SETTLED`, changes Deal `ACTIVE -> COMPLETED`, and appends
-  audit atomically. It creates no refund, reversal, cancellation, or archive.
+- The final simulation transaction locks in the ADR-014 order, applies
+  SettlementStatus `SIMULATED_SETTLED`, changes Deal `ACTIVE -> COMPLETED`, and
+  appends audit atomically. It creates no refund, reversal, cancellation,
+  archive or financial-settlement claim.
 
 ## 5. Detailed Implementation Phases
 
-Only G0 is actionable planning/research after explicit user authorization.
-B-P1–B-P7 are sequenced future phases, but no implementer may execute them
-until G1–G4 are accepted and the resulting ADR-014 and revised plan receive
+Only G0 is actionable decision work. B-P1–B-P7 are sequenced future phases, but
+no implementer may execute them until ADR-014 and this revised plan receive
 explicit human approval.
 
-### G0 — Close external decision gates
+### G0 — Close ADR-014 decisions
 
 Objective:
-Produce the evidence required for a decision-complete ADR-014.
+Convert the accepted simulation/G3/prerequisite inputs into a decision-complete
+ADR-014.
 
 Exact scope:
 
-- Run approved provider sandbox probes for initiation, query, duplicates,
-  decline, timeout, crash recovery, callback/redirect, finality, and
-  dispute-after-dispatch behavior.
-- Obtain the G2 legal/operational decision record.
-- Decide the G3 ratification contract/version rollout.
-- Record exact accepted Slice 7, 11B, and 14A prerequisites.
-- Store no credential, raw payment data, or provider secret in the repository.
+- Fix simulator mappings, operation/cardinality/state transitions, query-only
+  `SIMULATED_SETTLED`, late-dispute behavior and demo Deal completion.
+- Publish a complete transition/UI-label matrix: every failure and terminal
+  label is simulation-qualified and financial `SETTLED` remains unreachable.
+- Fix authorization/read disclosure, HTTP/operation-key idempotency, lock order,
+  transaction boundaries, audit and compatibility.
+- Explicitly extend ADR-010 §2.6 from local-only scenario selection to a
+  separate `staging-simulated` profile while preserving production rejection.
+- Consume accepted G3 and exact Slice 7, 11B-A and 14A prerequisites.
+- Preserve production exclusion and prohibited financial/provider claims.
 - Change no application code, migration, public contract, or accepted ADR.
 
 Validation and completion evidence:
 
-- Reproducible redacted capability matrix, authoritative provider documents,
-  sandbox request/query evidence, legal/operations approval, and explicit
-  human gate acceptance.
+- Decision table covers every state/race/lock/auth/idempotency/transaction and
+  simulation-label boundary; explicit human ADR acceptance exists.
 
 Stop/escalation conditions:
 
-- Stop if provider query finality, duplicate safety, legal model, authority,
-  ratification rollout, or dispute race remains unknown.
+- Stop if simulator terminal semantics, duplicate safety, authority,
+  ratification rollout, production exclusion or dispute race remains unknown.
 - Do not design a workaround or start B-P1.
 
 Planner review checkpoint:
-Explicit acceptance of G1–G4 is required before ADR-014 drafting.
+Explicit ADR-014 acceptance is required before contract implementation.
 
-### B-P1 — ADR-014 and contract-first design
+### B-P1 — Contract-first simulation design
 
 Objective:
-Convert accepted gate evidence into a decision-complete Settlement and Release
-ADR and reviewed public contract.
+Apply accepted ADR-014 decisions to the reviewed public contract before
+persistence or application implementation.
 
 Exact scope and likely boundaries:
 
-- Define provider mappings, release-operation states, settlement finality,
-  lock order, dispute race, contractual-window versioning, ledger/accounting
-  boundary, authorization, idempotency, audit, errors, and compatibility.
-- Revise this planning document with exact behavior and obtain human approval
-  before moving it to `ready/`.
+- Preserve the ADR-014 simulator mappings, operation states, simulated
+  terminality, authorization, errors and compatibility exactly.
 - Add the approved ratification and settlement/release API shapes to committed
   OpenAPI, validator expectations, contract docs/changelog, and generated types.
 
 Tests and validation:
 
 - Contract validator, expected-invalid matrix, generated-type drift, package
-  canonical/hash compatibility, and provider-adapter contract tests.
+  canonical/hash compatibility, and simulator-adapter contract tests.
 
 Completion evidence:
 
-- ADR-014 contains no open provider, legal, product, state, or compatibility
-  decision and the contract matches the accepted probe evidence.
+- The contract contains explicit `SIMULATED` mode and `SIMULATED_SETTLED`, has
+  no financial/provider claim and matches accepted ADR-014.
 
 Stop/escalation conditions:
 
-- Stop if any G1–G4 assumption changes or ADR-014 cannot be decision-complete.
+- Stop if implementation needs a decision absent from ADR-014 or changes an
+  accepted simulation/G3 prerequisite.
 
 Planner review checkpoint:
-ADR-014 and contract approval before persistence.
+Contract approval before persistence.
 
 ### B-P2 — Forward-only settlement persistence and ports
 
@@ -333,22 +325,22 @@ Exact scope and likely boundaries:
 
 - Add the next forward-only migration after the then-accepted history.
 - Enforce one settlement per funding unit/Deal, one active/terminal release as
-  specified by ADR-014, provider-key uniqueness, status/timestamp checks,
+  specified by ADR-014, operation-key uniqueness, status/timestamp checks,
   immutable verified results, dispute-hold state, and optimistic version.
 - Add payment-owned repositories/services/ports, Deal target/lock adapter,
   casework dispute gate, ratification term projection, and integration-owned
-  provider adapter boundary.
+  simulator adapter boundary.
 - Keep money relational using integer minor units and ISO currency.
 
 Authorization, idempotency, concurrency, and audit:
 
-- Provide the primitives for lifetime-fixed provider keys, version checks,
+- Provide the primitives for lifetime-fixed operation keys, version checks,
   audit, and durable dispatch; no external call in migration/persistence work.
 
 Tests and validation:
 
 - Clean/upgrade migration, cardinality, cross-Deal/unit integrity, state checks,
-  immutability, provider-key uniqueness, and module architecture.
+  immutability, operation-key uniqueness, and module architecture.
 
 Completion evidence:
 
@@ -357,8 +349,8 @@ Completion evidence:
 
 Stop/escalation conditions:
 
-- Stop on frozen-migration edits, provider-specific domain fields not approved
-  in ADR-014, float money, or foreign repository/entity access.
+- Stop on frozen-migration edits, simulator-specific transport fields leaking
+  into the business domain, float money, or foreign repository/entity access.
 
 Planner review checkpoint:
 Persistence/port review before eligibility.
@@ -373,13 +365,14 @@ Exact scope and likely boundaries:
 
 - Derive the deadline from the accepted immutable ratification snapshot and
   ADR-014-defined fulfillment completion timestamp.
-- Require ACTIVE, provider-verified FUNDED, COMPLETED fulfillment, elapsed
-  window, no active dispute, and no active/terminal release conflict.
+- Require ACTIVE, simulator-query-verified FUNDED in SIMULATED mode, COMPLETED
+  fulfillment, elapsed window, no active dispute, and no active/terminal
+  release conflict.
 - Use the ADR-014 deterministic lock order beginning with Deal and including
-  settlement/funding/casework gates.
+  simulated-settlement/funding/casework gates.
 - Atomically create release intent, audit, HTTP idempotency result, and durable
-  provider dispatch.
-- Return async projection without waiting for the provider.
+  simulator dispatch.
+- Return async projection without waiting for the simulator.
 
 Authorization, idempotency, concurrency, and audit:
 
@@ -406,117 +399,120 @@ Completion evidence:
 Stop/escalation conditions:
 
 - Stop if eligibility depends on frontend time, unratified config, AI output,
-  callback, or undocumented provider state.
+  callback-like input or non-query simulator state.
 
 Planner review checkpoint:
 Eligibility/lock-order review before external dispatch.
 
-### B-P4 — Provider dispatch and query-first reconciliation
+### B-P4 — Simulator dispatch and query-first reconciliation
 
 Objective:
-Execute release safely outside database transactions and recover unknown
-outcomes without duplicate money movement.
+Execute simulated release safely outside database transactions and recover
+unknown outcomes without duplicate operations.
 
 Exact scope and likely boundaries:
 
 - Relay claims durable dispatch in a short transaction, commits, then calls the
-  accepted provider port with the lifetime-fixed key.
+  simulator port with the lifetime-fixed key.
 - Apply verified results in a new transaction under ADR-014 mappings.
 - Query before repeating any uncertain external mutation.
 - For release-first/dispute-later, enter the accepted fail-closed state and
-  reconcile; never assume provider cancellation.
-- Validate callback/redirect only if G1/ADR-014 makes it authoritative;
-  otherwise treat it only as a wake-up/UX signal followed by query.
+  reconcile; never silently cancel or create a replacement operation.
+- No callback/redirect path exists. Only status query may prove
+  `SIMULATED_SETTLED`.
 
 Authorization, idempotency, concurrency, and audit:
 
-- Provider delivery/result application is duplicate-safe and audited.
+- Simulator delivery/result application is duplicate-safe and audited.
 - Unknown state blocks new release and terminal settlement until query resolves.
 
 Tests and validation:
 
 - Success, decline, timeout, crash-before-call, crash-after-call/before-commit,
-  duplicate result/callback, restart recovery, late result, unknown outcome,
+  duplicate result, restart recovery, late result, unknown outcome,
   and dispute-after-dispatch.
 
 Completion evidence:
 
-- Provider call counts prove no duplicate release and database state proves no
-  false `SETTLED` or `FAILED` classification.
+- Simulator call counts prove no duplicate release and database state proves no
+  false `SIMULATED_SETTLED`, financial `SETTLED` or `FAILED` classification.
 
 Stop/escalation conditions:
 
-- Stop on undocumented provider behavior, unsafe automatic retry, new provider
-  key for an unknown operation, or proposed refund workaround.
+- Stop on unsafe automatic retry, new operation key for an unknown operation,
+  production enablement or proposed refund workaround.
 
 Planner review checkpoint:
-Provider/reconciliation evidence review before finality.
+Simulator/reconciliation evidence review before terminal completion.
 
-### B-P5 — Settlement finality, Deal completion, and frontend
+### B-P5 — Simulated terminal result, Deal completion, and frontend
 
 Objective:
-Show authoritative settlement progress and complete the Deal only at verified
-provider finality.
+Show explicit simulated progress and complete the demo Deal only after
+query-verified `SIMULATED_SETTLED`.
 
 Exact scope and likely boundaries:
 
-- Apply only the ADR-014 verified final settlement result to `SETTLED`.
+- Apply only the ADR-014 query-verified terminal result to
+  `SIMULATED_SETTLED`; financial `SETTLED` is unreachable.
 - In the accepted lock order, atomically transition Deal `ACTIVE -> COMPLETED`,
   apply final settlement state, and append audit.
 - Do not archive, cancel, refund, reverse, or open/resolve casework.
 - Add settlement frontend/query/error states for unavailable, missing term,
   window pending, dispute-blocked, ready, processing, on hold, unknown/
-  reconcile, failed, settled, loading, backend error, stale, and read-only.
+  reconcile, simulated failure, `SIMULATED_SETTLED`, loading, backend error,
+  stale, and read-only. No generic “settled” label is rendered.
 - Render action availability exclusively from backend projections.
 
 Authorization, idempotency, concurrency, and audit:
 
-- Buyer ADMIN mutation; participant-safe read; finality transaction is
+- Buyer ADMIN mutation; participant-safe read; terminal transaction is
   duplicate-safe and version-authoritative.
 
 Tests and validation:
 
-- Participant/actor matrix, release acceptance versus settlement finality,
+- Participant/actor matrix, release acceptance versus simulated terminality,
   settlement-vs-Deal completion, payment initiate/reconcile-vs-completion,
-  dispute visibility, late/duplicate finality, and no premature completion.
+  dispute visibility, late/duplicate terminal results, and no premature completion.
 - Frontend typecheck/build and stable-code recovery.
 
 Completion evidence:
 
-- Release acceptance, callback, or unknown outcome leaves Deal ACTIVE; only a
-  provider-verified SETTLED result completes it.
+- Release acceptance or unknown outcome leaves Deal ACTIVE; only a
+  query-verified `SIMULATED_SETTLED` result completes it, with visible
+  `SIMULATED` mode and no-real-money wording.
 
 Stop/escalation conditions:
 
-- Stop if finality cannot be verified by the authoritative provider query or
-  requires refund/cancellation behavior.
+- Stop if terminal simulation cannot be verified by the authoritative simulator
+  query or requires refund/cancellation behavior.
 
 Planner review checkpoint:
-Finality and frontend review before hardening.
+Simulated terminality and frontend-label review before hardening.
 
-### B-P6 — Dispute, provider, and accepted-slice hardening
+### B-P6 — Dispute, simulator, and accepted-slice hardening
 
 Objective:
 Prove money-safety invariants and compatibility under races and recovery.
 
 Exact scope and tests:
 
-- Dispute-first, release-first, dispatch claim, provider call, reconciliation,
+- Dispute-first, release-first, dispatch claim, simulator call, reconciliation,
   duplicate dispatch, late result, and settlement/new-dispute timing.
 - Funding/payment reconciliation, fulfillment completion, 14A disclosure,
   Deal lifecycle, ratification hashing/versioning, and module architecture.
 - Before/after assertions for no refund, reversal, cancellation, automatic
-  release, AI effect, or credential/raw-payload persistence.
+  release, AI effect, production enablement, credential or financial claim.
 
 Completion evidence:
 
-- Exact provider-call counts, durable operation history, deterministic race
+- Exact simulator-call counts, durable operation history, deterministic race
   outcomes, and no unknown outcome classified as success/failure.
 
 Stop/escalation conditions:
 
-- Stop on any FORBIDDEN behavior, unverified provider mapping, or need to
-  broaden refund/legal scope.
+- Stop on any FORBIDDEN behavior, ambiguous simulated mode, or need to broaden
+  refund/legal/production scope.
 
 Planner review checkpoint:
 Focused hardening review before full validation.
@@ -532,14 +528,17 @@ Required validation after ADR-014 makes commands exact:
 - contract validator and compatibility checks;
 - full Core API verify;
 - frontend typecheck and production build;
-- approved provider sandbox adapter/integration suite;
+- external simulator adapter/integration suite;
 - Compose/config checks where applicable;
-- focused provider/reconciliation/dispute/finality matrix; and
+- bootstrap/profile guard proving production rejects every simulator mode;
+- CI/config test proving only explicit local/CI/`staging-simulated` profiles
+  can start the simulator adapter;
+- focused simulator/reconciliation/dispute/terminality matrix; and
 - `git diff --check`, status, and complete prerequisite-base-to-HEAD diff.
 
-The implementer report must include exact provider sandbox environment,
-redacted probe identity, call counts, unknown outcomes, migrations, contract
-delta, branch/base/HEAD, deviations, and `Plan completion claim: NO`.
+The implementer report must include exact simulation profile/scenario, call
+counts, unknown outcomes, migrations, contract delta, branch/base/HEAD,
+production-exclusion proof, deviations, and `Plan completion claim: NO`.
 
 Stop/escalation conditions:
 
@@ -548,10 +547,10 @@ Stop/escalation conditions:
 
 ## 6. Browser Acceptance
 
-Owner: planner. This section is blocked until G1–G4 and B-P1–B-P7 are accepted.
+Owner: planner. This section is blocked until ADR-014 and B-P1–B-P7 are accepted.
 
-Use accepted staging plus the approved provider sandbox. Never use production
-credentials or real money.
+Use accepted staging plus the external simulator in an explicit simulation
+profile. Never use production payment/release mode or real money.
 
 Before or as part of this section, confirm gate C0 remains accepted:
 `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` already retires the
@@ -561,46 +560,51 @@ evidence separately.
 
 1. Create and ratify a new package version containing the accepted dispute
    window term and verify its canonical hash/projection.
-2. Activate, fund through the accepted real-provider sandbox adapter, and
-   complete fulfillment.
+2. Activate, fund through the accepted external simulator adapter, and complete
+   fulfillment; UI visibly identifies `SIMULATED` mode.
 3. Before expiry, buyer ADMIN sees release unavailable and forced release POST
    receives the accepted stable conflict.
-4. Open a Slice 14A dispute; release remains blocked and no provider operation
+4. Open a Slice 14A dispute; release remains blocked and no release operation
    or dispatch is created.
 5. Withdraw the dispute; release remains unavailable until the exact ratified
    window expires.
 6. After expiry, buyer MEMBER, seller, and other participants cannot release;
    buyer ADMIN explicitly requests release through the UI.
 7. Confirm queued/processing state survives refresh, double action/replay
-   produces one provider operation, and safe participants see no credential or
-   raw provider detail.
+   produces one simulator operation, and safe participants see no credential,
+   raw transport detail or real-money claim.
 8. Exercise timeout/unknown behavior. UI shows fail-closed reconciliation, not
    success, decline, or a new release action.
-9. Reconcile through authoritative provider query and reach verified SETTLED.
-10. Confirm only verified SETTLED changes Deal to COMPLETED.
-11. Exercise the accepted release-first/dispute-later provider-sandbox path and
+9. Reconcile through authoritative simulator query and reach
+   `SIMULATED_SETTLED`.
+10. Confirm only `SIMULATED_SETTLED` changes the demo Deal to COMPLETED and the
+    UI states that no real money movement occurred.
+11. Exercise the accepted release-first/dispute-later simulator path and
     confirm query-first fail-closed reconciliation.
-12. Confirm no refund, reversal, automatic release, cancellation, credential
-    disclosure, production money movement, or AI side effect.
+12. Confirm no financial `SETTLED`, refund, reversal, automatic release,
+    cancellation, credential, production enablement, real money movement or AI
+    side effect.
 13. Regress Slice 14A party-only disclosure and accepted fulfillment/video
     history behavior.
 
-Any browser/provider discrepancy produces `FIX` or `REPLAN`. Automated or fake
-provider tests do not replace this section.
+Any browser/simulator discrepancy produces `FIX` or `REPLAN`. Focused tests do
+not replace this single final user-visible simulation check.
 
 ## 7. Validation and Review Handoff
 
-- This document cannot move to `ready/` while any G1–G4 item remains unresolved.
-- G0 evidence is planner/human decision input, not an implementer authorization.
+- This document cannot move to `ready/` before accepted ADR-014 and separate
+  ready approval.
+- G0 is planner/human decision work, not an implementer authorization.
 - After a future implementation request, reviewer independently verifies
-  provider evidence, legal decisions, contract compatibility, migration safety,
+  simulation decision, contract compatibility, migration safety,
   money types, authorization, idempotency, external-call boundaries,
-  reconciliation, dispute races, finality, secret handling, and the full diff.
-- Provider sandbox screenshots/log references must be redacted and contain no
-  credential, raw card/payment data, secret, or unnecessary PII.
-- Acceptance requires automated validation plus real staging/provider-sandbox
-  browser evidence.
-- If provider behavior or law/operations contradict ADR-014, return `REPLAN`;
+  reconciliation, dispute races, simulated terminality, production exclusion
+  and the full diff.
+- Simulation screenshots/log references contain no raw transport payload,
+  unnecessary PII or wording that implies real payment.
+- Acceptance requires automated validation plus staging-simulation browser
+  evidence.
+- If simulation semantics or accepted G3 contradict ADR-014, return `REPLAN`;
   never create a workaround.
 - Task acceptance does not complete the plan. All phases, browser steps,
   invariants, gates, validations, and Done items require evidence.
@@ -609,12 +613,12 @@ provider tests do not replace this section.
 
 ## 8. Done Definition
 
-- [ ] G1 provider capability evidence is complete and human-accepted
+- [x] G1-S simulation safety is decision-complete and human-accepted
 - [x] G2 non-production operating-model decision is recorded and human-accepted
 - [x] G3 ratification contract/version rollout is decision-complete and accepted
 - [x] G4a Slice 14A prerequisite is accepted
 - [x] G4b Slice 7 staging prerequisite is accepted
-- [ ] G4c Slice 11B real-provider prerequisite is accepted
+- [x] G4c Slice 11B-A simulation foundation is accepted; 11B-B is superseded
 - [ ] ADR-014 is decision-complete and human-accepted
 - [ ] This revised 14B plan is human-approved and moved to `ready/`
 - [ ] Ratified dispute-window terms are immutable, versioned, and canonical-hash inputs
@@ -624,13 +628,13 @@ provider tests do not replace this section.
 - [ ] Fulfillment completion/window expiry never creates automatic release
 - [ ] Active dispute blocks pre-dispatch release
 - [ ] Release-first/dispute-later uses verified query-first reconciliation
-- [ ] Unknown provider outcomes never become automatic success or failure
-- [ ] Lifetime-fixed provider idempotency prevents duplicate release
-- [ ] Only provider-verified SETTLED completes the Deal
+- [ ] Unknown simulator outcomes never become automatic success or failure
+- [ ] Lifetime-fixed operation identity prevents duplicate release
+- [ ] Only query-verified SIMULATED_SETTLED completes the demo Deal
 - [ ] No automatic release, refund, reversal, cancellation, AI effect, or production money movement exists
-- [ ] Implementer-owned full validation and focused provider matrix pass
+- [ ] Implementer-owned full validation and focused simulator matrix pass
 - [ ] Implementer reports all phases with `Plan completion claim: NO`
 - [ ] Planner independently reviews the complete diff and evidence
-- [ ] Planner-owned staging/provider-sandbox browser acceptance passes
+- [ ] Planner-owned staging-simulation browser acceptance passes
 - [x] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired (gate C0; `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`)
 - [ ] The plan is archived only after every gate, phase, invariant, browser step, validation, and Done item is proven

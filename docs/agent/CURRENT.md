@@ -72,7 +72,8 @@ Slice 11B-A Moka Provider Foundation is accepted under `docs/plan/done/`.
 A separate deterministic HTTP emulator, bounded Moka authentication/money
 transport, the existing durable funding port over real HTTP, query-first
 timeout recovery and probe-only pool transport passed focused validation. This
-local/CI evidence does not close G1 or authorize real-provider/release behavior.
+local/CI evidence is not real-provider proof; after the founder's scope change
+it supports G1-S simulation safety and never authorizes real-provider behavior.
 Evidence: `docs/agent/slice-11b-a-acceptance-2026-07-22.md`.
 
 Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
@@ -242,13 +243,16 @@ accepted as gate C0 on 2026-07-21
   Flyway V22 pre-deploy, disposable failure gate, compatible rollback,
   release identity, HTTPS/security topology, and the real two-context browser
   flow passed. Evidence: `docs/agent/slice-07-acceptance-2026-07-21.md`.
-- Gates G2/G3 were accepted on 2026-07-21. Non-production Moka work uses the
-  standard-merchant-pool model only; production legal/KYC/custody/fee/split/
-  payout questions remain explicitly unresolved. Ratification compatibility
+- Gates G2/G3 were accepted on 2026-07-21. G2's former test-merchant-pool route
+  was superseded on 2026-07-22 by the accepted simulation-only decision; no
+  Moka account, credential or provider call exists in scope. Production legal/
+  KYC/custody/fee/split/payout questions remain explicitly unresolved.
+  Ratification compatibility
   uses additive schema v2 with immutable `disputeWindowDays` and a new
   server-owned fulfillment `completedAt`; schema v1 remains readable and
   permanently release-ineligible. Evidence:
-  `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`.
+  `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`. Current payment/
+  release authority: `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
 
 ## Not yet stable or accepted
 
@@ -256,23 +260,22 @@ accepted as gate C0 on 2026-07-21
 
 ## Active work
 
-Slice 11B-A is accepted and merged into `main`. Slice 11B-B remains in
-`planning/`; only its B-G0 redacted real-provider evidence gate may proceed
-after explicit authorization for non-production Moka credentials and calls.
-G1, C3–C4/G4c, C6 and C7 remain blocked, so Slice 14B has no implementation
-authority.
+Slice 11B-A is accepted and merged into `main`. The real-provider Slice 11B-B/
+G1 route is superseded by the founder's simulation-only decision. G1-S and
+C3–C4/G4c are accepted for simulation scope. C6 ADR-014 and C7 Slice 14B ready
+remain blocked, so Slice 14B has no implementation authority yet.
 
 ## Known blockers
 
-The next gate requires explicitly authorized Moka test credentials and
-test-environment calls. No open 14A/Slice 13 browser acceptance debt remains.
+No external credential/provider blocker remains. ADR-014 must still close
+simulation state, race, authorization, cardinality, idempotency, lock and
+transaction decisions. No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next capability is Slice 11B-B B-G0: redacted real Moka funding/3D/query
-and separate pool finality evidence. B-P1 implementation follows only after
-the evidence-derived eight-section plan is ready-approved. Slice 14B remains
-non-ready until Slice 11B/G1, ADR-014 and explicit final approval close.
+The next work is ADR-014 for simulation-only settlement/release. After ADR-014
+is accepted, the eight-section Slice 14B plan must receive separate ready
+approval before any implementation task packet is issued.
 
 ## Update rule
 
