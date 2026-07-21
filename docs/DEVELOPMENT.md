@@ -36,7 +36,7 @@ Bileşen rehberleri:
 - [Hazır Slice 9 manual review planı](plan/ready/09-manual-review-and-ruleset.md)
 - [Hazır Slice 10 ratification planı](plan/ready/10-ratification.md)
 - [Hazır Slice 11 funding foundation planı](plan/ready/11-funding-and-payment.md)
-- [Hazır Slice 11B-A Moka provider foundation planı](plan/ready/11b-a-moka-provider-foundation.md)
+- [Tamamlanmış Slice 11B-A Moka provider foundation planı](plan/done/11b-a-moka-provider-foundation.md)
 
 ## Slice 8 yerel analiz akışı
 
