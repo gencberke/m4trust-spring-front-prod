@@ -3,9 +3,12 @@ Task: 07-T01
 Revision: 1
 Plan: docs/plan/ready/07-staging-deployment.md
 Phases: §5 Image and network; §5 Migration — successful pre-deploy path; §5 Runtime security — staging provisioning and release identity
-Status: COMPLETED
+Status: PARTIAL
 Branch: codex/slice-07-staging-foundation
 Base: main@555e8e427be9b11cc219bffdfe149cd84ac60df3
+HEAD: this commit; the preceding staging-evidence commit
+`163d9095593f2918c8a93d15b99bbaa8acc41f1e` is pushed to
+`origin/codex/slice-07-staging-foundation`
 Plan completion claim: NO
 
 ## Repository impact
@@ -41,6 +44,11 @@ fix. The only changed file on this branch is this review request.
   Flyway activity; readiness reported UP.
 
 ## Validation
+- Core API deployment applied `services/core-api/railway.json`: the deployment's
+  applied manifest matches that file exactly, including `preDeployCommand`,
+  `startCommand`, `healthcheckPath`, healthcheck timeout and restart policy — PASS
+- Web edge deployment applied no config file; its `healthcheckPath` and restart
+  policy are absent from the applied manifest — FAIL, see deviations
 - Focused deployment configuration and migration-launcher tests — PASS
 - Core API and web-edge image builds with explicit `APP_VERSION` and
   `GIT_COMMIT_SHA` — PASS
@@ -74,8 +82,11 @@ fix. The only changed file on this branch is this review request.
   for the web edge, because its declared Dockerfile path is repository-root
   relative while the file itself lives under `frontend/`. The web edge builds
   from the correct Dockerfile through a Railway build variable, but its
-  `healthcheckPath` and restart policy are not applied. Setting the web-edge
-  custom config-file path once in the Railway service settings resolves this.
+  `healthcheckPath` and restart policy are not applied. The fix is to set the
+  web-edge custom config-file path to `/frontend/railway.json` in the Railway
+  service settings and redeploy. This remains OPEN: the setting exists only in
+  the Railway dashboard, which was not reachable from this environment, so it
+  could not be applied or verified here.
 - Object storage is out of this task's scope and is not provisioned in staging.
   Core API startup validates those properties, so non-functional placeholder
   values are set as Railway variables. Document upload paths will not work in
