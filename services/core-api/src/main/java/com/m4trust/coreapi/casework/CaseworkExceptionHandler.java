@@ -55,6 +55,33 @@ public class CaseworkExceptionHandler {
                 "The active legal entity is not authorized to open a dispute.");
     }
 
+    @ExceptionHandler(CaseworkExceptions.CommentForbidden.class)
+    ResponseEntity<ProblemDetail> handleCommentForbidden(HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN,
+                "https://problems.m4trust.internal/dispute-comment-forbidden",
+                "Dispute comment forbidden",
+                "DISPUTE_COMMENT_FORBIDDEN",
+                "The active legal entity is not authorized to comment on this dispute.");
+    }
+
+    @ExceptionHandler(CaseworkExceptions.AcknowledgeForbidden.class)
+    ResponseEntity<ProblemDetail> handleAcknowledgeForbidden(HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN,
+                "https://problems.m4trust.internal/dispute-acknowledge-forbidden",
+                "Dispute acknowledge forbidden",
+                "DISPUTE_ACKNOWLEDGE_FORBIDDEN",
+                "The active legal entity is not authorized to acknowledge this dispute.");
+    }
+
+    @ExceptionHandler(CaseworkExceptions.WithdrawForbidden.class)
+    ResponseEntity<ProblemDetail> handleWithdrawForbidden(HttpServletRequest request) {
+        return response(request, HttpStatus.FORBIDDEN,
+                "https://problems.m4trust.internal/dispute-withdraw-forbidden",
+                "Dispute withdraw forbidden",
+                "DISPUTE_WITHDRAW_FORBIDDEN",
+                "The active legal entity is not authorized to withdraw this dispute.");
+    }
+
     @ExceptionHandler(CaseworkExceptions.Conflict.class)
     ResponseEntity<ProblemDetail> handleConflict(CaseworkExceptions.Conflict exception,
             HttpServletRequest request) {

@@ -131,6 +131,14 @@ final class DisputeCase {
         this.version++;
     }
 
+    void recordComment(Instant updatedAt) {
+        if (!isActive()) {
+            throw new IllegalStateException("comments require an active case");
+        }
+        this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.version++;
+    }
+
     boolean isActive() {
         return status == DisputeStatus.OPEN || status == DisputeStatus.UNDER_REVIEW;
     }

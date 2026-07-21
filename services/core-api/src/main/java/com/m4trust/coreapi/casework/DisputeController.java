@@ -65,6 +65,63 @@ class DisputeController {
         return service.getDispute(context, uuid(dealId), uuid(disputeId));
     }
 
+    @GetMapping("/deals/{dealId}/disputes/{disputeId}/comments")
+    DisputeCommentPage listComments(
+            @ResolvedOperationContext(RequestedOperation.DISPUTE_COMMENT_LIST_READ)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String disputeId,
+            @RequestParam(defaultValue = "0") String page,
+            @RequestParam(defaultValue = "20") String size,
+            @RequestParam(defaultValue = "createdAt,asc") String sort) {
+        return service.listComments(
+                context, uuid(dealId), uuid(disputeId), DisputeCommentQuery.parse(page, size, sort));
+    }
+
+    @PostMapping("/deals/{dealId}/disputes/{disputeId}/comments")
+    ResponseEntity<DisputeComment> createComment(
+            @ResolvedOperationContext(RequestedOperation.DISPUTE_COMMENT_CREATE)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String disputeId,
+            @Valid @RequestBody CreateDisputeCommentRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        UUID parsedDealId = uuid(dealId);
+        UUID parsedDisputeId = uuid(disputeId);
+        DisputeComment created = service.createComment(
+                context, parsedDealId, parsedDisputeId, request, uuid(idempotencyKey), uuid(correlationId));
+        return ResponseEntity.created(URI.create(
+                        "/api/v1/deals/" + parsedDealId + "/disputes/" + parsedDisputeId + "/comments/" + created.id()))
+                .body(created);
+    }
+
+    @PostMapping("/deals/{dealId}/disputes/{disputeId}/acknowledge")
+    DisputeDetail acknowledgeDispute(
+            @ResolvedOperationContext(RequestedOperation.DISPUTE_ACKNOWLEDGE)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String disputeId,
+            @Valid @RequestBody AcknowledgeDisputeRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        return service.acknowledgeDispute(
+                context, uuid(dealId), uuid(disputeId), request, uuid(idempotencyKey), uuid(correlationId));
+    }
+
+    @PostMapping("/deals/{dealId}/disputes/{disputeId}/withdraw")
+    DisputeDetail withdrawDispute(
+            @ResolvedOperationContext(RequestedOperation.DISPUTE_WITHDRAW)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String disputeId,
+            @Valid @RequestBody WithdrawDisputeRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        return service.withdrawDispute(
+                context, uuid(dealId), uuid(disputeId), request, uuid(idempotencyKey), uuid(correlationId));
+    }
+
     private UUID uuid(String value) {
         if (value == null || value.isBlank()) {
             throw new CaseworkExceptions.MalformedRequest();

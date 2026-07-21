@@ -22,6 +22,18 @@ class CaseworkExceptions {
         private static final long serialVersionUID = 1L;
     }
 
+    static class CommentForbidden extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
+
+    static class AcknowledgeForbidden extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
+
+    static class WithdrawForbidden extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
+
     static class Conflict extends RuntimeException {
         private static final long serialVersionUID = 1L;
 

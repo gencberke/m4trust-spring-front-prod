@@ -95,6 +95,12 @@ public final class CaseworkSourcePorts {
         String requireLegalName(UUID legalEntityId);
     }
 
+    /** Identity-owned display-name lookup for immutable comment attribution. */
+    public interface UserDisplayNames {
+
+        String requireDisplayName(UUID userId);
+    }
+
     /**
      * Fulfillment-owned safe advisory projection for pinned job/result identity.
      */

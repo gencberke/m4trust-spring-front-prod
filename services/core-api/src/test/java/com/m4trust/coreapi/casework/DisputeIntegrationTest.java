@@ -436,6 +436,192 @@ class DisputeIntegrationTest {
     }
 
     @Test
+    void collaborationLifecycleCoversCommentsAcknowledgeAndWithdraw() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+
+        mockMvc.perform(post(commentPath(opened), opened.version())
+                        .with(user(sellerMember.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Seller follow-up", opened.version())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.authorAttribution.legalName").value("Seller Co"))
+                .andExpect(jsonPath("$.body").value("Seller follow-up"));
+
+        mockMvc.perform(get("/api/v1/deals/" + opened.dealId() + "/disputes/" + opened.disputeId() + "/comments")
+                        .with(user(buyerMember.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerMember.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].body").value("Seller follow-up"));
+
+        MvcResult acknowledged = mockMvc.perform(post(acknowledgePath(opened), opened.version())
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(opened.version())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UNDER_REVIEW"))
+                .andExpect(jsonPath("$.availableActions.canAcknowledge").value(false))
+                .andReturn();
+        long acknowledgedVersion = ((Number) JsonPath.read(
+                acknowledged.getResponse().getContentAsString(), "$.version")).longValue();
+
+        mockMvc.perform(post(commentPath(opened), acknowledgedVersion)
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Buyer update", acknowledgedVersion)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post(withdrawPath(opened), acknowledgedVersion + 1)
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(acknowledgedVersion + 1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("WITHDRAWN"))
+                .andExpect(jsonPath("$.availableActions.canComment").value(false));
+
+        mockMvc.perform(get("/api/v1/deals/" + opened.dealId() + "/disputes/" + opened.disputeId())
+                        .with(user(sellerMember.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("WITHDRAWN"))
+                .andExpect(jsonPath("$.withdrawnAt").exists());
+    }
+
+    @Test
+    void memberCanCommentButCannotAcknowledgeOrWithdraw() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+
+        mockMvc.perform(post(commentPath(opened), opened.version())
+                        .with(user(buyerMember.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerMember.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Member note", opened.version())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post(acknowledgePath(opened), opened.version())
+                        .with(user(sellerMember.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(opened.version())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DISPUTE_ACKNOWLEDGE_FORBIDDEN"));
+
+        mockMvc.perform(post(withdrawPath(opened), opened.version())
+                        .with(user(buyerMember.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerMember.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(opened.version())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DISPUTE_WITHDRAW_FORBIDDEN"));
+    }
+
+    @Test
+    void commentOnWithdrawnDisputeReturnsStateConflict() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+
+        mockMvc.perform(post(withdrawPath(opened), opened.version())
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(opened.version())))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(commentPath(opened), opened.version() + 1)
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Too late", opened.version() + 1)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DISPUTE_STATE_CONFLICT"));
+    }
+
+    @Test
+    void staleCommentVersionReturnsConflict() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+
+        mockMvc.perform(post(commentPath(opened), opened.version())
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("First", opened.version())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post(commentPath(opened), opened.version())
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Stale", opened.version())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DISPUTE_STALE_VERSION"));
+    }
+
+    @Test
+    void commentIdempotencyReplaysOriginal() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+        UUID idempotencyKey = UUID.randomUUID();
+
+        MvcResult first = mockMvc.perform(post(commentPath(opened), opened.version())
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Replay me", opened.version())))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String commentId = JsonPath.read(first.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(post(commentPath(opened), opened.version())
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentRequest("Replay me", opened.version())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(commentId));
+    }
+
+    @Test
+    void concurrentCommentAttemptsHaveSingleVersionWinner() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        AtomicInteger created = new AtomicInteger();
+        AtomicInteger stale = new AtomicInteger();
+
+        Future<?> buyer = executor.submit(() -> postCommentAsync(
+                opened, buyerAdmin, opened.version(), "Buyer race", created, stale));
+        Future<?> seller = executor.submit(() -> postCommentAsync(
+                opened, sellerAdmin, opened.version(), "Seller race", created, stale));
+
+        buyer.get(15, TimeUnit.SECONDS);
+        seller.get(15, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertEquals(1, created.get());
+        assertEquals(1, stale.get());
+    }
+
+    @Test
     void terminalWriterWinsWhenResultCommitsBeforeOpen() throws Exception {
         PreparedVideoDeal prepared = prepareVideoReviewRequiredDeal();
         UUID resultId = completeVideoJob(prepared.videoJobId());
@@ -521,6 +707,74 @@ class DisputeIntegrationTest {
                     CURRENT_TIMESTAMP)
                 """, resultId, jobId);
         return resultId;
+    }
+
+    private OpenedDispute openDispute(PreparedDeal prepared) throws Exception {
+        MvcResult created = mockMvc.perform(post("/api/v1/deals/" + prepared.dealId() + "/disputes")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(openRequest("NON_DELIVERY", "Late delivery", "Goods never arrived.",
+                                prepared.dealVersion(), prepared.fulfillmentVersion())))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String body = created.getResponse().getContentAsString();
+        return new OpenedDispute(
+                prepared.dealId(),
+                UUID.fromString(JsonPath.read(body, "$.id")),
+                ((Number) JsonPath.read(body, "$.version")).longValue());
+    }
+
+    private String commentPath(OpenedDispute opened) {
+        return "/api/v1/deals/" + opened.dealId() + "/disputes/" + opened.disputeId() + "/comments";
+    }
+
+    private String acknowledgePath(OpenedDispute opened) {
+        return "/api/v1/deals/" + opened.dealId() + "/disputes/" + opened.disputeId() + "/acknowledge";
+    }
+
+    private String withdrawPath(OpenedDispute opened) {
+        return "/api/v1/deals/" + opened.dealId() + "/disputes/" + opened.disputeId() + "/withdraw";
+    }
+
+    private String commentRequest(String body, long expectedVersion) {
+        return """
+                {"body": "%s", "expectedVersion": %d}
+                """.formatted(body, expectedVersion);
+    }
+
+    private String versionRequest(long expectedVersion) {
+        return "{\"expectedVersion\": " + expectedVersion + "}";
+    }
+
+    private void postCommentAsync(
+            OpenedDispute opened,
+            Principal actor,
+            long expectedVersion,
+            String body,
+            AtomicInteger created,
+            AtomicInteger stale) {
+        try {
+            int status = mockMvc.perform(post(commentPath(opened))
+                            .with(user(actor.userId.toString())).with(csrf())
+                            .header(LEGAL_ENTITY_HEADER, actor.legalEntityId)
+                            .header("Idempotency-Key", UUID.randomUUID())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(commentRequest(body, expectedVersion)))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus();
+            if (status == 201) {
+                created.incrementAndGet();
+            } else if (status == 409) {
+                stale.incrementAndGet();
+            } else {
+                throw new IllegalStateException("Unexpected status: " + status);
+            }
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
     private PreparedDeal prepareReviewRequiredDeal() throws Exception {
@@ -831,6 +1085,9 @@ class DisputeIntegrationTest {
     }
 
     private record PreparedVideoDeal(UUID dealId, long dealVersion, long fulfillmentVersion, UUID videoJobId) {
+    }
+
+    private record OpenedDispute(UUID dealId, UUID disputeId, long version) {
     }
 
     private static final class Principal {

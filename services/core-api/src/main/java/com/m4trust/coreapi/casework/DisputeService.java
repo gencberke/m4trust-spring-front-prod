@@ -38,8 +38,15 @@ class DisputeService {
 
     private static final String OPEN_IDEMPOTENCY_OPERATION = "DISPUTE_OPEN";
     private static final String OPEN_IDEMPOTENCY_RESULT = "DISPUTE_CASE";
+    private static final String COMMENT_IDEMPOTENCY_OPERATION = "DISPUTE_COMMENT";
+    private static final String COMMENT_IDEMPOTENCY_RESULT = "DISPUTE_COMMENT";
+    private static final String ACKNOWLEDGE_IDEMPOTENCY_OPERATION = "DISPUTE_ACKNOWLEDGE";
+    private static final String WITHDRAW_IDEMPOTENCY_OPERATION = "DISPUTE_WITHDRAW";
     private static final String AUDIT_SUBJECT = "DISPUTE_CASE";
-    private static final String AUDIT_ACTION = "DISPUTE_OPENED";
+    private static final String AUDIT_ACTION_OPENED = "DISPUTE_OPENED";
+    private static final String AUDIT_ACTION_COMMENTED = "DISPUTE_COMMENT_ADDED";
+    private static final String AUDIT_ACTION_ACKNOWLEDGED = "DISPUTE_ACKNOWLEDGED";
+    private static final String AUDIT_ACTION_WITHDRAWN = "DISPUTE_WITHDRAWN";
     private static final Set<String> ELIGIBLE_FULFILLMENT_STATUSES = Set.of(
             "IN_PROGRESS", "EVIDENCE_REQUIRED", "REVIEW_REQUIRED", "COMPLETED");
 
@@ -47,8 +54,10 @@ class DisputeService {
     private final CaseworkSourcePorts.FulfillmentTarget fulfillments;
     private final CaseworkSourcePorts.VideoAnalysisJobs videoAnalysisJobs;
     private final CaseworkSourcePorts.LegalEntityNames legalEntityNames;
+    private final CaseworkSourcePorts.UserDisplayNames userDisplayNames;
     private final CaseworkSourcePorts.VideoAnalysisProjection videoAnalysisProjection;
     private final DisputeCaseRepository disputeCases;
+    private final DisputeCommentRepository disputeComments;
     private final DisputeEvidenceSnapshotRepository evidenceSnapshots;
     private final IdempotencyService idempotency;
     private final AuditAppendPort auditAppender;
@@ -60,8 +69,10 @@ class DisputeService {
             CaseworkSourcePorts.FulfillmentTarget fulfillments,
             CaseworkSourcePorts.VideoAnalysisJobs videoAnalysisJobs,
             CaseworkSourcePorts.LegalEntityNames legalEntityNames,
+            CaseworkSourcePorts.UserDisplayNames userDisplayNames,
             CaseworkSourcePorts.VideoAnalysisProjection videoAnalysisProjection,
             DisputeCaseRepository disputeCases,
+            DisputeCommentRepository disputeComments,
             DisputeEvidenceSnapshotRepository evidenceSnapshots,
             IdempotencyService idempotency,
             AuditAppendPort auditAppender,
@@ -71,8 +82,10 @@ class DisputeService {
         this.fulfillments = fulfillments;
         this.videoAnalysisJobs = videoAnalysisJobs;
         this.legalEntityNames = legalEntityNames;
+        this.userDisplayNames = userDisplayNames;
         this.videoAnalysisProjection = videoAnalysisProjection;
         this.disputeCases = disputeCases;
+        this.disputeComments = disputeComments;
         this.evidenceSnapshots = evidenceSnapshots;
         this.idempotency = idempotency;
         this.auditAppender = auditAppender;
@@ -135,6 +148,264 @@ class DisputeService {
         DisputeCase.DisputeCaseRecord record = disputeCases.findByIdAndDealId(disputeId, dealId)
                 .orElseThrow(CaseworkExceptions.DisputeNotFound::new);
         return toDetail(record, deal, context);
+    }
+
+    DisputeCommentPage listComments(
+            OperationContext context, UUID dealId, UUID disputeId, DisputeCommentQuery query) {
+        requireOperation(context, RequestedOperation.DISPUTE_COMMENT_LIST_READ);
+        CaseworkSourcePorts.DealTargetSnapshot deal = deals.findVisible(context, dealId)
+                .orElseThrow(CaseworkExceptions.NotFound::new);
+        requirePartyReader(context, deal);
+        if (disputeCases.findByIdAndDealId(disputeId, dealId).isEmpty()) {
+            throw new CaseworkExceptions.DisputeNotFound();
+        }
+        long totalElements = disputeComments.countByDisputeCaseId(disputeId);
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / query.size());
+        List<DisputeComment> items = disputeComments.findByDisputeCaseIdPage(
+                        disputeId, query.offset(), query.size(), query.sort())
+                .stream()
+                .map(this::toComment)
+                .toList();
+        return new DisputeCommentPage(items, query.page(), query.size(), totalElements, totalPages);
+    }
+
+    DisputeComment createComment(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            CreateDisputeCommentRequest request,
+            UUID idempotencyKey,
+            UUID correlationId) {
+        requireOperation(context, RequestedOperation.DISPUTE_COMMENT_CREATE);
+        String body = trimRequired(request.body(), "body");
+        IdempotencyRequest idempotencyRequest = commentIdempotencyRequest(
+                context, dealId, disputeId, body, request.expectedVersion(), idempotencyKey);
+        IdempotencyResultReference completed = idempotency.findCompleted(idempotencyRequest).orElse(null);
+        if (completed != null) {
+            return replayComment(context, dealId, disputeId, completed);
+        }
+        return required(transactions.execute(status -> createCommentInTransaction(
+                context, dealId, disputeId, body, request.expectedVersion(),
+                idempotencyRequest, correlationId)));
+    }
+
+    DisputeDetail acknowledgeDispute(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            AcknowledgeDisputeRequest request,
+            UUID idempotencyKey,
+            UUID correlationId) {
+        requireOperation(context, RequestedOperation.DISPUTE_ACKNOWLEDGE);
+        IdempotencyRequest idempotencyRequest = mutationIdempotencyRequest(
+                context, dealId, disputeId, ACKNOWLEDGE_IDEMPOTENCY_OPERATION,
+                request.expectedVersion(), idempotencyKey);
+        IdempotencyResultReference completed = idempotency.findCompleted(idempotencyRequest).orElse(null);
+        if (completed != null) {
+            return replayDispute(context, dealId, completed);
+        }
+        return required(transactions.execute(status -> acknowledgeInTransaction(
+                context, dealId, disputeId, request.expectedVersion(),
+                idempotencyRequest, correlationId)));
+    }
+
+    DisputeDetail withdrawDispute(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            WithdrawDisputeRequest request,
+            UUID idempotencyKey,
+            UUID correlationId) {
+        requireOperation(context, RequestedOperation.DISPUTE_WITHDRAW);
+        IdempotencyRequest idempotencyRequest = mutationIdempotencyRequest(
+                context, dealId, disputeId, WITHDRAW_IDEMPOTENCY_OPERATION,
+                request.expectedVersion(), idempotencyKey);
+        IdempotencyResultReference completed = idempotency.findCompleted(idempotencyRequest).orElse(null);
+        if (completed != null) {
+            return replayDispute(context, dealId, completed);
+        }
+        return required(transactions.execute(status -> withdrawInTransaction(
+                context, dealId, disputeId, request.expectedVersion(),
+                idempotencyRequest, correlationId)));
+    }
+
+    private DisputeComment createCommentInTransaction(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            String body,
+            long expectedVersion,
+            IdempotencyRequest idempotencyRequest,
+            UUID correlationId) {
+        CaseworkSourcePorts.DealTargetSnapshot deal = deals.findVisible(context, dealId)
+                .orElseThrow(CaseworkExceptions.NotFound::new);
+        requirePartyCommenter(context, deal);
+        DisputeCase.DisputeCaseRecord locked = disputeCases.findByIdAndDealIdForUpdate(disputeId, dealId)
+                .orElseThrow(CaseworkExceptions.DisputeNotFound::new);
+        requireExpectedVersion(locked, expectedVersion);
+        if (!DisputeCase.rehydrate(locked).isActive()) {
+            throw conflict("DISPUTE_STATE_CONFLICT");
+        }
+
+        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return replayComment(context, dealId, disputeId, claim.resultReference());
+        }
+
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        UUID commentId = UUID.randomUUID();
+        String authorLegalName = legalEntityNames.requireLegalName(context.activeLegalEntityId());
+        String authorDisplayName = userDisplayNames.requireDisplayName(context.authenticatedUserId());
+        disputeComments.insert(new DisputeCommentRepository.DisputeCommentRecord(
+                commentId,
+                disputeId,
+                dealId,
+                body,
+                context.tenantId(),
+                context.activeLegalEntityId(),
+                context.authenticatedUserId(),
+                authorLegalName,
+                authorDisplayName,
+                now));
+
+        DisputeCase dispute = DisputeCase.rehydrate(locked);
+        dispute.recordComment(now);
+        if (!disputeCases.updateLifecycle(dispute.toRecord(), expectedVersion)) {
+            throw conflict("DISPUTE_STALE_VERSION");
+        }
+
+        auditAppender.append(new AuditRecord(
+                UUID.randomUUID(),
+                context.tenantId(),
+                context.authenticatedUserId(),
+                context.activeLegalEntityId(),
+                AUDIT_SUBJECT,
+                disputeId,
+                AUDIT_ACTION_COMMENTED,
+                correlationId,
+                null,
+                now));
+        idempotency.recordResult(claim, new IdempotencyResultReference(COMMENT_IDEMPOTENCY_RESULT, commentId));
+        return disputeComments.findById(commentId).map(this::toComment)
+                .orElseThrow(() -> new IllegalStateException("Created comment is unavailable"));
+    }
+
+    private DisputeDetail acknowledgeInTransaction(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            long expectedVersion,
+            IdempotencyRequest idempotencyRequest,
+            UUID correlationId) {
+        CaseworkSourcePorts.DealTargetSnapshot deal = deals.findVisible(context, dealId)
+                .orElseThrow(CaseworkExceptions.NotFound::new);
+        DisputeCase.DisputeCaseRecord locked = disputeCases.findByIdAndDealIdForUpdate(disputeId, dealId)
+                .orElseThrow(CaseworkExceptions.DisputeNotFound::new);
+        requireCounterpartyAdmin(context, deal, locked.openingLegalEntityId());
+        requireExpectedVersion(locked, expectedVersion);
+        if (locked.status() != DisputeStatus.OPEN) {
+            throw conflict("DISPUTE_STATE_CONFLICT");
+        }
+
+        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return replayDispute(context, dealId, claim.resultReference());
+        }
+
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        DisputeCase dispute = DisputeCase.rehydrate(locked);
+        dispute.acknowledge(now, now);
+        if (!disputeCases.updateLifecycle(dispute.toRecord(), expectedVersion)) {
+            throw conflict("DISPUTE_STALE_VERSION");
+        }
+
+        auditAppender.append(new AuditRecord(
+                UUID.randomUUID(),
+                context.tenantId(),
+                context.authenticatedUserId(),
+                context.activeLegalEntityId(),
+                AUDIT_SUBJECT,
+                disputeId,
+                AUDIT_ACTION_ACKNOWLEDGED,
+                correlationId,
+                null,
+                now));
+        idempotency.recordResult(claim, new IdempotencyResultReference(OPEN_IDEMPOTENCY_RESULT, disputeId));
+        return toDetail(dispute.toRecord(), deal, context);
+    }
+
+    private DisputeDetail withdrawInTransaction(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            long expectedVersion,
+            IdempotencyRequest idempotencyRequest,
+            UUID correlationId) {
+        CaseworkSourcePorts.DealTargetSnapshot deal = deals.findVisible(context, dealId)
+                .orElseThrow(CaseworkExceptions.NotFound::new);
+        DisputeCase.DisputeCaseRecord locked = disputeCases.findByIdAndDealIdForUpdate(disputeId, dealId)
+                .orElseThrow(CaseworkExceptions.DisputeNotFound::new);
+        requireOpeningAdmin(context, deal, locked);
+        requireExpectedVersion(locked, expectedVersion);
+        if (!DisputeCase.rehydrate(locked).isActive()) {
+            throw conflict("DISPUTE_STATE_CONFLICT");
+        }
+
+        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return replayDispute(context, dealId, claim.resultReference());
+        }
+
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        DisputeCase dispute = DisputeCase.rehydrate(locked);
+        dispute.withdraw(now, now);
+        if (!disputeCases.updateLifecycle(dispute.toRecord(), expectedVersion)) {
+            throw conflict("DISPUTE_STALE_VERSION");
+        }
+
+        auditAppender.append(new AuditRecord(
+                UUID.randomUUID(),
+                context.tenantId(),
+                context.authenticatedUserId(),
+                context.activeLegalEntityId(),
+                AUDIT_SUBJECT,
+                disputeId,
+                AUDIT_ACTION_WITHDRAWN,
+                correlationId,
+                null,
+                now));
+        idempotency.recordResult(claim, new IdempotencyResultReference(OPEN_IDEMPOTENCY_RESULT, disputeId));
+        return toDetail(dispute.toRecord(), deal, context);
+    }
+
+    private DisputeComment replayComment(
+            OperationContext context, UUID dealId, UUID disputeId, IdempotencyResultReference reference) {
+        if (!COMMENT_IDEMPOTENCY_RESULT.equals(reference.type())) {
+            throw new IllegalStateException("Unexpected comment idempotency result type");
+        }
+        CaseworkSourcePorts.DealTargetSnapshot deal = deals.findVisible(context, dealId)
+                .orElseThrow(CaseworkExceptions.NotFound::new);
+        requirePartyReader(context, deal);
+        return disputeComments.findByIdAndDisputeCaseId(reference.id(), disputeId)
+                .map(this::toComment)
+                .orElseThrow(CaseworkExceptions.DisputeNotFound::new);
+    }
+
+    private DisputeComment toComment(DisputeCommentRepository.DisputeCommentRecord record) {
+        return new DisputeComment(
+                record.id(),
+                record.body(),
+                new DisputeCommentAuthorAttribution(
+                        record.authorLegalEntityId(),
+                        record.authorLegalName(),
+                        record.authorDisplayName()),
+                record.createdAt());
+    }
+
+    private void requireExpectedVersion(DisputeCase.DisputeCaseRecord record, long expectedVersion) {
+        if (record.version() != expectedVersion) {
+            throw conflict("DISPUTE_STALE_VERSION");
+        }
     }
 
     private DisputeDetail openInTransaction(
@@ -236,7 +507,7 @@ class DisputeService {
                 context.activeLegalEntityId(),
                 AUDIT_SUBJECT,
                 disputeId,
-                AUDIT_ACTION,
+                AUDIT_ACTION_OPENED,
                 correlationId,
                 null,
                 now));
@@ -376,6 +647,81 @@ class DisputeService {
         }
     }
 
+    private void requirePartyCommenter(OperationContext context, CaseworkSourcePorts.DealTargetSnapshot deal) {
+        requirePartyReader(context, deal);
+    }
+
+    private void requireCounterpartyAdmin(
+            OperationContext context,
+            CaseworkSourcePorts.DealTargetSnapshot deal,
+            UUID openingLegalEntityId) {
+        if (partyRole(deal, context.activeLegalEntityId()) == PartyRole.NONE) {
+            throw new CaseworkExceptions.NotFound();
+        }
+        if (context.activeLegalEntityRole() != LegalEntityRole.ADMIN) {
+            throw new CaseworkExceptions.AcknowledgeForbidden();
+        }
+        if (context.activeLegalEntityId().equals(openingLegalEntityId)) {
+            throw new CaseworkExceptions.AcknowledgeForbidden();
+        }
+    }
+
+    private void requireOpeningAdmin(
+            OperationContext context,
+            CaseworkSourcePorts.DealTargetSnapshot deal,
+            DisputeCase.DisputeCaseRecord record) {
+        if (partyRole(deal, context.activeLegalEntityId()) == PartyRole.NONE) {
+            throw new CaseworkExceptions.NotFound();
+        }
+        if (context.activeLegalEntityRole() != LegalEntityRole.ADMIN) {
+            throw new CaseworkExceptions.WithdrawForbidden();
+        }
+        if (!context.activeLegalEntityId().equals(record.openingLegalEntityId())) {
+            throw new CaseworkExceptions.WithdrawForbidden();
+        }
+    }
+
+    private IdempotencyRequest commentIdempotencyRequest(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            String body,
+            long expectedVersion,
+            UUID key) {
+        Map<String, Object> canonicalRequest = new LinkedHashMap<>();
+        canonicalRequest.put("actorEntity", context.activeLegalEntityId().toString());
+        canonicalRequest.put("dealId", dealId.toString());
+        canonicalRequest.put("disputeId", disputeId.toString());
+        canonicalRequest.put("body", body);
+        canonicalRequest.put("expectedVersion", expectedVersion);
+        return new IdempotencyRequest(
+                context.authenticatedUserId(),
+                context.tenantId(),
+                COMMENT_IDEMPOTENCY_OPERATION,
+                key,
+                canonicalHash(canonicalRequest));
+    }
+
+    private IdempotencyRequest mutationIdempotencyRequest(
+            OperationContext context,
+            UUID dealId,
+            UUID disputeId,
+            String operation,
+            long expectedVersion,
+            UUID key) {
+        Map<String, Object> canonicalRequest = new LinkedHashMap<>();
+        canonicalRequest.put("actorEntity", context.activeLegalEntityId().toString());
+        canonicalRequest.put("dealId", dealId.toString());
+        canonicalRequest.put("disputeId", disputeId.toString());
+        canonicalRequest.put("expectedVersion", expectedVersion);
+        return new IdempotencyRequest(
+                context.authenticatedUserId(),
+                context.tenantId(),
+                operation,
+                key,
+                canonicalHash(canonicalRequest));
+    }
+
     private void requirePartyAdmin(OperationContext context, CaseworkSourcePorts.DealTargetSnapshot deal) {
         PartyRole role = partyRole(deal, context.activeLegalEntityId());
         if (role == PartyRole.NONE) {
@@ -424,7 +770,11 @@ class DisputeService {
         if (trimmed.isEmpty()) {
             throw new CaseworkExceptions.Validation(field, "REQUIRED", field + " is required.");
         }
-        int max = "subject".equals(field) ? 200 : 4000;
+        int max = switch (field) {
+            case "subject" -> 200;
+            case "body", "statement" -> 4000;
+            default -> throw new IllegalArgumentException("unsupported field: " + field);
+        };
         if (trimmed.length() > max) {
             throw new CaseworkExceptions.Validation(field, "OUT_OF_RANGE", field + " exceeds the allowed length.");
         }

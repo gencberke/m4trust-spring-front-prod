@@ -103,3 +103,40 @@ record DisputePage(
         items = List.copyOf(items);
     }
 }
+
+record CreateDisputeCommentRequest(
+        @NotBlank(message = "body is required")
+        @Size(min = 1, max = 4000, message = "body must be 1-4000 characters")
+        String body,
+        @Min(value = 0, message = "expectedVersion must be non-negative") long expectedVersion) {
+}
+
+record AcknowledgeDisputeRequest(
+        @Min(value = 0, message = "expectedVersion must be non-negative") long expectedVersion) {
+}
+
+record WithdrawDisputeRequest(
+        @Min(value = 0, message = "expectedVersion must be non-negative") long expectedVersion) {
+}
+
+record DisputeCommentAuthorAttribution(UUID legalEntityId, String legalName, String displayName) {
+}
+
+record DisputeComment(
+        UUID id,
+        String body,
+        DisputeCommentAuthorAttribution authorAttribution,
+        Instant createdAt) {
+}
+
+record DisputeCommentPage(
+        List<DisputeComment> items,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages) {
+
+    DisputeCommentPage {
+        items = List.copyOf(items);
+    }
+}
