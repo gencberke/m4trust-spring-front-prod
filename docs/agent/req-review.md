@@ -3,7 +3,7 @@ Task: 07-T01
 Revision: 1
 Plan: docs/plan/ready/07-staging-deployment.md
 Phases: §5 Image and network; §5 Migration — successful pre-deploy path; §5 Runtime security — staging provisioning and release identity
-Status: PARTIAL
+Status: COMPLETED
 Branch: codex/slice-07-staging-foundation
 Base: main@555e8e427be9b11cc219bffdfe149cd84ac60df3
 HEAD: this commit; the preceding staging-evidence commit
@@ -28,7 +28,10 @@ fix. The only changed file on this branch is this review request.
   private networking; neither internal host resolves publicly.
 
 ## Deployed revision
-- Source revision deployed to both services: `555e8e427be9b11cc219bffdfe149cd84ac60df3`.
+- Core API is deployed from source revision
+  `555e8e427be9b11cc219bffdfe149cd84ac60df3`.
+- The web edge is deployed from its connected GitHub source at this branch's
+  head; its release identity variables are pinned to that same commit.
 - Release identity: build version `0.1.0-staging.555e8e4`, full commit SHA, staging
   environment label and build time, carried as image labels, `/actuator/info`
   fields and every structured log line.
@@ -47,8 +50,9 @@ fix. The only changed file on this branch is this review request.
 - Core API deployment applied `services/core-api/railway.json`: the deployment's
   applied manifest matches that file exactly, including `preDeployCommand`,
   `startCommand`, `healthcheckPath`, healthcheck timeout and restart policy — PASS
-- Web edge deployment applied no config file; its `healthcheckPath` and restart
-  policy are absent from the applied manifest — FAIL, see deviations
+- Web edge deployment applied `frontend/railway.json` through the service's
+  custom config-file path: the applied manifest carries `healthcheckPath`
+  `/healthz`, its timeout, the restart policy and the declared watch patterns — PASS
 - Focused deployment configuration and migration-launcher tests — PASS
 - Core API and web-edge image builds with explicit `APP_VERSION` and
   `GIT_COMMIT_SHA` — PASS
@@ -78,15 +82,21 @@ fix. The only changed file on this branch is this review request.
   from the CLI. Deployments therefore use direct uploads with the service source
   as the archive root, which is what makes `services/core-api/railway.json` (and
   its pre-deploy migration command) apply correctly.
-- Consequence of the same limitation: `frontend/railway.json` is not discovered
-  for the web edge, because its declared Dockerfile path is repository-root
-  relative while the file itself lives under `frontend/`. The web edge builds
-  from the correct Dockerfile through a Railway build variable, but its
-  `healthcheckPath` and restart policy are not applied. The fix is to set the
-  web-edge custom config-file path to `/frontend/railway.json` in the Railway
-  service settings and redeploy. This remains OPEN: the setting exists only in
-  the Railway dashboard, which was not reachable from this environment, so it
-  could not be applied or verified here.
+- `frontend/railway.json` declares a repository-root relative Dockerfile path
+  while the file itself lives under `frontend/`, so it is only discoverable
+  through the service's custom config-file path setting, which exists only in the
+  Railway dashboard. That setting is now applied and verified for the web edge.
+- The web edge is deployed from its connected GitHub source rather than an
+  upload. With an upload source the two available CLI paths never intersect:
+  a fresh upload reads the config file but is skipped by its own watch patterns,
+  while a redeploy rolls out but reuses the previous snapshot's manifest. The
+  connected source also gives the web edge a genuine per-commit release identity.
+  Consequence to be aware of: pushes to this branch now trigger staging web-edge
+  deployments automatically when they touch the declared watch patterns.
+- The Core API is still deployed from uploads rooted at `services/core-api`,
+  which is what makes its `railway.json` discoverable without a dashboard
+  setting. Setting its custom config-file path to `/services/core-api/railway.json`
+  would allow it to move to a connected source as well.
 - Object storage is out of this task's scope and is not provisioned in staging.
   Core API startup validates those properties, so non-functional placeholder
   values are set as Railway variables. Document upload paths will not work in
