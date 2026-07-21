@@ -3,8 +3,8 @@
 - Status: active planning/execution guide; not accepted project state
 - Owner: planner; human approvals and planner–implementer handoffs remain user-owned
 - Opened: 21 July 2026
-- Gate authority: `docs/agent/gates/settlement-release-readiness-charter-2026-07-21.md`
-- Current accepted state authority: `docs/agent/CURRENT.md`
+- Gate authority: `docs/plan/planning/gates/settlement-release-readiness-charter-2026-07-21.md`
+- Current accepted state authority: `docs/plan/CURRENT.md`
 - Rule: this runbook may track drafts and work-in-progress; `CURRENT.md` may not
 
 ## 1. Purpose
@@ -15,7 +15,7 @@ implementer work, planner acceptance or accepted project state.
 
 This guide does not approve a plan, close a gate, authorize credentials, issue a
 task packet or replace an ADR. If it conflicts with an accepted ADR, ready plan,
-the charter or `docs/agent/WORKFLOW.md`, the authoritative source wins.
+the charter or `docs/agent/planner-agent.md`, the authoritative source wins.
 
 ## 2. Required execution order
 
@@ -47,13 +47,13 @@ dependent plan becomes ready until its prerequisite gate is explicitly accepted.
 | Stage | Authoritative working file | State before human approval |
 | --- | --- | --- |
 | Slice 7 | `docs/plan/done/07-staging-deployment.md` | ACCEPTED; preserve evidence |
-| Simulation/G2/G3 | `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md` plus historical G2/G3 record | G1-S/G3 accepted; G2 provider route superseded |
+| Simulation/G2/G3 | `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md` plus historical G2/G3 record | G1-S/G3 accepted; G2 provider route superseded |
 | Slice 11B-A | `docs/plan/done/11b-a-moka-provider-foundation.md` | DONE |
 | Slice 11B-B/G1 | `docs/plan/planning/11b-b-moka-staging-and-g1.md` | SUPERSEDED; historical planning only |
 | ADR-014 | Decision plan: 14B R-P1–R-P4; accepted artifact: `architecture-decisions/ADR-014-Settlement-and-Release.md` | next decision work; not accepted yet |
 | Slice 14B | `docs/plan/planning/14b-settlement-and-release.md` | planning until ADR-014 + explicit ready approval |
-| Gate status | `docs/agent/gates/settlement-release-readiness-charter-2026-07-21.md` | may track proposed/blocked evidence |
-| Accepted state | `docs/agent/CURRENT.md` | update only after material acceptance |
+| Gate status | `docs/plan/planning/gates/settlement-release-readiness-charter-2026-07-21.md` | may track proposed/blocked evidence |
+| Accepted state | `docs/plan/CURRENT.md` | update only after material acceptance |
 
 ## 4. Gate register and current checkpoint
 
@@ -93,7 +93,7 @@ Completed and accepted. No further Slice 7 task packet exists.
 | `11BA-T03` | A-P5–A-P6 | One valuable boundary check + review handoff |
 
 All three 11B-A tasks are accepted and archived. Do not issue another 11B-A
-task; preserve `docs/agent/slice-11b-a-acceptance-2026-07-22.md`.
+task; preserve `docs/plan/done/review/slice-11b-a-acceptance-2026-07-22.md`.
 
 ### Slice 11B-B and historical G1
 
@@ -150,7 +150,7 @@ directly into `DONE` without the plan closure checklist.
 
 At the start of every roadmap turn:
 
-1. Read `AGENTS.md`, `docs/agent/WORKFLOW.md` and `docs/agent/CURRENT.md`.
+1. Read `AGENTS.md`, `docs/agent/planner-agent.md` and `docs/plan/CURRENT.md`.
 2. Read this runbook and the readiness charter.
 3. Inspect `git status --short --branch`, worktrees, branch/base/HEAD and
    untracked files. Preserve unrelated changes.
@@ -166,7 +166,7 @@ At the start of every roadmap turn:
 
 Task packets:
 
-- Follow `docs/agent/WORKFLOW.md` exactly and write packets in English.
+- Follow `docs/agent/planner-agent.md` exactly and write packets in English.
 - Derive only from a human-approved plan in `ready/`.
 - Assign ordered phase IDs; do not restate the full plan.
 - Include exact `Branch` and `Base`; a new task starts revision 1.
@@ -175,7 +175,7 @@ Task packets:
 
 Reviews:
 
-1. Validate `docs/agent/req-review.md` shape and exact HEAD.
+1. Validate `docs/plan/review/req-review.md` shape and exact HEAD.
 2. Read assigned phases and current ready plan.
 3. Confirm branch/base/HEAD and inspect the complete diff plus nearby code.
 4. Check ADR/FORBIDDEN, authorization, secrets, migrations, dependencies,

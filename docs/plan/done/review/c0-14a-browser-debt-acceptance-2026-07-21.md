@@ -69,4 +69,4 @@ accounts were invalidated.
 - Rejected historical VIDEO `48b291eb-…` / job `fefb3312-…`.
 - Late replacement VIDEO `53131cfb-…` / job `83ddfb48-…`.
 - Charter execution checkpoints in
-  `docs/agent/gates/settlement-release-readiness-charter-2026-07-21.md`.
+  `docs/plan/planning/gates/settlement-release-readiness-charter-2026-07-21.md`.

@@ -649,9 +649,9 @@ git status --short
   concurrency, lifecycle-disclosure, and Slice 12/13 regression tests.
 - Inspect the complete approved-base-to-HEAD diff.
 - Confirm V15–V21, AI/messaging contracts, payment/provider, deployment,
-  ready/done plans, `docs/agent/CURRENT.md`, and unrelated user files remain
+  ready/done plans, `docs/plan/CURRENT.md`, and unrelated user files remain
   unchanged.
-- Replace `docs/agent/req-review.md` with branch/base/HEAD, P1–P8 outcomes,
+- Replace `docs/plan/review/req-review.md` with branch/base/HEAD, P1–P8 outcomes,
   exact test counts, contract/migration summary, deviations, and
   `Plan completion claim: NO`.
 - Do not run or claim Section 6.
@@ -714,7 +714,7 @@ replace this section.
 
 ## 7. Validation and Review Handoff
 
-- Reviewer reads `docs/agent/req-review.md` only as an index/claim, then
+- Reviewer reads `docs/plan/review/req-review.md` only as an index/claim, then
   independently verifies the approved plan, branch/base/HEAD, complete diff,
   V22, contract compatibility, module ownership, tenant integrity,
   authorization, audit, idempotency, concurrency, and no-side-effect claims.
@@ -731,7 +731,7 @@ replace this section.
   validation, and every Done item to be proven.
 - The user explicitly accepted the unrun Section 6 matrix as transferred debt.
   The planner therefore records that material deviation, moves the plan to
-  `done/`, and updates `docs/agent/CURRENT.md`; no browser pass is claimed.
+  `done/`, and updates `docs/plan/CURRENT.md`; no browser pass is claimed.
 
 ## 8. Done Definition
 

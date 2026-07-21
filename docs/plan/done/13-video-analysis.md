@@ -26,7 +26,7 @@
 ### Completion evidence and accepted deviation
 
 Planner review, automated validation, and the real-browser runs are recorded in
-`../../agent/slice-13-acceptance-2026-07-21.md`.
+`review/slice-13-acceptance-2026-07-21.md`.
 
 Browser acceptance found three defects before closure: canonical result
 retention, genuine cross-tenant job persistence/runtime MIME serialization, and
@@ -587,7 +587,7 @@ Direction:
   base-to-HEAD diff.
 - Fix in-scope failures; report `PARTIAL` or `BLOCKED` rather than weakening
   checks or changing contracts/ADR scope.
-- Replace `../../agent/req-review.md` using the implementer workflow.
+- Replace `../review/req-review.md` using the implementer workflow.
 - Report P1-P7 outcomes, exact validation counts, branch/base/HEAD, migration,
   public contract changes, shared router refactor, and known deviations.
 - Set `Plan completion claim: NO`; Section 6 remains planner-owned.
@@ -718,7 +718,7 @@ After P1-P6 and the full validation pass:
 - Inspect `git status --short` and the complete approved-base-to-HEAD file list.
 - Confirm V15-V20, shared video AI contracts, Railway/deployment, payment/
   provider, settlement, dispute/casework, ready/done plans,
-  `../../agent/CURRENT.md`, and unrelated user files did not change.
+  `../CURRENT.md`, and unrelated user files did not change.
 
 ## 8. Done definition
 

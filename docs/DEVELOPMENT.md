@@ -44,7 +44,7 @@ Bileşen rehberleri:
 - [Tamamlanmış Slice 14A dispute/casework planı](plan/done/14a-dispute-and-casework-foundation.md)
 - [Superseded Slice 11B-B gerçek Moka/G1 taslağı](plan/planning/11b-b-moka-staging-and-g1.md)
 - [Planlanan Slice 14B settlement/release planı](plan/planning/14b-settlement-and-release.md)
-- [Kabul edilmiş simulation-only payment/release kararı](agent/gates/simulation-only-payment-decision-2026-07-22.md)
+- [Kabul edilmiş simulation-only payment/release kararı](plan/planning/gates/simulation-only-payment-decision-2026-07-22.md)
 
 ## Slice 8 yerel analiz akışı
 
@@ -98,7 +98,7 @@ python -m pytest tools/mock-ai-worker/tests
 
 Railway staging Slice 7 kapsamında 21 Temmuz 2026'da kabul edilmiştir. Aşağıdaki
 bölüm kabul edilen config-as-code ve operatör akışını belgeler. Güncel kabul
-kanıtı `agent/slice-07-acceptance-2026-07-21.md` içindedir.
+kanıtı `plan/done/review/slice-07-acceptance-2026-07-21.md` içindedir.
 
 ## Railway staging hazırlığı
 

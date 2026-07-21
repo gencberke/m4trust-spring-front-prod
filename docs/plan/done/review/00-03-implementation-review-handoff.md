@@ -17,7 +17,7 @@ gereken sınırlarla eşler.
   - [`01-authentication.md`](../01-authentication.md)
   - [`02-organization-and-membership.md`](../02-organization-and-membership.md)
   - [`03-deal-creation-and-listing.md`](../03-deal-creation-and-listing.md)
-- Kabul durumu özeti: [`docs/agent/CURRENT.md`](../../../agent/CURRENT.md)
+- Kabul durumu özeti: [`docs/plan/CURRENT.md`](../../CURRENT.md)
 - Yetkili kararlar: `architecture-decisions/ADR-INDEX.md` üzerinden ilgili
   ADR bölümlerine gidilmelidir. Plan ile ADR çelişirse ADR geçerlidir.
 

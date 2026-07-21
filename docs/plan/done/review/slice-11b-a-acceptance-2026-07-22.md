@@ -70,5 +70,5 @@ that evidence-derived plan receives ready approval.
 Later on 22 July 2026, the founder selected simulation-only payment/release.
 The next-work paragraph above is retained as the acceptance-time record but is
 superseded by
-`docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`. No real
+`docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`. No real
 provider Slice 11B-B phase is actionable.

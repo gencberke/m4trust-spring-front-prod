@@ -14,7 +14,7 @@ Bu dokümanın onayı yalnız yol haritası sırasını kabul eder. Bir slice pl
 > simulation-only payment/release. The real-provider Slice 11B route below is
 > preserved as historical sequencing context but is no longer actionable.
 > Current authority is
-> `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
+> `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`.
 
 ## 1. Karar ölçütleri
 
@@ -42,7 +42,7 @@ Sıralama şu ölçütlerle değerlendirilmiştir:
 
 | Aday | Neden ayrıldı | Yeniden açılma kapısı |
 | --- | --- | --- |
-| Slice 7 — Railway staging | 21 Temmuz 2026'da tamamlandı; C2/G4b kabul edildi | `done/07-staging-deployment.md` ve `docs/agent/slice-07-acceptance-2026-07-21.md` |
+| Slice 7 — Railway staging | 21 Temmuz 2026'da tamamlandı; C2/G4b kabul edildi | `done/07-staging-deployment.md` ve `docs/plan/done/review/slice-07-acceptance-2026-07-21.md` |
 | Slice 11B — Gerçek provider | Domain adapter işi içerse de staging, dış provider test ortamı, credential, 3DS ve operasyonel kabul gerektirir | Slice 7/staging ve provider-hukuk kapıları ayrı çalışma olarak açıldığında |
 
 Bu sequencing kararı hazırlandığında iki aday da ertelenmişti. Slice 7 daha

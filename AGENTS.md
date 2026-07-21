@@ -11,8 +11,8 @@ accepted ADRs.
 ## Read by role
 
 Planner:
-1. Read `docs/agent/WORKFLOW.md`.
-2. Read `docs/agent/CURRENT.md` when planning or accepting project-state
+1. Read `docs/agent/planner-agent.md`.
+2. Read `docs/plan/CURRENT.md` when planning or accepting project-state
    changes.
 3. The user owns every handoff to and from the implementer.
 

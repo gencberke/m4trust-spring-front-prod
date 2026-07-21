@@ -369,7 +369,7 @@ Direction:
   base-to-HEAD change.
 - Fix in-scope failures before reporting `COMPLETED`; report `PARTIAL` or
   `BLOCKED` when the workflow requires it.
-- Replace `docs/agent/req-review.md` using the implementer workflow.
+- Replace `docs/plan/review/req-review.md` using the implementer workflow.
 - Set `Plan completion claim: NO`: §6 browser acceptance is still planner-owned.
 - Do not run or claim the real-browser matrix.
 
@@ -389,7 +389,7 @@ Owner: **planner**. The implementer must not execute these steps, claim them as
 validation, or mark the plan complete. After the implementer submits P1–P6 and
 the user returns the report, the planner reviews the real diff and automated
 evidence, then runs this matrix with PostgreSQL and MinIO. A failure produces a
-planner `FIX` or `REPLAN` decision under `docs/agent/WORKFLOW.md`.
+planner `FIX` or `REPLAN` decision under `docs/agent/planner-agent.md`.
 
 Use at least three browser contexts: seller `MEMBER`, buyer `ADMIN`, and buyer
 `MEMBER` or another read-only participant.
@@ -481,7 +481,7 @@ sanity pass before writing `req-review.md`:
 - Run `git diff --check`.
 - Inspect `git status --short` and the complete base-to-HEAD changed-file list.
 - Confirm no AI contract/messaging, Railway/deployment, accepted ready-plan,
-  `docs/agent/CURRENT.md`, or V15–V19 migration file changed.
+  `docs/plan/CURRENT.md`, or V15–V19 migration file changed.
 
 The implementer records this fast check in the review request. Automated tests
 do not replace §6. The planner performs §6 after implementation review.
@@ -509,7 +509,7 @@ do not replace §6. The planner performs §6 after implementation review.
       loading/error/empty/read-only states use the real API
 - [x] Implementer-owned §7 automated validation passes
 - [x] Implementer-owned final fast check passes and is recorded in
-      `docs/agent/req-review.md`
+      `docs/plan/review/req-review.md`
 - [x] Implementer reports P1–P6 `COMPLETED` with
       `Plan completion claim: NO`
 - [x] Planner independently reviews the implementation and completes the
