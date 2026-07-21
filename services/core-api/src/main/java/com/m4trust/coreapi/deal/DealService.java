@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
+import com.m4trust.coreapi.casework.CaseworkDealProjectionPort;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.RequestedOperation;
@@ -37,6 +38,7 @@ class DealService {
     private final RatificationSupersessionPort ratificationSupersessions;
     private final FundingProjectionPort fundingProjections;
     private final FulfillmentProjectionPort fulfillmentProjections;
+    private final CaseworkDealProjectionPort caseworkProjections;
     private final AuditAppendPort auditAppender;
     private final Clock clock;
 
@@ -50,6 +52,7 @@ class DealService {
             RatificationSupersessionPort ratificationSupersessions,
             FundingProjectionPort fundingProjections,
             FulfillmentProjectionPort fulfillmentProjections,
+            CaseworkDealProjectionPort caseworkProjections,
             AuditAppendPort auditAppender, Clock clock) {
         this.repository = repository;
         this.operationPolicy = operationPolicy;
@@ -61,6 +64,7 @@ class DealService {
         this.ratificationSupersessions = ratificationSupersessions;
         this.fundingProjections = fundingProjections;
         this.fulfillmentProjections = fulfillmentProjections;
+        this.caseworkProjections = caseworkProjections;
         this.auditAppender = auditAppender;
         this.clock = clock;
     }
@@ -303,23 +307,27 @@ class DealService {
         FundingProjectionPort.Summary fundingSummary = fundingProjections.summarize(
                 deal.id(), deal.status() == DealStatus.ACTIVE, callerIsBuyerAdmin);
         FulfillmentProjectionPort.Summary fulfillmentSummary = fulfillmentProjections.summarize(deal.id());
+        CaseworkDealProjectionPort.ActorSummary caseworkSummary = caseworkProjection(
+                deal, context, fulfillmentSummary);
         return new DealDetail(
                 deal.id(),
                 deal.reference(),
                 deal.title(),
                 deal.description(),
                 deal.status(),
-                lifecycle(deal, fundingSummary.fundingStatus()),
+                lifecycle(deal, fundingSummary.fundingStatus(), caseworkSummary),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actionsWithAnalysis(deal, context, ratification, fundingSummary, fulfillmentSummary),
+                actionsWithAnalysis(deal, context, ratification, fundingSummary, fulfillmentSummary,
+                        caseworkSummary),
                 party(deal.buyerLegalEntityId(), participantProjections),
                 party(deal.sellerLegalEntityId(), participantProjections),
                 participantProjections,
                 currentDocument(deal), analysis(deal), currentRuleSet(deal), ratification,
                 fundingSummary(fundingSummary),
-                fulfillmentSummary(fulfillmentSummary));
+                fulfillmentSummary(fulfillmentSummary),
+                toCaseworkSummary(caseworkSummary));
     }
 
     private DealFundingSummary fundingSummary(FundingProjectionPort.Summary summary) {
@@ -373,26 +381,43 @@ class DealService {
     private DealSummary toSummary(Deal deal, OperationContext context) {
         FundingProjectionPort.Summary fundingSummary = fundingProjections.summarize(
                 deal.id(), deal.status() == DealStatus.ACTIVE, false);
+        FulfillmentProjectionPort.Summary fulfillmentSummary = fulfillmentProjections.summarize(deal.id());
+        CaseworkDealProjectionPort.ActorSummary caseworkSummary = caseworkProjection(
+                deal, context, fulfillmentSummary);
         return new DealSummary(
                 deal.id(),
                 deal.reference(),
                 deal.title(),
                 deal.status(),
-                lifecycle(deal, fundingSummary.fundingStatus()),
+                lifecycle(deal, fundingSummary.fundingStatus(), caseworkSummary),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actions(deal, context));
+                actions(deal, context, caseworkSummary.canOpenDispute()));
     }
 
     private DealAvailableActions actions(Deal deal, OperationContext context) {
-        return operationPolicy.availableActions(deal, context);
+        return actions(deal, context, false);
+    }
+
+    private DealAvailableActions actions(Deal deal, OperationContext context, boolean canOpenDispute) {
+        DealAvailableActions base = operationPolicy.availableActions(deal, context);
+        return new DealAvailableActions(base.canUpdate(), base.canCancel(),
+                base.canCreateInvitation(), base.canManageParties(),
+                base.canCreateDocumentUploadIntent(), base.canRequestAnalysis(),
+                base.canReviewExtraction(), base.canCreateRatificationPackage(),
+                base.canApproveRatification(), base.canRejectRatification(),
+                base.canCreateFundingPlan(), base.canInitiateFunding(),
+                base.canReconcilePaymentOperation(), base.canStartFulfillment(),
+                base.canUploadEvidence(), base.canAcceptEvidence(), base.canRejectEvidence(),
+                canOpenDispute);
     }
 
     private DealAvailableActions actionsWithAnalysis(Deal deal,
             OperationContext context, DealRatificationProjection ratification,
             FundingProjectionPort.Summary fundingSummary,
-            FulfillmentProjectionPort.Summary fulfillmentSummary) {
+            FulfillmentProjectionPort.Summary fulfillmentSummary,
+            CaseworkDealProjectionPort.ActorSummary caseworkSummary) {
         DealAvailableActions base = actions(deal, context);
         UUID documentId = deal.currentDocumentId();
         boolean allowed = operationPolicy.isInitiator(deal, context)
@@ -437,7 +462,41 @@ class DealService {
                 canCreateRatificationPackage, canApproveRatification, canRejectRatification,
                 fundingSummary.canCreateFundingPlan(), fundingSummary.canInitiateFunding(),
                 fundingSummary.canReconcilePaymentOperation(),
-                canStartFulfillment, canUploadEvidence, canAcceptEvidence, canRejectEvidence);
+                canStartFulfillment, canUploadEvidence, canAcceptEvidence, canRejectEvidence,
+                caseworkSummary.canOpenDispute());
+    }
+
+    private CaseworkDealProjectionPort.ActorSummary caseworkProjection(
+            Deal deal,
+            OperationContext context,
+            FulfillmentProjectionPort.Summary fulfillmentSummary) {
+        String fulfillmentStatus = fulfillmentSummary == null || fulfillmentSummary.status() == null
+                ? null : fulfillmentSummary.status().name();
+        return caseworkProjections.forActor(new CaseworkDealProjectionPort.ActorContext(
+                deal.id(),
+                deal.status() == DealStatus.ACTIVE,
+                deal.buyerLegalEntityId(),
+                deal.sellerLegalEntityId(),
+                context.activeLegalEntityId(),
+                context.activeLegalEntityRole(),
+                fulfillmentStatus));
+    }
+
+    private DealCaseworkSummary toCaseworkSummary(CaseworkDealProjectionPort.ActorSummary summary) {
+        CaseworkDealProjectionPort.ActiveDispute active = summary.activeDispute();
+        if (active == null) {
+            return null;
+        }
+        return new DealCaseworkSummary(
+                active.disputeId(),
+                active.status(),
+                active.reasonCode(),
+                active.subject(),
+                new DealCaseworkOpeningLegalEntity(
+                        active.openingLegalEntityId(), active.openingLegalName()),
+                active.openedAt(),
+                active.acknowledgedAt(),
+                active.version());
     }
 
     private DealAnalysisProjectionPort.AnalysisSummary analysis(Deal deal) {
@@ -451,6 +510,15 @@ class DealService {
         UUID pointer = deal.currentRuleSetVersionId();
         return pointer == null ? null : ruleSetProjections.findCurrent(pointer)
                 .orElseThrow(() -> new IllegalStateException("Deal rule-set pointer is unavailable"));
+    }
+
+    private DealLifecycleProjection lifecycle(
+            Deal deal, String fundingStatus, CaseworkDealProjectionPort.ActorSummary caseworkSummary) {
+        UUID documentId = deal.currentDocumentId();
+        boolean current = documentId != null && currentDocumentQueries.findAvailable(documentId).isPresent();
+        String status = current ? analysisProjections.summary(documentId).status() : "NOT_REQUESTED";
+        return DealLifecycleProjectionCalculator.calculate(
+                deal.status(), status, current, fundingStatus, caseworkSummary.activeDispute() != null);
     }
 
     private DealLifecycleProjection lifecycle(Deal deal, String fundingStatus) {

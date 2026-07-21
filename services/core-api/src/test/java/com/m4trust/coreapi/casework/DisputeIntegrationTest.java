@@ -622,6 +622,75 @@ class DisputeIntegrationTest {
     }
 
     @Test
+    void buyerAndSellerSeeDisputeLifecycleAndCaseworkSummary() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+
+        mockMvc.perform(get("/api/v1/deals/" + prepared.dealId())
+                        .with(user(buyerAdmin.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lifecycle").value("DISPUTE"))
+                .andExpect(jsonPath("$.casework.disputeId").value(opened.disputeId().toString()))
+                .andExpect(jsonPath("$.availableActions.canOpenDispute").value(false));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .with(user(sellerMember.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].lifecycle").value("DISPUTE"));
+    }
+
+    @Test
+    void otherParticipantDoesNotSeeDisputeLifecycleOrCasework() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        openDispute(prepared);
+        insertParticipant(prepared.dealId(), outsider);
+
+        mockMvc.perform(get("/api/v1/deals/" + prepared.dealId())
+                        .with(user(outsider.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"))
+                .andExpect(jsonPath("$.casework").doesNotExist())
+                .andExpect(jsonPath("$.availableActions.canOpenDispute").value(false));
+    }
+
+    @Test
+    void canOpenDisputeIsAvailableBeforeActiveCase() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+
+        mockMvc.perform(get("/api/v1/deals/" + prepared.dealId())
+                        .with(user(buyerAdmin.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"))
+                .andExpect(jsonPath("$.casework").doesNotExist())
+                .andExpect(jsonPath("$.availableActions.canOpenDispute").value(true));
+    }
+
+    @Test
+    void withdrawnDisputeRestoresFulfillmentLifecycle() throws Exception {
+        PreparedDeal prepared = prepareReviewRequiredDeal();
+        OpenedDispute opened = openDispute(prepared);
+
+        mockMvc.perform(post(withdrawPath(opened), opened.version())
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(versionRequest(opened.version())))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/deals/" + prepared.dealId())
+                        .with(user(sellerAdmin.userId.toString()))
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"))
+                .andExpect(jsonPath("$.casework").doesNotExist());
+    }
+
+    @Test
     void terminalWriterWinsWhenResultCommitsBeforeOpen() throws Exception {
         PreparedVideoDeal prepared = prepareVideoReviewRequiredDeal();
         UUID resultId = completeVideoJob(prepared.videoJobId());
