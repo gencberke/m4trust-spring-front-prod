@@ -51,7 +51,7 @@ dependent plan becomes ready until its prerequisite gate is explicitly accepted.
 | --- | --- | --- |
 | Slice 7 | `docs/plan/done/07-staging-deployment.md` | ACCEPTED; preserve evidence |
 | G2/G3 | `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md` | ACCEPTED |
-| Slice 11B-A | `docs/plan/ready/11b-a-moka-provider-foundation.md` | READY |
+| Slice 11B-A | `docs/plan/done/11b-a-moka-provider-foundation.md` | DONE |
 | Slice 11B-B/G1 | `docs/plan/planning/11b-b-moka-staging-and-g1.md` | planning; B-G0 evidence precedes ready approval |
 | ADR-014 | Decision plan: 14B R-P1–R-P4; accepted artifact: `architecture-decisions/ADR-014-Settlement-and-Release.md` | must not exist as accepted content before G1–G4 close |
 | Slice 14B | `docs/plan/planning/14b-settlement-and-release.md` | planning until ADR-014 + explicit ready approval |
@@ -95,7 +95,8 @@ Completed and accepted. No further Slice 7 task packet exists.
 | `11BA-T02` | A-P3–A-P4 | Safe Moka client + existing funding port over HTTP |
 | `11BA-T03` | A-P5–A-P6 | One valuable boundary check + review handoff |
 
-The 11B-A plan is approved and in `ready/`; issue these tasks in order.
+All three 11B-A tasks are accepted and archived. Do not issue another 11B-A
+task; preserve `docs/agent/slice-11b-a-acceptance-2026-07-22.md`.
 
 ### Slice 11B-B and G1
 

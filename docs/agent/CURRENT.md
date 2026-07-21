@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-21
+Last updated: 2026-07-22
 
 ## Phase
 
@@ -68,6 +68,13 @@ SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS flows and FUNDING→FULFILLMENT projection
 passed. Release, payout, refund, settlement and a real provider remain out of
 scope.
 
+Slice 11B-A Moka Provider Foundation is accepted under `docs/plan/done/`.
+A separate deterministic HTTP emulator, bounded Moka authentication/money
+transport, the existing durable funding port over real HTTP, query-first
+timeout recovery and probe-only pool transport passed focused validation. This
+local/CI evidence does not close G1 or authorize real-provider/release behavior.
+Evidence: `docs/agent/slice-11b-a-acceptance-2026-07-22.md`.
+
 Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
 Seller start, participant-readable fulfillment, private-storage evidence
 upload/finalize, immutable history, buyer accept/reject/replacement, terminal
@@ -117,6 +124,7 @@ accepted as gate C0 on 2026-07-21
   `docs/plan/done/`.
 - Slice 10 Ratification is accepted under `docs/plan/done/`.
 - Slice 11 Funding Foundation is accepted under `docs/plan/done/`.
+- Slice 11B-A Moka Provider Foundation is accepted under `docs/plan/done/`.
 - Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
 - Slice 13 Video Analysis is accepted under `docs/plan/done/`.
 - Slice 14A Dispute and Casework Foundation is accepted under
@@ -248,22 +256,22 @@ accepted as gate C0 on 2026-07-21
 
 ## Active work
 
-Slice 11B-A is human-approved under `docs/plan/ready/`; its external-emulator
-and Moka transport foundation may now receive phased task packets. Slice 14A
-and Slice 7 are accepted and merged into `main`; V22 is frozen accepted
-history. Gates C0, G4a, C2/G4b, G2 and G3 are retired. Slice 14B remains gated
-until Slice 11B/G1, ADR-014 and final human approval close.
+Slice 11B-A is accepted and merged into `main`. Slice 11B-B remains in
+`planning/`; only its B-G0 redacted real-provider evidence gate may proceed
+after explicit authorization for non-production Moka credentials and calls.
+G1, C3–C4/G4c, C6 and C7 remain blocked, so Slice 14B has no implementation
+authority.
 
 ## Known blockers
 
-No architectural or implementation blocker. No open 14A/Slice 13 browser
-acceptance debt remains.
+The next gate requires explicitly authorized Moka test credentials and
+test-environment calls. No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next implementation capability is Slice 11B-A: external non-production
-Moka emulator, authenticated transport client and existing funding port over
-HTTP. Slice 11B-B/G1 follows only after 11B-A acceptance. Slice 14B remains
+The next capability is Slice 11B-B B-G0: redacted real Moka funding/3D/query
+and separate pool finality evidence. B-P1 implementation follows only after
+the evidence-derived eight-section plan is ready-approved. Slice 14B remains
 non-ready until Slice 11B/G1, ADR-014 and explicit final approval close.
 
 ## Update rule

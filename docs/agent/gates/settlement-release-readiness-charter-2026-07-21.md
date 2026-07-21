@@ -26,7 +26,7 @@ production access, real money movement, or an implementer task packet.
 | C0 — 14A/Slice 13 browser debt | `ACCEPTED` | Planner | Complete archived Slice 14A §6 against the real local stack, visibly retire the Slice 13 historical VIDEO/MP4 debt, record evidence, and remove the debt from current-state documents. Accepted 21 July 2026; evidence `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` on Deal `DL-0000000017`. |
 | G4a — Slice 14A prerequisite | `ACCEPTED` | User/planner | Slice 14A implementation is merged at `main@0282c0e`; acceptance record is `docs/agent/slice-14a-acceptance-2026-07-21.md`; V22 is frozen accepted history. This does not claim the C0 browser debt passed. |
 | C2/G4b — Slice 7 staging | `ACCEPTED` | User/planner | Accepted 21 July 2026. Every Done item in `docs/plan/done/07-staging-deployment.md` passed, including Railway HTTPS smoke, controlled migration, disposable failure gate, exact release identity, secret/network checks, and schema-compatible immutable rollback. Evidence: `docs/agent/slice-07-acceptance-2026-07-21.md`. |
-| C3–C4/G4c — Slice 11B provider foundation | `BLOCKED` | User/planner | Slice 11B-A is human-approved at `docs/plan/ready/11b-a-moka-provider-foundation.md`; A/B implementation, real-provider evidence, staging validation and full closure remain. Release aggregate/API behavior remains 14B scope. |
+| C3–C4/G4c — Slice 11B provider foundation | `BLOCKED` | User/planner | Slice 11B-A is accepted at `docs/plan/done/11b-a-moka-provider-foundation.md` with evidence `docs/agent/slice-11b-a-acceptance-2026-07-22.md`. Slice 11B-B B-G0, evidence-derived ready approval, real-provider staging validation and full 11B closure remain. Release aggregate/API behavior remains 14B scope. |
 | G1 — Moka pool-release capability | `BLOCKED` | User/planner | Redacted, reproducible Moka test-environment evidence proves request identity, duplicate behavior, authoritative status query, settlement finality, timeout/crash recovery, callback/redirect authority, pending duration/cutoffs, and safe reference handling. Local emulation is not provider evidence. |
 | G2 — Non-production risk and operations | `ACCEPTED` | Founder/user | Accepted 21 July 2026 by explicit delegation to the planner. Standard merchant pool is selected only for local/CI/staging sandbox; incident ownership and unresolved production KYC/custody/fee/split/payout/Law 6493 risks remain bounded in `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`. No production or real-money authority is granted. |
 | G3 — Ratification compatibility | `ACCEPTED` | Founder/user | Accepted 21 July 2026. Schema-v2 `disputeWindowDays`, additive v1 compatibility, immutable server-owned `completedAt`, accepted-evidence-only historical backfill, exact UTC boundary, canonical hash input and client transition are fixed by `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`. |
@@ -350,7 +350,21 @@ ADR-010, ADR-011, the accepted fulfillment implementation and FORBIDDEN.
   fulfillment `completedAt`, accepted-evidence-only historical backfill and no
   invented consent for schema v1.
 - Slice 11B-A is approved at
-  `docs/plan/ready/11b-a-moka-provider-foundation.md`.
+  `docs/plan/done/11b-a-moka-provider-foundation.md` and was later accepted on
+  22 July 2026.
 
 G1, C3–C4/G4c, C6 and C7 remain `BLOCKED`. This checkpoint grants no real
 provider credential, release/settlement, production or real-money authority.
+
+## Execution checkpoint — Slice 11B-A ACCEPTED on 22 July 2026
+
+The planner accepted A-P1–A-P6 at `main@7e773d9` after complete diff review,
+targeted FIX revisions and an independent rerun of the material external HTTP
+relay/recovery integration test. Evidence is
+`docs/agent/slice-11b-a-acceptance-2026-07-22.md`.
+
+This retires only the local/CI Moka transport foundation. C3–C4/G4c and G1
+remain `BLOCKED` pending Slice 11B-B B-G0 real-provider evidence, revised ready
+approval, staging funding acceptance and independent finality decision. C6 and
+C7 remain `BLOCKED`; no release, settlement, production or real-money authority
+is granted.

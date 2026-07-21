@@ -1,11 +1,12 @@
 # Slice 11B-A — Moka Provider Foundation with External HTTP Emulator
 
-- Status: ready — approved 21 July 2026 by explicit founder/user delegation to the planner
+- Status: done — accepted 22 July 2026 after independent planner review
 - Sequence: accepted Slice 7 closure → accepted G2/G3 decisions → 11B-A
 - Predecessors: accepted Slice 11 funding foundation, accepted ADR-010,
   accepted Slice 7 staging, accepted G2 non-production operating model
 - Successor: `../planning/11b-b-moka-staging-and-g1.md`
 - Approval record: founder/user delegated ready approval to the planner on 21 July 2026
+- Acceptance record: `docs/agent/slice-11b-a-acceptance-2026-07-22.md`
 - Execution guide: `docs/agent/settlement-release-roadmap-runbook.md`
 - Authority boundary: local/CI non-production implementation only; no real
   Moka credential, staging provider call, release behavior or money movement
@@ -276,13 +277,13 @@ A-P6 is sufficient unless a shared module changed.
 ## 8. Done definition
 
 - [x] Plan is explicitly human-approved and moved to `ready/` before work
-- [ ] External HTTP emulator is separate, deterministic and non-production only
-- [ ] Moka authentication, money conversion and safe parsing are bounded
-- [ ] Existing provider-neutral funding port works over external HTTP
-- [ ] Timeout/unknown remains fail-closed and query-first
-- [ ] Duplicate provider identity never creates a second initiate
-- [ ] Pool approve/query client capability is probe-only and unreachable from business services
-- [ ] No public API, migration, release, settlement or Deal-completion behavior was added
-- [ ] A-P5 valuable vertical-boundary check passes
-- [ ] Focused validation and independent planner review pass
-- [ ] Acceptance record explicitly says emulator evidence does not close G1
+- [x] External HTTP emulator is separate, deterministic and non-production only
+- [x] Moka authentication, money conversion and safe parsing are bounded
+- [x] Existing provider-neutral funding port works over external HTTP
+- [x] Timeout/unknown remains fail-closed and query-first
+- [x] Duplicate provider identity never creates a second initiate
+- [x] Pool approve/query client capability is probe-only and unreachable from business services
+- [x] No public API, migration, release, settlement or Deal-completion behavior was added
+- [x] A-P5 valuable vertical-boundary check passes
+- [x] Focused validation and independent planner review pass
+- [x] Acceptance record explicitly says emulator evidence does not close G1
