@@ -23,7 +23,7 @@ production access, real money movement, or an implementer task packet.
 
 | Gate | Status | Decision owner | Required evidence and exit condition |
 | --- | --- | --- | --- |
-| C0 — 14A/Slice 13 browser debt | `BLOCKED` | Planner; local fixture prelude requires user authorization | Complete archived Slice 14A §6 against the real local stack, visibly retire the Slice 13 historical VIDEO/MP4 debt, record evidence, and remove the debt from current-state documents. Baseline closure commit `e8fd60b` exists; the browser matrix has not run. |
+| C0 — 14A/Slice 13 browser debt | `BLOCKED` | Planner | Complete archived Slice 14A §6 against the real local stack, visibly retire the Slice 13 historical VIDEO/MP4 debt, record evidence, and remove the debt from current-state documents. Baseline closure commit `e8fd60b` and the approved local membership fixture prelude exist; the browser matrix has not run. |
 | G4a — Slice 14A prerequisite | `ACCEPTED` | User/planner | Slice 14A implementation is merged at `main@0282c0e`; acceptance record is `docs/agent/slice-14a-acceptance-2026-07-21.md`; V22 is frozen accepted history. This does not claim the C0 browser debt passed. |
 | C2/G4b — Slice 7 staging | `BLOCKED` | User/planner | Every Done item in `docs/plan/ready/07-staging-deployment.md`, including Railway HTTPS smoke, controlled migration, failure gate, release identity, secret/network checks, and schema-compatible rollback, is independently accepted; plan moves to `done/`. |
 | C3–C4/G4c — Slice 11B provider foundation | `BLOCKED` | User/planner | A separate eight-section 11B plan is human-approved before implementation. Real-provider funding, Moka transport/security/query behavior, staging sandbox validation, and full acceptance pass; 11B moves to `done/`. Release aggregate/API behavior remains 14B scope. |
@@ -62,3 +62,69 @@ Slice 14B receives `GO` only when C0, G1, G2, G3, G4a–G4c, C6, and C7 are all
 `ACCEPTED`, the repository baseline is clean, and every evidence link remains
 reviewable and redacted. Until then, only the specific readiness work needed to
 close the next blocked gate may proceed.
+
+## Execution checkpoint — safe stop on 21 July 2026
+
+Completed:
+
+- Archived the accepted Slice 14A plan and project-state closure in commit
+  `e8fd60b` without adding the unrelated `.claude/launch.json` file.
+- Added this readiness charter in commit `41524fd`.
+- Verified the local PostgreSQL, RabbitMQ, MinIO, Mock AI Worker, Core API
+  `local,local-sandbox` profile, V22 schema, and Vite acceptance topology.
+- Created six isolated acceptance accounts through the real registration UI.
+- Created Buyer, Seller, Other Participant, and Nonparticipant legal entities
+  through the real organization UI.
+- With explicit user authorization, added only the two missing local
+  `MEMBER` relationships through a disposable PostgreSQL transaction. No
+  existing data was reset, no migration/application code changed, and both
+  membership rows were verified tenant-aligned.
+
+Prepared local fixture map:
+
+| Context | Account | Legal entity | Role |
+| --- | --- | --- | --- |
+| Buyer ADMIN | `s14b-c0-buyer-admin@example.test` | `C0 Buyer Ltd` (`3f4a2051-f7a8-485b-880e-64a55ed5c967`) | `ADMIN` |
+| Seller ADMIN | `s14b-c0-seller-admin@example.test` | `C0 Seller Ltd` (`51a6f83b-50f6-4b23-b97f-df710070aff4`) | `ADMIN` |
+| Buyer MEMBER | `s14b-c0-buyer-member@example.test` | `C0 Buyer Ltd` | `MEMBER` |
+| Seller MEMBER | `s14b-c0-seller-member@example.test` | `C0 Seller Ltd` | `MEMBER` |
+| Other Participant ADMIN | `s14b-c0-other-admin@example.test` | `C0 Other Ltd` (`d178f8af-6a7e-4079-8c14-ec8f4eec5c6c`) | `ADMIN` |
+| Nonparticipant ADMIN | `s14b-c0-nonparticipant-admin@example.test` | `C0 Nonparticipant Ltd` (`1f6ef8a1-b22f-4e92-a5da-e7071af89439`) | `ADMIN` |
+
+No Deal, invitation, party assignment, document, analysis, ratification,
+funding, fulfillment, evidence, video result, or dispute was created for this
+fixture at this checkpoint. No C0 browser acceptance item is claimed as passed.
+
+### Exact continuation plan
+
+1. Reconfirm the Compose services, start Core API with
+   `local,local-sandbox`, start Vite on port 5173, and log the two MEMBER
+   accounts out/in so their new memberships are loaded through `/auth/me`.
+2. Through the visible UI, have Buyer ADMIN create one Deal and invite Seller
+   ADMIN plus Other Participant ADMIN; accept both invitations and assign only
+   Buyer/Seller legal entities as contractual parties.
+3. Build the accepted prerequisite chain through the real UI/API: finalize a
+   contract document, complete Mock Worker extraction, accept manual review,
+   create and approve one immutable ratification package from both party ADMIN
+   contexts, fund through the local sandbox relay, and have Seller ADMIN start
+   fulfillment.
+4. Upload/finalize a VIDEO/MP4, request successful advisory analysis, reject it,
+   and submit a replacement. Before opening a dispute, visibly prove the
+   retained historical advisory panel, absence of historical mutation
+   controls, and lack of duplicate current-evidence rendering.
+5. Run archived Slice 14A §6 completely: UI open/refresh, same-key replay,
+   distinct-key concurrent open, Buyer/Seller MEMBER read/comment and forced
+   403 matrix, counterparty acknowledgement, stale recovery, 21-comment
+   pagination/order, party-only lifecycle, unrelated-participant and
+   nonparticipant 404 non-disclosure, late video/evidence snapshot immutability,
+   fulfillment independence, withdrawal/history restoration, loading/error,
+   and desktop/mobile presentation.
+6. Capture redacted role/URL/status/code evidence, immutable before/after
+   dispute snapshots, Mock Worker timing, and per-Deal database before/after
+   state proving that casework changed no Deal, fulfillment, evidence, funding,
+   payment, provider, outbox, or AI state.
+7. If every item passes, add a dedicated C0 debt-retirement acceptance record,
+   update this gate to `ACCEPTED`, remove the debt only from current/future
+   state documents, and preserve historical acceptance records unchanged. Any
+   UI, disclosure, snapshot, race, or side-effect defect produces `FIX` or
+   `REPLAN`; it must not be waived as a pass.
