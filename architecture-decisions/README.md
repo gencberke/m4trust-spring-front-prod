@@ -127,6 +127,12 @@ yetkisini sabitler. Main ekip AI provider/model/worker/image/deployment seçmez 
 değiştirmez; yalnız shared-contract uyumunu yönetir, read-only mismatch raporu ve
 non-authoritative öneri sunar.
 
+### ADR-020 — Acyclic Release Manifest and Image Identity
+
+Main image'ların önce immutable digest ile üretilmesini, release manifestinin daha
+sonra bu digest'leri tek yönlü referanslamasını ve release-manifest digest'inin
+image config'e geri yazılmamasını sabitler.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:

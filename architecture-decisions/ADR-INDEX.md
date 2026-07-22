@@ -101,7 +101,8 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Log | Structured stdout/stderr + correlation/release identity | ADR-007 §28, §32 |
 | Ortamlar | local / staging / production kaynak paylaşmaz | ADR-007 §3 |
 | Production topology | Railway EU West; yalnız web public; Core/DB/Rabbit private; AWS S3 external | ADR-016 §§2.1–2.3 |
-| Production artifact | Main-owned `web` ve `core`; build once, immutable digest promotion | ADR-016 §§2.4–2.5 |
+| Production artifact | Main-owned `web` ve `core`; build once, immutable digest promotion | ADR-016 §§2.4–2.5; ADR-020 §2 |
+| Release manifest | Image'lardan sonra oluşur; exact image digest'lerini tek yönlü referanslar | ADR-020 §2 |
 | Recovery | PostgreSQL PITR RPO ≤15m/RTO ≤4h; sibling restore + cutover | ADR-016 §2.8 |
 
 ---
@@ -131,7 +132,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | payment / funding | ADR-003 §12, §21; ADR-010; ADR-014 | Slice 11 sandbox production'a çıkmaz; production yalnız açık `DEMO_SIMULATED`, gerçek provider/sapma ESKALASYON |
 | settlement / release / simulated | ADR-014 | `DEMO_SIMULATED`, buyer ADMIN explicit release, query-only terminal proof, no real money |
 | outbox / event / notification dispatch | ADR-015 | Event/dispatch yalnız accepted contract/plan tanımlıyorsa; audit her auditable mutation'da |
-| production runtime / digest / PITR | ADR-016 | Private topology, build-once promotion, fail-fast config, RPO/RTO ve pilot gate |
+| production runtime / digest / PITR | ADR-016; ADR-020 | Private topology, build-once promotion, tek yönlü release manifest, fail-fast config, RPO/RTO ve pilot gate |
 | account invitation / password reset / Postmark | ADR-017 | Production invite-only, token body/fragment, ayrı business consent, notification outbox |
 | malware / quarantine / GuardDuty | ADR-018 | Clean tag olmadan finalize/read/AI yok; existing business lifecycle korunur |
 | AI provider / model / worker internals | ADR-019 §§2.1–2.2 | AI owner kararıdır; main ekip yalnız shared-contract uyumu ve Spring boundary'sini yönetir, öneri/uyumsuzluk raporlar |
@@ -193,10 +194,10 @@ messaging reuse ve advisory-only manual-review sınırı için bağlayıcıdır.
 `ADR-013` kabul edilmiştir. Dispute/Casework V1 actor, party-only disclosure,
 opening snapshot, concurrency ve no-side-effect sınırı için bağlayıcıdır.
 
-`ADR-014`–`ADR-019` kabul edilmiştir. Settlement demo boundary, event/outbox
+`ADR-014`–`ADR-020` kabul edilmiştir. Settlement demo boundary, event/outbox
 semantics, main application production runtime, invite-only identity, upload
-quarantine ve cross-repository AI ownership governance kararları için
-bağlayıcıdır. ADR-019 AI internal implementation seçimi yapmaz.
+quarantine, cross-repository AI ownership governance ve tek yönlü release manifest
+kimliği kararları için bağlayıcıdır. ADR-019 AI internal implementation seçimi yapmaz.
 
 ---
 
@@ -239,6 +240,7 @@ bağlayıcıdır. ADR-019 AI internal implementation seçimi yapmaz.
 | ADR-017 | Invite-only identity, account/member invitation, recovery, throttling ve Postmark |
 | ADR-018 | S3 quarantine, GuardDuty clean gate, immutable-version read ve orphan retention |
 | ADR-019 | Main/AI karar yetkisi, read-only contract compatibility ve non-authoritative observation sınırı |
+| ADR-020 | Main image digest'leri ile release manifesti arasındaki tek yönlü, döngüsüz kimlik bağı |
 
 ## Reading rules
 

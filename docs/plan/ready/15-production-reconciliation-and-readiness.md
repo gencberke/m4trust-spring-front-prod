@@ -40,7 +40,7 @@ Observable user result:
   login throttling, notification outbox, Postmark adapter and frontend flows.
 - ADR-018 AWS S3/GuardDuty clean-scan gate for Deal documents and fulfillment
   evidence, exact-version cleanup and IaC.
-- ADR-016 main production profiles, private topology config, Caddy security, health,
+- ADR-016/020 main production profiles, private topology config, Caddy security, health,
   release manifest/workflows, migration/rollback/restore, observability and runbooks.
 - Main local/CI integration proof and deployable Core/Web staging/production configuration.
 - Planner-owned staging browser acceptance and production pilot evidence.
@@ -68,7 +68,7 @@ fallback or widen the task.
 
 | Input/evidence | Owner | Required before | Current state |
 |---|---|---|---|
-| ADR-014–ADR-019, this ready plan and main base SHA | Planner/user | 15-T01 | Closed |
+| ADR-014–ADR-020, this ready plan and main base SHA | Planner/user | 15-T01 | Closed |
 | Postmark server/stream, verified domain, DKIM/SPF/DMARC and webhook source policy | User/planner | live P5 staging acceptance | External gate; not a code-start blocker |
 | AWS staging/production S3, KMS and GuardDuty roles | User/planner | P9 staging deployment | External gate; P6 IaC remains implementable offline |
 | AI-owner contract compatibility and capability evidence | AI owner/user | AI-enabled staging/pilot | External dependency; main implementer reports mismatch and never changes AI repo |
@@ -82,14 +82,15 @@ evidence or waived by the implementer.
 ## 3. Kararlar ve ilgili ADR'ler
 
 - Contracts and runtime authority: ADR-002 §§24–25; ADR-006 §§13–16, 42–47;
-  ADR-016 §§2.4–2.6.
+  ADR-016 §§2.4–2.6; ADR-020.
 - Audit/event/dispatch transaction semantics: ADR-003 §§24–26; ADR-015.
 - Authentication/session/non-disclosure: ADR-005 §§5–17, 20–23; ADR-017.
 - Direct storage, immutable evidence and malware gate: ADR-001 §6; ADR-011
   §§2.3–2.6; ADR-018.
 - AI ownership/advisory boundary: ADR-001 §§2, 7, 10, 16–20; ADR-002 §§17–30;
   ADR-012; ADR-019. AI internals remain outside this plan.
-- Deployment, migration, recovery and promotion: ADR-007 §§21–43; ADR-016.
+- Deployment, migration, recovery and promotion: ADR-007 §§21–43; ADR-016;
+  ADR-020.
 - ADR-014 changes decision authority only. No settlement/release API or state is
   implemented in this plan.
 
@@ -103,7 +104,8 @@ Binding implementation choices:
   it does not select or change AI internals.
 - Railway EU West is the runtime; only web-edge is public.
 - Build `web` and `core` once and promote exact OCI digests; no production
-  rebuild/latest tag.
+  rebuild/latest tag. The post-build release manifest references those digests;
+  its digest is not written back into either image.
 - RPO `<=15m`, RTO `<=4h`; pilot is 7 days/max 3 entities/15 users.
 
 ## 4. Public interface, state ve data etkisi
@@ -231,10 +233,12 @@ Add reviewed `contracts/openapi/core-internal-v1.yaml` with private:
 GET /internal/v1/contracts
 ```
 
-Response uses ADR-016's exact `service`, 40-hex `releaseRevision`, prefixed digest
-and ordinal `files[{path,sha256}]` projection; no filesystem path, credential or
-business data. Existing AI-internal endpoint aligns to the same digest algorithm
-and requires private service authentication.
+Response uses ADR-016/020's exact `service`, real 40-hex `releaseRevision`,
+prefixed digest and ordinal `files[{path,sha256}]` projection; no filesystem path,
+credential or business data. Missing/malformed release identity is not converted
+to a valid-looking sentinel; production/release mode fails closed while local/test
+uses an explicit fixture. Existing AI-internal endpoint aligns to the same digest
+algorithm and requires private service authentication.
 
 ### 4.5 Persistence and migrations
 
@@ -322,8 +326,11 @@ Direction:
   to docs/scripts/dependency files.
 - Add `core-internal-v1.yaml`, endpoint implementation and validator coverage.
 - Change Core Docker build to monorepo-root context and copy schemas into JAR;
-  production image smoke must open every runtime schema.
-- Update main authority/sync expectations and the exact ADR-016 Core OCI labels.
+  production image smoke must open every runtime schema and recompute the full
+  packaged bundle digest.
+- Update main authority/sync expectations and the exact ADR-016/020 Core OCI
+  labels. Do not add a release-manifest digest image label or substitute another
+  digest for it.
   Produce a language-neutral digest manifest that the AI owner may validate;
   do not prescribe an AI endpoint, image label or repository change.
 - No runtime filesystem dependency on repository-relative `../../contracts`.
@@ -333,13 +340,16 @@ P1.
 
 Exit checks:
 
-- Packaged JAR/image schema load test passes.
+- Packaged JAR/image schema load test passes; image smoke recomputes the complete
+  packaged bundle and matches source digest plus Core contract label.
 - Main validator/Core/reference digest golden test returns the same value. A
   read-only comparison against a named AI revision may report mismatched contract
   bytes but does not modify that repository.
 - Internal OpenAPI validation and no-public-route test pass.
 - Internal contract endpoint rejects missing/wrong probe token and accepts
   active/rotation-overlap tokens without logging either value.
+- Missing or malformed production/release revision fails closed; metadata never
+  returns a synthetic all-zero revision.
 - Non-root container smoke passes.
 
 ### P3 — Enforce runtime OpenAPI and main-side consumer CI
@@ -352,21 +362,25 @@ Direction:
 
 - Generate runtime OpenAPI only in test/contract profile; production docs routes
   remain disabled/private.
-- Normalize/compare paths, methods, parameters, security, status, media type and
-  schema references; descriptions/example ordering are non-semantic.
+- Compare the live Spring runtime document with committed OpenAPI for paths,
+  methods, parameter name/location/required, security, status, media type and
+  schema references. Do not erase a named parameter mismatch; descriptions and
+  example ordering are non-semantic.
 - Application code changes that can affect API run contracts workflow.
 - Frontend workflow regenerates types and fails on dirty diff.
 - When an AI baseline and compatible read-only validator are supplied by its
   owner, main contract PR checks may run them against the proposed main bundle
-  without writing the AI repository. Otherwise the workflow emits the exact
-  unverified external gate; it never invents AI compatibility.
+  through a fixed, non-`eval` interface without writing the AI repository. A
+  mismatch reports file-level expected/actual hashes; otherwise the workflow
+  emits the exact unverified external gate and never invents AI compatibility.
 
 Depends on:
 P1, P2.
 
 Exit checks:
 
-- Deliberate test fixture drift fails each gate.
+- Deliberate live-runtime fixtures independently fail parameter, security, status,
+  media-type and schema-reference gates.
 - Main workflow fails when an owner-supplied AI consumer check rejects a proposed
   contract or synchronized contract bytes differ; the failure reports the exact
   contract delta for joint review.
@@ -520,9 +534,9 @@ Direction:
   ADR-016 security headers/path/body rules.
 - Add Railway config-as-code for region, replicas, health, pre-deploy migration,
   overlap/drain/restart and root Docker contexts.
-- Build `web` and `core` OCI artifacts once, publish GHCR digests, SBOM,
-  provenance and release manifest; promotion consumes manifest digest, never
-  rebuilds.
+- Build `web` and `core` OCI artifacts once and publish their GHCR digests, SBOM
+  and provenance. Then create the ADR-020 release manifest referencing those exact
+  digests; promotion consumes the manifest and never rebuilds images.
 - Add OTel/Micrometer/Faro privacy filters and required metrics/alerts definitions.
 - Make schedulers lifecycle-aware; tests shut down cleanly without forced JVM kill.
 - Write command-complete runbooks for deploy, rollback, sibling PITR restore, S3
@@ -537,7 +551,8 @@ Exit checks:
 
 - Config/bootstrap/profile tests and Caddy config test pass.
 - Railway/AWS config validation and all image smoke builds pass.
-- Release manifest/digest/SBOM/attestation workflow dry-run checks pass.
+- Post-build release manifest/digest/SBOM/attestation workflow dry-run checks pass;
+  no manifest digest is baked back into either image.
 - Core full verify exits cleanly with no post-container scheduler access.
 - Runbooks pass static safety review; no secret/destructive broad target exists.
 
@@ -661,9 +676,9 @@ implemented scripts.
 
 ## 8. Done tanımı
 
-- [x] ADR-014–ADR-019 accepted and ADR index/FORBIDDEN synchronized
+- [x] ADR-014–ADR-020 accepted and ADR index/FORBIDDEN synchronized
 - [x] ADR-019 contains only ownership governance; every AI-internal implementation decision is removed from main authority
-- [ ] P1 closed error authority accepted
+- [x] P1 closed error authority accepted
 - [ ] P2 packaged contract bundle/digest accepted
 - [ ] P3 runtime/cross-repo drift gates accepted
 - [ ] P4 invite-only backend identity accepted

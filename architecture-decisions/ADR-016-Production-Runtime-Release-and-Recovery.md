@@ -3,6 +3,8 @@
 - Durum: Accepted
 - Tarih: 22 Temmuz 2026
 - Karar sahibi: M4Trust founder/user
+- Kısmen değiştirildi: ADR-020, release manifest ile image kimliği arasındaki
+  döngüsel label şartını tek yönlü post-build manifest bağıyla değiştirmiştir.
 - Kapsam: Main repository'deki Core backend, web frontend ve bunların production
   deployment/operasyon sınırı
 - Değiştirdiği kararlar:
@@ -115,9 +117,10 @@ Main release manifesti şunları taşır:
 - highest Flyway migration;
 - build time/version.
 
-Manifest ve digest'ler image label, safe health/info projection ve deployment
-evidence'da eşleşir. AI repository SHA'sı, model/provider revision'ı veya AI image
-digest'i main release manifestinin owned artifact alanı değildir. AI-enabled
+Manifest, image label'larındaki build-time kimlikler, safe health/info projection
+ve deployment evidence ADR-020'nin tek yönlü bağıyla doğrulanır. AI repository
+SHA'sı, model/provider revision'ı veya AI image digest'i main release manifestinin
+owned artifact alanı değildir. AI-enabled
 acceptance gerekiyorsa AI sahibinin ayrıca verdiği opaque evidence reference main
 release kaydına dış bağımlılık olarak eklenebilir; main ekip bu kanıtın iç yapısını
 veya AI implementation'ını belirlemez.
@@ -166,9 +169,8 @@ public deny uygular ve private network tek başına auth sayılmaz. Endpoint
 `Authorization: Bearer` ile environment-specific 32-byte CSPRNG
 `CONTRACT_PROBE_TOKEN` ister; token yalnız secret store'dadır, constant-time
 karşılaştırılır, loglanmaz ve rotation sırasında active + one previous token
-bounded overlap destekler. İki main image
-`org.opencontainers.image.revision`, `io.m4trust.contract-bundle-digest` ve
-`io.m4trust.release-manifest-digest` OCI label'larını taşır.
+bounded overlap destekler. Main image'ların release kimliği ve contract label'ları
+ADR-020'ye tabidir; release-manifest digest'i image config'e gömülmez.
 
 Main contract change'i için AI consumer compatibility read-only kontrol edilebilir.
 Kontrol AI repository'sini değiştirmez; uyumsuzluk varsa merge/release durur ve
@@ -333,7 +335,8 @@ Geniş açılış planner acceptance ve retention/legal sign-off olmadan yapıla
 ## 4. Kabul kapıları
 
 - Web/Core/PostgreSQL/RabbitMQ/S3 main topology staging'de çalışır.
-- Main release manifest, image label ve contract digest'leri eşleşir.
+- Main release manifest, exact image digest'leri ve contract label'ları ADR-020'ye
+  göre tek yönlü doğrulanır.
 - Core broker disconnect/reconnect, duplicate result, scheduler SIGTERM, DB
   restore ve S3 restore drill'leri geçer.
 - AI team capability kullanılıyorsa shared-contract uyumluluğu read-only olarak

@@ -145,6 +145,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Mock AI Worker'ı production'da çalıştırmak veya production queue'larına bağlamak | ADR-007 §10, §46 |
 | Production'da `latest` image tag'ine güvenmek | ADR-007 §15, §46 |
 | Staging'de doğrulanmamış veya farklı build edilmiş image'ı production'a deploy etmek; digest yerine mutable tag promote etmek | ADR-016 §§2.4, 2.9 |
+| Release-manifest digest'ini image config'e geri gömerek döngü yaratmak veya contract digest'ini release-manifest digest'i gibi göstermek | ADR-020 §§1–2 |
 | Secret'ı repository'ye, Docker image'a veya frontend bundle'a koymak | ADR-007 §19–20, §46 |
 | Production'da `flyway clean`; uygulanmış migration dosyasını değiştirmek | ADR-007 §23, §46 |
 | Breaking DB değişikliğini tek rollout'ta yapmak (expand–contract yerine) | ADR-007 §25, §46 |
