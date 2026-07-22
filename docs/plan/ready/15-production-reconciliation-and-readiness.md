@@ -562,7 +562,8 @@ Exit checks:
 - Railway/AWS config validation and all image smoke builds pass.
 - Post-build release manifest/digest/SBOM/attestation workflow dry-run checks pass;
   no manifest digest is baked back into either image.
-- Core full verify exits cleanly with no post-container scheduler access.
+- Focused scheduler lifecycle/Testcontainers shutdown tests exit cleanly with no
+  post-container access; repository-wide verify remains deferred to P9.
 - Runbooks pass static safety review; no secret/destructive broad target exists.
 
 ### P9 — Integrate main staging evidence and review handoff
@@ -576,8 +577,9 @@ Direction:
 - Update local/CI integration orchestration for Core/Web/Postgres/Rabbit and
   S3-compatible storage. The accepted local Mock AI Worker may validate Spring's
   contract boundary, but is never production AI evidence.
-- Run contract, migration, backend, frontend, container, policy and focused
-  failure/recovery suites.
+- Run the complete main-repository contract, migration, backend, frontend,
+  container, policy and focused failure/recovery validation once here. Earlier
+  packets and their reviews use only minimum affected tests.
 - Produce redacted main release manifest, image digests, migration ceiling,
   contract digest and exact commands/evidence locations.
 - If an AI-owner evidence packet is available, attach its opaque reference and
@@ -654,7 +656,14 @@ Owner: planner/user after implementer review. Implementer tests do not replace i
 
 ## 7. Minimum invariant ve validation
 
-### Main repository
+### Incremental packets and reviews (P1–P8)
+
+Run only the smallest checks that cover the changed behavior: affected contract
+validator/fixture commands, named Maven tests, affected frontend tests or build
+checks, owned artifact/config validation and `git diff --check`. Implementers and
+reviewers do not run repository-wide backend/frontend suites in these packets.
+
+### Final main-repository gate (P9, once)
 
 ```text
 python contracts/scripts/validate_contracts.py
@@ -688,8 +697,8 @@ implemented scripts.
 - [x] ADR-014–ADR-021 accepted and ADR index/FORBIDDEN synchronized
 - [x] ADR-019 contains only ownership governance; every AI-internal implementation decision is removed from main authority
 - [x] P1 closed error authority accepted
-- [ ] P2 packaged contract bundle/digest accepted
-- [ ] P3 runtime/cross-repo drift gates accepted
+- [x] P2 packaged contract bundle/digest accepted
+- [x] P3 runtime/cross-repo drift gates accepted
 - [ ] P4 invite-only backend identity accepted
 - [ ] P5 notification/onboarding frontend accepted
 - [ ] P6 S3/GuardDuty infrastructure and adapter accepted

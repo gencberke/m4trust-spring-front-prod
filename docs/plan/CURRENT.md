@@ -121,7 +121,8 @@ tests for security/response semantics.
 
 Slice 15 Production Reconciliation and Readiness is human-approved for the main backend/frontend and
 their deployment under `docs/plan/ready/`. P1 public error authority is accepted
-at `d69d7e00`; P2–P9 and main production acceptance are not accepted yet. Slice
+at `d69d7e00`; P2–P3 contract packaging/runtime inventory controls are accepted
+at `4845a03`. P4–P9 and main production acceptance are not accepted yet. Slice
 14B remains planning-only behind Slice 15 `MAIN-PROD-READY` and the seven-day main
 pilot exit.
 
@@ -304,8 +305,10 @@ No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next work is Slice 15 P1–P9 in dependency-ordered main-repository task packets, beginning
-with contract/error authority and contract-bundle/runtime drift controls. After
+The next work is Slice 15 P4–P5 invite-only identity and transactional onboarding
+in main-repository task `15-T03`. Repository-wide backend/frontend suites run once
+at the final P9 integration gate; intermediate implementation and review use only
+minimum affected tests. After
 all Slice 15 gates and the seven-day pilot are accepted, Slice 14B is replanned
 against the then-current exact base and may receive separate ready approval.
 
