@@ -98,7 +98,7 @@ python -m pytest tools/mock-ai-worker/tests
 
 Railway staging Slice 7 kapsamında 21 Temmuz 2026'da kabul edilmiştir. Aşağıdaki
 bölüm kabul edilen config-as-code ve operatör akışını belgeler. Güncel kabul
-kanıtı `plan/done/review/slice-07-acceptance-2026-07-21.md` içindedir.
+kanıtı `plan/done/review/04-07-implementation-review-handoff.md` içindedir.
 
 ## Railway staging hazırlığı
 

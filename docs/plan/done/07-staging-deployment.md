@@ -14,7 +14,7 @@
 - **Kabul kaydı (2026-07-21):** Railway staging, failure gate, immutable
   rollback, main-bound release identity, browser/security acceptance and secret/
   network checks passed. Evidence:
-  `review/slice-07-acceptance-2026-07-21.md`.
+  `review/04-07-implementation-review-handoff.md`.
 - **Kabul edilen sapma:** RabbitMQ, object storage and AI workers remain outside
   this plan's staging scope. Core readiness and the accepted HTTP/browser path
   are healthy; RabbitMQ-dependent asynchronous behavior is not claimed.

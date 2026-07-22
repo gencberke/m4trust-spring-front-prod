@@ -58,7 +58,7 @@ plan never claims real money movement or financial settlement.
   implementation is merged into `main`; V22 is frozen accepted history.
 - Gate C0 retired the transferred Slice 14A Section 6 browser debt and the
   inherited Slice 13 historical VIDEO/MP4 observation on 21 July 2026. Evidence:
-  `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`. Do not restate that
+  `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`. Do not restate that
   matrix as open debt for 14B acceptance.
 - Slice 7 staging/C2/G4b and Slice 11B-A were accepted. The real-provider
   Slice 11B-B/G1 route is superseded; no credential or provider evidence is
@@ -558,7 +558,7 @@ Run the matrix first on accepted staging and then on the limited production
 sandbox in production or real money.
 
 Before or as part of this section, confirm gate C0 remains accepted:
-`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md` already retires the
+`docs/plan/done/review/14a-15p4-implementation-review-handoff.md` already retires the
 transferred Slice 14A §6 matrix and Slice 13 historical VIDEO/MP4 debt. Do not
 re-open that debt as a 14B prerequisite; produce settlement/release browser
 evidence separately.
@@ -642,5 +642,5 @@ not replace this single final user-visible simulation check.
 - [ ] Implementer reports all phases with `Plan completion claim: NO`
 - [ ] Planner independently reviews the complete diff and evidence
 - [ ] Planner-owned staging plus limited-production demo browser acceptance passes
-- [x] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired (gate C0; `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`)
+- [x] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired (gate C0; `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`)
 - [ ] The plan is archived only after every gate, phase, invariant, browser step, validation, and Done item is proven

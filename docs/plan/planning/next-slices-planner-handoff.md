@@ -21,7 +21,7 @@ Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıç
 - Slice 0–14A kabul edilmiştir.
 - Slice 14A planı
   `docs/plan/done/14a-dispute-and-casework-foundation.md` altındadır.
-- Kabul kanıtı `docs/plan/done/review/slice-14a-acceptance-2026-07-21.md` içindedir.
+- Kabul kanıtı `docs/plan/done/review/14a-15p4-implementation-review-handoff.md` içindedir.
 - ADR-013 Accepted durumundadır ve Dispute/Casework V1 için otoritatiftir.
 - V15–V22 kabul edilmiş, donmuş migration history'dir. Yeni DB ihtiyacı yeni
   forward-only migration kullanmalıdır.
@@ -53,7 +53,7 @@ Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıç
 Slice 14A kapanışında planner-owned §6 matrisi ve Slice 13 historical VIDEO/MP4
 gözlemi 14B'ye aktarılmıştı. Bu borç **gate C0** ile 21 Temmuz 2026'da kapatıldı.
 
-Kanıt: `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md` (Deal
+Kanıt: `docs/plan/done/review/14a-15p4-implementation-review-handoff.md` (Deal
 `DL-0000000017`). Historical Slice 13 / 14A acceptance kayıtları yeniden
 yazılmadı; borç yalnızca current/future planner state'ten kaldırıldı.
 

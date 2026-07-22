@@ -6,7 +6,7 @@
   accepted Slice 7 staging, accepted G2 non-production operating model
 - Successor: `../planning/11b-b-moka-staging-and-g1.md`
 - Approval record: founder/user delegated ready approval to the planner on 21 July 2026
-- Acceptance record: `docs/plan/done/review/slice-11b-a-acceptance-2026-07-22.md`
+- Acceptance record: `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`
 - Execution guide: `docs/plan/planning/settlement-release-roadmap-runbook.md`
 - Authority boundary: local/CI non-production implementation only; no real
   Moka credential, staging provider call, release behavior or money movement

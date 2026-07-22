@@ -26,7 +26,7 @@
 ### Completion evidence and accepted deviation
 
 Planner review, automated validation, and the real-browser runs are recorded in
-`review/slice-13-acceptance-2026-07-21.md`.
+`review/12-13-implementation-review-handoff.md`.
 
 Browser acceptance found three defects before closure: canonical result
 retention, genuine cross-tenant job persistence/runtime MIME serialization, and

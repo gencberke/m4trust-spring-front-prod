@@ -93,7 +93,7 @@ Completed and accepted. No further Slice 7 task packet exists.
 | `11BA-T03` | A-P5–A-P6 | One valuable boundary check + review handoff |
 
 All three 11B-A tasks are accepted and archived. Do not issue another 11B-A
-task; preserve `docs/plan/done/review/slice-11b-a-acceptance-2026-07-22.md`.
+task; preserve `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
 
 ### Slice 11B-B and historical G1
 

@@ -1,23 +1,25 @@
 # Slice 04–07 Implementation Review Handoff
 
-Bu doküman, kabul edilmiş Slice 3.9–6 implementasyonunu ve Slice 7'nin merge
-edilmiş config-as-code kısmını inceleyecek ajana hızlı başlangıç sağlar.
+Bu doküman, kabul edilmiş Slice 3.9–7 implementasyonunu inceleyecek ajana hızlı
+başlangıç sağlar. Slice 7'nin ilk config-as-code durumu ile daha sonra tamamlanan
+Railway kabul kanıtı aynı tarihsel kayıtta birleştirilmiştir.
 [00–03 handoff'unun](00-03-implementation-review-handoff.md) devamıdır; planların
 yerine geçmez. Plan ile ADR çelişirse ADR kazanır; yönlendirme için
 `architecture-decisions/ADR-INDEX.md` kullanılır.
 
 ## 1. İnceleme başlangıç noktası
 
-- İncelenen taban: `main` / `69f8e43` (Slice 6 merge, PR #19)
-- Slice 3.9, 4, 5 ve 6 `main`'e merge edilmiş ve kabul edilmiştir.
-- Slice 7'nin yalnız config-as-code kısmı merge edilmiştir (PR #13); Railway
-  kurulumu ve kabul maddeleri açıktır (issue #15) — bkz. §7.
+- Slice 3.9–6 tabanı: `main@69f8e43` (Slice 6 merge, PR #19).
+- Slice 7 repository wiring ve final Railway kabulü:
+  `main@832cccab8e6f4e2c32bed8230520bdc76ec9df82`; reviewed implementation
+  `codex/slice-07-staging-foundation@2c613262f5cddd21803bc3514a21c0f710d0f974`.
+- Slice 3.9, 4, 5, 6 ve 7 kabul edilmiştir.
 - Kabul planları:
   - [`03.9-hardening-and-decisions.md`](../03.9-hardening-and-decisions.md)
   - [`04-deal-invitations-and-participation.md`](../04-deal-invitations-and-participation.md)
   - [`05-deal-parties-and-activation.md`](../05-deal-parties-and-activation.md)
   - [`06-document-upload.md`](../06-document-upload.md)
-  - [`../07-staging-deployment.md`](../07-staging-deployment.md) (bu inceleme tarihinde kısmen uygulandı; daha sonra tamamlandı)
+  - [`07-staging-deployment.md`](../07-staging-deployment.md)
 - Kabul durumu özeti: [`docs/plan/CURRENT.md`](../../CURRENT.md)
 
 ## 2. Slice'lar arası oluşan omurga
@@ -195,16 +197,26 @@ görülürse bu beklenen mimari değildir.
 - Timestamp'lerin mikrosaniyeye truncate edilme sebebi: Postgres timestamptz
   precision ↔ idempotent replay eşitliği.
 
-## 7. Slice 7 — Staging Deployment (kısmen; yalnız config-as-code)
+## 7. Slice 7 — Railway Staging Deployment
 
-**Sınır:** Bu bölümdeki iş kabul edilmiş SAYILMAZ. PR #13 ile yalnız
-config-as-code merge edildi; Railway kurulumu ve TÜM kabul maddeleri (browser
-smoke, migration failure gate, rollback provası, forwarded-header doğrulaması)
-[issue #15](https://github.com/gencberke/m4trust-spring-front-prod/issues/15)
-altında açıktır ve ayrı yürütülmektedir. Reviewer bunu eksik Slice 4–6
-implementasyonu olarak sınıflandırmamalıdır.
+Slice 7, ilk config-as-code merge'inden sonra gerçek Railway kurulumu, migration
+failure gate, rollback, security ve browser kabulüyle 21 Temmuz 2026'da
+tamamlanmıştır. Gate `C2/G4b` `ACCEPTED` durumundadır.
 
-### Merge edilen config-as-code
+### Kabul edilen deployment
+
+- Railway project `m4trust-staging`, environment `staging`.
+- Public HTTPS service `m4trust-web-edge`; private Core ve PostgreSQL.
+- Kabul anındaki historical Core root `/services/core-api`, config
+  `/services/core-api/railway.json`; web config `/frontend/railway.json`.
+- Core ve web `main@832cccab8e6f4e2c32bed8230520bdc76ec9df82` release
+  identity'sinde doğrulandı.
+- Kabul edilen Core deploy `b810a1f3-4a1f-4db2-9e7e-cd660b2100b0`, image
+  digest `sha256:5d581b5c8670f975be3112d3f7cfc83448842dd979141ed1849118cbba7df77e`.
+- Kabul edilen web deploy `9c613818-2856-4b36-a673-020e22d4b3eb`, image
+  digest `sha256:53f40495437b7c57575819c6b7725bff1b9d02b287910ad88a098724a249ebdc`.
+
+### Config-as-code
 
 - `services/core-api/Dockerfile` (multi-stage, non-root, `run`/`migrate`
   launcher), `services/core-api/railway.json` (pre-deploy `migrate`, readiness
@@ -214,14 +226,34 @@ implementasyonu olarak sınıflandırmamalıdır.
 - `application-staging.yml` profili; `docs/DEVELOPMENT.md` "Railway staging
   hazırlığı" variable sözleşmesi
 
+### Migration, rollback ve browser kanıtı
+
+- `migrate` ve `run` launcher'ları ayrı çalıştırıldı; shared staging Flyway V22
+  kaldı ve runtime startup migration yapmadı.
+- Disposable environment'ta intentionally-invalid V23 pre-deploy aşamasında
+  güvenli biçimde fail etti; önceki runtime aktif kaldı ve shared history
+  kirlenmedi.
+- Önceki immutable digest'e rollback V22 üzerinde migration gerektirmeden
+  readiness verdi; disposable environment kanıt sonrası silindi.
+- İki gerçek browser context'i register/login/session/logout, legal entity,
+  Deal CRUD/cancel, deep-link ve unrelated-entity non-disclosing 404 akışını
+  same-origin edge üzerinden tamamladı.
+- `/healthz` security headers ile 200; public actuator 404; unauthenticated
+  `/api/v1/auth/me` 401 verdi. Frontend bundle'da private host/DB variable yoktu.
+
 ### Review odağı
 
 - Staging profilinde Flyway'in startup'ta kapalı, yalnız `migrate` komutunda
   açık olduğu.
 - Secret'ların repo/image/bundle dışında kaldığı; `latest` tag'ine güven
   olmadığı.
-- Slice 6 sonrası eklenen `OBJECT_STORAGE_*` değişkenlerinin DEVELOPMENT.md
-  sözleşmesine henüz eklenmediği (staging kurulum işinin parçası).
+- Kabul kanıtının RabbitMQ, object storage, FastAPI veya AI staging readiness'i
+  iddia etmediği. Historical Core loglarında broker retry görülmesi HTTP
+  readiness kabulünü genişletmez.
+- Bu historical root/config bilgisinin Slice 15 P4'te monorepo-root build için
+  `/` root contract'ıyla supersede edildiği; güncel deployment review'ünün
+  [`14A–15 P4 handoff`](14a-15p4-implementation-review-handoff.md) üzerinden
+  yapılması gerektiği.
 
 ## 8. Contract, persistence ve frontend çapraz kontrol tablosu
 
@@ -231,7 +263,7 @@ implementasyonu olarak sınıflandırmamalıdır.
 | 4 | invitations + participants | V6–V9 | `deal`, `idempotency` | incoming invitations, accept entity seçimi |
 | 5 | parties + partyRoles | V10 | `deal` (`DealOperationPolicy`) | Deal detail parties bölümü |
 | 6 | documents (intent/finalize/history/link) | V11 | `document`, `integration/storage` | `features/documents/` |
-| 7* | değişiklik yok | — | `deployment` (launcher) | build-time (Caddy edge) |
+| 7 | değişiklik yok | — | `deployment` (launcher) | build-time (Caddy edge) |
 
 `contracts/openapi/core-api-v1.yaml` public contract source of truth'tür;
 `frontend/src/generated/core-api.d.ts` ondan üretilir. Elle yazılmış paralel
@@ -251,9 +283,11 @@ wire model review bulgusudur.
 6. OpenAPI hata kodlarını exception handler davranışlarıyla karşılaştırın.
 7. Frontend'de action görünürlüğünün yalnız backend projection'larından
    geldiğini ve Idempotency-Key retry davranışını kontrol edin.
-8. Son olarak doğrulama komutlarını çalıştırın.
+8. Slice 7 için release identity, migration failure gate, rollback ve public/
+   private topology kanıtını birlikte inceleyin.
+9. Son olarak yalnız şüpheli/değişen alanın doğrulamasını çalıştırın.
 
-## 10. Review için doğrulama komutları
+## 10. Tarihsel doğrulama kanıtı
 
 Repository kökünden:
 
@@ -269,18 +303,19 @@ npm run typecheck
 npm run build
 ```
 
-Manuel iki-browser kabul turları kullanıcı tarafından tamamlanmıştır; reviewer
-regresyon şüphesi yoksa kabul planlarındaki kanıtı esas alabilir.
+Bu komutlar kabul tarihinde geçmiştir. Manuel iki-browser ve Railway kabul
+turları da tamamlanmıştır; reviewer implementation değişmedikçe bütün tarihsel
+matrisi yeniden çalıştırmak yerine kaydedilmiş kanıtı esas alabilir.
 
 ## 11. Açık takipler ve kapsam sınırı
 
-- Issue #7: public launch öncesi login throttling.
-- Issue #15: Railway staging kurulumu ve Slice 7 kabul maddeleri (yürütülüyor).
 - ADR-008 cleanup release henüz yapılmadı (bilinçli erteleme).
-- `tools/mock-ai-worker/` hâlâ README yer tutucusudur; RabbitMQ topolojisi,
-  outbox/inbox ve `contractintelligence` modülü henüz yoktur (Slice 8 planının
-  konusu).
-- FastAPI AI servisi ve staging object storage kararı bu review kapsamında
-  değildir.
+- Slice 7 acceptance RabbitMQ, object storage, FastAPI veya AI behavior
+  kanıtlamadı; bu bilinçli scope sınırıdır.
+- Slice 8 ve sonraki capabilities bu handoff'tan sonra uygulanmıştır; buradaki
+  tarihsel ifadeler güncel proje state'i olarak kullanılmamalıdır.
+- Slice 15 P4, Core Railway build root/config sözleşmesini daha sonra değiştirdi.
+  Yeni deploy historical `/services/core-api` root ayarını kopyalamamalıdır.
 
-Bu handoff'taki açık takipler Slice 3.9–6'nın kabul durumunu geri almaz.
+Bu handoff'taki sınırlar Slice 3.9–7'nin kabul durumunu geri almaz ve sonraki
+slice'lara sessiz kapsam genişletme yetkisi vermez.
