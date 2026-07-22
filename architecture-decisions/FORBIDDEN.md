@@ -66,7 +66,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Query-verified `SIMULATED_SETTLED` olmadan release success veya Deal COMPLETED sonucu üretmek | ADR-014 §§2.3, 2.7–2.8 |
 | Participant/initiator görünürlüğünü fulfillment mutation yetkisi saymak; seller dışı actor'ın submit veya buyer ADMIN dışı actor'ın accept/reject yapması | ADR-009 §2.2; ADR-011 §2.2 |
 | Accepted/rejected evidence object veya history kaydını overwrite etmek, silmek ya da replacement olarak mutation ile kullanmak | ADR-003 §22; ADR-011 §2.3–§2.4 |
-| Clean malware scan proof olmadan document/evidence finalize etmek, download link üretmek veya AI job açmak | ADR-018 §§2.4–2.5 |
+| ADR-022 controlled-demo istisnası dışında clean malware scan proof olmadan document/evidence finalize etmek, download link üretmek veya AI job açmak | ADR-018 §§2.4–2.5; ADR-022 §§2.1, 2.4 |
 | Client/application metadata'sını malware scan proof saymak veya GuardDuty scan tag'ini user-writeable bırakmak | ADR-018 §§2.2–2.3, 2.8 |
 | Fulfillment acceptance'tan otomatik Deal COMPLETED, settlement, release, payout, refund, provider çağrısı veya AI job üretmek | ADR-011 §2.5 |
 | Query edilen temel domain alanlarını (money, status, party, authorization) JSONB'ye gömmek | ADR-003 §27 |
@@ -117,7 +117,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | `X-M4Trust-Legal-Entity-Id` header'ını yetki kanıtı kabul etmek | ADR-005 §20, §27 |
 | Authorization'ı yalnız frontend buton görünürlüğüne veya controller annotation'ına bırakmak | ADR-005 §21, §27 |
 | Login hatasıyla hesabın var olup olmadığını açıklamak | ADR-005 §15, §27 |
-| Production'da invite olmadan public account registration açmak | ADR-017 §2.1 |
+| ADR-022 controlled demo dışında production'da invite olmadan public account registration açmak | ADR-017 §2.1; ADR-022 §2.2 |
 | Invitation/password-reset token'ını URL path/query, log, audit veya analytics'e koymak | ADR-017 §2.3 |
 | Account invitation acceptance'ını legal-entity membership veya Deal participation consent'i saymak | ADR-017 §§2.2, 2.7 |
 | Logout'ta yalnız frontend state temizlemek (server-side invalidation olmadan) | ADR-005 §8, §27 |
@@ -144,7 +144,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Main-owned PostgreSQL/RabbitMQ'yu public erişilebilir veya cleartext açmak | ADR-007 §4–5, §46; ADR-016 §§2.2–2.3 |
 | Mock AI Worker'ı production'da çalıştırmak veya production queue'larına bağlamak | ADR-007 §10, §46 |
 | Production'da `latest` image tag'ine güvenmek | ADR-007 §15, §46 |
-| Staging'de doğrulanmamış veya farklı build edilmiş image'ı production'a deploy etmek; digest yerine mutable tag promote etmek | ADR-016 §§2.4, 2.9 |
+| Broad production'da staging'de doğrulanmamış veya farklı build edilmiş image'ı deploy etmek; controlled demo'da ise farklı source SHA ya da mutable `latest` kullanmak | ADR-016 §§2.4, 2.9; ADR-022 §2.5 |
 | Release-manifest digest'ini image config'e geri gömerek döngü yaratmak veya contract digest'ini release-manifest digest'i gibi göstermek | ADR-020 §§1–2 |
 | Secret'ı repository'ye, Docker image'a veya frontend bundle'a koymak | ADR-007 §19–20, §46 |
 | Production'da `flyway clean`; uygulanmış migration dosyasını değiştirmek | ADR-007 §23, §46 |
@@ -153,7 +153,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Production deploy'u staging kontrolü ve manual approval olmadan otomatikleştirmek | ADR-007 §26, §46 |
 | Railway'e özel business logic yazmak | ADR-007 §43, §46 |
 | Object storage'ı public bucket olarak açmak | ADR-007 §14, §46 |
-| Production S3'te public access, SSE-KMS'siz write, versioning kapatma veya non-clean object read izni vermek | ADR-018 §§2.1, 2.5, 2.8 |
+| Broad-production S3'te public access, SSE-KMS'siz write, versioning kapatma veya non-clean object read izni vermek; ADR-022 yalnız controlled Railway demo için dar istisnadır | ADR-018 §§2.1, 2.5, 2.8; ADR-022 §§2.1, 2.4 |
 | Her Spring replica'nın kontrolsüz Flyway migration çalıştırması | ADR-007 §23, §46 |
 | Local portları koda hard-code etmek | ADR-005 §25; ADR-007 §41 |
 

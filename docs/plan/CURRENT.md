@@ -107,7 +107,7 @@ browser Section 6 matrix that was deferred at 14A closure was completed and
 accepted as gate C0 on 2026-07-21
 (`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
-ADR-014–ADR-021 were accepted on 2026-07-22. They fix the demo-only settlement
+ADR-014–ADR-022 were accepted on 2026-07-22. They fix the demo-only settlement
 boundary, conditional event/outbox rule, main Core/Web production
 runtime/recovery topology, invite-only identity and scanned S3 quarantine.
 The original AI provider/model draft for ADR-019 was withdrawn before
@@ -117,18 +117,21 @@ circular image-label/release-manifest dependency: images are built first and the
 signed manifest references their exact digests in one direction. ADR-021 keeps
 committed OpenAPI as the single design authority while limiting raw
 Spring comparison to observable servlet inventory and using focused HTTP behavior
-tests for security/response semantics.
+tests for security/response semantics. ADR-022 now defines the narrower controlled
+Railway demo: existing auth, versioned Railway-hosted MinIO, exact source revision
+and no broad-production readiness claim; it defers the explicitly listed
+ADR-005/007/016/017/018/020 hardening requirements for that demo only.
 
-Slice 15 Production Reconciliation and Readiness is human-approved for the main backend/frontend and
-their deployment under `docs/plan/ready/`. P1 public error authority is accepted
-at `d69d7e00`; P2–P3 contract packaging/runtime inventory controls are accepted
-at `4845a03`. P4–P9 and main production acceptance are not accepted yet. Slice
-14B remains planning-only behind Slice 15 `MAIN-PROD-READY` and the seven-day main
-pilot exit.
+Slice 15 P1 public error authority is accepted at `d69d7e00`; P2–P3 contract
+packaging/runtime inventory controls are accepted at `4845a03`. The user stopped
+15-T03 before implementation and withdrew the former P4–P9 production-hardening
+scope from ready. ADR-022 and the replacement Railway-demo plan are accepted; the
+plan is ready at `docs/plan/ready/15-railway-demo-reconciliation-and-deployment.md`.
+Only P4 is authorized for the next packet. Slice 14B remains planning-only.
 
 ## Accepted foundations
 
-- ADR-001 through ADR-021 are accepted and remain authoritative; ADR-019 grants
+- ADR-001 through ADR-022 are accepted and remain authoritative; ADR-019 grants
   no AI-internal implementation authority to the main team.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
@@ -276,8 +279,7 @@ pilot exit.
 
 ## Not yet stable or accepted
 
-- Slice 15 production reconciliation implementation and its full-stack
-  staging/production-pilot evidence.
+- Slice 15 Railway-demo reconciliation and its staging/production-demo evidence.
 - Production AI capability remains owned and accepted separately by the AI team;
   Slice 15 may report shared-contract compatibility but cannot select or change
   providers, models, workers, images or AI deployment.
@@ -286,31 +288,27 @@ pilot exit.
 
 ## Active work
 
-Slice 15 Production Reconciliation and Readiness is the sole ready implementation
-plan. It must execute in reviewed packets against exact bases; task acceptance
-does not imply `PROD-READY`, staging acceptance, pilot entry, or pilot exit.
-Slice 14B and the R2–R7 capability roadmap have no implementation authority.
+Slice 15 Railway Demo Reconciliation and Deployment is the sole ready implementation
+plan. Only P4 repository reconciliation may start. Deployment P5/P6 remain blocked
+behind P4 acceptance and the user-owned UI/UX insertion gate. Slice 14B and the
+R2–R7 capability roadmap have no implementation authority.
 
 ## Known blockers
 
-Main production release remains blocked until Slice 15 closes contract/runtime
-drift, invite onboarding, scanned object storage, private Core/Web deployment,
-immutable release, recovery, telemetry and operational acceptance. External main
-gates still require Postmark domain authentication, production S3/KMS/GuardDuty
-resources, Grafana Cloud and Railway production/PITR configuration. AI-enabled
-product readiness additionally requires a compatible capability/evidence packet
-from the AI owner; its absence is reported and cannot be repaired by the main
-implementer. See `docs/plan/planning/ai-integration-observations-2026-07-22.md`.
+Controlled Railway demo deployment remains blocked on P4 repository reconciliation,
+the user-owned UI/UX insertion gate, staging proof and the one final
+validation/production-demo gate. Broad production remains explicitly out of scope.
+AI-enabled readiness additionally requires compatible evidence from the AI owner;
+its absence cannot be repaired by the main implementer.
 No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next work is Slice 15 P4–P5 invite-only identity and transactional onboarding
-in main-repository task `15-T03`. Repository-wide backend/frontend suites run once
-at the final P9 integration gate; intermediate implementation and review use only
-minimum affected tests. After
-all Slice 15 gates and the seven-day pilot are accepted, Slice 14B is replanned
-against the then-current exact base and may receive separate ready approval.
+The next work is Slice 15 P4 repository reconciliation in task `15-T04` Revision 1.
+Repository-wide backend/frontend suites run once at final P6; intermediate
+implementation and review use only minimum affected tests. After P4 acceptance the
+planner must stop before deployment and hand control to the user's separate UI/UX
+revision plan.
 
 ## Update rule
 

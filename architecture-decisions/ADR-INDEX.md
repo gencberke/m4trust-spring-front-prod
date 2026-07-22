@@ -86,8 +86,8 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | --- | --- | --- |
 | Authentication | Server-side opaque session; browser JWT yok | ADR-005 §2–4 |
 | Cookie | `__Host-M4TRUST_SESSION`, HttpOnly, Secure, SameSite=Lax | ADR-005 §5 |
-| CSRF / pre-auth | Authenticated unsafe metotlarda CSRF; ADR-017 pre-auth token/reset yüzeyi same-origin/fetch-metadata + closed CORS/throttle | ADR-005 §10; ADR-017 §2.4 |
-| Production register | Invite-only; public register mutation yapmadan closed error döndürür | ADR-017 §2.1 |
+| CSRF / pre-auth | Authenticated unsafe metotlarda CSRF; ADR-017 pre-auth yüzeyi yalnız broad-production hardening yeniden açılırsa uygulanır | ADR-005 §10; ADR-017 §2.4; ADR-022 §2.2 |
+| Demo register | Railway controlled demo mevcut açık register/login/session akışını korur; broad production invite-only kararı ertelenmiştir | ADR-022 §2.2 |
 | Legal entity header | Yetki kanıtı değil; membership ile doğrulanır | ADR-005 §20 |
 | Authorization | Controller/frontend yeterli değil; application katmanında | ADR-005 §21 |
 
@@ -100,10 +100,9 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Secret | Repo/image/frontend bundle dışında | ADR-007 §19–20 |
 | Log | Structured stdout/stderr + correlation/release identity | ADR-007 §28, §32 |
 | Ortamlar | local / staging / production kaynak paylaşmaz | ADR-007 §3 |
-| Production topology | Railway EU West; yalnız web public; Core/DB/Rabbit private; AWS S3 external | ADR-016 §§2.1–2.3 |
-| Production artifact | Main-owned `web` ve `core`; build once, immutable digest promotion | ADR-016 §§2.4–2.5; ADR-020 §2 |
-| Release manifest | Image'lardan sonra oluşur; exact image digest'lerini tek yönlü referanslar | ADR-020 §2 |
-| Recovery | PostgreSQL PITR RPO ≤15m/RTO ≤4h; sibling restore + cutover | ADR-016 §2.8 |
+| Controlled demo topology | Mevcut Railway US West; web public, Core/DB private, versioned MinIO bucket private ve yalnız presigned S3 API erişilebilir | ADR-022 §§2.1–2.4 |
+| Controlled demo artifact | Exact main SHA'dan Railway native build; environment deployment/image kimliği kaydedilir, `latest` yoktur | ADR-022 §2.5 |
+| Broad production release/recovery | GHCR manifest promotion ve PITR/RPO/RTO ADR-016/020'de tanımlıdır fakat controlled demo için ertelenmiştir | ADR-016 §§2.4, 2.8; ADR-020 §2; ADR-022 §§2.5, 2.7 |
 
 ---
 
@@ -132,13 +131,13 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | payment / funding | ADR-003 §12, §21; ADR-010; ADR-014 | Slice 11 sandbox production'a çıkmaz; production yalnız açık `DEMO_SIMULATED`, gerçek provider/sapma ESKALASYON |
 | settlement / release / simulated | ADR-014 | `DEMO_SIMULATED`, buyer ADMIN explicit release, query-only terminal proof, no real money |
 | outbox / event / notification dispatch | ADR-015 | Event/dispatch yalnız accepted contract/plan tanımlıyorsa; audit her auditable mutation'da |
-| production runtime / digest / PITR | ADR-016; ADR-020 | Private topology, build-once promotion, tek yönlü release manifest, fail-fast config, RPO/RTO ve pilot gate |
-| account invitation / password reset / Postmark | ADR-017 | Production invite-only, token body/fragment, ayrı business consent, notification outbox |
-| malware / quarantine / GuardDuty | ADR-018 | Clean tag olmadan finalize/read/AI yok; existing business lifecycle korunur |
+| production runtime / digest / PITR | ADR-016; ADR-020; ADR-022 | Controlled Railway demo exact SHA/deployment evidence kullanır; broad-production promotion/PITR ertelenmiştir |
+| account invitation / password reset / Postmark | ADR-017; ADR-022 | Controlled demo mevcut auth'u korur; invite/reset/Postmark broad-production hardening'e ertelenmiştir |
+| malware / quarantine / GuardDuty | ADR-018; ADR-022 | Controlled demo scan iddiası taşımaz ve yalnız demo verisi kullanır; broad production clean gate ertelenmiştir |
 | AI provider / model / worker internals | ADR-019 §§2.1–2.2 | AI owner kararıdır; main ekip yalnız shared-contract uyumu ve Spring boundary'sini yönetir, öneri/uyumsuzluk raporlar |
 | fulfillment / evidence | ADR-003 §13, §22; ADR-011 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review |
 | video analysis V1 | ADR-002 §9–§10; ADR-003 §22; ADR-012 | Evidence-bound job/result history; buyer ADMIN request, participant read, advisory-only |
-| object storage | ADR-001 §6; ADR-007 §14; ADR-018 | Private, presigned, exact-version quarantine; clean tag olmadan read/AI yok |
+| object storage | ADR-001 §6; ADR-007 §14; ADR-018; ADR-022 | Controlled demo: Railway MinIO, private/versioned bucket ve presigned exact-version; broad production scan gate ertelenmiştir |
 | document upload | ADR-001 §6; ADR-006 §49–50 | Spring upload binary proxy'si değil |
 | RabbitMQ / schema | ADR-002 §5–6, §15, §25 | Contract süreci |
 | AI result | ADR-002 §11–13; ADR-003 §17–18 | Advisory/technical result business karar değil |
@@ -194,12 +193,14 @@ messaging reuse ve advisory-only manual-review sınırı için bağlayıcıdır.
 `ADR-013` kabul edilmiştir. Dispute/Casework V1 actor, party-only disclosure,
 opening snapshot, concurrency ve no-side-effect sınırı için bağlayıcıdır.
 
-`ADR-014`–`ADR-021` kabul edilmiştir. Settlement demo boundary, event/outbox
+`ADR-014`–`ADR-022` kabul edilmiştir. Settlement demo boundary, event/outbox
 semantics, main application production runtime, invite-only identity, upload
 quarantine, cross-repository AI ownership governance ve tek yönlü release manifest
 kimliği kararları için bağlayıcıdır. ADR-021 runtime contract doğrulamasını yalnız
 gözlemlenebilir inventory ve gerçek HTTP davranış kanıtlarına ayırır. ADR-019 AI
-internal implementation seçimi yapmaz.
+internal implementation seçimi yapmaz. ADR-022 mevcut Railway projesindeki
+controlled demo için ADR-005/007/016/017/018/020'nin açıkça sayılan ağır production
+zorunluluklarını erteler; sonuç broad-production readiness değildir.
 
 ---
 
@@ -244,6 +245,7 @@ internal implementation seçimi yapmaz.
 | ADR-019 | Main/AI karar yetkisi, read-only contract compatibility ve non-authoritative observation sınırı |
 | ADR-020 | Main image digest'leri ile release manifesti arasındaki tek yönlü, döngüsüz kimlik bağı |
 | ADR-021 | Committed OpenAPI otoritesi ile gözlemlenebilir runtime inventory ve HTTP behavior doğrulaması |
+| ADR-022 | Existing Railway project üzerinde açık mevcut auth, versioned MinIO, exact source revision ve controlled-demo deployment sınırı |
 
 ## Reading rules
 
