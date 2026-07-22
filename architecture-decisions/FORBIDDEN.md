@@ -152,6 +152,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Container filesystem'ini business storage olarak kullanmak; session'ı yalnız memory'de tutmak | ADR-007 §8, §46 |
 | Production deploy'u staging kontrolü ve manual approval olmadan otomatikleştirmek | ADR-007 §26, §46 |
 | Railway'e özel business logic yazmak | ADR-007 §43, §46 |
+| Railway staging/production fulfillment-evidence smoke'unu DB seed, bootstrap/admin/state-override endpoint, authorization relaxation veya AI/payment bypass ile üretmek (meşru local/test fixture geçmişi etkilenmez) | ADR-022 §2.10 |
 | Object storage'ı public bucket olarak açmak | ADR-007 §14, §46 |
 | Broad-production S3'te public access, SSE-KMS'siz write, versioning kapatma veya non-clean object read izni vermek; ADR-022 yalnız controlled Railway demo için dar istisnadır | ADR-018 §§2.1, 2.5, 2.8; ADR-022 §§2.1, 2.4 |
 | Her Spring replica'nın kontrolsüz Flyway migration çalıştırması | ADR-007 §23, §46 |

@@ -301,13 +301,17 @@ Slice 14B remains planning-only.
 Slice 15 Railway Demo Reconciliation and Deployment is the sole ready deployment
 plan. P4 and the user-owned UI/UX insertion gate are accepted. P5 reconciliation
 of the existing Railway staging environment is active under the user's explicit
-autonomous continuation authorization. Slice 14B and the R2–R7 capability roadmap
-have no implementation authority.
+autonomous continuation authorization. On 2026-07-23 the founder/user accepted that
+live document storage smoke remains mandatory while live fulfillment-evidence smoke
+is a no-seed/no-bypass deferred risk until an authorized public `ACTIVE + FUNDED`
+creation path exists. Slice 14B and the R2–R7 capability roadmap have no
+implementation authority.
 
 ## Known blockers
 
 Controlled Railway demo deployment remains blocked on staging proof and the one
-final validation/production-demo gate.
+final validation/production-demo gate; deferred live evidence smoke is not a
+blocker under the 2026-07-23 accepted reconciliation.
 Broad production remains explicitly out of scope.
 AI-enabled readiness additionally requires compatible evidence from the AI owner;
 its absence cannot be repaired by the main implementer.

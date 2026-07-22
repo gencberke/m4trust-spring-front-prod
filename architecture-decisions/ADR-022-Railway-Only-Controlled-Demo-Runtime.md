@@ -156,6 +156,20 @@ Her implementasyon ve review paketi yalnız değişen davranışın en küçük 
 unit/config/image smoke testlerini çalıştırır. Repository-wide Core/frontend full
 suite yalnız final pre-production gate'te bir kez çalıştırılır.
 
+### 2.10 Evidence canlı smoke sınırı
+
+Founder/user'ın 23 Temmuz 2026 kararıyla Railway staging ve production-demo
+kabullerinde document upload → direct MinIO PUT → finalize → exact-version download
+zorunludur. Fulfillment evidence upload/finalize/download ise ancak yetkili, public
+bir `ACTIVE + FUNDED` Deal oluşturma yolu mevcutsa canlı smoke'a girer.
+
+Mevcut kontrollü demo kapsamı AI/RabbitMQ runtime'ını ve production payment/provider
+akışını açmadığından bu önkoşul Railway'de meşru olarak üretilemez. Bu nedenle canlı
+evidence smoke non-blocking deferred risk'tir; DB seed, bootstrap/admin endpoint,
+yetki gevşetmesi veya AI/payment bypass'ı uygulanmaz. Evidence davranışı accepted
+Slice 12 gerçek-MinIO/focused evidence kanıtıyla korunur; bu ADR Railway'de canlı
+evidence doğrulandı iddiası üretmez.
+
 ## 3. Sonuçlar
 
 - Mevcut çalışan auth ve domain slice'ları yeniden yazılmaz.
@@ -178,8 +192,9 @@ suite yalnız final pre-production gate'te bir kez çalıştırılır.
 - Staging web/Core aynı source SHA ile çalışır; Core/DB private kalır.
 - Staging ve production MinIO bucket'ları private, versioned ve exact-CORS'tur;
   public console yoktur.
-- Gerçek browser register/login/session ve document/evidence upload/download akışı
-  staging'de geçer.
+- Gerçek browser register/login/session ve document upload → finalize → exact-version
+  download akışı staging'de geçer. Canlı evidence smoke yalnız §2.10'daki meşru
+  önkoşul sağlanırsa eklenir; aksi halde deferred risk olarak kaydedilir.
 - Final full gate bir kez geçer; production demo manual deploy, smoke ve rollback
   kanıtı üretir.
 - Sonuç yalnız `RAILWAY_DEMO_READY` olarak kaydedilir.

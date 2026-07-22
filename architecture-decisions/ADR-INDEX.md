@@ -102,6 +102,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Ortamlar | local / staging / production kaynak paylaşmaz | ADR-007 §3 |
 | Controlled demo topology | Mevcut Railway US West; web public, Core/DB private, versioned MinIO bucket private ve yalnız presigned S3 API erişilebilir | ADR-022 §§2.1–2.4 |
 | Controlled demo artifact | Exact main SHA'dan Railway native build; environment deployment/image kimliği kaydedilir, `latest` yoktur | ADR-022 §2.5 |
+| Controlled demo evidence smoke | Document storage smoke zorunludur; fulfillment evidence yalnız meşru public `ACTIVE + FUNDED` yolu varsa canlı doğrulanır. Yoksa no-seed/no-bypass deferred risk; local/test fixture geçmişi korunur | ADR-022 §2.10 |
 | Broad production release/recovery | GHCR manifest promotion ve PITR/RPO/RTO ADR-016/020'de tanımlıdır fakat controlled demo için ertelenmiştir | ADR-016 §§2.4, 2.8; ADR-020 §2; ADR-022 §§2.5, 2.7 |
 
 ---
@@ -135,7 +136,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | account invitation / password reset / Postmark | ADR-017; ADR-022 | Controlled demo mevcut auth'u korur; invite/reset/Postmark broad-production hardening'e ertelenmiştir |
 | malware / quarantine / GuardDuty | ADR-018; ADR-022 | Controlled demo scan iddiası taşımaz ve yalnız demo verisi kullanır; broad production clean gate ertelenmiştir |
 | AI provider / model / worker internals | ADR-019 §§2.1–2.2 | AI owner kararıdır; main ekip yalnız shared-contract uyumu ve Spring boundary'sini yönetir, öneri/uyumsuzluk raporlar |
-| fulfillment / evidence | ADR-003 §13, §22; ADR-011 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review |
+| fulfillment / evidence | ADR-003 §13, §22; ADR-011; ADR-022 §2.10 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review; Railway canlı smoke yalnız meşru `ACTIVE + FUNDED` yolu varsa, seed/bypass yok |
 | video analysis V1 | ADR-002 §9–§10; ADR-003 §22; ADR-012 | Evidence-bound job/result history; buyer ADMIN request, participant read, advisory-only |
 | object storage | ADR-001 §6; ADR-007 §14; ADR-018; ADR-022 | Controlled demo: Railway MinIO, private/versioned bucket ve presigned exact-version; broad production scan gate ertelenmiştir |
 | document upload | ADR-001 §6; ADR-006 §49–50 | Spring upload binary proxy'si değil |

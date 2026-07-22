@@ -12,8 +12,10 @@ projesinin staging ve production environment'larında, aynı source revision ile
 çalışan ve gerçek browser'dan kullanılabilen kontrollü bir demo olur.
 
 Kullanıcı mevcut register/login/session akışıyla giriş yapar; legal entity ve Deal
-akışlarını kullanır; versioned MinIO storage üzerinden belge/evidence yükleyip
-indirebilir. Core ve PostgreSQL private kalır. Sonuç `PROD_READY` değil,
+akışlarını kullanır; versioned MinIO storage üzerinden belge yükleyip indirebilir.
+Evidence'ın canlı Railway smoke'u yalnız meşru `ACTIVE + FUNDED` üretim yolu varsa
+çalışır; aksi halde accepted Slice 12 kanıtıyla desteklenen deferred risk olarak
+kalır. Core ve PostgreSQL private kalır. Sonuç `PROD_READY` değil,
 `RAILWAY_DEMO_READY` olarak raporlanır.
 
 ## 2. Kapsam ve sınırlar
@@ -208,8 +210,9 @@ Exit checks:
 - Health/readiness ve pre-deploy migration başarılıdır.
 - Gerçek browser register → login → refresh/logout ve iki kullanıcı/legal-entity
   ayrımı geçer.
-- Gerçek browser document/evidence upload → finalize → download exact version ile
-  geçer.
+- Gerçek browser document upload → finalize → download exact version ile geçer.
+  Evidence canlı smoke'u yalnız meşru `ACTIVE + FUNDED` yolu varsa uygulanır;
+  aksi halde no-seed/no-bypass deferred risk olarak kaydedilir.
 - AI aksiyonları acceptance kapsamına alınmaz ve mock production queue'ya bağlanmaz.
 
 ### P6 — Run the one final gate and deploy the production demo
@@ -240,8 +243,10 @@ Exit checks:
   Core/Web image smoke ve `git diff --check` bir kez geçer.
 - Production web public; Core/Postgres private; MinIO bucket private/versioned,
   console public değildir.
-- Register/login/session ve document/evidence upload/download production smoke'u
-  geçer; tenant/participant non-disclosure spot-check edilir.
+- Register/login/session ve document upload → finalize → exact-version download
+  production smoke'u geçer; tenant/participant non-disclosure spot-check edilir.
+  Evidence canlı smoke'u P5'teki aynı meşru önkoşula bağlıdır; yokluğunda deferred
+  risk olarak kalır.
 - Exact source SHA, deployment IDs/image digest'leri, backup evidence ve rollback
   target kaydedilir.
 - Sonuç `RAILWAY_DEMO_READY` olarak planner tarafından kabul edilir.
@@ -258,7 +263,11 @@ Exit checks:
    akışıyla participant olur.
 4. PDF/DOCX document upload intent → direct MinIO PUT → finalize → download çalışır;
    exact object version korunur.
-5. Evidence upload/finalize/download aynı storage sınırında çalışır.
+5. Evidence upload/finalize/download, yalnız public ve yetkili bir `ACTIVE + FUNDED`
+   Deal meşru olarak oluşturulabiliyorsa çalıştırılır. Mevcut AI/payment kapsamı
+   böyle bir yol sağlamadığında DB seed, demo endpoint veya bypass uygulanmaz;
+   accepted Slice 12 gerçek-MinIO/focused evidence kanıtı korunur ve canlı Railway
+   evidence smoke'u deferred risk olarak raporlanır.
 6. Logout server session'ını invalid eder; actuator/internal route public edge'de
    404 kalır.
 
@@ -267,9 +276,10 @@ acceptance matrisinin parçası değildir.
 
 ### Production demo smoke
 
-Staging'deki akışın kısa smoke versiyonu yeni demo verisiyle tekrarlanır. Existing
-persistent data silinmez. Hata halinde deploy durur ve recorded Railway rollback veya
-same-commit redeploy yolu uygulanır.
+Staging'deki zorunlu register/login/session ve document storage akışının kısa smoke
+versiyonu yeni demo verisiyle tekrarlanır. Evidence canlı smoke'u staging ile aynı
+meşru önkoşula bağlıdır. Existing persistent data silinmez. Hata halinde deploy durur
+ve recorded Railway rollback veya same-commit redeploy yolu uygulanır.
 
 ## 7. Minimum invariant ve validation
 
