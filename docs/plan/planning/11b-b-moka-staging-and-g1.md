@@ -2,7 +2,7 @@
 
 - Status: `SUPERSEDED` on 22 July 2026; historical planning artifact only
 - Superseded by:
-  `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`
+  `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`
 - Execution prohibition: no phase in this file may receive a task packet,
   credential, provider probe, staging activation or browser run
 - Sequence: accepted 11B-A → provider probe gate B-G0 → human-approved 11B-B
@@ -10,7 +10,7 @@
 - Predecessors: accepted Slice 7, accepted G2 decision, accepted 11B-A, access
   to explicitly authorized non-production Moka test credentials
 - Successors: ADR-014 decision drafting, then final Slice 14B ready approval
-- Execution guide: `docs/agent/settlement-release-roadmap-runbook.md`
+- Execution guide: `docs/plan/planning/settlement-release-roadmap-runbook.md`
 - Authority boundary: Moka test environment and staging only; no production
   credential, production deploy, real customer money or 14B release endpoint
 

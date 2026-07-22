@@ -18,9 +18,9 @@ seçilmelidir.
   - [`09-manual-review-and-ruleset.md`](../09-manual-review-and-ruleset.md)
   - [`10-ratification.md`](../10-ratification.md)
   - [`11-funding-and-payment.md`](../11-funding-and-payment.md)
-- Güncel kabul durumu: [`docs/agent/CURRENT.md`](../../../agent/CURRENT.md)
+- Güncel kabul durumu: [`docs/plan/CURRENT.md`](../../CURRENT.md)
 - Slice 10–11 ayrıntılı tarayıcı ve invariant kanıtı:
-  [`docs/agent/slice-10-11-acceptance-2026-07-20.md`](../../../agent/slice-10-11-acceptance-2026-07-20.md)
+  [`docs/plan/done/review/slice-10-11-acceptance-2026-07-20.md`](slice-10-11-acceptance-2026-07-20.md)
 - Yetkili kararlar: ADR-001–ADR-010. Özellikle ADR-002, ADR-003,
   ADR-004, ADR-006, ADR-009 ve ADR-010 bu incelemenin ana mimari kaynaklarıdır.
 

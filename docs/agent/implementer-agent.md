@@ -35,7 +35,7 @@ Execute phases strictly in plan order. For every phase:
 2. Inspect the nearest implementation and tests.
 3. Implement only that phase.
 4. Run its exit checks and minimum risk-proportional tests.
-5. Update `docs/agent/req-review.md` immediately.
+5. Update `docs/plan/review/req-review.md` immediately.
 6. Continue only when the phase is `DONE`.
 
 Use contract-first order for public/shared API changes. Preserve ownership,
@@ -43,12 +43,12 @@ authorization, compatibility, transaction/external-call boundaries, lock order,
 idempotency, immutable history, and forward-only migrations.
 
 Do not edit unrelated code, accepted migrations, the ready plan, or
-`docs/agent/CURRENT.md`. Do not perform planner-owned browser acceptance unless
+`docs/plan/CURRENT.md`. Do not perform planner-owned browser acceptance unless
 the task packet explicitly assigns it.
 
 ## Maintain the review inbox
 
-Create or replace `docs/agent/req-review.md` when work starts. Update it after
+Create or replace `docs/plan/review/req-review.md` when work starts. Update it after
 every phase using:
 
 ```text

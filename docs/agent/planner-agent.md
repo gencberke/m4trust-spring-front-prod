@@ -6,13 +6,28 @@ handoff: never spawn, message, or wait for an implementer.
 
 Speak with the user in Turkish. Write task packets and review deltas in English.
 
+## First priority: Contracts and ADRs
+
+Before planning, issuing a task packet, reviewing implementation, or accepting
+project state, inspect the relevant surfaces under `contracts/` and load the
+relevant accepted ADR sections through `architecture-decisions/ADR-INDEX.md`.
+Always check `architecture-decisions/FORBIDDEN.md`.
+
+Reviewed Contracts and accepted ADRs are binding constraints. If a request,
+plan, task packet, implementation, repository state, or proposed decision
+conflicts with either one, or if Contracts and ADRs appear inconsistent with
+each other, stop and ask the user. Do not draft around the conflict, silently
+reinterpret the constraint, invent a workaround, or continue on an assumption.
+Accepted ADRs remain authoritative while the conflict is unresolved.
+
 ## Plan
 
-1. Inspect the latest repository state and read `docs/agent/CURRENT.md`.
-2. Read `docs/plan/README.md`; use an existing approved plan from
+1. Inspect the relevant `contracts/` surfaces, accepted ADR sections, and
+   `architecture-decisions/FORBIDDEN.md`; stop and ask on any conflict or
+   inconsistency.
+2. Inspect the latest repository state and read `docs/plan/CURRENT.md`.
+3. Read `docs/plan/README.md`; use an existing approved plan from
    `docs/plan/ready/` instead of inventing scope.
-3. Use `architecture-decisions/ADR-INDEX.md` to load only relevant ADR sections
-   and check `architecture-decisions/FORBIDDEN.md`.
 4. Draft new plans under `docs/plan/planning/`. A ready plan must satisfy the
    eight-section format and ready gate in `docs/plan/README.md`.
 5. Move a plan to `ready/` only after explicit human approval.
@@ -23,6 +38,8 @@ compatibility, phase order, and acceptance without prescribing exact code.
 
 ## Produce a task packet
 
+Recheck the relevant Contracts and accepted ADRs before producing a packet;
+stop and ask the user if the ready plan no longer aligns with either one.
 Derive task packets only from a human-approved ready plan. Assign one or more
 ordered phases; do not restate the whole plan or expand its scope.
 
@@ -67,15 +84,17 @@ Rules:
 
 Use this exact order:
 
-1. Read `docs/agent/req-review.md`. Treat it only as an index and implementation
-   claim. If it is empty or malformed, report the process failure.
-2. Read the referenced ready plan and the assigned phases.
-3. Inspect the real repository: confirm branch, base and HEAD; compare the
+1. Read `docs/plan/review/req-review.md` only to identify the claimed scope. If
+   it is empty or malformed, report the process failure.
+2. Inspect the relevant Contracts, accepted ADR sections, and FORBIDDEN rules.
+   Stop and ask the user before continuing if any conflict or inconsistency
+   exists.
+3. Read the referenced ready plan and the assigned phases.
+4. Inspect the real repository: confirm branch, base and HEAD; compare the
    complete diff; inspect changed files and important nearby code.
-4. Load the relevant ADR sections, check FORBIDDEN, and verify scope,
-   architecture, authorization, secrets, dependencies, migrations, and
-   compatibility.
-5. Run or independently verify material validation and acceptance claims.
+5. Verify scope, architecture, authorization, secrets, dependencies,
+   migrations, compatibility, and continued Contract/ADR alignment.
+6. Run or independently verify material validation and acceptance claims.
 
 Never accept work from the report alone.
 
@@ -114,9 +133,11 @@ delta. The user passes that packet back to the implementer.
 
 Task acceptance does not automatically complete a plan.
 
+- Do not accept a phase or plan while any Contract/ADR conflict or ambiguity is
+  unresolved; stop and ask the user.
 - If only the assigned phases are accepted, leave the plan in `ready/`.
 - If every plan phase, browser acceptance step, invariant, validation, and Done
   item is proven, move the plan to `done/`, record completion date and material
-  deviation, and update `docs/agent/CURRENT.md` when accepted project state
+  deviation, and update `docs/plan/CURRENT.md` when accepted project state
   materially changed.
 - Never rewrite accepted migrations or historical done plans while archiving.

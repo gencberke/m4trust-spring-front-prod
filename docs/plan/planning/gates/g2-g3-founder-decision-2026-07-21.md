@@ -1,8 +1,8 @@
 # G2/G3 Founder Decision Record — 21 July 2026
 
 - Status: `ACCEPTED`
-- Charter: `docs/agent/gates/settlement-release-readiness-charter-2026-07-21.md`
-- Execution guide: `docs/agent/settlement-release-roadmap-runbook.md`
+- Charter: `docs/plan/planning/gates/settlement-release-readiness-charter-2026-07-21.md`
+- Execution guide: `docs/plan/planning/settlement-release-roadmap-runbook.md`
 - Decision owner: founder/user
 - Accepted: 21 July 2026 by explicit founder/user delegation of ready approval to the planner
 - Authority of this record: non-production readiness decisions for Slice 14B gate closure only
@@ -11,7 +11,7 @@
   application/migration/public-contract change
 - Supersession note: G2's standard-merchant-pool/test-credential route was
   superseded on 22 July 2026 by
-  `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`. This file
+  `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`. This file
   remains historical evidence; G3 remains authoritative and unchanged.
 
 ## Purpose
@@ -23,7 +23,7 @@ inputs.
 
 ## Parallel-work boundary
 
-This record is documentation-only under `docs/agent/` plus accepted-state and
+This record is documentation-only under `docs/plan/planning/gates/` plus accepted-state and
 gated-planning synchronization. It does not touch Slice 7 staging
 deployment work, Railway config, application code, migrations, OpenAPI, or
 `docs/plan/ready/`.

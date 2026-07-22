@@ -55,7 +55,7 @@ movement or financial settlement.
   implementation is merged into `main`; V22 is frozen accepted history.
 - Gate C0 retired the transferred Slice 14A Section 6 browser debt and the
   inherited Slice 13 historical VIDEO/MP4 observation on 21 July 2026. Evidence:
-  `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`. Do not restate that
+  `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`. Do not restate that
   matrix as open debt for 14B acceptance.
 - Slice 7 staging/C2/G4b and Slice 11B-A were accepted. The real-provider
   Slice 11B-B/G1 route is superseded; no credential or provider evidence is
@@ -63,12 +63,12 @@ movement or financial settlement.
 - The founder accepted simulation-only payment/release on 22 July 2026. G1-S
   and G4c are accepted for that scope. Moka is only an internal emulator label;
   it conveys no provider or financial claim. Authority:
-  `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
+  `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`.
 - G3 remains accepted. G2's former merchant-pool route is superseded while its
   production KYC/custody/fee/split/Law 6493/payout non-claims remain.
   Ratification schema v2 and immutable fulfillment `completedAt` compatibility
   are fixed by
-  `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`.
+  `docs/plan/planning/gates/g2-g3-founder-decision-2026-07-21.md`.
 - Existing ratification packages contain no `disputeWindowDays` term. They
   must remain release-ineligible rather than being silently reinterpreted.
 - Refund, reversal, chargeback, and post-settlement recovery remain a separate
@@ -140,7 +140,7 @@ Accepted by the founder/user on 22 July 2026:
 - unknown/timeout/crash remains reconcilable and blocks another release; and
 - no Moka/provider/financial/custody/payout claim.
 
-Evidence: `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
+Evidence: `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`.
 
 ### G2 — Accepted non-claims
 
@@ -553,7 +553,7 @@ Use accepted staging plus the external simulator in an explicit simulation
 profile. Never use production payment/release mode or real money.
 
 Before or as part of this section, confirm gate C0 remains accepted:
-`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md` already retires the
+`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md` already retires the
 transferred Slice 14A §6 matrix and Slice 13 historical VIDEO/MP4 debt. Do not
 re-open that debt as a 14B prerequisite; produce settlement/release browser
 evidence separately.
@@ -608,7 +608,7 @@ not replace this single final user-visible simulation check.
   never create a workaround.
 - Task acceptance does not complete the plan. All phases, browser steps,
   invariants, gates, validations, and Done items require evidence.
-- `docs/agent/CURRENT.md` changes only after accepted project state materially
+- `docs/plan/CURRENT.md` changes only after accepted project state materially
   changes.
 
 ## 8. Done Definition
@@ -636,5 +636,5 @@ not replace this single final user-visible simulation check.
 - [ ] Implementer reports all phases with `Plan completion claim: NO`
 - [ ] Planner independently reviews the complete diff and evidence
 - [ ] Planner-owned staging-simulation browser acceptance passes
-- [x] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired (gate C0; `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`)
+- [x] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired (gate C0; `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`)
 - [ ] The plan is archived only after every gate, phase, invariant, browser step, validation, and Done item is proven

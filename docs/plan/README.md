@@ -7,11 +7,16 @@ getiren bağlayıcı yönergedir.
 ## Dizin akışı
 
 ```text
+CURRENT.md → yalnız kabul edilmiş güncel proje durumu
 planning/  → taslak; sorular ve kararlar tartışılıyor
 ready/     → insan onaylı; phase'ler implementasyona alınabilir
-done/      → bütün Done koşulları kabul edildi; plan arşivlendi
+review/    → tek aktif implementasyon review kaydı
+done/      → bütün Done koşulları kabul edildi; plan ve kabul kanıtı arşivlendi
 ```
 
+- `CURRENT.md` backlog veya handoff günlüğü değildir; yalnız kabul edilmiş
+  proje durumu maddi olarak değiştiğinde güncellenir.
+- `review/req-review.md` implementerin kısa, geçici review inbox'ıdır.
 - Plan insan onayı olmadan `ready/` dizinine taşınmaz.
 - Ready planda kapsam değişikliği gerekiyorsa plan `planning/` dizinine döner,
   değişiklik açıkça yazılır ve yeniden insan onayı alır.
@@ -113,11 +118,11 @@ kalır.
 ## Planner ve implementer kullanımı
 
 - Planner süreci, task paketi ve review kuralları:
-  `docs/agent/WORKFLOW.md`.
+  `docs/agent/planner-agent.md`.
 - Implementer phase yürütme ve teslim kuralları:
   `docs/agent/implementer-agent.md`.
 - Kullanıcı task paketini implementere, implementer raporunu planner'a taşır.
-- Tek aktif implementasyon review kaydı `docs/agent/req-review.md` içindedir.
+- Tek aktif implementasyon review kaydı `docs/plan/review/req-review.md` içindedir.
 
 ## Sabit teknoloji kararları
 

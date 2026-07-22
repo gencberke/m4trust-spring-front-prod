@@ -40,7 +40,7 @@ Main-bound immutable core/web deployments, public HTTPS edge with private Core
 API/PostgreSQL, one-shot Flyway pre-deploy, isolated migration failure gate,
 schema-compatible immutable rollback, release identity, secret/network checks,
 and the real two-context browser/security flow passed. Evidence:
-`docs/agent/slice-07-acceptance-2026-07-21.md`. RabbitMQ, object storage and AI
+`docs/plan/done/review/slice-07-acceptance-2026-07-21.md`. RabbitMQ, object storage and AI
 workers remain outside this staging slice.
 
 Slice 8 AI Document Extraction is accepted under `docs/plan/done/`. The
@@ -74,7 +74,7 @@ transport, the existing durable funding port over real HTTP, query-first
 timeout recovery and probe-only pool transport passed focused validation. This
 local/CI evidence is not real-provider proof; after the founder's scope change
 it supports G1-S simulation safety and never authorizes real-provider behavior.
-Evidence: `docs/agent/slice-11b-a-acceptance-2026-07-22.md`.
+Evidence: `docs/plan/done/review/slice-11b-a-acceptance-2026-07-22.md`.
 
 Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
 Seller start, participant-readable fulfillment, private-storage evidence
@@ -95,7 +95,7 @@ Deal, release money, call a provider, or create dispute/casework state. Browser
 acceptance found and corrected canonical-result, cross-tenant tenant/FK, MIME
 wire-serialization, and historical-panel defects. The previously waived
 historical VIDEO/MP4 panel observation was later retired by gate C0 on
-2026-07-21 (`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`).
+2026-07-21 (`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
 Slice 14A Dispute and Casework Foundation is accepted under
 `docs/plan/done/`. Buyer/seller ADMIN dispute opening, party-only read/comment,
@@ -105,7 +105,7 @@ and frontend casework are implemented. The reported contract, backend, focused
 regression, frontend, and diff validations passed. The planner-owned real
 browser Section 6 matrix that was deferred at 14A closure was completed and
 accepted as gate C0 on 2026-07-21
-(`docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`).
+(`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
 ## Accepted foundations
 
@@ -213,13 +213,13 @@ accepted as gate C0 on 2026-07-21
   immutable hash, approve/reject/supersede/withdraw races, ACTIVE mutation
   closure, SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS, retry/reconcile and actor
   visibility flows passed. Evidence:
-  `docs/agent/slice-10-11-acceptance-2026-07-20.md`.
+  `docs/plan/done/review/slice-10-11-acceptance-2026-07-20.md`.
 - Slice 12 planner review and the user-directed minimum real-browser acceptance
   passed on 2026-07-20. The critical seller start → direct MinIO upload/finalize
   → buyer reject → replacement → buyer accept path completed; rejected history
   remained immutable. Targeted reviewer tests passed 17/17 and frontend
   production build passed. Evidence:
-  `docs/agent/slice-12-acceptance-2026-07-20.md`.
+  `docs/plan/done/review/slice-12-acceptance-2026-07-20.md`.
 - Slice 13 planner review and combined real-browser acceptance passed on
   2026-07-21 against PostgreSQL, RabbitMQ, MinIO, the rebuilt Mock AI Worker,
   Core API, and frontend. Cross-tenant request, participant authorization,
@@ -227,7 +227,7 @@ accepted as gate C0 on 2026-07-21
   replacement isolation, no-side-effect behavior, and Slice 8/12 regressions
   passed. The user explicitly waived only the final post-fix browser observation
   of the historical VIDEO/MP4 panel; that exact regression debt is recorded in
-  `docs/agent/slice-13-acceptance-2026-07-21.md`.
+  `docs/plan/done/review/slice-13-acceptance-2026-07-21.md`.
 - Mock AI Worker tests pass 27/27; frontend typecheck/build pass.
 - Slice 14A implementer validation reports contract validation passing
   21 schemas and 13 fixtures, Core API `mvn verify` passing 331 tests, the
@@ -237,12 +237,12 @@ accepted as gate C0 on 2026-07-21
   direction.
 - Gate C0 (14A §6 + Slice 13 historical VIDEO panel) passed on 2026-07-21
   against the local stack on Deal `DL-0000000017`. Evidence:
-  `docs/agent/c0-14a-browser-debt-acceptance-2026-07-21.md`.
+  `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`.
 - Slice 7 Railway staging passed on 2026-07-21 at
   `main@832cccab8e6f4e2c32bed8230520bdc76ec9df82`: core/web immutable deploys,
   Flyway V22 pre-deploy, disposable failure gate, compatible rollback,
   release identity, HTTPS/security topology, and the real two-context browser
-  flow passed. Evidence: `docs/agent/slice-07-acceptance-2026-07-21.md`.
+  flow passed. Evidence: `docs/plan/done/review/slice-07-acceptance-2026-07-21.md`.
 - Gates G2/G3 were accepted on 2026-07-21. G2's former test-merchant-pool route
   was superseded on 2026-07-22 by the accepted simulation-only decision; no
   Moka account, credential or provider call exists in scope. Production legal/
@@ -251,8 +251,8 @@ accepted as gate C0 on 2026-07-21
   uses additive schema v2 with immutable `disputeWindowDays` and a new
   server-owned fulfillment `completedAt`; schema v1 remains readable and
   permanently release-ineligible. Evidence:
-  `docs/agent/gates/g2-g3-founder-decision-2026-07-21.md`. Current payment/
-  release authority: `docs/agent/gates/simulation-only-payment-decision-2026-07-22.md`.
+  `docs/plan/planning/gates/g2-g3-founder-decision-2026-07-21.md`. Current payment/
+  release authority: `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`.
 
 ## Not yet stable or accepted
 

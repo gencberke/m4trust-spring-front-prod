@@ -9,7 +9,7 @@ Base: main@3b52f60128ab05b94df34b1bc6e62c076f3db527
 HEAD at validation: 7a5bac910e7dd3a8c9670611d5886e5e1043b6b0 (the following report-only commit is intentionally not part of validation)
 Plan completion claim: NO
 Planner decision: ACCEPT — Slice 11B-A accepted at `main@7e773d9`; see
-`docs/agent/slice-11b-a-acceptance-2026-07-22.md`.
+`docs/plan/done/review/slice-11b-a-acceptance-2026-07-22.md`.
 
 ## Phase outcomes
 - A-P5 — DONE — `PaymentFundingIntegrationTest` uses the real Core API durable relay and separately started Python HTTP emulator. Success is FUNDED only after verified emulator status; timeout stays UNCONFIRMED/PENDING, blocks a new charge, then query recovery reaches FUNDED.
