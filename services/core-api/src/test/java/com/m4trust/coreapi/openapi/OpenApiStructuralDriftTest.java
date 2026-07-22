@@ -7,14 +7,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.m4trust.coreapi.CoreApiApplication;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,12 +23,15 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+/**
+ * ADR-021 live inventory gate: raw {@code /v3/api-docs} vs committed OpenAPI for
+ * exact public paths/methods and named path servlet parameters only.
+ */
 @SpringBootTest(classes = CoreApiApplication.class, properties = {
         "springdoc.api-docs.enabled=true",
         "springdoc.swagger-ui.enabled=false",
         "springdoc.paths-to-match=/api/v1/**",
         "springdoc.show-actuator=false",
-        // Avoid broker/storage side effects while generating the servlet map.
         "app.messaging.topology.enabled=false",
         "app.messaging.relay.enabled=false"
 })
@@ -53,48 +53,50 @@ class OpenApiStructuralDriftTest {
     private MockMvc mockMvc;
 
     @Test
-    void runtimeOpenApiMatchesCommittedPublicContractStructure() throws Exception {
+    void rawRuntimeInventoryMatchesCommittedPublicRoutesAndServletParameters() throws Exception {
         Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
-        Map<String, Object> runtime = projectLiveRuntime(committed);
+        Map<String, Object> runtime = loadRuntimeOpenApi();
 
-        List<String> diffs = OpenApiStructuralFingerprint.diff(
-                OpenApiStructuralFingerprint.fromDocument(committed),
-                OpenApiStructuralFingerprint.fromDocument(runtime));
+        List<String> diffs = OpenApiRuntimeInventory.diff(
+                OpenApiRuntimeInventory.fromDocument(committed),
+                OpenApiRuntimeInventory.fromDocument(runtime));
 
-        assertTrue(diffs.isEmpty(), () -> "OpenAPI structural drift:\n" + String.join("\n", diffs));
+        assertTrue(diffs.isEmpty(), () -> "OpenAPI runtime inventory drift:\n" + String.join("\n", diffs));
     }
 
-    @ParameterizedTest(name = "live negative {0}")
-    @CsvSource({
-            "parameter, parameter drift",
-            "security, security drift",
-            "status, status drift",
-            "media-type, media-type drift",
-            "schema-ref, schema $ref drift"
-    })
-    void liveRuntimeNegativeMatrixFailsIndependentDimensions(
-            String dimension, String expectedFragment) throws Exception {
+    @Test
+    void runtimeSideRouteDriftFailsInventoryGate() throws Exception {
         Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
-        Map<String, Object> runtime = projectLiveRuntime(committed);
-        Function<Map<String, Object>, Map<String, Object>> mutator = switch (dimension) {
-            case "parameter" -> OpenApiStructuralFingerprint::withMutatedParameter;
-            case "security" -> OpenApiStructuralFingerprint::withMutatedSecurity;
-            case "status" -> OpenApiStructuralFingerprint::withMutatedStatus;
-            case "media-type" -> OpenApiStructuralFingerprint::withMutatedMediaType;
-            case "schema-ref" -> OpenApiStructuralFingerprint::withMutatedSchemaRef;
-            default -> throw new IllegalArgumentException(dimension);
-        };
-        Map<String, Object> mutated = mutator.apply(runtime);
-        List<String> diffs = OpenApiStructuralFingerprint.diff(
-                OpenApiStructuralFingerprint.fromDocument(runtime),
-                OpenApiStructuralFingerprint.fromDocument(mutated));
-        assertFalse(diffs.isEmpty(), "live negative matrix must detect " + dimension);
-        assertTrue(diffs.stream().anyMatch(diff -> diff.contains(expectedFragment)),
-                () -> "expected '" + expectedFragment + "', got: " + diffs);
+        Map<String, Object> runtime = loadRuntimeOpenApi();
+        Map<String, Object> mutatedRuntime = OpenApiRuntimeInventory.withInjectedFakeRoute(runtime);
+
+        List<String> diffs = OpenApiRuntimeInventory.diff(
+                OpenApiRuntimeInventory.fromDocument(committed),
+                OpenApiRuntimeInventory.fromDocument(mutatedRuntime));
+
+        assertFalse(diffs.isEmpty(), "runtime-side route drift must fail the inventory gate");
+        assertTrue(diffs.stream().anyMatch(diff -> diff.contains("/__inventory_probe__/fake")),
+                () -> "expected injected route drift, got: " + diffs);
     }
 
-    private Map<String, Object> projectLiveRuntime(Map<String, Object> committed) throws Exception {
-        return ContractOpenApiProjection.projectCommittedCatalogs(committed, loadRuntimeOpenApi());
+    @Test
+    void runtimeSideNamedPathParameterDriftFailsInventoryGate() throws Exception {
+        Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
+        Map<String, Object> runtime = loadRuntimeOpenApi();
+        Map<String, Object> mutatedRuntime = OpenApiRuntimeInventory.withRenamedPathParameter(runtime);
+
+        List<String> diffs = OpenApiRuntimeInventory.diff(
+                OpenApiRuntimeInventory.fromDocument(committed),
+                OpenApiRuntimeInventory.fromDocument(mutatedRuntime));
+
+        assertFalse(diffs.isEmpty(),
+                "runtime-side named path-parameter drift must fail the inventory gate");
+        assertTrue(diffs.stream().anyMatch(diff ->
+                        diff.contains("missing operation:")
+                                || diff.contains("unexpected operation:")
+                                || diff.contains("parameter drift")
+                                || diff.contains("__driftPathParam__")),
+                () -> "expected named servlet-parameter drift, got: " + diffs);
     }
 
     private Map<String, Object> loadRuntimeOpenApi() throws Exception {

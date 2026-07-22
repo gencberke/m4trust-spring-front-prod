@@ -1,29 +1,23 @@
 # Review Request
 Task: 15-T02
-Revision: 2
+Revision: 5
 Plan: docs/plan/ready/15-production-reconciliation-and-readiness.md
-Phases: P2–P3
+Phases: P3
 Status: COMPLETED
 Branch: codex/s15-t02-contract-bundle-runtime-drift
-Base: codex/s15-t01-error-authority@d69d7e00d8595d7280ff6798b167b7b7f389a8a8
+Base: 04adce6beb95403aea0c435d18601208475eaee1
 Plan completion claim: NO
 
 ## Phase outcomes
-- P2 — DONE — Fail-closed release identity (no forty zeros); removed `io.m4trust.release-manifest-digest`; smoke recomputes full packaged ADR-016 digest vs source + label.
-- P3 — DONE — Named OpenAPI path templates; full `diff` + independent negative matrix (Java/Python); LegalEntity `@PathVariable`; AI eval path removed; live gate uses committed catalog projection for security/responses/parameters while path keys stay springdoc-sourced.
+- P3 — DONE — ADR-021 raw inventory gate; live negatives mutate raw runtime (`withInjectedFakeRoute`, `withRenamedPathParameter`) and compare against committed; projection deleted; duplicate committed-side named-param unit negative removed.
 
 ## Validation
-- `python contracts/scripts/validate_contracts.py` — PASS
-- OpenAPI comparator negative matrix — PASS
-- Focused P2–P3 Core tests — PASS
-- `cd services/core-api; .\mvnw.cmd verify` — PASS (Surefire forced-shutdown dump after green tests; P8, not fixed)
-- frontend `npm.cmd ci && generate:api && typecheck && build` — PASS
-- `docker build` + smoke digest match — PASS
+- Focused OpenAPI tests (`OpenApiStructuralDriftTest`, `OpenApiStructuralFingerprintTest`, `SpringdocProductionDisabledTest`) — PASS (6)
 - `git diff --check` — PASS
+- Full Core verify — NOT_RUN
 
 ## Decisions needed
 - None
 
 ## Deviation or risk
-- Live OpenAPI positive gate projects committed security/responses/requestBody/parameters onto springdoc paths so full structural `diff` can pass without mass annotations; named path templates remain servlet-sourced (PathVariable fixed on LegalEntity). Production springdoc stays disabled.
-- Surefire forced-shutdown dump may still appear after passing verify (P8).
+- Live inventory compares named path parameters only; spurious springdoc `context` query reflection excluded (ADR-021).
