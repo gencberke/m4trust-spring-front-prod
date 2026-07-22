@@ -23,10 +23,10 @@ production access, real money movement, or an implementer task packet.
 
 | Gate | Status | Decision owner | Required evidence and exit condition |
 | --- | --- | --- | --- |
-| C0 — 14A/Slice 13 browser debt | `ACCEPTED` | Planner | Complete archived Slice 14A §6 against the real local stack, visibly retire the Slice 13 historical VIDEO/MP4 debt, record evidence, and remove the debt from current-state documents. Accepted 21 July 2026; evidence `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md` on Deal `DL-0000000017`. |
-| G4a — Slice 14A prerequisite | `ACCEPTED` | User/planner | Slice 14A implementation is merged at `main@0282c0e`; acceptance record is `docs/plan/done/review/slice-14a-acceptance-2026-07-21.md`; V22 is frozen accepted history. This does not claim the C0 browser debt passed. |
-| C2/G4b — Slice 7 staging | `ACCEPTED` | User/planner | Accepted 21 July 2026. Every Done item in `docs/plan/done/07-staging-deployment.md` passed, including Railway HTTPS smoke, controlled migration, disposable failure gate, exact release identity, secret/network checks, and schema-compatible immutable rollback. Evidence: `docs/plan/done/review/slice-07-acceptance-2026-07-21.md`. |
-| C3–C4/G4c — simulation transport foundation | `ACCEPTED` | Founder/user/planner | Accepted 22 July 2026 for simulation scope only. Slice 11B-A and its external emulator evidence are accepted; real-provider Slice 11B-B is superseded and cannot receive work. Evidence: `docs/plan/done/review/slice-11b-a-acceptance-2026-07-22.md` and `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`. |
+| C0 — 14A/Slice 13 browser debt | `ACCEPTED` | Planner | Complete archived Slice 14A §6 against the real local stack, visibly retire the Slice 13 historical VIDEO/MP4 debt, record evidence, and remove the debt from current-state documents. Accepted 21 July 2026; evidence `docs/plan/done/review/14a-15p4-implementation-review-handoff.md` on Deal `DL-0000000017`. |
+| G4a — Slice 14A prerequisite | `ACCEPTED` | User/planner | Slice 14A implementation is merged at `main@0282c0e`; acceptance record is `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`; V22 is frozen accepted history. This does not claim the C0 browser debt passed. |
+| C2/G4b — Slice 7 staging | `ACCEPTED` | User/planner | Accepted 21 July 2026. Every Done item in `docs/plan/done/07-staging-deployment.md` passed, including Railway HTTPS smoke, controlled migration, disposable failure gate, exact release identity, secret/network checks, and schema-compatible immutable rollback. Evidence: `docs/plan/done/review/04-07-implementation-review-handoff.md`. |
+| C3–C4/G4c — simulation transport foundation | `ACCEPTED` | Founder/user/planner | Accepted 22 July 2026 for simulation scope only. Slice 11B-A and its external emulator evidence are accepted; real-provider Slice 11B-B is superseded and cannot receive work. Evidence: `docs/plan/done/review/14a-15p4-implementation-review-handoff.md` and `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`. |
 | G1-S — simulation safety | `ACCEPTED` | Founder/user | Replaces historical real-provider G1 for this product scope. Only a profile-gated deterministic simulator may act; terminal release is query-verified `SIMULATED_SETTLED`, visibly `SIMULATED`, and never a real Moka/money/finality claim. Unknown remains fail-closed. Evidence: `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`. |
 | G2 — non-production risk and operations | `ACCEPTED / SUPERSEDED IN PART` | Founder/user | The 21 July merchant-pool/test-credential route is historical and superseded. Simulation-only authority and prohibited claims are fixed by `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`; G2's production/legal/custody/fee/split/payout non-claims remain binding. |
 | G3 — Ratification compatibility | `ACCEPTED` | Founder/user | Accepted 21 July 2026. Schema-v2 `disputeWindowDays`, additive v1 compatibility, immutable server-owned `completedAt`, accepted-evidence-only historical backfill, exact UTC boundary, canonical hash input and client transition are fixed by `docs/plan/planning/gates/g2-g3-founder-decision-2026-07-21.md`. |
@@ -282,7 +282,7 @@ Hard stop:
 ## Execution checkpoint — C0 ACCEPTED on 21 July 2026
 
 Gate C0 is `ACCEPTED`. Acceptance record:
-`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`.
+`docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
 `docs/plan/CURRENT.md` browser-debt language for 14A §6 / Slice 13 historical
 VIDEO was retired. Historical Slice 13 / 14A acceptance records were not
 rewritten.
@@ -328,7 +328,7 @@ Gate C0 remains `ACCEPTED` with the corrected evidence set.
 
 Slice 7 Railway Staging Deployment is independently accepted and archived at
 `docs/plan/done/07-staging-deployment.md`. Acceptance evidence:
-`docs/plan/done/review/slice-07-acceptance-2026-07-21.md`.
+`docs/plan/done/review/04-07-implementation-review-handoff.md`.
 
 Accepted evidence covers main-bound immutable core/web deployments, public-edge
 and private-service topology, one-shot Flyway V22 pre-deploy, isolated migration
@@ -361,7 +361,7 @@ provider credential, release/settlement, production or real-money authority.
 The planner accepted A-P1–A-P6 at `main@7e773d9` after complete diff review,
 targeted FIX revisions and an independent rerun of the material external HTTP
 relay/recovery integration test. Evidence is
-`docs/plan/done/review/slice-11b-a-acceptance-2026-07-22.md`.
+`docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
 
 This retires only the local/CI Moka transport foundation. C3–C4/G4c and G1
 remain `BLOCKED` pending Slice 11B-B B-G0 real-provider evidence, revised ready

@@ -16,8 +16,9 @@ spring:
   application:
     name: m4trust-core-api
   rabbitmq:
-    # The relay requires broker confirms before an outbox row can be marked published.
-    # Connection credentials remain environment-specific.
+    # Broker coordinates are required only when messaging topology/relay is enabled
+    # (MessagingBrokerBootstrapGuard). Base profile leaves them unset for broker-free
+    # Railway demo startup; local profile supplies defaults.
     publisher-confirm-type: ${RABBITMQ_PUBLISHER_CONFIRM_TYPE:correlated}
   datasource:
     url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}
@@ -38,6 +39,15 @@ spring:
     timeout: ${SESSION_IDLE_TIMEOUT:30m}
     jdbc:
       initialize-schema: never
+
+m4trust:
+  release:
+    # ADR-016/020 releaseRevision: exact 40-hex only. Empty/unknown fails closed at
+    # binding (never forty zeros). Local/test supply an explicit fixture SHA.
+    git-commit-sha: ${GIT_COMMIT_SHA:}
+  contracts:
+    probe-token: ${CONTRACT_PROBE_TOKEN:}
+    probe-token-previous: ${CONTRACT_PROBE_TOKEN_PREVIOUS:}
 
 app:
   # Deploy-time environment label (e.g. local, staging, production).
@@ -97,6 +107,14 @@ logging:
         version: ${app.version}
         gitCommitSha: ${app.git-commit-sha}
         buildTime: ${app.build-time}
+
+# Production keeps OpenAPI/Swagger routes disabled. The contract/test profile
+# may enable api-docs generation for structural drift gates only.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 management:
   endpoints:

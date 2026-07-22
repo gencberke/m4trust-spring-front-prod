@@ -89,6 +89,64 @@ Buyer/seller party-only dispute foundation'ını; open, comment, acknowledge ve
 withdraw actor modelini; immutable opening snapshot'ını; actor-aware lifecycle
 disclosure, concurrency ve no-side-effect sınırlarını tanımlar.
 
+### ADR-014 — Settlement, Release, and Production Demo Simulation
+
+Production'da gerçek para iddiası taşımayan `DEMO_SIMULATED` settlement/release
+modunu, ratified dispute window'u, release recovery'sini, dispute yarışlarını ve
+yalnız query-verified `SIMULATED_SETTLED` ile Deal completion'ı tanımlar.
+
+### ADR-015 — Domain Event and Outbox Policy
+
+Business audit ile integration event/durable dispatch'i ayırır; outbox'ın yalnız
+accepted operation bir event veya dış iş tanımladığında zorunlu olduğunu ve
+tanımlı kayıtların business mutation ile atomik yazılacağını sabitler.
+
+### ADR-016 — Production Runtime, Release, and Recovery
+
+Main repository'deki Core/Web Railway/AWS production topolojisini, private
+transport'u, iki main OCI artifact'ının immutable digest promotion'ını, fail-fast
+config, migration/rollback, PITR, observability ve sınırlı production pilot
+kapısını tanımlar. AI repository runtime/deployment kararlarını kapsamaz.
+
+### ADR-017 — Invite-Only Identity and Transactional Notification
+
+Production self-registration kapısını, account/member invitation ayrımını,
+email verification, password recovery, multi-replica throttling, Postmark
+notification outbox ve one-shot operator bootstrap davranışını tanımlar.
+
+### ADR-018 — Upload Quarantine, Malware, and Retention
+
+AWS S3 quarantine ve GuardDuty scan proof'ünü, clean tag olmadan finalize/read/AI
+yasağını, exact object-version bütünlüğünü ve bounded orphan cleanup davranışını
+tanımlar.
+
+### ADR-019 — Cross-Repository AI Ownership and Integration Governance
+
+Main backend/frontend/deployment ekibi ile ayrı AI owner arasındaki karar
+yetkisini sabitler. Main ekip AI provider/model/worker/image/deployment seçmez veya
+değiştirmez; yalnız shared-contract uyumunu yönetir, read-only mismatch raporu ve
+non-authoritative öneri sunar.
+
+### ADR-020 — Acyclic Release Manifest and Image Identity
+
+Main image'ların önce immutable digest ile üretilmesini, release manifestinin daha
+sonra bu digest'leri tek yönlü referanslamasını ve release-manifest digest'inin
+image config'e geri yazılmamasını sabitler.
+
+### ADR-021 — Observable Runtime Contract Verification
+
+Committed OpenAPI'yi tek design authority olarak korur; raw Spring çıktısını exact
+servlet inventory için, security/response semantiğini ise odaklı gerçek HTTP behavior
+testleri için kullanır. False-green projection ve geniş annotation programını reddeder.
+
+### ADR-022 — Railway-Only Controlled Demo Runtime
+
+Mevcut Railway project/environment'ları üzerinde mevcut register/login/session,
+private Core/PostgreSQL, versioned Railway-hosted MinIO, exact source revision ve
+manual deployment ile `RAILWAY_DEMO_READY` sınırını tanımlar. Invite/Postmark,
+AWS/GuardDuty, GHCR manifest, Grafana ve broad-production recovery/SLO kapsamını
+erteler; AI implementation/deployment ownership'ini değiştirmez.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:

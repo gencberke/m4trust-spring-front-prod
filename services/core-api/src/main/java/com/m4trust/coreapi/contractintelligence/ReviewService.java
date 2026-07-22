@@ -1,5 +1,6 @@
 package com.m4trust.coreapi.contractintelligence;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.deal.DealAnalysisMutationPort;
@@ -63,7 +64,7 @@ class ReviewService implements DealRuleSetProjectionPort {
                 .orElseThrow(AnalysisExceptions.DealNotFound::new);
         var job = analyses.findLatestForDocument(visibility.currentDocumentId())
                 .filter(candidate -> candidate.status() == AnalysisJobStatus.REVIEW_REQUIRED)
-                .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT"));
+                .orElseThrow(() -> new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STATE_CONFLICT));
         return new ReviewDtos.Review(job.id(), job.documentId(), extractedRules(job.id()));
     }
 
@@ -118,10 +119,10 @@ class ReviewService implements DealRuleSetProjectionPort {
             throw new AnalysisExceptions.ReviewAcceptanceForbidden();
         }
         if (!target.reviewEligible()) {
-            throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");
+            throw new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
         }
         if (target.version() != request.expectedVersion()) {
-            throw new AnalysisExceptions.Conflict("DEAL_STALE_VERSION");
+            throw new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STALE_VERSION);
         }
         Instant now = clock.instant();
         ratificationSupersessions.supersedePending(
@@ -130,9 +131,9 @@ class ReviewService implements DealRuleSetProjectionPort {
                 .filter(candidate -> candidate.dealId().equals(dealId)
                         && candidate.documentId().equals(target.currentDocumentId())
                         && candidate.status() == AnalysisJobStatus.REVIEW_REQUIRED)
-                .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT"));
+                .orElseThrow(() -> new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STATE_CONFLICT));
         UUID extractionId = analyses.findResultId(job.id())
-                .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT"));
+                .orElseThrow(() -> new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STATE_CONFLICT));
         DecisionOutput output = new ReviewDecisionAssembler().assemble(extractedRules(job.id()), request.decisions());
         UUID versionId = UUID.randomUUID();
         var previous = ruleSets.latest(dealId).orElse(null);
@@ -151,7 +152,7 @@ class ReviewService implements DealRuleSetProjectionPort {
     private List<ReviewDtos.ExtractedRule> extractedRules(UUID analysisId) {
         try {
             JsonNode root = json.readTree(analyses.findResult(analysisId)
-                    .orElseThrow(() -> new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT")));
+                    .orElseThrow(() -> new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STATE_CONFLICT)));
             if (!root.path("rules").isArray()) throw new IllegalStateException("Canonical extraction has no rules");
             List<ReviewDtos.ExtractedRule> result = new ArrayList<>();
             for (JsonNode rule : root.get("rules")) result.add(decoder.decodeExtractedRule(rule));

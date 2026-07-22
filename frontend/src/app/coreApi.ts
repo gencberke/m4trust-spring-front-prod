@@ -2,6 +2,8 @@ import type { components } from "../generated/core-api";
 import { readSelectedLegalEntityId } from "../features/organization/legalEntitySelection";
 
 export type ProblemDetail = components["schemas"]["ProblemDetail"];
+export type ApiErrorCode = components["schemas"]["ApiErrorCode"];
+export type FieldErrorCode = components["schemas"]["FieldErrorCode"];
 
 type CsrfToken = components["schemas"]["CsrfToken"];
 
@@ -22,7 +24,7 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 
-  get code() {
+  get code(): ApiErrorCode | undefined {
     return this.problem?.code;
   }
 }

@@ -2,6 +2,7 @@ package com.m4trust.coreapi.identity.security;
 
 import java.io.IOException;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.api.ProblemDetailsWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,12 +31,12 @@ public final class ProblemDetailsAccessDeniedHandler implements AccessDeniedHand
             writer.write(request, response, HttpStatus.FORBIDDEN,
                     "csrf-token-invalid", "CSRF validation failed",
                     "The CSRF token is missing or invalid.",
-                    "CSRF_TOKEN_INVALID");
+                    ApiErrorCode.CSRF_TOKEN_INVALID);
             return;
         }
         writer.write(request, response, HttpStatus.FORBIDDEN,
                 "access-denied", "Access denied",
                 "The authenticated user cannot perform this operation.",
-                "ACCESS_DENIED");
+                ApiErrorCode.ACCESS_DENIED);
     }
 }

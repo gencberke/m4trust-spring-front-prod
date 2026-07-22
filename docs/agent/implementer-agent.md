@@ -86,9 +86,12 @@ Do not paste logs, diffs, or changed-file inventories.
 
 ## Finish the task
 
-After all phases are `DONE`, run the packet's full validation and a fast final
-check: targeted tests, generated artifacts when applicable, `git diff --check`,
-`git status --short`, and the base-to-HEAD file list.
+After all phases are `DONE`, run only the packet's minimum targeted validation and
+a fast final check: affected tests, generated artifacts when applicable,
+`git diff --check`, `git status --short`, and the base-to-HEAD file list. Do not run
+a repository-wide backend/frontend test suite unless the task packet explicitly
+assigns the current ready plan's final integration gate. Incremental phases never
+run that gate early.
 
 Set `COMPLETED` only when every assigned phase and implementer check passes.
 This is not planner acceptance; use `Plan completion claim: NO` while

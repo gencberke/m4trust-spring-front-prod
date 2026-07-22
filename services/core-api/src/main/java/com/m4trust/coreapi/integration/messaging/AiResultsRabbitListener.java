@@ -4,10 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Rabbit boundary: invalid integration traffic is safely dead-lettered, never business-failed. */
 @Component
+@ConditionalOnProperty(prefix = "app.messaging.topology", name = "enabled", havingValue = "true")
 final class AiResultsRabbitListener {
 
     private static final Logger log = LoggerFactory.getLogger(AiResultsRabbitListener.class);

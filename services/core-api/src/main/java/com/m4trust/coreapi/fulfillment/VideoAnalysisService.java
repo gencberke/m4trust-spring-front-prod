@@ -9,6 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.UUID;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.idempotency.IdempotencyClaim;
@@ -249,24 +250,24 @@ class VideoAnalysisService {
     private ResolvedEvidence resolveEligibleEvidenceLocked(FulfillmentSourcePorts.Target target, UUID dealId,
             UUID evidenceSubmissionId) {
         Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository
                 .findByFulfillmentIdForUpdate(fulfillmentRecord.id())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
         EvidenceSubmission.EvidenceSubmissionRecord evidenceRecord = evidenceRepository
                 .findByIdForUpdate(evidenceSubmissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         return resolveEligibleEvidenceRecord(fulfillmentRecord, milestoneRecord, evidenceRecord, target);
     }
 
     private ResolvedEvidence resolveEligibleEvidenceRecord(FulfillmentSourcePorts.Target target,
             UUID evidenceSubmissionId) {
         Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealId(target.dealId())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentId(fulfillmentRecord.id())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
         EvidenceSubmission.EvidenceSubmissionRecord evidenceRecord = evidenceRepository.findById(evidenceSubmissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         return resolveEligibleEvidenceRecord(fulfillmentRecord, milestoneRecord, evidenceRecord, target);
     }
 
@@ -276,11 +277,11 @@ class VideoAnalysisService {
             FulfillmentSourcePorts.Target target) {
         if (!evidenceRecord.dealId().equals(fulfillmentRecord.dealId())
                 || !evidenceRecord.milestoneId().equals(milestoneRecord.id())) {
-            throw new FulfillmentExceptions.NotFound();
+            throw new FulfillmentExceptions.EvidenceNotFound();
         }
         VideoAnalysisEvidenceInputPort.VerifiedSnapshot snapshot = evidenceInputs
                 .findVerifiedSnapshot(evidenceRecord.id())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         return new ResolvedEvidence(snapshot, fulfillmentRecord.id(), milestoneRecord.id(),
                 target.buyerLegalEntityId(), target);
     }
@@ -363,19 +364,19 @@ class VideoAnalysisService {
     }
 
     private static FulfillmentExceptions.Conflict activeJobConflict() {
-        return new FulfillmentExceptions.Conflict("VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS");
+        return new FulfillmentExceptions.Conflict(ApiErrorCode.VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS);
     }
 
     private static FulfillmentExceptions.Conflict alreadyCompletedConflict() {
-        return new FulfillmentExceptions.Conflict("VIDEO_ANALYSIS_ALREADY_COMPLETED");
+        return new FulfillmentExceptions.Conflict(ApiErrorCode.VIDEO_ANALYSIS_ALREADY_COMPLETED);
     }
 
     private static FulfillmentExceptions.Conflict notEligibleConflict() {
-        return new FulfillmentExceptions.Conflict("VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE");
+        return new FulfillmentExceptions.Conflict(ApiErrorCode.VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE);
     }
 
     private static FulfillmentExceptions.Conflict staleVersionConflict() {
-        return new FulfillmentExceptions.Conflict("EVIDENCE_STALE_VERSION");
+        return new FulfillmentExceptions.Conflict(ApiErrorCode.EVIDENCE_STALE_VERSION);
     }
 
     private static void requireOperation(OperationContext context, RequestedOperation expectedOperation) {

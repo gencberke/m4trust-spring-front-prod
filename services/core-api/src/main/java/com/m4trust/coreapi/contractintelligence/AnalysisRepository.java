@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -95,7 +97,7 @@ class AnalysisRepository {
                 UPDATE contract_intelligence_analysis_job SET status = 'ACCEPTED', version = version + 1
                 WHERE id = ? AND version = ? AND status = 'REVIEW_REQUIRED'
                 """, job.id(), job.version()) != 1) {
-            throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");
+            throw new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
         }
     }
 

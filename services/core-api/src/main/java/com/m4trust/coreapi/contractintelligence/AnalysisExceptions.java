@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.contractintelligence;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
+
 final class AnalysisExceptions {
 
     private AnalysisExceptions() {
@@ -21,20 +23,26 @@ final class AnalysisExceptions {
     }
 
     static final class Conflict extends RuntimeException {
-        private final String code;
+        private final ApiErrorCode code;
 
-        Conflict(String code) {
+        Conflict(ApiErrorCode code) {
             this.code = code;
         }
 
-        String code() {
+        ApiErrorCode code() {
             return code;
         }
     }
 
     static final class Validation extends RuntimeException {
         private final String field;
-        Validation(String field) { this.field = field; }
-        String field() { return field; }
+
+        Validation(String field) {
+            this.field = field;
+        }
+
+        String field() {
+            return field;
+        }
     }
 }

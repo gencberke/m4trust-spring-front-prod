@@ -26,6 +26,9 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Yeni current document'a geçerken eski RuleSetVersion'ı current/ratification-ready bırakmak | ADR-003 §18–§20 |
 | Video/AI sonucunun otomatik fulfillment completion, evidence kabul/red, dispute veya payment release üretmesi | ADR-002 §10.1; ADR-003 §22; ADR-012 §2.4 |
 | AI/video sonucunun dispute/casework açması, acknowledge/comment/withdraw/resolve etmesi veya priority/state değiştirmesi | ADR-012 §2.4; ADR-013 §2.9 |
+| Main planner/implementer'ın AI provider, model/revision, prompt/RAG/NER, worker, dependency, image, CI/CD, scaling veya deployment seçmesi ya da değiştirmesi | ADR-019 §2.2 |
+| Main task packet'ına AI repository write scope'u koymak veya öneriyi AI owner kabulü olmadan Accepted/Closed/Done saymak | ADR-019 §§2.2, 2.4 |
+| AI-owner evidence olmadan mock/local worker ile production AI readiness iddiası üretmek | ADR-019 §2.5 |
 | Ratify edilmemiş AI `deliveryRequirements` çıktısını contractual checklist, milestone veya completion kuralı saymak | ADR-011 §1, §2.1 |
 | Broker mesajında provider-specific payload, raw doküman/video, secret, credential, session token taşımak | ADR-001 §20; ADR-002 §29 |
 | Contract'ı tek taraflı değiştirmek (FastAPI model gerekçesiyle, Spring yeni required alan dayatarak) | ADR-001 §9; ADR-002 §28 |
@@ -34,7 +37,6 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Exactly-once delivery varsaymak | ADR-001 §13; ADR-002 §17 |
 | Raw stack trace, provider hata mesajı veya PII'yi error/warning payload'ına koymak | ADR-002 §12.3, §13 |
 | Servisler arası source code seviyesinde domain entity paylaşmak; generated transport modelini domain entity yapmak | ADR-001 §20; ADR-002 §23 |
-| FastAPI'ye object storage'da genel/sınırsız bucket erişimi vermek | ADR-001 §6 |
 
 ## 2. Domain ve veri (Spring)
 
@@ -45,7 +47,8 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Generic soft delete (`deleted=true`) — açık domain durumları yerine | ADR-003 §7.2, §31 |
 | Para/yüzde değerlerinde floating-point kullanmak | ADR-003 §21, §31; ADR-006 §28–29 |
 | Modüllerin birbirlerinin repository'lerini veya JPA entity'lerini doğrudan kullanması | ADR-003 §23, §31 |
-| Audit veya outbox kaydını business mutation'dan ayrı transaction'da yazmak | ADR-003 §24, §31 |
+| Audit kaydını veya operation için tanımlanmış event/dispatch outbox kaydını business mutation'dan ayrı transaction'da yazmak | ADR-003 §24, §31; ADR-015 §2.2 |
+| Accepted event/consumer/contract kararı olmadan placeholder veya generic `ENTITY_CHANGED` outbox olayı icat etmek | ADR-015 §2.3 |
 | External çağrı (broker, storage, provider, email) boyunca DB transaction açık tutmak | ADR-003 §24, §31 |
 | Sessiz last-write-wins (optimistic lock conflict'i yutmak) | ADR-003 §25 |
 | Full event sourcing ile başlamak | ADR-003 §26, §31 |
@@ -58,9 +61,13 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Browser redirect sonucunu provider doğrulaması olmadan FUNDED kabul etmek | ADR-010 §2.5 |
 | Belirsiz pool/refund davranışını çözmek için otomatik approve-then-refund yapmak | ADR-010 §2.7 |
 | Kart verisi, provider credential veya raw provider payload'ını domain/audit/public API'ye taşımak | ADR-007 §19–§20, §33; ADR-010 §2.6 |
-| Payment sandbox adapter'ını production profile'da açmak veya production API'ye scenario test-control alanı/yüzeyi eklemek | ADR-004 §19; ADR-010 §2.2, §2.6 |
+| Test sandbox/Moka emulator adapter'ını production profile'da açmak veya production API'ye scenario test-control alanı/yüzeyi eklemek; ADR-014'teki ayrı, scenario-controlsüz `DEMO_SIMULATED` service bu yasağı kaldırmaz | ADR-004 §19; ADR-010 §2.2, §2.6; ADR-014 §2.1 |
+| Demo akışını finansal `SETTLED`, gerçek ödeme, custody, payout veya provider finality olarak etiketlemek | ADR-014 §§2.1, 2.9 |
+| Query-verified `SIMULATED_SETTLED` olmadan release success veya Deal COMPLETED sonucu üretmek | ADR-014 §§2.3, 2.7–2.8 |
 | Participant/initiator görünürlüğünü fulfillment mutation yetkisi saymak; seller dışı actor'ın submit veya buyer ADMIN dışı actor'ın accept/reject yapması | ADR-009 §2.2; ADR-011 §2.2 |
 | Accepted/rejected evidence object veya history kaydını overwrite etmek, silmek ya da replacement olarak mutation ile kullanmak | ADR-003 §22; ADR-011 §2.3–§2.4 |
+| ADR-022 controlled-demo istisnası dışında clean malware scan proof olmadan document/evidence finalize etmek, download link üretmek veya AI job açmak | ADR-018 §§2.4–2.5; ADR-022 §§2.1, 2.4 |
+| Client/application metadata'sını malware scan proof saymak veya GuardDuty scan tag'ini user-writeable bırakmak | ADR-018 §§2.2–2.3, 2.8 |
 | Fulfillment acceptance'tan otomatik Deal COMPLETED, settlement, release, payout, refund, provider çağrısı veya AI job üretmek | ADR-011 §2.5 |
 | Query edilen temel domain alanlarını (money, status, party, authorization) JSONB'ye gömmek | ADR-003 §27 |
 | Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5; ADR-008 §2.4 |
@@ -90,7 +97,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Database column adlarını public sort/filter contract'ı yapmak | ADR-006 §11, §53 |
 | Duplicate riskli endpoint'te yalnız frontend button-disable'a güvenmek | ADR-006 §25, §53 |
 | Generated client yerine paralel/tahmini TypeScript modelleri yazmak | ADR-004 §27; ADR-006 §44, §53 |
-| Runtime OpenAPI ile committed contract'ın sessizce ayrışmasına izin vermek | ADR-006 §43, §53 |
+| Runtime OpenAPI ile committed contract'ın sessizce ayrışmasına izin vermek veya committed alanları actual runtime dokümanına kopyalayıp false-green eşitlik üretmek | ADR-006 §43, §53; ADR-021 §2 |
 | Internal exception, SQL, stack trace bilgisini public hata response'una koymak | ADR-006 §15, §53 |
 | Business aggregate'te generic `DELETE` veya `/update-status` tarzı endpoint | ADR-006 §4–5 |
 | GET isteğinin business mutation üretmesi | ADR-006 §5 |
@@ -110,6 +117,9 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | `X-M4Trust-Legal-Entity-Id` header'ını yetki kanıtı kabul etmek | ADR-005 §20, §27 |
 | Authorization'ı yalnız frontend buton görünürlüğüne veya controller annotation'ına bırakmak | ADR-005 §21, §27 |
 | Login hatasıyla hesabın var olup olmadığını açıklamak | ADR-005 §15, §27 |
+| ADR-022 controlled demo dışında production'da invite olmadan public account registration açmak | ADR-017 §2.1; ADR-022 §2.2 |
+| Invitation/password-reset token'ını URL path/query, log, audit veya analytics'e koymak | ADR-017 §2.3 |
+| Account invitation acceptance'ını legal-entity membership veya Deal participation consent'i saymak | ADR-017 §§2.2, 2.7 |
 | Logout'ta yalnız frontend state temizlemek (server-side invalidation olmadan) | ADR-005 §8, §27 |
 | Password hash'i public API'den döndürmek | ADR-006 §51 |
 
@@ -131,9 +141,11 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 
 | Yasak | Kaynak |
 | --- | --- |
-| FastAPI'yi public internete açmak; PostgreSQL/RabbitMQ'yu public erişilebilir yapmak | ADR-007 §4–5, §46 |
+| Main-owned PostgreSQL/RabbitMQ'yu public erişilebilir veya cleartext açmak | ADR-007 §4–5, §46; ADR-016 §§2.2–2.3 |
 | Mock AI Worker'ı production'da çalıştırmak veya production queue'larına bağlamak | ADR-007 §10, §46 |
 | Production'da `latest` image tag'ine güvenmek | ADR-007 §15, §46 |
+| Broad production'da staging'de doğrulanmamış veya farklı build edilmiş image'ı deploy etmek; controlled demo'da ise farklı source SHA ya da mutable `latest` kullanmak | ADR-016 §§2.4, 2.9; ADR-022 §2.5 |
+| Release-manifest digest'ini image config'e geri gömerek döngü yaratmak veya contract digest'ini release-manifest digest'i gibi göstermek | ADR-020 §§1–2 |
 | Secret'ı repository'ye, Docker image'a veya frontend bundle'a koymak | ADR-007 §19–20, §46 |
 | Production'da `flyway clean`; uygulanmış migration dosyasını değiştirmek | ADR-007 §23, §46 |
 | Breaking DB değişikliğini tek rollout'ta yapmak (expand–contract yerine) | ADR-007 §25, §46 |
@@ -141,6 +153,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Production deploy'u staging kontrolü ve manual approval olmadan otomatikleştirmek | ADR-007 §26, §46 |
 | Railway'e özel business logic yazmak | ADR-007 §43, §46 |
 | Object storage'ı public bucket olarak açmak | ADR-007 §14, §46 |
+| Broad-production S3'te public access, SSE-KMS'siz write, versioning kapatma veya non-clean object read izni vermek; ADR-022 yalnız controlled Railway demo için dar istisnadır | ADR-018 §§2.1, 2.5, 2.8; ADR-022 §§2.1, 2.4 |
 | Her Spring replica'nın kontrolsüz Flyway migration çalıştırması | ADR-007 §23, §46 |
 | Local portları koda hard-code etmek | ADR-005 §25; ADR-007 §41 |
 
@@ -150,7 +163,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | --- | --- |
 | Parola ve parola hash'i | ADR-005 §13, §17; ADR-007 §33 |
 | Raw session ID, CSRF token, cookie içeriği | ADR-005 §17; ADR-007 §33 |
-| DB / RabbitMQ / object storage / AI provider credential'ları | ADR-007 §33 |
+| DB / RabbitMQ / object storage / notification credential'ları | ADR-007 §33; ADR-016 §2.6 |
 | Raw doküman ve video içeriği; raw prompt | ADR-001 §17; ADR-002 §29; ADR-007 §33 |
 | Tam payment credential | ADR-007 §33 |
 | Gereksiz kişisel veri (PII) | ADR-001 §16; ADR-007 §33 |

@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
+import com.m4trust.coreapi.api.FieldErrorCode;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.casework.CaseworkSourcePorts.FinalizedEvidenceSnapshot;
@@ -116,7 +118,7 @@ class DisputeService {
         requirePartyAdmin(context, preflightDeal);
         validateOpenPreflight(preflightDeal, request.expectedDealVersion());
         FulfillmentOpeningSnapshot preflightFulfillment = fulfillments.findVisible(context, dealId)
-                .orElseThrow(() -> conflict("FULFILLMENT_STATE_CONFLICT"));
+                .orElseThrow(() -> conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT));
         validateFulfillmentOpenPreflight(preflightFulfillment, request.expectedFulfillmentVersion());
 
         return required(transactions.execute(status -> openInTransaction(
@@ -244,7 +246,7 @@ class DisputeService {
                 .orElseThrow(CaseworkExceptions.DisputeNotFound::new);
         requireExpectedVersion(locked, expectedVersion);
         if (!DisputeCase.rehydrate(locked).isActive()) {
-            throw conflict("DISPUTE_STATE_CONFLICT");
+            throw conflict(ApiErrorCode.DISPUTE_STATE_CONFLICT);
         }
 
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
@@ -271,7 +273,7 @@ class DisputeService {
         DisputeCase dispute = DisputeCase.rehydrate(locked);
         dispute.recordComment(now);
         if (!disputeCases.updateLifecycle(dispute.toRecord(), expectedVersion)) {
-            throw conflict("DISPUTE_STALE_VERSION");
+            throw conflict(ApiErrorCode.DISPUTE_STALE_VERSION);
         }
 
         auditAppender.append(new AuditRecord(
@@ -304,7 +306,7 @@ class DisputeService {
         requireCounterpartyAdmin(context, deal, locked.openingLegalEntityId());
         requireExpectedVersion(locked, expectedVersion);
         if (locked.status() != DisputeStatus.OPEN) {
-            throw conflict("DISPUTE_STATE_CONFLICT");
+            throw conflict(ApiErrorCode.DISPUTE_STATE_CONFLICT);
         }
 
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
@@ -316,7 +318,7 @@ class DisputeService {
         DisputeCase dispute = DisputeCase.rehydrate(locked);
         dispute.acknowledge(now, now);
         if (!disputeCases.updateLifecycle(dispute.toRecord(), expectedVersion)) {
-            throw conflict("DISPUTE_STALE_VERSION");
+            throw conflict(ApiErrorCode.DISPUTE_STALE_VERSION);
         }
 
         auditAppender.append(new AuditRecord(
@@ -348,7 +350,7 @@ class DisputeService {
         requireOpeningAdmin(context, deal, locked);
         requireExpectedVersion(locked, expectedVersion);
         if (!DisputeCase.rehydrate(locked).isActive()) {
-            throw conflict("DISPUTE_STATE_CONFLICT");
+            throw conflict(ApiErrorCode.DISPUTE_STATE_CONFLICT);
         }
 
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
@@ -360,7 +362,7 @@ class DisputeService {
         DisputeCase dispute = DisputeCase.rehydrate(locked);
         dispute.withdraw(now, now);
         if (!disputeCases.updateLifecycle(dispute.toRecord(), expectedVersion)) {
-            throw conflict("DISPUTE_STALE_VERSION");
+            throw conflict(ApiErrorCode.DISPUTE_STALE_VERSION);
         }
 
         auditAppender.append(new AuditRecord(
@@ -404,7 +406,7 @@ class DisputeService {
 
     private void requireExpectedVersion(DisputeCase.DisputeCaseRecord record, long expectedVersion) {
         if (record.version() != expectedVersion) {
-            throw conflict("DISPUTE_STALE_VERSION");
+            throw conflict(ApiErrorCode.DISPUTE_STALE_VERSION);
         }
     }
 
@@ -423,10 +425,10 @@ class DisputeService {
         requirePartyAdmin(context, deal);
         validateOpenPreflight(deal, expectedDealVersion);
         FulfillmentOpeningSnapshot fulfillment = fulfillments.lockVisibleForOpen(context, dealId)
-                .orElseThrow(() -> conflict("FULFILLMENT_STATE_CONFLICT"));
+                .orElseThrow(() -> conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT));
         validateFulfillmentOpenPreflight(fulfillment, expectedFulfillmentVersion);
         if (disputeCases.findActiveByDealIdForUpdate(dealId).isPresent()) {
-            throw conflict("DISPUTE_ACTIVE_CASE_EXISTS");
+            throw conflict(ApiErrorCode.DISPUTE_ACTIVE_CASE_EXISTS);
         }
 
         List<UUID> evidenceIds = fulfillment.finalizedEvidence().stream()
@@ -495,7 +497,7 @@ class DisputeService {
             evidenceSnapshots.insertAll(snapshotRows);
         } catch (DuplicateKeyException exception) {
             if (disputeCases.findActiveByDealId(dealId).isPresent()) {
-                throw conflict("DISPUTE_ACTIVE_CASE_EXISTS");
+                throw conflict(ApiErrorCode.DISPUTE_ACTIVE_CASE_EXISTS);
             }
             throw exception;
         }
@@ -630,20 +632,20 @@ class DisputeService {
 
     private void validateOpenPreflight(CaseworkSourcePorts.DealTargetSnapshot deal, long expectedDealVersion) {
         if (!"ACTIVE".equals(deal.status())) {
-            throw conflict("DEAL_STATE_CONFLICT");
+            throw conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
         }
         if (deal.version() != expectedDealVersion) {
-            throw conflict("DEAL_STALE_VERSION");
+            throw conflict(ApiErrorCode.DEAL_STALE_VERSION);
         }
     }
 
     private void validateFulfillmentOpenPreflight(
             FulfillmentOpeningSnapshot fulfillment, long expectedFulfillmentVersion) {
         if (!ELIGIBLE_FULFILLMENT_STATUSES.contains(fulfillment.fulfillmentStatus())) {
-            throw conflict("FULFILLMENT_STATE_CONFLICT");
+            throw conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT);
         }
         if (fulfillment.fulfillmentVersion() != expectedFulfillmentVersion) {
-            throw conflict("FULFILLMENT_STALE_VERSION");
+            throw conflict(ApiErrorCode.FULFILLMENT_STALE_VERSION);
         }
     }
 
@@ -752,23 +754,24 @@ class DisputeService {
 
     private DisputeReasonCode reasonCode(String value) {
         if (value == null || value.isBlank()) {
-            throw new CaseworkExceptions.Validation("reasonCode", "REQUIRED", "reasonCode is required.");
+            throw new CaseworkExceptions.Validation("reasonCode", FieldErrorCode.REQUIRED,
+                    "reasonCode is required.");
         }
         try {
             return DisputeReasonCode.valueOf(value.trim());
         } catch (IllegalArgumentException exception) {
             throw new CaseworkExceptions.Validation(
-                    "reasonCode", "INVALID_ENUM", "reasonCode is not supported.");
+                    "reasonCode", FieldErrorCode.INVALID_ENUM, "reasonCode is not supported.");
         }
     }
 
     private String trimRequired(String value, String field) {
         if (value == null) {
-            throw new CaseworkExceptions.Validation(field, "REQUIRED", field + " is required.");
+            throw new CaseworkExceptions.Validation(field, FieldErrorCode.REQUIRED, field + " is required.");
         }
         String trimmed = value.trim();
         if (trimmed.isEmpty()) {
-            throw new CaseworkExceptions.Validation(field, "REQUIRED", field + " is required.");
+            throw new CaseworkExceptions.Validation(field, FieldErrorCode.REQUIRED, field + " is required.");
         }
         int max = switch (field) {
             case "subject" -> 200;
@@ -776,7 +779,8 @@ class DisputeService {
             default -> throw new IllegalArgumentException("unsupported field: " + field);
         };
         if (trimmed.length() > max) {
-            throw new CaseworkExceptions.Validation(field, "OUT_OF_RANGE", field + " exceeds the allowed length.");
+            throw new CaseworkExceptions.Validation(field, FieldErrorCode.OUT_OF_RANGE,
+                    field + " exceeds the allowed length.");
         }
         return trimmed;
     }
@@ -830,7 +834,7 @@ class DisputeService {
         return value;
     }
 
-    private static CaseworkExceptions.Conflict conflict(String code) {
+    private static CaseworkExceptions.Conflict conflict(ApiErrorCode code) {
         return new CaseworkExceptions.Conflict(code);
     }
 

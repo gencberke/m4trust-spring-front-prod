@@ -9,25 +9,20 @@ seçilmelidir.
 
 ## 1. İnceleme başlangıç noktası
 
-- İncelenen taban: `main` / `84d09ed`.
-- Slice 8 `main` dalına merge edilmiş ve kabul edilmiştir.
-- Slice 9–11, `codex/slice-9-11` / `8833d56` üzerinde tamamlanmış ve kabul
-  edilmiştir; bu handoff hazırlanırken henüz `main` dalına merge edilmemiştir.
+- Slice 8 kabul tabanı: `main@84d09ed`.
+- Slice 9–11 reviewed implementation: `codex/slice-9-11@8833d56`.
+- Slice 8, 9, 10 ve 11 kabul edilmiştir. Bu kayıt kabul anındaki branch
+  kimliklerini korur; güncel merge/state için `CURRENT.md` esas alınır.
 - Kabul planları:
   - [`08-ai-document-extraction.md`](../08-ai-document-extraction.md)
   - [`09-manual-review-and-ruleset.md`](../09-manual-review-and-ruleset.md)
   - [`10-ratification.md`](../10-ratification.md)
   - [`11-funding-and-payment.md`](../11-funding-and-payment.md)
 - Güncel kabul durumu: [`docs/plan/CURRENT.md`](../../CURRENT.md)
-- Slice 10–11 ayrıntılı tarayıcı ve invariant kanıtı:
-  [`docs/plan/done/review/slice-10-11-acceptance-2026-07-20.md`](slice-10-11-acceptance-2026-07-20.md)
+- Eski ayrı Slice 10–11 browser/invariant kabul kaydı bu handoff'un §5–§6 ve
+  §10 bölümlerine birleştirilmiştir.
 - Yetkili kararlar: ADR-001–ADR-010. Özellikle ADR-002, ADR-003,
   ADR-004, ADR-006, ADR-009 ve ADR-010 bu incelemenin ana mimari kaynaklarıdır.
-
-Bu handoff hazırlanırken çalışma ağacında `contracts/scripts/__pycache__/`
-altında commitlenmemiş yerel Python cache dosyaları bulunmaktadır. Bunlar
-implementasyonun parçası olarak yorumlanmamalı, stage edilmemeli ve review
-sırasında yanlışlıkla değiştirilmemelidir.
 
 ## 2. Slice'lar arası oluşan omurga
 
@@ -331,6 +326,12 @@ contract seviyesinde ayrıdır.
   authorization, parties supersede ve withdrawal↔approval yarışının iki sırası.
 - 20 Temmuz 2026 gerçek tarayıcı kabulünde buyer ADMIN, ikinci buyer ADMIN,
   buyer MEMBER ve seller ADMIN ile plan §7'nin 14 adımlı akışı tamamlandı.
+- Kaydedilen browser matrisi; MONEY suggestions varken alanların boş kalmasını,
+  exact snapshot/hash görünürlüğünü, two-party activation'ı, ACTIVE mutation
+  kapanışını, reject→new package ve party-change supersession'ı, MEMBER/second
+  ADMIN/double-click davranışını, yeni terms için yeni hash+boş approvals'ı ve
+  withdrawal/approval ile approve/reject/party-supersede terminal yarışlarını
+  kapsadı. Yarışlarda yalnız tek terminal sonuç kaldı, kaybeden 409 aldı.
 
 ### Review odağı
 
@@ -430,6 +431,9 @@ operation'lar conflict üretir.
 - 20 Temmuz 2026 gerçek browser kabulünde explicit plan double-click, SUCCESS,
   DECLINE→retry→SUCCESS, TIMEOUT→UNCONFIRMED→reconcile, seller/MEMBER
   visibility ve terminal operation kapıları tamamlandı.
+- Aynı kabulde same-key replay tek operation bıraktı; aynı key/farklı payload
+  409 üretti. FUNDED unit yeni payment'ı, seller ve buyer MEMBER mutation'ı
+  açmadı. Buyer ve seller aynı terminal projection'ı gördü.
 
 ### Review odağı
 
@@ -599,12 +603,15 @@ otomatik invariant testleri ve kaydedilmiş kabul kanıtını esas alabilir.
 
 ## 11. Açık takipler ve kapsam sınırı
 
-- Slice 7 Railway staging ayrı bir hazır plan ve uygulama hattıdır; bu review'un
-  kabul kapsamına dahil değildir.
+- Slice 7 Railway staging ayrı kabul edilmiştir; kanıt
+  [`04–07 handoff`](04-07-implementation-review-handoff.md) içindedir ve bu
+  review'un implementation kapsamına dahil değildir.
 - Gerçek FastAPI AI service skeleton'ı stabil/kabul edilmiş değildir. Slice 8'in
   kabul edilen runtime karşılığı local-only Mock AI Worker'dır.
-- Gerçek payment provider, credential/callback/3D Secure ve staging kabulü
-  Slice 11B işidir.
+- Gerçek payment provider yolu daha sonra simulation-only founder kararıyla
+  kapatılmıştır. Slice 11B-A'nın local/CI HTTP boundary kanıtı ve bu scope
+  değişikliği [`14A–15 P4 handoff`](14a-15p4-implementation-review-handoff.md)
+  içinde kaydedilmiştir.
 - Release, payout, refund, settlement, dispute etkisi ve gerçek para hareketi
   Slice 11 kapsamında yoktur. ADR-010 §2.7 çözülmeden otomatik
   approve-then-refund veya benzeri workaround kurulamaz.
@@ -619,5 +626,6 @@ otomatik invariant testleri ve kaydedilmiş kabul kanıtını esas alabilir.
   status okuması Deal lock'u altında yeniden değerlendirilmelidir.
 
 Bu açık takipler Slice 8–11'in mevcut kabul durumunu geri almaz. Reviewer bunları
-yanlışlıkla eksik Slice implementasyonu olarak sınıflandırmamalı; ancak sonraki
-slice'ların bu sınırları sessizce aşmasına da izin vermemelidir.
+yanlışlıkla eksik Slice implementasyonu olarak sınıflandırmamalı; sonraki
+kararların tarihsel Slice 8–11 sınırlarını sessizce yeniden yazmasına da izin
+vermemelidir.

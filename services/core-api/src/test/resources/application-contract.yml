@@ -1,0 +1,8 @@
+# Contract/test-only OpenAPI generation. Never activate in production.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
+  paths-to-match: /api/v1/**
+  show-actuator: false

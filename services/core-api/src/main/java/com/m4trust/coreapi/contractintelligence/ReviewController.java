@@ -47,11 +47,11 @@ class ReviewController {
         return service.history(context, id(dealId));
     }
 
-    @GetMapping("/{dealId}/rule-set-versions/{versionId}")
+    @GetMapping("/{dealId}/rule-set-versions/{ruleSetVersionId}")
     ReviewDtos.Version version(
             @ResolvedOperationContext(RequestedOperation.DEAL_RULE_SET_VERSION_READ) OperationContext context,
-            @PathVariable String dealId, @PathVariable String versionId) {
-        return service.version(context, id(dealId), id(versionId));
+            @PathVariable String dealId, @PathVariable String ruleSetVersionId) {
+        return service.version(context, id(dealId), id(ruleSetVersionId));
     }
 
     private static UUID id(String value) {

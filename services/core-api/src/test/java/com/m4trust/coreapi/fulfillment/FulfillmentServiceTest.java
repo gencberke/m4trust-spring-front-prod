@@ -129,15 +129,73 @@ class FulfillmentServiceTest {
     }
 
     @Test
-    void reviewEvidenceRequiresBuyerAdmin() {
-        OperationContext context = context(RequestedOperation.EVIDENCE_ACCEPT,
-                SELLER, LegalEntityRole.ADMIN);
-        stubDeal(SELLER);
+    void downloadLinkRequiresDealVisibilityBeforeEvidenceLookup() {
+        OperationContext context = context(RequestedOperation.EVIDENCE_DOWNLOAD_LINK_CREATE,
+                BUYER, LegalEntityRole.ADMIN);
+        when(deals.findVisible(any(), any())).thenReturn(Optional.empty());
 
-        assertThrows(FulfillmentExceptions.ReviewForbidden.class,
-                () -> service.acceptEvidence(context, DEAL, UUID.randomUUID(),
-                        new AcceptEvidenceRequest(5L, 0L), UUID.randomUUID(), UUID.randomUUID()));
+        assertThrows(FulfillmentExceptions.DealNotFound.class,
+                () -> service.createDownloadLink(context, DEAL, UUID.randomUUID()));
+        verify(evidenceRepository, never()).findById(any());
     }
+
+    @Test
+    void downloadLinkReturnsDealNotFoundForHiddenDealEvenWhenEvidenceExists() {
+        OperationContext context = context(RequestedOperation.EVIDENCE_DOWNLOAD_LINK_CREATE,
+                BUYER, LegalEntityRole.ADMIN);
+        UUID evidenceId = UUID.randomUUID();
+        when(deals.findVisible(any(), any())).thenReturn(Optional.empty());
+
+        assertThrows(FulfillmentExceptions.DealNotFound.class,
+                () -> service.createDownloadLink(context, DEAL, evidenceId));
+        verify(evidenceRepository, never()).findById(any());
+    }
+
+    @Test
+    void downloadLinkReturnsFulfillmentNotFoundWhenDealVisibleButFulfillmentMissing() {
+        OperationContext context = context(RequestedOperation.EVIDENCE_DOWNLOAD_LINK_CREATE,
+                BUYER, LegalEntityRole.ADMIN);
+        stubDeal(BUYER);
+        when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.empty());
+
+        assertThrows(FulfillmentExceptions.FulfillmentNotFound.class,
+                () -> service.createDownloadLink(context, DEAL, UUID.randomUUID()));
+        verify(evidenceRepository, never()).findById(any());
+    }
+
+    @Test
+    void downloadLinkReturnsEvidenceNotFoundWhenFulfillmentExistsButEvidenceMissing() {
+        OperationContext context = context(RequestedOperation.EVIDENCE_DOWNLOAD_LINK_CREATE,
+                BUYER, LegalEntityRole.ADMIN);
+        stubDeal(BUYER);
+        when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.of(
+                new Fulfillment.FulfillmentRecord(UUID.randomUUID(), DEAL, TENANT, PACKAGE,
+                        FulfillmentStatus.REVIEW_REQUIRED, NOW, NOW, 0)));
+        when(evidenceRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertThrows(FulfillmentExceptions.EvidenceNotFound.class,
+                () -> service.createDownloadLink(context, DEAL, UUID.randomUUID()));
+    }
+
+    @Test
+    void getFulfillmentReturnsFulfillmentNotFoundWhenDealVisibleButRecordMissing() {
+        OperationContext context = context(RequestedOperation.FULFILLMENT_READ, BUYER, LegalEntityRole.ADMIN);
+        stubDeal(BUYER);
+        when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.empty());
+
+        assertThrows(FulfillmentExceptions.FulfillmentNotFound.class,
+                () -> service.getFulfillment(context, DEAL));
+    }
+
+    @Test
+    void getFulfillmentReturnsDealNotFoundWhenDealHidden() {
+        OperationContext context = context(RequestedOperation.FULFILLMENT_READ, BUYER, LegalEntityRole.ADMIN);
+        when(deals.findVisible(any(), any())).thenReturn(Optional.empty());
+
+        assertThrows(FulfillmentExceptions.DealNotFound.class,
+                () -> service.getFulfillment(context, DEAL));
+    }
+
 
     private void stubDeal(UUID activeEntity) {
         FulfillmentSourcePorts.Target target = new FulfillmentSourcePorts.Target(

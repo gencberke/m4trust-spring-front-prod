@@ -3,6 +3,8 @@ package com.m4trust.coreapi.identity.security;
 import java.time.Clock;
 import java.util.List;
 
+import com.m4trust.coreapi.contracts.ContractProbeTokenFilter;
+
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.server.Cookie;
 import org.springframework.boot.web.server.autoconfigure.ServerProperties;
@@ -38,7 +40,8 @@ public class SecurityConfiguration {
             ProblemDetailsAccessDeniedHandler accessDeniedHandler,
             CsrfTokenRepository csrfTokenRepository,
             Clock clock,
-            SessionSecurityProperties sessionProperties) throws Exception {
+            SessionSecurityProperties sessionProperties,
+            ContractProbeTokenFilter contractProbeTokenFilter) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET,
@@ -46,10 +49,14 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/internal/v1/contracts")
+                                .permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info")
                                 .permitAll()
                         .anyRequest().authenticated())
-                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfTokenRepository)
+                        .ignoringRequestMatchers("/internal/**"))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
@@ -60,6 +67,7 @@ public class SecurityConfiguration {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
+                .addFilterBefore(contractProbeTokenFilter, SecurityContextHolderFilter.class)
                 .addFilterBefore(
                         new AbsoluteSessionTimeoutFilter(clock, sessionProperties),
                         SecurityContextHolderFilter.class);

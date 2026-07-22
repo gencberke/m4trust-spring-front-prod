@@ -9,6 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.UUID;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.deal.DealAnalysisMutationPort;
@@ -125,7 +126,7 @@ class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSup
         DocumentAnalysisInputPort.Input lockedInput = availableInput(target.currentDocumentId());
         if (!sameImmutableInput(preflightInput, lockedInput)) {
             throw new AnalysisExceptions.Conflict(
-                    "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");
+                    ApiErrorCode.DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE);
         }
         if (repository.hasActiveJob(lockedInput.id())) {
             throw activeJobConflict();
@@ -225,10 +226,10 @@ class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSup
 
     private DocumentAnalysisInputPort.Input availableInput(UUID documentId) {
         if (documentId == null) {
-            throw new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");
+            throw new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE);
         }
         return documentInputs.findAvailable(documentId).orElseThrow(
-                () -> new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE"));
+                () -> new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE));
     }
 
     private static boolean sameImmutableInput(DocumentAnalysisInputPort.Input preflight,
@@ -244,15 +245,15 @@ class AnalysisService implements DealAnalysisProjectionPort, DocumentAnalysisSup
             throw new AnalysisExceptions.RequestForbidden();
         }
         if (!acceptsAnalysis) {
-            throw new AnalysisExceptions.Conflict("DEAL_STATE_CONFLICT");
+            throw new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
         }
         if (currentDocumentId == null) {
-            throw new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE");
+            throw new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE);
         }
     }
 
     private static AnalysisExceptions.Conflict activeJobConflict() {
-        return new AnalysisExceptions.Conflict("DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS");
+        return new AnalysisExceptions.Conflict(ApiErrorCode.DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS);
     }
 
     private static String canonicalHash(UUID activeLegalEntityId, UUID dealId) {

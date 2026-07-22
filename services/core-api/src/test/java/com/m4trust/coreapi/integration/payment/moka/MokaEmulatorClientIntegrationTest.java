@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 
 import com.m4trust.coreapi.payment.PaymentProviderPort;
@@ -23,7 +24,7 @@ class MokaEmulatorClientIntegrationTest {
     @BeforeEach
     void startEmulator() throws Exception {
         int port = availablePort();
-        ProcessBuilder process = new ProcessBuilder("python3", "-m", "m4trust_moka_emulator");
+        ProcessBuilder process = new ProcessBuilder(pythonExecutable(), "-m", "m4trust_moka_emulator");
         process.directory(java.nio.file.Path.of("..", "..", "tools", "moka-emulator").toFile());
         Map<String, String> environment = process.environment();
         environment.put("M4TRUST_MOKA_EMULATOR_ENABLED", "true");
@@ -83,6 +84,17 @@ class MokaEmulatorClientIntegrationTest {
 
     private static PaymentProviderPort.ProviderRequest request(String key) {
         return new PaymentProviderPort.ProviderRequest(key, 2_750, "TRY");
+    }
+
+    private static String pythonExecutable() {
+        String override = System.getenv("M4TRUST_PYTHON");
+        if (override != null && !override.isBlank()) {
+            return override.trim();
+        }
+        // Windows Store python3.exe stub is not a real interpreter; prefer python.exe.
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")
+                ? "python"
+                : "python3";
     }
 
     private static int availablePort() throws IOException {

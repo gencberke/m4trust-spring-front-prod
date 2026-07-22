@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.m4trust.coreapi.api.FieldErrorCode;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.casework.CaseworkDealProjectionPort;
@@ -124,7 +125,7 @@ class DealService {
         requireOperation(context, RequestedOperation.DEAL_UPDATE);
         if (!request.descriptionPresent()) {
             throw new DealValidationException(
-                    "description", "REQUIRED",
+                    "description", FieldErrorCode.REQUIRED,
                     "Description must be provided, and may be null.");
         }
         Deal deal = loadVisibleForUpdate(context, dealId);
@@ -252,17 +253,17 @@ class DealService {
     private void validatePartyRequest(UpdateDealPartiesRequest request,
             UUID dealId) {
         if (!request.buyerLegalEntityIdPresent()) {
-            throw new DealValidationException("buyerLegalEntityId", "REQUIRED",
+            throw new DealValidationException("buyerLegalEntityId", FieldErrorCode.REQUIRED,
                     "Buyer legal entity id must be provided and may be null.");
         }
         if (!request.sellerLegalEntityIdPresent()) {
-            throw new DealValidationException("sellerLegalEntityId", "REQUIRED",
+            throw new DealValidationException("sellerLegalEntityId", FieldErrorCode.REQUIRED,
                     "Seller legal entity id must be provided and may be null.");
         }
         if (request.buyerLegalEntityId() != null
                 && request.buyerLegalEntityId().equals(
                         request.sellerLegalEntityId())) {
-            throw new DealValidationException("buyerLegalEntityId", "MUST_DIFFER",
+            throw new DealValidationException("buyerLegalEntityId", FieldErrorCode.MUST_DIFFER,
                     "Buyer and seller must be different legal entities.");
         }
         java.util.Set<UUID> participantIds = repository.findParticipants(dealId)
@@ -272,13 +273,13 @@ class DealService {
         if (request.buyerLegalEntityId() != null
                 && !participantIds.contains(request.buyerLegalEntityId())) {
             throw new DealValidationException("buyerLegalEntityId",
-                    "NOT_A_PARTICIPANT",
+                    FieldErrorCode.NOT_A_PARTICIPANT,
                     "Buyer must be a current Deal participant.");
         }
         if (request.sellerLegalEntityId() != null
                 && !participantIds.contains(request.sellerLegalEntityId())) {
             throw new DealValidationException("sellerLegalEntityId",
-                    "NOT_A_PARTICIPANT",
+                    FieldErrorCode.NOT_A_PARTICIPANT,
                     "Seller must be a current Deal participant.");
         }
     }

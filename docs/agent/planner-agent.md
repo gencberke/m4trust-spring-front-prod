@@ -94,7 +94,9 @@ Use this exact order:
    complete diff; inspect changed files and important nearby code.
 5. Verify scope, architecture, authorization, secrets, dependencies,
    migrations, compatibility, and continued Contract/ADR alignment.
-6. Run or independently verify material validation and acceptance claims.
+6. Independently verify material validation and acceptance claims with inspection
+   and the smallest relevant reproducer. Do not rerun repository-wide suites during
+   implementation review; reserve them for the ready plan's explicit final gate.
 
 Never accept work from the report alone.
 

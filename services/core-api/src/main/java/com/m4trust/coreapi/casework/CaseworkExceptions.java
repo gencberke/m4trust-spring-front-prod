@@ -2,6 +2,8 @@ package com.m4trust.coreapi.casework;
 
 import java.util.List;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
+import com.m4trust.coreapi.api.FieldErrorCode;
 import com.m4trust.coreapi.api.FieldValidationError;
 
 class CaseworkExceptions {
@@ -37,14 +39,14 @@ class CaseworkExceptions {
     static class Conflict extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
-        private final String code;
+        private final ApiErrorCode code;
 
-        Conflict(String code) {
-            super("Casework operation conflict: " + code);
+        Conflict(ApiErrorCode code) {
+            super("Casework operation conflict: " + code.name());
             this.code = code;
         }
 
-        String code() {
+        ApiErrorCode code() {
             return code;
         }
     }
@@ -54,7 +56,7 @@ class CaseworkExceptions {
 
         private final List<FieldValidationError> errors;
 
-        Validation(String field, String code, String message) {
+        Validation(String field, FieldErrorCode code, String message) {
             errors = List.of(new FieldValidationError(field, code, message));
         }
 

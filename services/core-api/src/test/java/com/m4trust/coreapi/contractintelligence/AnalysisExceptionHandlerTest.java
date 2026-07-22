@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import com.m4trust.coreapi.api.FieldErrorCode;
 import com.m4trust.coreapi.api.FieldValidationError;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class AnalysisExceptionHandlerTest {
         List<?> entries = assertInstanceOf(List.class, errors);
         FieldValidationError error = assertInstanceOf(FieldValidationError.class, entries.getFirst());
         assertEquals("decisions[0].structuredValue.basisPoints", error.field());
-        assertEquals("INVALID", error.code());
+        assertEquals(FieldErrorCode.INVALID, error.code());
         assertEquals("The value is invalid.", error.message());
     }
 

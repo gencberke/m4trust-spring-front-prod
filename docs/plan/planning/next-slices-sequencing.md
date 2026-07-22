@@ -42,7 +42,7 @@ Sıralama şu ölçütlerle değerlendirilmiştir:
 
 | Aday | Neden ayrıldı | Yeniden açılma kapısı |
 | --- | --- | --- |
-| Slice 7 — Railway staging | 21 Temmuz 2026'da tamamlandı; C2/G4b kabul edildi | `done/07-staging-deployment.md` ve `docs/plan/done/review/slice-07-acceptance-2026-07-21.md` |
+| Slice 7 — Railway staging | 21 Temmuz 2026'da tamamlandı; C2/G4b kabul edildi | `done/07-staging-deployment.md` ve `docs/plan/done/review/04-07-implementation-review-handoff.md` |
 | Slice 11B — Gerçek provider | Domain adapter işi içerse de staging, dış provider test ortamı, credential, 3DS ve operasyonel kabul gerektirir | Slice 7/staging ve provider-hukuk kapıları ayrı çalışma olarak açıldığında |
 
 Bu sequencing kararı hazırlandığında iki aday da ertelenmişti. Slice 7 daha

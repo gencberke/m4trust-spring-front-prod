@@ -1,8 +1,11 @@
 package com.m4trust.coreapi.deployment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,29 @@ class DeploymentConfigurationTest {
         assertEquals("framework", staging.getProperty("server.forward-headers-strategy"));
         assertEquals("true", local.getProperty("spring.flyway.enabled"));
         assertEquals("none", local.getProperty("server.forward-headers-strategy"));
+    }
+
+    @Test
+    void messagingCapabilitiesDefaultOffSoBrokerIsOptional() throws IOException {
+        PropertySourcesPropertyResolver base = resolver();
+        PropertySourcesPropertyResolver staging = resolver("application-staging.yml");
+        assertEquals("false", base.getProperty("app.messaging.topology.enabled"));
+        assertEquals("false", base.getProperty("app.messaging.relay.enabled"));
+        assertEquals("false", staging.getProperty("app.messaging.topology.enabled"));
+        assertEquals("false", staging.getProperty("app.messaging.relay.enabled"));
+    }
+
+    @Test
+    void coreRailwayBuildUsesMonorepoDockerfileAndContractsWatch() throws IOException {
+        Path railway = Path.of("").toAbsolutePath().resolve("railway.json");
+        if (!Files.isRegularFile(railway)) {
+            railway = Path.of("").toAbsolutePath()
+                    .resolve("../../services/core-api/railway.json").normalize();
+        }
+        String json = Files.readString(railway);
+        assertTrue(json.contains("\"dockerfilePath\": \"services/core-api/Dockerfile\""));
+        assertTrue(json.contains("/services/core-api/**"));
+        assertTrue(json.contains("/contracts/**"));
     }
 
     @Test

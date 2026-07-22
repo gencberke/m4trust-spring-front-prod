@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import os
 import re
 import sys
 import warnings
@@ -66,6 +68,17 @@ EXPECTED_AI_INTERNAL_OPENAPI_PATHS = {
     "/internal/v1/capabilities",
     "/internal/v1/contracts",
 }
+EXPECTED_CORE_INTERNAL_OPENAPI_PATHS = {
+    "/internal/v1/contracts",
+}
+
+# ADR-016 §2.5 inclusion set relative to contracts/
+_BUNDLE_INCLUDE_SPECS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("asyncapi", ("*.json", "*.yaml", "*.yml")),
+    ("openapi", ("*.json", "*.yaml", "*.yml")),
+    ("schemas", ("*.json",)),
+    ("examples", ("*.json",)),
+)
 EXPECTED_CORE_API_OPERATIONS = {
     ("/auth/register", "post"): {
         "operationId": "register",
@@ -696,6 +709,11 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "409"): "DisputeMutationConflict",
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "422"): "ValidationFailed",
 }
+REMOVED_COMBINED_API_ERROR_CODES = {
+    "DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN",
+    "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN",
+}
+
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
     "CreateLegalEntityRequest", "LegalEntity", "LegalEntityRole",
@@ -703,7 +721,8 @@ REQUIRED_CORE_API_SCHEMAS = {
     "LegalEntityMember", "LegalEntityMemberList",
     "CreateDealRequest", "UpdateDealRequest", "UpdateDealPartiesRequest", "DealStatus",
     "DealLifecycleProjection", "DealAvailableActions", "DealSummary",
-    "DealParticipant", "DealPartyRole", "DealParty", "DealDetail", "DealPage", "UtcTimestamp", "ProblemDetail", "FieldError",
+    "DealParticipant", "DealPartyRole", "DealParty", "DealDetail", "DealPage", "UtcTimestamp",
+    "ApiErrorCode", "FieldErrorCode", "ProblemDetail", "FieldError",
     "CreateDealInvitationRequest", "AcceptDealInvitationRequest", "DealInvitationTerminalActionRequest",
     "DealInvitationStatus", "DealInvitationAvailableActions", "DealInvitationDeal",
     "DealInvitation", "IncomingDealInvitation", "DealInvitationPage", "IncomingDealInvitationPage",
@@ -741,6 +760,203 @@ REQUIRED_CORE_API_SCHEMAS = {
     "DisputeComment", "DisputeCommentPage", "OpenDisputeRequest", "CreateDisputeCommentRequest",
     "AcknowledgeDisputeRequest", "WithdrawDisputeRequest", "DealCaseworkSummary",
 }
+
+
+
+def bundle_relative_paths(contracts_root: Path) -> list[str]:
+    """Return ADR-016 inclusion paths relative to contracts/, POSIX, ordinal-sorted."""
+    found: set[str] = set()
+    for subdir, patterns in _BUNDLE_INCLUDE_SPECS:
+        root = contracts_root / subdir
+        if not root.is_dir():
+            continue
+        for pattern in patterns:
+            for path in root.rglob(pattern):
+                if path.is_file():
+                    found.add(path.relative_to(contracts_root).as_posix())
+    return sorted(found)
+
+
+def file_sha256_hex(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_bundle_manifest(contracts_root: Path) -> bytes:
+    """UTF-8 LF manifest: `<lowercase-file-sha256><two spaces><relative-path>\n`."""
+    lines: list[str] = []
+    for relative in bundle_relative_paths(contracts_root):
+        file_digest = file_sha256_hex(contracts_root / relative)
+        lines.append(f"{file_digest}  {relative}\n")
+    return "".join(lines).encode("utf-8")
+
+
+def contract_bundle_digest(contracts_root: Path) -> str:
+    manifest = build_bundle_manifest(contracts_root)
+    return "sha256:" + hashlib.sha256(manifest).hexdigest()
+
+
+def ownership_duplicate_failures(ownership: dict[str, Any]) -> list[str]:
+    """Reject duplicate entries in P1 ownership arrays (global and each byResponse list)."""
+    failures: list[str] = []
+    global_codes = ownership.get("global")
+    if isinstance(global_codes, list) and len(global_codes) != len(set(global_codes)):
+        failures.append(
+            "FAIL Core API x-m4trust-api-error-ownership: duplicate entries in global"
+        )
+    by_response = ownership.get("byResponse")
+    if isinstance(by_response, dict):
+        for name, codes in by_response.items():
+            if isinstance(codes, list) and len(codes) != len(set(codes)):
+                failures.append(
+                    "FAIL Core API x-m4trust-api-error-ownership: "
+                    f"duplicate entries in byResponse.{name}"
+                )
+    return failures
+
+
+def validate_bundle_digest(failures: list[str]) -> None:
+    paths = bundle_relative_paths(ROOT)
+    if not paths:
+        failures.append("FAIL contract bundle: inclusion set is empty")
+        return
+    digest = contract_bundle_digest(ROOT)
+    print(f"PASS contract bundle digest {digest} ({len(paths)} files)")
+
+    ai_root = os.environ.get("M4TRUST_AI_CONTRACTS_ROOT")
+    if not ai_root:
+        print("UNVERIFIED_EXTERNAL_GATE: AI contract baseline not supplied")
+        return
+    ai_path = Path(ai_root)
+    if not ai_path.is_dir():
+        failures.append(
+            f"FAIL AI contract baseline: M4TRUST_AI_CONTRACTS_ROOT is not a directory: {ai_root}"
+        )
+        return
+    main_files = {
+        relative: file_sha256_hex(ROOT / relative)
+        for relative in bundle_relative_paths(ROOT)
+    }
+    ai_paths = bundle_relative_paths(ai_path)
+    ai_files = {
+        relative: file_sha256_hex(ai_path / relative)
+        for relative in ai_paths
+    }
+    all_paths = sorted(set(main_files) | set(ai_files))
+    file_mismatches: list[str] = []
+    for relative in all_paths:
+        expected = main_files.get(relative)
+        actual = ai_files.get(relative)
+        if expected == actual:
+            continue
+        file_mismatches.append(
+            f"  {relative}: expected={expected or 'MISSING'} actual={actual or 'MISSING'}"
+        )
+    ai_digest = contract_bundle_digest(ai_path)
+    if ai_digest != digest or file_mismatches:
+        failures.append(
+            "FAIL AI contract baseline digest mismatch: "
+            f"main={digest} ai={ai_digest}"
+        )
+        if file_mismatches:
+            failures.append(
+                "FAIL AI contract baseline file-level hash delta:\n"
+                + "\n".join(file_mismatches)
+            )
+    else:
+        print(f"PASS AI contract baseline digest matches {digest}")
+
+
+def validate_core_internal_openapi(failures: list[str]) -> None:
+    path = ROOT / "openapi/core-internal-v1.yaml"
+    if not path.is_file():
+        failures.append("FAIL Core internal OpenAPI: openapi/core-internal-v1.yaml is missing")
+        return
+    try:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        failures.append(f"FAIL Core internal OpenAPI: cannot parse YAML: {exc}")
+        return
+
+    local_failures: list[str] = []
+    if not str(document.get("openapi", "")).startswith("3.1."):
+        local_failures.append("FAIL Core internal OpenAPI version: expected OpenAPI 3.1")
+    if set(document.get("paths", {})) != EXPECTED_CORE_INTERNAL_OPENAPI_PATHS:
+        local_failures.append("FAIL Core internal OpenAPI paths: expected exact /internal/v1/contracts")
+
+    operation = document.get("paths", {}).get("/internal/v1/contracts", {}).get("get")
+    if not isinstance(operation, dict):
+        local_failures.append("FAIL Core internal OpenAPI: missing GET /internal/v1/contracts")
+    else:
+        if operation.get("operationId") != "getCoreContractBundle":
+            local_failures.append("FAIL Core internal OpenAPI operationId: getCoreContractBundle")
+        if operation.get("security") != [{"ProbeBearer": []}]:
+            local_failures.append("FAIL Core internal OpenAPI security: ProbeBearer required")
+        responses = operation.get("responses", {})
+        if "200" not in responses or "401" not in responses:
+            local_failures.append("FAIL Core internal OpenAPI responses: 200 and 401 required")
+        schema_ref = (
+            responses.get("200", {})
+            .get("content", {})
+            .get("application/json", {})
+            .get("schema", {})
+            .get("$ref")
+        )
+        if schema_ref != "#/components/schemas/CoreContractBundle":
+            local_failures.append(
+                "FAIL Core internal OpenAPI 200 schema: must $ref CoreContractBundle"
+            )
+
+    security = document.get("components", {}).get("securitySchemes", {}).get("ProbeBearer", {})
+    if security.get("type") != "http" or security.get("scheme") != "bearer":
+        local_failures.append("FAIL Core internal OpenAPI: ProbeBearer must be HTTP bearer")
+
+    bundle = document.get("components", {}).get("schemas", {}).get("CoreContractBundle", {})
+    if bundle.get("additionalProperties") is not False:
+        local_failures.append("FAIL CoreContractBundle: additionalProperties must be false")
+    if set(bundle.get("required", [])) != {
+        "service",
+        "releaseRevision",
+        "contractBundleDigest",
+        "files",
+    }:
+        local_failures.append("FAIL CoreContractBundle: required field set mismatch")
+    props = bundle.get("properties", {})
+    if props.get("service") != {"type": "string", "const": "core"}:
+        local_failures.append('FAIL CoreContractBundle.service: must be const "core"')
+    release = props.get("releaseRevision", {})
+    if release.get("type") != "string" or release.get("pattern") != "^[a-f0-9]{40}$":
+        local_failures.append("FAIL CoreContractBundle.releaseRevision: pattern ^[a-f0-9]{40}$")
+    digest_prop = props.get("contractBundleDigest", {})
+    if digest_prop.get("type") != "string" or digest_prop.get("pattern") != "^sha256:[a-f0-9]{64}$":
+        local_failures.append(
+            "FAIL CoreContractBundle.contractBundleDigest: pattern ^sha256:[a-f0-9]{64}$"
+        )
+    files = props.get("files", {})
+    if files.get("type") != "array":
+        local_failures.append("FAIL CoreContractBundle.files: must be array")
+    file_ref = files.get("items", {}).get("$ref")
+    if file_ref != "#/components/schemas/ContractBundleFile":
+        local_failures.append("FAIL CoreContractBundle.files.items: must $ref ContractBundleFile")
+
+    file_schema = document.get("components", {}).get("schemas", {}).get("ContractBundleFile", {})
+    if file_schema.get("additionalProperties") is not False:
+        local_failures.append("FAIL ContractBundleFile: additionalProperties must be false")
+    if set(file_schema.get("required", [])) != {"path", "sha256"}:
+        local_failures.append("FAIL ContractBundleFile: required path and sha256")
+    file_props = file_schema.get("properties", {})
+    if file_props.get("path", {}).get("type") != "string":
+        local_failures.append("FAIL ContractBundleFile.path: string required")
+    sha = file_props.get("sha256", {})
+    if sha.get("type") != "string" or sha.get("pattern") != "^[a-f0-9]{64}$":
+        local_failures.append("FAIL ContractBundleFile.sha256: pattern ^[a-f0-9]{64}$")
+
+    failures.extend(local_failures)
+    if not local_failures:
+        print("PASS Core internal OpenAPI ADR-016 projection")
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -820,6 +1036,283 @@ def expect_valid(label: str, schema_path: Path, instance: dict[str, Any], store:
         failures.append(f"FAIL expected-valid {label}: {format_errors(errors)}")
     else:
         print(f"PASS expected-valid {label}")
+
+
+def closed_string_enum(schema: dict[str, Any] | None) -> list[str] | None:
+    if not isinstance(schema, dict) or schema.get("type") != "string":
+        return None
+    values = schema.get("enum")
+    if not isinstance(values, list) or not values:
+        return None
+    if any(not isinstance(value, str) or not value for value in values):
+        return None
+    return list(values)
+
+
+def read_java_enum_names(java_path: Path, enum_name: str) -> set[str] | None:
+    if not java_path.is_file():
+        return None
+    text = java_path.read_text(encoding="utf-8")
+    match = re.search(
+        rf"public\s+enum\s+{re.escape(enum_name)}\s*\{{([^}}]*?)(?:;|\}})",
+        text,
+        re.S,
+    )
+    if match is None:
+        return None
+    body = match.group(1)
+    names = re.findall(r"\b([A-Z][A-Z0-9_]*)\b", body)
+    return set(names)
+
+
+def owned_api_error_codes(core_openapi: dict[str, Any]) -> set[str] | None:
+    """Catalog-independent ownership from components.x-m4trust-api-error-ownership."""
+    ownership = core_openapi.get("components", {}).get("x-m4trust-api-error-ownership")
+    if not isinstance(ownership, dict):
+        return None
+    owned: set[str] = set()
+    global_codes = ownership.get("global")
+    if not isinstance(global_codes, list) or not global_codes:
+        return None
+    for code in global_codes:
+        if not isinstance(code, str) or not code:
+            return None
+        owned.add(code)
+    by_response = ownership.get("byResponse")
+    if not isinstance(by_response, dict) or not by_response:
+        return None
+    responses = core_openapi.get("components", {}).get("responses", {})
+    if set(by_response) != set(responses):
+        return None
+    for name, codes in by_response.items():
+        if not isinstance(codes, list) or not codes:
+            return None
+        for code in codes:
+            if not isinstance(code, str) or not code:
+                return None
+            owned.add(code)
+    return owned
+
+
+def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[str]) -> None:
+    schemas = core_openapi.get("components", {}).get("schemas", {})
+    api_schema = schemas.get("ApiErrorCode")
+    field_schema = schemas.get("FieldErrorCode")
+    api_values = closed_string_enum(api_schema)
+    field_values = closed_string_enum(field_schema)
+    local_failures: list[str] = []
+
+    if api_values is None:
+        local_failures.append("FAIL Core API ApiErrorCode: closed string enum catalog is required")
+    if field_values is None:
+        local_failures.append("FAIL Core API FieldErrorCode: closed string enum catalog is required")
+    if local_failures:
+        failures.extend(local_failures)
+        return
+
+    assert api_values is not None and field_values is not None
+
+    if len(api_values) != len(set(api_values)):
+        local_failures.append("FAIL Core API ApiErrorCode: duplicate enum values")
+    if len(field_values) != len(set(field_values)):
+        local_failures.append("FAIL Core API FieldErrorCode: duplicate enum values")
+
+    removed = sorted(REMOVED_COMBINED_API_ERROR_CODES.intersection(api_values))
+    if removed:
+        local_failures.append(
+            "FAIL Core API ApiErrorCode: removed combined fulfillment codes present: "
+            + ", ".join(removed)
+        )
+
+    problem_code = schemas.get("ProblemDetail", {}).get("properties", {}).get("code")
+    field_code = schemas.get("FieldError", {}).get("properties", {}).get("code")
+    if problem_code != {"$ref": "#/components/schemas/ApiErrorCode"}:
+        local_failures.append("FAIL Core API ProblemDetail.code: must $ref ApiErrorCode (open string rejected)")
+    if field_code != {"$ref": "#/components/schemas/FieldErrorCode"}:
+        local_failures.append("FAIL Core API FieldError.code: must $ref FieldErrorCode (open string rejected)")
+
+    ownership = core_openapi.get("components", {}).get("x-m4trust-api-error-ownership")
+    if isinstance(ownership, dict):
+        local_failures.extend(ownership_duplicate_failures(ownership))
+        # Negative proof: duplicate ownership entries must be detectable.
+        if not ownership_duplicate_failures(ownership):
+            probe_ownership = copy.deepcopy(ownership)
+            global_codes = probe_ownership.get("global")
+            if isinstance(global_codes, list) and global_codes:
+                probe_ownership["global"] = list(global_codes) + [global_codes[0]]
+                if not ownership_duplicate_failures(probe_ownership):
+                    local_failures.append(
+                        "FAIL Core API ApiErrorCode negative duplicate ownership detector: "
+                        "duplicate global entry was not detected"
+                    )
+                else:
+                    print("PASS expected-invalid ApiErrorCode duplicate ownership in global")
+            by_response = probe_ownership.get("byResponse")
+            if isinstance(by_response, dict) and by_response:
+                first_name = next(iter(sorted(by_response)))
+                codes = by_response[first_name]
+                if isinstance(codes, list) and codes:
+                    by_response[first_name] = list(codes) + [codes[0]]
+                    if not ownership_duplicate_failures(probe_ownership):
+                        local_failures.append(
+                            "FAIL Core API ApiErrorCode negative duplicate ownership detector: "
+                            f"duplicate byResponse.{first_name} entry was not detected"
+                        )
+                    else:
+                        print(
+                            "PASS expected-invalid ApiErrorCode duplicate ownership "
+                            f"in byResponse.{first_name}"
+                        )
+
+    owned = owned_api_error_codes(core_openapi)
+    if owned is None:
+        local_failures.append(
+            "FAIL Core API x-m4trust-api-error-ownership: machine-readable ownership "
+            "must list global codes and exact byResponse coverage for every reusable response"
+        )
+    else:
+        catalog_set = set(api_values)
+        missing_owned = sorted(owned - catalog_set)
+        extra_catalog = sorted(catalog_set - owned)
+        if missing_owned or extra_catalog:
+            local_failures.append(
+                "FAIL Core API ApiErrorCode ownership exact-set mismatch"
+                + (f"; owned-missing-from-catalog={','.join(missing_owned)}" if missing_owned else "")
+                + (f"; catalog-not-owned={','.join(extra_catalog)}" if extra_catalog else "")
+            )
+        # Negative proof: removing one owned catalog member must be detectable.
+        if catalog_set and not missing_owned and not extra_catalog:
+            probe = copy.deepcopy(core_openapi)
+            removed = next(iter(sorted(catalog_set)))
+            probe["components"]["schemas"]["ApiErrorCode"]["enum"] = [
+                code for code in api_values if code != removed
+            ]
+            probe_owned = owned_api_error_codes(probe)
+            probe_catalog = set(closed_string_enum(probe["components"]["schemas"]["ApiErrorCode"]) or [])
+            if probe_owned is None or probe_owned == probe_catalog or removed not in (probe_owned - probe_catalog):
+                local_failures.append(
+                    "FAIL Core API ApiErrorCode negative ownership drift detector: "
+                    "removing a documented/global catalog member was not detected"
+                )
+            else:
+                print(f"PASS expected-invalid ApiErrorCode ownership drift when removing {removed}")
+
+    repo_root = ROOT.parent
+    java_api = read_java_enum_names(
+        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/ApiErrorCode.java",
+        "ApiErrorCode",
+    )
+    java_field = read_java_enum_names(
+        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/FieldErrorCode.java",
+        "FieldErrorCode",
+    )
+    if java_api is None:
+        local_failures.append("FAIL Core API ApiErrorCode: Java enum source not found for exact-set check")
+    elif java_api != set(api_values):
+        only_java = sorted(java_api - set(api_values))
+        only_openapi = sorted(set(api_values) - java_api)
+        local_failures.append(
+            "FAIL Core API ApiErrorCode exact-set mismatch"
+            + (f"; java-only={','.join(only_java)}" if only_java else "")
+            + (f"; openapi-only={','.join(only_openapi)}" if only_openapi else "")
+        )
+    if java_field is None:
+        local_failures.append("FAIL Core API FieldErrorCode: Java enum source not found for exact-set check")
+    elif java_field != set(field_values):
+        only_java = sorted(java_field - set(field_values))
+        only_openapi = sorted(set(field_values) - java_field)
+        local_failures.append(
+            "FAIL Core API FieldErrorCode exact-set mismatch"
+            + (f"; java-only={','.join(only_java)}" if only_java else "")
+            + (f"; openapi-only={','.join(only_openapi)}" if only_openapi else "")
+        )
+
+    failures.extend(local_failures)
+    if not local_failures:
+        print(
+            f"PASS Core API closed error catalogs "
+            f"(ApiErrorCode={len(set(api_values))}, FieldErrorCode={len(set(field_values))})"
+        )
+
+
+def sample_problem_detail(code: str, field_code: str | None = None) -> dict[str, Any]:
+    problem: dict[str, Any] = {
+        "type": "https://problems.m4trust.internal/validation-failed",
+        "title": "Validation failed",
+        "status": 422,
+        "detail": "One or more fields are invalid.",
+        "code": code,
+        "correlationId": "00000000-0000-4000-8000-000000000001",
+    }
+    if field_code is not None:
+        problem["errors"] = [{"field": "email", "code": field_code, "message": "Field is invalid."}]
+    return problem
+
+
+def validate_error_catalog_fixtures(core_openapi: dict[str, Any], failures: list[str]) -> None:
+    """Validate ProblemDetail/FieldError against OpenAPI component schemas via jsonschema."""
+    schemas = core_openapi.get("components", {}).get("schemas", {})
+    api_values = closed_string_enum(schemas.get("ApiErrorCode"))
+    field_values = closed_string_enum(schemas.get("FieldErrorCode"))
+    if not api_values or not field_values:
+        failures.append("FAIL error-catalog fixtures: closed catalogs unavailable")
+        return
+
+    store: dict[str, dict[str, Any]] = {}
+    for name, schema in schemas.items():
+        if isinstance(schema, dict):
+            cloned = copy.deepcopy(schema)
+            cloned["$id"] = f"https://schemas.m4trust.internal/openapi/{name}"
+            store[cloned["$id"]] = cloned
+
+    def resolve_ref(ref: str) -> dict[str, Any]:
+        name = ref.rsplit("/", 1)[-1]
+        return store[f"https://schemas.m4trust.internal/openapi/{name}"]
+
+    def rewrite(node: Any) -> Any:
+        if isinstance(node, dict):
+            if set(node.keys()) == {"$ref"} and isinstance(node["$ref"], str) and node["$ref"].startswith("#/components/schemas/"):
+                return rewrite(copy.deepcopy(resolve_ref(node["$ref"])))
+            return {key: rewrite(value) for key, value in node.items()}
+        if isinstance(node, list):
+            return [rewrite(item) for item in node]
+        return node
+
+    problem_schema = rewrite(copy.deepcopy(schemas["ProblemDetail"]))
+    problem_schema["$id"] = "https://schemas.m4trust.internal/openapi/ProblemDetail-resolved"
+    store[problem_schema["$id"]] = problem_schema
+    schema_path = Path("openapi/ProblemDetail-resolved")
+
+    def local_errors(instance: dict[str, Any]) -> list[Any]:
+        validator = Draft202012Validator(problem_schema, resolver=RefResolver(
+            base_uri=problem_schema["$id"], referrer=problem_schema, store=store
+        ), format_checker=FormatChecker())
+        return sorted(validator.iter_errors(instance), key=lambda error: list(error.path))
+
+    valid = sample_problem_detail(api_values[0], field_values[0])
+    if local_errors(valid):
+        failures.append(f"FAIL expected-valid ProblemDetail catalog member: {format_errors(local_errors(valid))}")
+    else:
+        print("PASS expected-valid ProblemDetail with catalog ApiErrorCode/FieldErrorCode")
+
+    open_code = sample_problem_detail("NOT_IN_CATALOG")
+    if not local_errors(open_code):
+        failures.append("FAIL expected-invalid ProblemDetail open ApiErrorCode: instance unexpectedly passed")
+    else:
+        print(f"PASS expected-invalid ProblemDetail open ApiErrorCode: {format_errors(local_errors(open_code))}")
+
+    bad_field = sample_problem_detail(api_values[0], "TOO_SHORT")
+    if not local_errors(bad_field):
+        failures.append("FAIL expected-invalid FieldError open FieldErrorCode: instance unexpectedly passed")
+    else:
+        print(f"PASS expected-invalid FieldError open FieldErrorCode: {format_errors(local_errors(bad_field))}")
+
+    for removed in sorted(REMOVED_COMBINED_API_ERROR_CODES):
+        removed_instance = sample_problem_detail(removed)
+        if not local_errors(removed_instance):
+            failures.append(f"FAIL expected-invalid removed combined code {removed}: instance unexpectedly passed")
+        else:
+            print(f"PASS expected-invalid removed combined code {removed}")
 
 
 def event_properties(schema: dict[str, Any]) -> dict[str, Any]:
@@ -2014,6 +2507,8 @@ def validate_contract_documents(failures: list[str]) -> None:
             actual_ref = core_paths.get(path, {}).get(method, {}).get("responses", {}).get(status, {}).get("$ref")
             if actual_ref != expected_ref:
                 failures.append(f"FAIL Core API error response: {method.upper()} {path} {status}")
+        validate_closed_error_catalogs(core_openapi, failures)
+        validate_error_catalog_fixtures(core_openapi, failures)
         for message in asyncapi.get("components", {}).get("messages", {}).values():
             reference = message.get("payload", {}).get("$ref")
             if isinstance(reference, str) and reference.startswith("../"):
@@ -2076,6 +2571,8 @@ def validate() -> int:
         print("PASS concrete event schemaVersion/eventType/jobType constraints")
 
     validate_contract_documents(failures)
+    validate_core_internal_openapi(failures)
+    validate_bundle_digest(failures)
 
     for fixture_name, schema_name in FIXTURE_SCHEMAS.items():
         fixture_path = ROOT / fixture_name
@@ -2161,4 +2658,7 @@ def validate() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--print-digest":
+        print(contract_bundle_digest(ROOT), end="")
+        raise SystemExit(0)
     sys.exit(validate())
