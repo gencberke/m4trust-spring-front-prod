@@ -2,12 +2,12 @@
 
 Task: 15A — Frontend Experience Redesign
 Revision: 9
-Plan: `docs/plan/ready/15a-frontend-experience-redesign.md`
+Plan: `docs/plan/done/15a-frontend-experience-redesign.md`
 Phases: P1–P5
 Status: COMPLETED
 Branch: `codex/frontend-experience-redesign`
 Base: `origin/main@87adbe41271747d46ed0884a55557a95be5ce75d`
-Reviewed state: complete worktree diff on the base above; exact implementation commit is recorded by the planner after commit.
+Implementation HEAD: `fbcbb7f`
 Plan completion claim: YES
 
 ## Outcomes

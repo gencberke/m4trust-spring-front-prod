@@ -1,6 +1,6 @@
 # Slice 15A — Frontend Experience Redesign
 
-- Status: Ready — user-approved on 22 July 2026
+- Status: Done — accepted on 22 July 2026 at implementation commit `fbcbb7f`
 - Placement: Slice 15 `G-UI` insertion gate, before Railway P5/P6
 - Visual authority: the accepted open agreement-workspace concept; the secondary
   concept is a state-pattern reference only and does not authorize extra navigation
@@ -172,15 +172,30 @@ Required evidence:
 
 ## 8. Done definition
 
-- [ ] P1 foundation, shell and entry experiences accepted.
-- [ ] P2 agreement workspace and review journey accepted.
-- [ ] P3 approval and payment journey accepted.
-- [ ] P4 delivery, evidence and exception states accepted.
-- [ ] Independent review result is ACCEPT; any required revision is focused.
-- [ ] P5 desktop/mobile browser and accessibility evidence accepted.
-- [ ] Accepted visual concept and latest browser screenshot inspected together.
-- [ ] Contracts, backend, AI ownership, auth/session, V1–V22 and Railway resources
+- [x] P1 foundation, shell and entry experiences accepted.
+- [x] P2 agreement workspace and review journey accepted.
+- [x] P3 approval and payment journey accepted.
+- [x] P4 delivery, evidence and exception states accepted.
+- [x] Independent review result is ACCEPT; any required revision is focused.
+- [x] P5 desktop/mobile browser and accessibility evidence accepted.
+- [x] Accepted visual concept and latest browser screenshot inspected together.
+- [x] Contracts, backend, AI ownership, auth/session, V1–V22 and Railway resources
       remain unchanged.
-- [ ] Review handoff records exact branch/base/HEAD and minimum validation evidence.
-- [ ] Plan is archived to `docs/plan/done/` and Slice 15 `G-UI` is recorded complete
+- [x] Review handoff records exact branch/base/HEAD and minimum validation evidence.
+- [x] Plan is archived to `docs/plan/done/` and Slice 15 `G-UI` is recorded complete
       before Railway P5 begins.
+
+## 9. Acceptance evidence
+
+- Implementation commit: `fbcbb7f` on `codex/frontend-experience-redesign`,
+  based on `origin/main@87adbe41271747d46ed0884a55557a95be5ce75d`.
+- Independent review: `ACCEPT` after two focused FIX revisions for primary copy
+  and structural visual fidelity.
+- Minimum validation: frontend TypeScript no-emit and `git diff --check` passed.
+- Real-browser acceptance: register/login, organization and agreement creation,
+  semantic stage navigation, refresh/session retention, explicit logout/relogin,
+  empty console, visible keyboard focus, desktop and 390 px layouts passed.
+- Fidelity ledger: the dark inline shell, connected five-stage composition,
+  task/supporting-information hierarchy, navy/green visual system and responsive
+  stacking align with the accepted concept. The representative DRAFT copy differs
+  intentionally because no AI activity or counterparty data was invented.

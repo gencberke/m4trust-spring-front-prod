@@ -312,7 +312,7 @@ başarısız alan tekrar edilir; tüm final gate baştan döndürülmez.
 - [x] P3 observable runtime drift gates accepted (`4845a03`)
 - [x] ADR-022 founder/user tarafından Accepted
 - [x] P4 repository reconciliation accepted (`381ed5b`)
-- [ ] G-UI user-owned revision completed and user authorizes deployment
+- [x] G-UI user-owned revision completed and user authorizes deployment (`fbcbb7f`)
 - [ ] P5 existing Railway staging reconciliation accepted
 - [ ] P6 one final gate and production demo deployment accepted
 - [ ] Existing Railway persistent resources remained non-destructive
