@@ -117,6 +117,13 @@
             <version>${archunit.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- Test/contract profile only: runtime OpenAPI structural drift gates. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <version>3.0.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -124,14 +131,48 @@
             <resource>
                 <directory>src/main/resources</directory>
             </resource>
-            <!-- The consumer validates against the reviewed contract files, not a
-                 second, hand-maintained representation of the event shape. -->
+            <!-- Packaged ADR-016 main contract bundle (exact committed bytes). -->
+            <resource>
+                <directory>../../contracts/asyncapi</directory>
+                <targetPath>contracts/asyncapi</targetPath>
+                <includes>
+                    <include>**/*.json</include>
+                    <include>**/*.yaml</include>
+                    <include>**/*.yml</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>../../contracts/openapi</directory>
+                <targetPath>contracts/openapi</targetPath>
+                <includes>
+                    <include>**/*.json</include>
+                    <include>**/*.yaml</include>
+                    <include>**/*.yml</include>
+                </includes>
+            </resource>
             <resource>
                 <directory>../../contracts/schemas</directory>
                 <targetPath>contracts/schemas</targetPath>
                 <includes><include>**/*.json</include></includes>
             </resource>
+            <resource>
+                <directory>../../contracts/examples</directory>
+                <targetPath>contracts/examples</targetPath>
+                <includes><include>**/*.json</include></includes>
+            </resource>
         </resources>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+            <testResource>
+                <directory>../../contracts/openapi</directory>
+                <targetPath>contracts/openapi</targetPath>
+                <includes>
+                    <include>core-api-v1.yaml</include>
+                </includes>
+            </testResource>
+        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

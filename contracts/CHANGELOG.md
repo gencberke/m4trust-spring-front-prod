@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added deterministic main contract-bundle digest foundation (ADR-016 §2.5): inclusion
+  globs over `asyncapi`/`openapi`/`schemas`/`examples`, per-file SHA-256 of exact
+  committed bytes, POSIX ordinal UTF-8/LF manifest, and `sha256:<hex>` digest via
+  `contracts/scripts/validate_contracts.py` (including `--print-digest` and optional
+  read-only `M4TRUST_AI_CONTRACTS_ROOT` compare). Added private
+  `openapi/core-internal-v1.yaml` for `GET /internal/v1/contracts` with the ADR-016
+  CoreContractBundle projection and HTTP bearer probe-token security scheme.
+  Ownership arrays reject duplicate `global`/`byResponse` entries.
+
 - Closed public Problem Details catalogs in `core-api-v1.yaml`: `ProblemDetail.code`
   now `$ref`s `ApiErrorCode` and `FieldError.code` `$ref`s `FieldErrorCode`. Catalog
   ownership is machine-readable via `components.x-m4trust-api-error-ownership`

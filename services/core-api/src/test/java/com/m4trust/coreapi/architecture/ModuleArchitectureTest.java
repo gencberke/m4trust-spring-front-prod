@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 class ModuleArchitectureTest {
 
     private static final String[] MODULES = {
-        "api", "audit", "casework", "contractintelligence", "deal", "document", "fulfillment", "idempotency",
-        "identity", "integration", "organization", "payment", "ratification", "sharedkernel"
+        "api", "audit", "casework", "contractintelligence", "contracts", "deal", "document", "fulfillment",
+        "idempotency", "identity", "integration", "organization", "payment", "ratification", "sharedkernel"
     };
 
     @Test

@@ -39,6 +39,14 @@ spring:
     jdbc:
       initialize-schema: never
 
+m4trust:
+  release:
+    # ADR-016 releaseRevision: 40-hex git SHA when available; unknown maps to zeros.
+    git-commit-sha: ${GIT_COMMIT_SHA:0000000000000000000000000000000000000000}
+  contracts:
+    probe-token: ${CONTRACT_PROBE_TOKEN:}
+    probe-token-previous: ${CONTRACT_PROBE_TOKEN_PREVIOUS:}
+
 app:
   # Deploy-time environment label (e.g. local, staging, production).
   # Falls back to the active Spring profile, then to "local".
@@ -97,6 +105,14 @@ logging:
         version: ${app.version}
         gitCommitSha: ${app.git-commit-sha}
         buildTime: ${app.build-time}
+
+# Production keeps OpenAPI/Swagger routes disabled. The contract/test profile
+# may enable api-docs generation for structural drift gates only.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 management:
   endpoints:

@@ -1,0 +1,79 @@
+openapi: 3.1.0
+info:
+  title: M4Trust Core Internal Operations API
+  version: 1.0.0
+  description: >
+    Private Core operational metadata only. Exposes the deterministic main
+    contract-bundle digest projection from ADR-016. No business data, filesystem
+    paths, or credentials. Requires Authorization Bearer probe token.
+servers:
+  - url: /
+    description: Core private network surface (not public edge)
+paths:
+  /internal/v1/contracts:
+    get:
+      operationId: getCoreContractBundle
+      summary: Installed main contract bundle metadata
+      description: >
+        Returns the ADR-016 contract-bundle digest projection for the packaged
+        Core release. Authenticated with CONTRACT_PROBE_TOKEN (and optional
+        previous token during rotation). Tokens must never be logged.
+      security:
+        - ProbeBearer: []
+      responses:
+        '200':
+          description: Packaged contract bundle metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreContractBundle'
+        '401':
+          description: Missing or invalid Authorization Bearer probe token.
+        '403':
+          description: Probe token present but not authorized for this surface.
+components:
+  securitySchemes:
+    ProbeBearer:
+      type: http
+      scheme: bearer
+      description: Environment-specific CONTRACT_PROBE_TOKEN (32-byte CSPRNG).
+  schemas:
+    CoreContractBundle:
+      type: object
+      additionalProperties: false
+      required:
+        - service
+        - releaseRevision
+        - contractBundleDigest
+        - files
+      properties:
+        service:
+          type: string
+          const: core
+        releaseRevision:
+          type: string
+          pattern: '^[a-f0-9]{40}$'
+          description: 40-hex lowercase revision SHA of the main release.
+        contractBundleDigest:
+          type: string
+          pattern: '^sha256:[a-f0-9]{64}$'
+          description: Deterministic digest of the ADR-016 inclusion-set manifest.
+        files:
+          type: array
+          description: Bundle-relative paths in ordinal ascending order with per-file SHA-256.
+          items:
+            $ref: '#/components/schemas/ContractBundleFile'
+    ContractBundleFile:
+      type: object
+      additionalProperties: false
+      required:
+        - path
+        - sha256
+      properties:
+        path:
+          type: string
+          minLength: 1
+          description: Path relative to contracts/ using POSIX separators.
+        sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'

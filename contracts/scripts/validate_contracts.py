@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import os
 import re
 import sys
 import warnings
@@ -66,6 +68,17 @@ EXPECTED_AI_INTERNAL_OPENAPI_PATHS = {
     "/internal/v1/capabilities",
     "/internal/v1/contracts",
 }
+EXPECTED_CORE_INTERNAL_OPENAPI_PATHS = {
+    "/internal/v1/contracts",
+}
+
+# ADR-016 §2.5 inclusion set relative to contracts/
+_BUNDLE_INCLUDE_SPECS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("asyncapi", ("*.json", "*.yaml", "*.yml")),
+    ("openapi", ("*.json", "*.yaml", "*.yml")),
+    ("schemas", ("*.json",)),
+    ("examples", ("*.json",)),
+)
 EXPECTED_CORE_API_OPERATIONS = {
     ("/auth/register", "post"): {
         "operationId": "register",
@@ -749,6 +762,179 @@ REQUIRED_CORE_API_SCHEMAS = {
 }
 
 
+
+def bundle_relative_paths(contracts_root: Path) -> list[str]:
+    """Return ADR-016 inclusion paths relative to contracts/, POSIX, ordinal-sorted."""
+    found: set[str] = set()
+    for subdir, patterns in _BUNDLE_INCLUDE_SPECS:
+        root = contracts_root / subdir
+        if not root.is_dir():
+            continue
+        for pattern in patterns:
+            for path in root.rglob(pattern):
+                if path.is_file():
+                    found.add(path.relative_to(contracts_root).as_posix())
+    return sorted(found)
+
+
+def file_sha256_hex(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_bundle_manifest(contracts_root: Path) -> bytes:
+    """UTF-8 LF manifest: `<lowercase-file-sha256><two spaces><relative-path>\n`."""
+    lines: list[str] = []
+    for relative in bundle_relative_paths(contracts_root):
+        file_digest = file_sha256_hex(contracts_root / relative)
+        lines.append(f"{file_digest}  {relative}\n")
+    return "".join(lines).encode("utf-8")
+
+
+def contract_bundle_digest(contracts_root: Path) -> str:
+    manifest = build_bundle_manifest(contracts_root)
+    return "sha256:" + hashlib.sha256(manifest).hexdigest()
+
+
+def ownership_duplicate_failures(ownership: dict[str, Any]) -> list[str]:
+    """Reject duplicate entries in P1 ownership arrays (global and each byResponse list)."""
+    failures: list[str] = []
+    global_codes = ownership.get("global")
+    if isinstance(global_codes, list) and len(global_codes) != len(set(global_codes)):
+        failures.append(
+            "FAIL Core API x-m4trust-api-error-ownership: duplicate entries in global"
+        )
+    by_response = ownership.get("byResponse")
+    if isinstance(by_response, dict):
+        for name, codes in by_response.items():
+            if isinstance(codes, list) and len(codes) != len(set(codes)):
+                failures.append(
+                    "FAIL Core API x-m4trust-api-error-ownership: "
+                    f"duplicate entries in byResponse.{name}"
+                )
+    return failures
+
+
+def validate_bundle_digest(failures: list[str]) -> None:
+    paths = bundle_relative_paths(ROOT)
+    if not paths:
+        failures.append("FAIL contract bundle: inclusion set is empty")
+        return
+    digest = contract_bundle_digest(ROOT)
+    print(f"PASS contract bundle digest {digest} ({len(paths)} files)")
+
+    ai_root = os.environ.get("M4TRUST_AI_CONTRACTS_ROOT")
+    if not ai_root:
+        print("UNVERIFIED_EXTERNAL_GATE: AI contract baseline not supplied")
+        return
+    ai_path = Path(ai_root)
+    if not ai_path.is_dir():
+        failures.append(
+            f"FAIL AI contract baseline: M4TRUST_AI_CONTRACTS_ROOT is not a directory: {ai_root}"
+        )
+        return
+    ai_digest = contract_bundle_digest(ai_path)
+    if ai_digest != digest:
+        failures.append(
+            "FAIL AI contract baseline digest mismatch: "
+            f"main={digest} ai={ai_digest}"
+        )
+    else:
+        print(f"PASS AI contract baseline digest matches {digest}")
+
+
+def validate_core_internal_openapi(failures: list[str]) -> None:
+    path = ROOT / "openapi/core-internal-v1.yaml"
+    if not path.is_file():
+        failures.append("FAIL Core internal OpenAPI: openapi/core-internal-v1.yaml is missing")
+        return
+    try:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        failures.append(f"FAIL Core internal OpenAPI: cannot parse YAML: {exc}")
+        return
+
+    local_failures: list[str] = []
+    if not str(document.get("openapi", "")).startswith("3.1."):
+        local_failures.append("FAIL Core internal OpenAPI version: expected OpenAPI 3.1")
+    if set(document.get("paths", {})) != EXPECTED_CORE_INTERNAL_OPENAPI_PATHS:
+        local_failures.append("FAIL Core internal OpenAPI paths: expected exact /internal/v1/contracts")
+
+    operation = document.get("paths", {}).get("/internal/v1/contracts", {}).get("get")
+    if not isinstance(operation, dict):
+        local_failures.append("FAIL Core internal OpenAPI: missing GET /internal/v1/contracts")
+    else:
+        if operation.get("operationId") != "getCoreContractBundle":
+            local_failures.append("FAIL Core internal OpenAPI operationId: getCoreContractBundle")
+        if operation.get("security") != [{"ProbeBearer": []}]:
+            local_failures.append("FAIL Core internal OpenAPI security: ProbeBearer required")
+        responses = operation.get("responses", {})
+        if "200" not in responses or "401" not in responses:
+            local_failures.append("FAIL Core internal OpenAPI responses: 200 and 401 required")
+        schema_ref = (
+            responses.get("200", {})
+            .get("content", {})
+            .get("application/json", {})
+            .get("schema", {})
+            .get("$ref")
+        )
+        if schema_ref != "#/components/schemas/CoreContractBundle":
+            local_failures.append(
+                "FAIL Core internal OpenAPI 200 schema: must $ref CoreContractBundle"
+            )
+
+    security = document.get("components", {}).get("securitySchemes", {}).get("ProbeBearer", {})
+    if security.get("type") != "http" or security.get("scheme") != "bearer":
+        local_failures.append("FAIL Core internal OpenAPI: ProbeBearer must be HTTP bearer")
+
+    bundle = document.get("components", {}).get("schemas", {}).get("CoreContractBundle", {})
+    if bundle.get("additionalProperties") is not False:
+        local_failures.append("FAIL CoreContractBundle: additionalProperties must be false")
+    if set(bundle.get("required", [])) != {
+        "service",
+        "releaseRevision",
+        "contractBundleDigest",
+        "files",
+    }:
+        local_failures.append("FAIL CoreContractBundle: required field set mismatch")
+    props = bundle.get("properties", {})
+    if props.get("service") != {"type": "string", "const": "core"}:
+        local_failures.append('FAIL CoreContractBundle.service: must be const "core"')
+    release = props.get("releaseRevision", {})
+    if release.get("type") != "string" or release.get("pattern") != "^[a-f0-9]{40}$":
+        local_failures.append("FAIL CoreContractBundle.releaseRevision: pattern ^[a-f0-9]{40}$")
+    digest_prop = props.get("contractBundleDigest", {})
+    if digest_prop.get("type") != "string" or digest_prop.get("pattern") != "^sha256:[a-f0-9]{64}$":
+        local_failures.append(
+            "FAIL CoreContractBundle.contractBundleDigest: pattern ^sha256:[a-f0-9]{64}$"
+        )
+    files = props.get("files", {})
+    if files.get("type") != "array":
+        local_failures.append("FAIL CoreContractBundle.files: must be array")
+    file_ref = files.get("items", {}).get("$ref")
+    if file_ref != "#/components/schemas/ContractBundleFile":
+        local_failures.append("FAIL CoreContractBundle.files.items: must $ref ContractBundleFile")
+
+    file_schema = document.get("components", {}).get("schemas", {}).get("ContractBundleFile", {})
+    if file_schema.get("additionalProperties") is not False:
+        local_failures.append("FAIL ContractBundleFile: additionalProperties must be false")
+    if set(file_schema.get("required", [])) != {"path", "sha256"}:
+        local_failures.append("FAIL ContractBundleFile: required path and sha256")
+    file_props = file_schema.get("properties", {})
+    if file_props.get("path", {}).get("type") != "string":
+        local_failures.append("FAIL ContractBundleFile.path: string required")
+    sha = file_props.get("sha256", {})
+    if sha.get("type") != "string" or sha.get("pattern") != "^[a-f0-9]{64}$":
+        local_failures.append("FAIL ContractBundleFile.sha256: pattern ^[a-f0-9]{64}$")
+
+    failures.extend(local_failures)
+    if not local_failures:
+        print("PASS Core internal OpenAPI ADR-016 projection")
+
+
 def read_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
         value = json.load(handle)
@@ -920,6 +1106,39 @@ def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[
         local_failures.append("FAIL Core API ProblemDetail.code: must $ref ApiErrorCode (open string rejected)")
     if field_code != {"$ref": "#/components/schemas/FieldErrorCode"}:
         local_failures.append("FAIL Core API FieldError.code: must $ref FieldErrorCode (open string rejected)")
+
+    ownership = core_openapi.get("components", {}).get("x-m4trust-api-error-ownership")
+    if isinstance(ownership, dict):
+        local_failures.extend(ownership_duplicate_failures(ownership))
+        # Negative proof: duplicate ownership entries must be detectable.
+        if not ownership_duplicate_failures(ownership):
+            probe_ownership = copy.deepcopy(ownership)
+            global_codes = probe_ownership.get("global")
+            if isinstance(global_codes, list) and global_codes:
+                probe_ownership["global"] = list(global_codes) + [global_codes[0]]
+                if not ownership_duplicate_failures(probe_ownership):
+                    local_failures.append(
+                        "FAIL Core API ApiErrorCode negative duplicate ownership detector: "
+                        "duplicate global entry was not detected"
+                    )
+                else:
+                    print("PASS expected-invalid ApiErrorCode duplicate ownership in global")
+            by_response = probe_ownership.get("byResponse")
+            if isinstance(by_response, dict) and by_response:
+                first_name = next(iter(sorted(by_response)))
+                codes = by_response[first_name]
+                if isinstance(codes, list) and codes:
+                    by_response[first_name] = list(codes) + [codes[0]]
+                    if not ownership_duplicate_failures(probe_ownership):
+                        local_failures.append(
+                            "FAIL Core API ApiErrorCode negative duplicate ownership detector: "
+                            f"duplicate byResponse.{first_name} entry was not detected"
+                        )
+                    else:
+                        print(
+                            "PASS expected-invalid ApiErrorCode duplicate ownership "
+                            f"in byResponse.{first_name}"
+                        )
 
     owned = owned_api_error_codes(core_openapi)
     if owned is None:
@@ -2328,6 +2547,8 @@ def validate() -> int:
         print("PASS concrete event schemaVersion/eventType/jobType constraints")
 
     validate_contract_documents(failures)
+    validate_core_internal_openapi(failures)
+    validate_bundle_digest(failures)
 
     for fixture_name, schema_name in FIXTURE_SCHEMAS.items():
         fixture_path = ROOT / fixture_name
@@ -2413,4 +2634,7 @@ def validate() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--print-digest":
+        print(contract_bundle_digest(ROOT), end="")
+        raise SystemExit(0)
     sys.exit(validate())
