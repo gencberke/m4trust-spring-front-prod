@@ -4,8 +4,8 @@ import java.net.URI;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.api.CorrelationIdFilter;
-import com.m4trust.coreapi.api.FieldValidationError;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -24,7 +24,7 @@ public class CaseworkExceptionHandler {
     ResponseEntity<ProblemDetail> handleMalformedRequest(HttpServletRequest request) {
         return response(request, HttpStatus.BAD_REQUEST,
                 "https://problems.m4trust.internal/malformed-request",
-                "Malformed request", "MALFORMED_REQUEST",
+                "Malformed request", ApiErrorCode.MALFORMED_REQUEST,
                 "The request body could not be parsed.");
     }
 
@@ -33,7 +33,7 @@ public class CaseworkExceptionHandler {
         return response(request, HttpStatus.NOT_FOUND,
                 "https://problems.m4trust.internal/casework-not-found-or-hidden",
                 "Casework not found or hidden",
-                "CASEWORK_NOT_FOUND_OR_HIDDEN",
+                ApiErrorCode.CASEWORK_NOT_FOUND_OR_HIDDEN,
                 "The requested Deal or casework collection is not available.");
     }
 
@@ -42,7 +42,7 @@ public class CaseworkExceptionHandler {
         return response(request, HttpStatus.NOT_FOUND,
                 "https://problems.m4trust.internal/dispute-not-found-or-hidden",
                 "Dispute not found or hidden",
-                "DISPUTE_NOT_FOUND_OR_HIDDEN",
+                ApiErrorCode.DISPUTE_NOT_FOUND_OR_HIDDEN,
                 "The requested dispute is not available.");
     }
 
@@ -51,7 +51,7 @@ public class CaseworkExceptionHandler {
         return response(request, HttpStatus.FORBIDDEN,
                 "https://problems.m4trust.internal/dispute-open-forbidden",
                 "Dispute open forbidden",
-                "DISPUTE_OPEN_FORBIDDEN",
+                ApiErrorCode.DISPUTE_OPEN_FORBIDDEN,
                 "The active legal entity is not authorized to open a dispute.");
     }
 
@@ -60,7 +60,7 @@ public class CaseworkExceptionHandler {
         return response(request, HttpStatus.FORBIDDEN,
                 "https://problems.m4trust.internal/dispute-comment-forbidden",
                 "Dispute comment forbidden",
-                "DISPUTE_COMMENT_FORBIDDEN",
+                ApiErrorCode.DISPUTE_COMMENT_FORBIDDEN,
                 "The active legal entity is not authorized to comment on this dispute.");
     }
 
@@ -69,7 +69,7 @@ public class CaseworkExceptionHandler {
         return response(request, HttpStatus.FORBIDDEN,
                 "https://problems.m4trust.internal/dispute-acknowledge-forbidden",
                 "Dispute acknowledge forbidden",
-                "DISPUTE_ACKNOWLEDGE_FORBIDDEN",
+                ApiErrorCode.DISPUTE_ACKNOWLEDGE_FORBIDDEN,
                 "The active legal entity is not authorized to acknowledge this dispute.");
     }
 
@@ -78,18 +78,19 @@ public class CaseworkExceptionHandler {
         return response(request, HttpStatus.FORBIDDEN,
                 "https://problems.m4trust.internal/dispute-withdraw-forbidden",
                 "Dispute withdraw forbidden",
-                "DISPUTE_WITHDRAW_FORBIDDEN",
+                ApiErrorCode.DISPUTE_WITHDRAW_FORBIDDEN,
                 "The active legal entity is not authorized to withdraw this dispute.");
     }
 
     @ExceptionHandler(CaseworkExceptions.Conflict.class)
     ResponseEntity<ProblemDetail> handleConflict(CaseworkExceptions.Conflict exception,
             HttpServletRequest request) {
-        String slug = exception.code().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
+        ApiErrorCode code = ApiErrorCode.valueOf(exception.code());
+        String slug = code.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
         return response(request, HttpStatus.CONFLICT,
                 "https://problems.m4trust.internal/" + slug,
                 "Dispute operation conflict",
-                exception.code(),
+                code,
                 "The dispute operation conflicts with the current resource state.");
     }
 
@@ -101,7 +102,7 @@ public class CaseworkExceptionHandler {
         problem.setType(URI.create("https://problems.m4trust.internal/validation-failed"));
         problem.setTitle("Validation failed");
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("code", "VALIDATION_FAILED");
+        problem.setProperty("code", ApiErrorCode.VALIDATION_FAILED.name());
         problem.setProperty("correlationId", correlationId(request));
         problem.setProperty("errors", exception.errors());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
@@ -110,12 +111,12 @@ public class CaseworkExceptionHandler {
     }
 
     private ResponseEntity<ProblemDetail> response(HttpServletRequest request, HttpStatus status,
-            String type, String title, String code, String detail) {
+            String type, String title, ApiErrorCode code, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setType(URI.create(type));
         problem.setTitle(title);
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("code", code);
+        problem.setProperty("code", code.name());
         problem.setProperty("correlationId", correlationId(request));
         return ResponseEntity.status(status)
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)

@@ -45,7 +45,7 @@ public class ApiExceptionHandler {
         problem.setType(URI.create("https://problems.m4trust.internal/validation-failed"));
         problem.setTitle("Validation failed");
         problem.setInstance(URI.create(requestPath(request)));
-        problem.setProperty("code", "VALIDATION_FAILED");
+        problem.setProperty("code", ApiErrorCode.VALIDATION_FAILED.name());
         problem.setProperty("correlationId", correlationId(httpRequest));
         problem.setProperty("errors", errors);
 
@@ -63,7 +63,7 @@ public class ApiExceptionHandler {
         problem.setType(URI.create("https://problems.m4trust.internal/malformed-request"));
         problem.setTitle("Malformed request");
         problem.setInstance(URI.create(requestPath(request)));
-        problem.setProperty("code", "MALFORMED_REQUEST");
+        problem.setProperty("code", ApiErrorCode.MALFORMED_REQUEST.name());
         problem.setProperty("correlationId", correlationId(httpRequest));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -91,7 +91,7 @@ public class ApiExceptionHandler {
         problem.setType(URI.create("https://problems.m4trust.internal/internal-error"));
         problem.setTitle("Unexpected error");
         problem.setInstance(URI.create(path));
-        problem.setProperty("code", "INTERNAL_ERROR");
+        problem.setProperty("code", ApiErrorCode.INTERNAL_ERROR.name());
         problem.setProperty("correlationId", correlationId);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -100,12 +100,12 @@ public class ApiExceptionHandler {
     }
 
     private FieldValidationError toFieldValidationError(FieldError fieldError) {
-        String code = switch (fieldError.getCode() == null
+        FieldErrorCode code = switch (fieldError.getCode() == null
                 ? "" : fieldError.getCode()) {
-            case "NotBlank", "NotNull" -> "REQUIRED";
-            case "Email", "Pattern" -> "INVALID_FORMAT";
-            case "Size" -> "INVALID_LENGTH";
-            default -> "INVALID";
+            case "NotBlank", "NotNull" -> FieldErrorCode.REQUIRED;
+            case "Email", "Pattern" -> FieldErrorCode.INVALID_FORMAT;
+            case "Size" -> FieldErrorCode.INVALID_LENGTH;
+            default -> FieldErrorCode.INVALID;
         };
         String message = fieldError.getDefaultMessage() != null
                 ? fieldError.getDefaultMessage()

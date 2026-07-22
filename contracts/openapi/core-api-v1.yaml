@@ -6080,6 +6080,113 @@ components:
           type: integer
           format: int64
           minimum: 0
+    ApiErrorCode:
+      type: string
+      description: Closed catalog of stable public Problem Details codes. OpenAPI is the authority.
+      enum:
+        - AUTH_EMAIL_ALREADY_EXISTS
+        - AUTH_INVALID_CREDENTIALS
+        - AUTH_INVITATION_NOT_FOUND_OR_INVALID
+        - AUTH_INVITATION_STATE_CONFLICT
+        - AUTH_PASSWORD_RESET_NOT_FOUND_OR_INVALID
+        - AUTH_REGISTRATION_CLOSED
+        - AUTH_SESSION_EXPIRED
+        - CASEWORK_NOT_FOUND_OR_HIDDEN
+        - CSRF_TOKEN_INVALID
+        - DEAL_ANALYSIS_REQUEST_FORBIDDEN
+        - DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS
+        - DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE
+        - DEAL_DOCUMENT_MUTATION_FORBIDDEN
+        - DEAL_DOCUMENT_NOT_FOUND
+        - DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED
+        - DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY
+        - DEAL_INVITATION_FORBIDDEN
+        - DEAL_INVITATION_NOT_FOUND
+        - DEAL_INVITATION_PENDING_EXISTS
+        - DEAL_INVITATION_STALE_VERSION
+        - DEAL_INVITATION_STATE_CONFLICT
+        - DEAL_MUTATION_FORBIDDEN
+        - DEAL_NOT_FOUND
+        - DEAL_REVIEW_ACCEPTANCE_FORBIDDEN
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+        - DISPUTE_ACKNOWLEDGE_FORBIDDEN
+        - DISPUTE_ACTIVE_CASE_EXISTS
+        - DISPUTE_COMMENT_FORBIDDEN
+        - DISPUTE_NOT_FOUND_OR_HIDDEN
+        - DISPUTE_OPEN_FORBIDDEN
+        - DISPUTE_STALE_VERSION
+        - DISPUTE_STATE_CONFLICT
+        - DISPUTE_WITHDRAW_FORBIDDEN
+        - DOCUMENT_DOWNLOAD_NOT_AVAILABLE
+        - DOCUMENT_UPLOAD_EXPIRED
+        - DOCUMENT_UPLOAD_STATE_CONFLICT
+        - DOCUMENT_VERIFICATION_FAILED
+        - EVIDENCE_ALREADY_SUBMITTED
+        - EVIDENCE_DOWNLOAD_NOT_AVAILABLE
+        - EVIDENCE_MILESTONE_CONFLICT
+        - EVIDENCE_NOT_FOUND
+        - EVIDENCE_REVIEW_FORBIDDEN
+        - EVIDENCE_STALE_VERSION
+        - EVIDENCE_STATE_CONFLICT
+        - EVIDENCE_UPLOAD_EXPIRED
+        - EVIDENCE_UPLOAD_FORBIDDEN
+        - EVIDENCE_UPLOAD_STATE_CONFLICT
+        - EVIDENCE_VERIFICATION_FAILED
+        - FULFILLMENT_ALREADY_EXISTS
+        - FULFILLMENT_COMPLETED
+        - FULFILLMENT_NOT_FOUND
+        - FULFILLMENT_STALE_VERSION
+        - FULFILLMENT_START_FORBIDDEN
+        - FULFILLMENT_STATE_CONFLICT
+        - FUNDING_MUTATION_FORBIDDEN
+        - FUNDING_PLAN_ALREADY_EXISTS
+        - FUNDING_PLAN_NOT_FOUND
+        - FUNDING_UNIT_ALREADY_FUNDED
+        - FUNDING_UNIT_NOT_FOUND
+        - FUNDING_UNIT_STALE_VERSION
+        - IDEMPOTENCY_KEY_REUSED
+        - INTERNAL_ERROR
+        - LEGAL_ENTITY_ACCESS_DENIED
+        - LEGAL_ENTITY_NOT_FOUND
+        - MALFORMED_REQUEST
+        - MEMBER_INVITATION_ACTIVE_EXISTS
+        - MEMBER_INVITATION_NOT_FOUND_OR_HIDDEN
+        - MEMBER_INVITATION_STATE_CONFLICT
+        - PAYMENT_OPERATION_IN_FLIGHT
+        - PAYMENT_OPERATION_NOT_FOUND
+        - PAYMENT_OPERATION_STALE_VERSION
+        - PAYMENT_OPERATION_STATE_CONFLICT
+        - RATE_LIMIT_EXCEEDED
+        - RATIFICATION_APPROVAL_FORBIDDEN
+        - RATIFICATION_NOT_READY
+        - RATIFICATION_PACKAGE_CREATE_FORBIDDEN
+        - RATIFICATION_PACKAGE_NOT_FOUND
+        - RATIFICATION_PACKAGE_STATE_CONFLICT
+        - RATIFICATION_STALE_PACKAGE
+        - RULE_SET_VERSION_NOT_FOUND
+        - UPLOAD_REJECTED_MALWARE
+        - UPLOAD_SCAN_PENDING
+        - UPLOAD_SCAN_UNAVAILABLE
+        - VALIDATION_FAILED
+        - VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS
+        - VIDEO_ANALYSIS_ALREADY_COMPLETED
+        - VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE
+        - VIDEO_ANALYSIS_REQUEST_FORBIDDEN
+    FieldErrorCode:
+      type: string
+      description: Closed catalog of stable public field-validation codes. OpenAPI is the authority.
+      enum:
+        - INVALID
+        - INVALID_ENUM
+        - INVALID_FORMAT
+        - INVALID_LENGTH
+        - INVALID_SORT
+        - MUST_DIFFER
+        - NOT_A_PARTICIPANT
+        - OUT_OF_RANGE
+        - PASSWORD_TOO_COMMON
+        - REQUIRED
     ProblemDetail:
       type: object
       additionalProperties: false
@@ -6108,10 +6215,7 @@ components:
           format: uri-reference
           description: URI reference identifying this occurrence.
         code:
-          type: string
-          minLength: 1
-          pattern: '^[A-Z][A-Z0-9_]*$'
-          description: Stable machine-readable M4Trust error code.
+          $ref: '#/components/schemas/ApiErrorCode'
         correlationId:
           type: string
           format: uuid
@@ -6133,10 +6237,7 @@ components:
           minLength: 1
           description: Field path using dot notation and array indexes when nested.
         code:
-          type: string
-          minLength: 1
-          pattern: '^[A-Z][A-Z0-9_]*$'
-          description: Stable machine-readable validation error code.
+          $ref: '#/components/schemas/FieldErrorCode'
         message:
           type: string
           minLength: 1

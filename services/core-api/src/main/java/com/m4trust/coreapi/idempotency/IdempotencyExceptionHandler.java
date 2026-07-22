@@ -2,6 +2,7 @@ package com.m4trust.coreapi.idempotency;
 
 import java.net.URI;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.api.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -27,7 +28,7 @@ class IdempotencyExceptionHandler {
                 "https://problems.m4trust.internal/idempotency-key-reused"));
         problem.setTitle("Idempotency key reused");
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("code", "IDEMPOTENCY_KEY_REUSED");
+        problem.setProperty("code", ApiErrorCode.IDEMPOTENCY_KEY_REUSED.name());
         Object correlationId = request.getAttribute(CorrelationIdFilter.ATTRIBUTE);
         problem.setProperty("correlationId",
                 correlationId == null ? "" : correlationId.toString());

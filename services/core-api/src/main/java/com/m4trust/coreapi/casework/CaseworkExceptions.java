@@ -2,6 +2,7 @@ package com.m4trust.coreapi.casework;
 
 import java.util.List;
 
+import com.m4trust.coreapi.api.FieldErrorCode;
 import com.m4trust.coreapi.api.FieldValidationError;
 
 class CaseworkExceptions {
@@ -54,7 +55,7 @@ class CaseworkExceptions {
 
         private final List<FieldValidationError> errors;
 
-        Validation(String field, String code, String message) {
+        Validation(String field, FieldErrorCode code, String message) {
             errors = List.of(new FieldValidationError(field, code, message));
         }
 

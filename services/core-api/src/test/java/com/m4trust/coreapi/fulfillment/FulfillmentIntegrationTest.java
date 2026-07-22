@@ -417,7 +417,8 @@ class FulfillmentIntegrationTest {
         mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
                         .with(user(outsider.userId.toString()))
                         .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DEAL_NOT_FOUND"));
     }
 
     @Test

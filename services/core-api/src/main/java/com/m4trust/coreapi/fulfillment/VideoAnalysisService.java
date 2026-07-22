@@ -249,24 +249,24 @@ class VideoAnalysisService {
     private ResolvedEvidence resolveEligibleEvidenceLocked(FulfillmentSourcePorts.Target target, UUID dealId,
             UUID evidenceSubmissionId) {
         Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository
                 .findByFulfillmentIdForUpdate(fulfillmentRecord.id())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         EvidenceSubmission.EvidenceSubmissionRecord evidenceRecord = evidenceRepository
                 .findByIdForUpdate(evidenceSubmissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         return resolveEligibleEvidenceRecord(fulfillmentRecord, milestoneRecord, evidenceRecord, target);
     }
 
     private ResolvedEvidence resolveEligibleEvidenceRecord(FulfillmentSourcePorts.Target target,
             UUID evidenceSubmissionId) {
         Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealId(target.dealId())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentId(fulfillmentRecord.id())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         EvidenceSubmission.EvidenceSubmissionRecord evidenceRecord = evidenceRepository.findById(evidenceSubmissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         return resolveEligibleEvidenceRecord(fulfillmentRecord, milestoneRecord, evidenceRecord, target);
     }
 
@@ -276,11 +276,11 @@ class VideoAnalysisService {
             FulfillmentSourcePorts.Target target) {
         if (!evidenceRecord.dealId().equals(fulfillmentRecord.dealId())
                 || !evidenceRecord.milestoneId().equals(milestoneRecord.id())) {
-            throw new FulfillmentExceptions.NotFound();
+            throw new FulfillmentExceptions.EvidenceNotFound();
         }
         VideoAnalysisEvidenceInputPort.VerifiedSnapshot snapshot = evidenceInputs
                 .findVerifiedSnapshot(evidenceRecord.id())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         return new ResolvedEvidence(snapshot, fulfillmentRecord.id(), milestoneRecord.id(),
                 target.buyerLegalEntityId(), target);
     }

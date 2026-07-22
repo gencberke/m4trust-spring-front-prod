@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import com.m4trust.coreapi.api.FieldErrorCode;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.audit.AuditRecord;
 import com.m4trust.coreapi.casework.CaseworkSourcePorts.FinalizedEvidenceSnapshot;
@@ -752,23 +753,24 @@ class DisputeService {
 
     private DisputeReasonCode reasonCode(String value) {
         if (value == null || value.isBlank()) {
-            throw new CaseworkExceptions.Validation("reasonCode", "REQUIRED", "reasonCode is required.");
+            throw new CaseworkExceptions.Validation("reasonCode", FieldErrorCode.REQUIRED,
+                    "reasonCode is required.");
         }
         try {
             return DisputeReasonCode.valueOf(value.trim());
         } catch (IllegalArgumentException exception) {
             throw new CaseworkExceptions.Validation(
-                    "reasonCode", "INVALID_ENUM", "reasonCode is not supported.");
+                    "reasonCode", FieldErrorCode.INVALID_ENUM, "reasonCode is not supported.");
         }
     }
 
     private String trimRequired(String value, String field) {
         if (value == null) {
-            throw new CaseworkExceptions.Validation(field, "REQUIRED", field + " is required.");
+            throw new CaseworkExceptions.Validation(field, FieldErrorCode.REQUIRED, field + " is required.");
         }
         String trimmed = value.trim();
         if (trimmed.isEmpty()) {
-            throw new CaseworkExceptions.Validation(field, "REQUIRED", field + " is required.");
+            throw new CaseworkExceptions.Validation(field, FieldErrorCode.REQUIRED, field + " is required.");
         }
         int max = switch (field) {
             case "subject" -> 200;
@@ -776,7 +778,8 @@ class DisputeService {
             default -> throw new IllegalArgumentException("unsupported field: " + field);
         };
         if (trimmed.length() > max) {
-            throw new CaseworkExceptions.Validation(field, "OUT_OF_RANGE", field + " exceeds the allowed length.");
+            throw new CaseworkExceptions.Validation(field, FieldErrorCode.OUT_OF_RANGE,
+                    field + " exceeds the allowed length.");
         }
         return trimmed;
     }

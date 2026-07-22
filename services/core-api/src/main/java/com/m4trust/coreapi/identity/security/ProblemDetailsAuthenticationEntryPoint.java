@@ -2,6 +2,7 @@ package com.m4trust.coreapi.identity.security;
 
 import java.io.IOException;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.api.ProblemDetailsWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,6 @@ public final class ProblemDetailsAuthenticationEntryPoint
         writer.write(request, response, HttpStatus.UNAUTHORIZED,
                 "auth-session-expired", "Authentication required",
                 "An active authenticated session is required.",
-                "AUTH_SESSION_EXPIRED");
+                ApiErrorCode.AUTH_SESSION_EXPIRED);
     }
 }

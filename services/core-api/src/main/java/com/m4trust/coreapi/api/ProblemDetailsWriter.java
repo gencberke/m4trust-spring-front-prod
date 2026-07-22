@@ -25,12 +25,12 @@ public final class ProblemDetailsWriter {
 
     public void write(HttpServletRequest request, HttpServletResponse response,
             HttpStatus status, String typeSlug, String title, String detail,
-            String code) throws IOException {
+            ApiErrorCode code) throws IOException {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setType(URI.create(TYPE_BASE + typeSlug));
         problem.setTitle(title);
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("code", code);
+        problem.setProperty("code", code.name());
         problem.setProperty("correlationId", correlationId(request));
 
         response.setStatus(status.value());

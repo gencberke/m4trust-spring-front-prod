@@ -1,11 +1,14 @@
-import { ApiError } from "../../app/coreApi";
+import { ApiError, type ApiErrorCode } from "../../app/coreApi";
 
 export function getVideoAnalysisReadErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) {
     return "Video analizi bilgisine ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.";
   }
-  switch (error.code) {
-    case "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN":
+  const code: ApiErrorCode | undefined = error.code;
+  switch (code) {
+    case "EVIDENCE_NOT_FOUND":
+    case "DEAL_NOT_FOUND":
+    case "FULFILLMENT_NOT_FOUND":
       return "Bu evidence için video analizi görüntülenemiyor.";
     case "LEGAL_ENTITY_ACCESS_DENIED":
     case "LEGAL_ENTITY_NOT_FOUND":
@@ -19,7 +22,8 @@ export function getVideoAnalysisRequestErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) {
     return "Video analizi talebi gönderilemedi. Bağlantınızı kontrol edip yeniden deneyin.";
   }
-  switch (error.code) {
+  const code: ApiErrorCode | undefined = error.code;
+  switch (code) {
     case "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS":
       return "Bu evidence için bir video analizi zaten sırada. Güncel durum yeniden yükleniyor.";
     case "VIDEO_ANALYSIS_ALREADY_COMPLETED":

@@ -3,7 +3,9 @@ package com.m4trust.coreapi.identity;
 import java.net.URI;
 import java.util.List;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.api.CorrelationIdFilter;
+import com.m4trust.coreapi.api.FieldErrorCode;
 import com.m4trust.coreapi.api.FieldValidationError;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -27,10 +29,10 @@ public class IdentityExceptionHandler {
             HttpServletRequest httpRequest) {
         ProblemDetail problem = baseProblem(HttpStatus.UNPROCESSABLE_ENTITY,
                 "validation-failed", "Validation failed",
-                "One or more fields are invalid.", "VALIDATION_FAILED",
+                "One or more fields are invalid.", ApiErrorCode.VALIDATION_FAILED,
                 request, httpRequest);
         problem.setProperty("errors", List.of(new FieldValidationError(
-                "password", "PASSWORD_TOO_COMMON",
+                "password", FieldErrorCode.PASSWORD_TOO_COMMON,
                 "Password is too common or easily guessed.")));
         return response(HttpStatus.UNPROCESSABLE_ENTITY, problem);
     }
@@ -42,7 +44,7 @@ public class IdentityExceptionHandler {
         return response(HttpStatus.CONFLICT, baseProblem(HttpStatus.CONFLICT,
                 "auth-email-already-exists", "Email already registered",
                 "An account with this email already exists.",
-                "AUTH_EMAIL_ALREADY_EXISTS", request, httpRequest));
+                ApiErrorCode.AUTH_EMAIL_ALREADY_EXISTS, request, httpRequest));
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -51,18 +53,18 @@ public class IdentityExceptionHandler {
             HttpServletRequest httpRequest) {
         return response(HttpStatus.UNAUTHORIZED, baseProblem(HttpStatus.UNAUTHORIZED,
                 "auth-invalid-credentials", "Authentication failed",
-                "Email or password is invalid.", "AUTH_INVALID_CREDENTIALS",
+                "Email or password is invalid.", ApiErrorCode.AUTH_INVALID_CREDENTIALS,
                 request, httpRequest));
     }
 
     private ProblemDetail baseProblem(HttpStatus status, String typeSlug,
-            String title, String detail, String code, WebRequest request,
+            String title, String detail, ApiErrorCode code, WebRequest request,
             HttpServletRequest httpRequest) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setType(URI.create("https://problems.m4trust.internal/" + typeSlug));
         problem.setTitle(title);
         problem.setInstance(URI.create(requestPath(request)));
-        problem.setProperty("code", code);
+        problem.setProperty("code", code.name());
         Object correlationId = httpRequest.getAttribute(CorrelationIdFilter.ATTRIBUTE);
         problem.setProperty("correlationId",
                 correlationId == null ? "" : correlationId.toString());

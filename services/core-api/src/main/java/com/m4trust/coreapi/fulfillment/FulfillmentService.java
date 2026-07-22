@@ -140,7 +140,7 @@ class FulfillmentService {
         FulfillmentSourcePorts.Target target = deals.findVisible(context, dealId)
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         Fulfillment.FulfillmentRecord record = fulfillmentRepository.findByDealId(dealId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
         return toDetail(record, target, context);
     }
 
@@ -221,12 +221,12 @@ class FulfillmentService {
             return replaySubmitted(completed);
         }
         EvidenceSubmission.EvidenceSubmissionRecord preflight = evidenceRepository.findById(submissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         if (!preflight.dealId().equals(dealId)) {
-            throw new FulfillmentExceptions.NotFound();
+            throw new FulfillmentExceptions.EvidenceNotFound();
         }
         FulfillmentSourcePorts.Target preflightDeal = deals.findVisible(context, preflight.dealId())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         requireSellerForUpload(context, preflightDeal);
         requireUploadState(preflightDeal);
         FulfillmentObjectStorage.VerifiedObject verified = storage.verify(preflight.objectKey());
@@ -248,9 +248,9 @@ class FulfillmentService {
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
                 .orElseThrow(() -> conflict("EVIDENCE_MILESTONE_CONFLICT"));
         EvidenceSubmission.EvidenceSubmissionRecord current = evidenceRepository.findByIdForUpdate(submissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         if (!current.dealId().equals(dealId) || !current.milestoneId().equals(milestoneRecord.id())) {
-            throw new FulfillmentExceptions.NotFound();
+            throw new FulfillmentExceptions.EvidenceNotFound();
         }
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
         if (claim.isReplay()) {
@@ -304,12 +304,12 @@ class FulfillmentService {
     EvidenceDownloadLink createDownloadLink(OperationContext context, UUID dealId, UUID submissionId) {
         requireOperation(context, RequestedOperation.EVIDENCE_DOWNLOAD_LINK_CREATE);
         EvidenceSubmission.EvidenceSubmissionRecord record = evidenceRepository.findById(submissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         if (!record.dealId().equals(dealId)) {
-            throw new FulfillmentExceptions.NotFound();
+            throw new FulfillmentExceptions.EvidenceNotFound();
         }
         FulfillmentSourcePorts.Target target = deals.findVisible(context, record.dealId())
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         EvidenceSubmission submission = EvidenceSubmission.rehydrate(record);
         if (submission.status() == EvidenceSubmissionStatus.PENDING_UPLOAD
                 || submission.objectVersion() == null) {
@@ -367,10 +367,10 @@ class FulfillmentService {
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
                 .orElseThrow(() -> conflict("EVIDENCE_STATE_CONFLICT"));
         EvidenceSubmission.EvidenceSubmissionRecord currentRecord = evidenceRepository.findByIdForUpdate(submissionId)
-                .orElseThrow(FulfillmentExceptions.NotFound::new);
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         if (!currentRecord.dealId().equals(dealId)
                 || !currentRecord.milestoneId().equals(milestoneRecord.id())) {
-            throw new FulfillmentExceptions.NotFound();
+            throw new FulfillmentExceptions.EvidenceNotFound();
         }
         EvidenceSubmission currentSubmitted = evidenceRepository.findCurrentSubmittedByMilestoneId(milestoneRecord.id())
                 .map(EvidenceSubmission::rehydrate)

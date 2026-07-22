@@ -2,6 +2,7 @@ package com.m4trust.coreapi.deal;
 
 import java.net.URI;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.api.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -23,7 +24,7 @@ class DealExceptionHandler {
             HttpServletRequest request) {
         return response(request, HttpStatus.BAD_REQUEST,
                 "malformed-request", "Malformed request",
-                "The request could not be parsed.", "MALFORMED_REQUEST");
+                "The request could not be parsed.", ApiErrorCode.MALFORMED_REQUEST);
     }
 
     @ExceptionHandler(DealValidationException.class)
@@ -32,7 +33,7 @@ class DealExceptionHandler {
         ProblemDetail problem = problem(request,
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "validation-failed", "Validation failed",
-                "One or more fields are invalid.", "VALIDATION_FAILED");
+                "One or more fields are invalid.", ApiErrorCode.VALIDATION_FAILED);
         problem.setProperty("errors", exception.errors());
         return entity(HttpStatus.UNPROCESSABLE_ENTITY, problem);
     }
@@ -42,7 +43,7 @@ class DealExceptionHandler {
             HttpServletRequest request) {
         return response(request, HttpStatus.NOT_FOUND,
                 "deal-not-found", "Deal not found",
-                "The Deal was not found.", "DEAL_NOT_FOUND");
+                "The Deal was not found.", ApiErrorCode.DEAL_NOT_FOUND);
     }
 
     @ExceptionHandler(DealMutationForbiddenException.class)
@@ -51,7 +52,7 @@ class DealExceptionHandler {
         return response(request, HttpStatus.FORBIDDEN,
                 "deal-mutation-forbidden", "Deal mutation forbidden",
                 "The active legal entity cannot mutate this Deal.",
-                "DEAL_MUTATION_FORBIDDEN");
+                ApiErrorCode.DEAL_MUTATION_FORBIDDEN);
     }
 
     @ExceptionHandler(DealStaleVersionException.class)
@@ -60,7 +61,7 @@ class DealExceptionHandler {
         return response(request, HttpStatus.CONFLICT,
                 "stale-resource-version", "Resource has changed",
                 "The resource was modified by another operation.",
-                "DEAL_STALE_VERSION");
+                ApiErrorCode.DEAL_STALE_VERSION);
     }
 
     @ExceptionHandler(DealStateConflictException.class)
@@ -69,7 +70,7 @@ class DealExceptionHandler {
         return response(request, HttpStatus.CONFLICT,
                 "deal-state-conflict", "Request could not be completed",
                 "The requested operation conflicts with the current resource state.",
-                "DEAL_STATE_CONFLICT");
+                ApiErrorCode.DEAL_STATE_CONFLICT);
     }
 
     @ExceptionHandler(DealInvitationNotFoundException.class)
@@ -78,7 +79,7 @@ class DealExceptionHandler {
         return response(request, HttpStatus.NOT_FOUND,
                 "deal-invitation-not-found", "Deal invitation not found",
                 "The Deal invitation was not found.",
-                "DEAL_INVITATION_NOT_FOUND");
+                ApiErrorCode.DEAL_INVITATION_NOT_FOUND);
     }
 
     @ExceptionHandler(DealInvitationForbiddenException.class)
@@ -87,7 +88,7 @@ class DealExceptionHandler {
         return response(request, HttpStatus.FORBIDDEN,
                 "deal-invitation-forbidden", "Deal invitation forbidden",
                 "The active legal entity cannot perform this invitation operation.",
-                "DEAL_INVITATION_FORBIDDEN");
+                ApiErrorCode.DEAL_INVITATION_FORBIDDEN);
     }
 
     @ExceptionHandler(DealInvitationPendingExistsException.class)
@@ -97,7 +98,7 @@ class DealExceptionHandler {
                 "deal-invitation-pending-exists",
                 "Pending Deal invitation exists",
                 "A pending invitation already exists for this recipient.",
-                "DEAL_INVITATION_PENDING_EXISTS");
+                ApiErrorCode.DEAL_INVITATION_PENDING_EXISTS);
     }
 
     @ExceptionHandler(DealInvitationStaleVersionException.class)
@@ -106,7 +107,7 @@ class DealExceptionHandler {
         return response(request, HttpStatus.CONFLICT,
                 "deal-invitation-stale-version", "Resource has changed",
                 "The Deal invitation was modified by another operation.",
-                "DEAL_INVITATION_STALE_VERSION");
+                ApiErrorCode.DEAL_INVITATION_STALE_VERSION);
     }
 
     @ExceptionHandler(DealInvitationStateConflictException.class)
@@ -116,7 +117,7 @@ class DealExceptionHandler {
                 "deal-invitation-state-conflict",
                 "Deal invitation state conflict",
                 "The invitation state does not permit this operation.",
-                "DEAL_INVITATION_STATE_CONFLICT");
+                ApiErrorCode.DEAL_INVITATION_STATE_CONFLICT);
     }
 
     @ExceptionHandler(DealInvitationAcceptedByOtherEntityException.class)
@@ -126,26 +127,26 @@ class DealExceptionHandler {
                 "deal-invitation-accepted-by-other-entity",
                 "Deal invitation already accepted",
                 "The invitation was accepted with a different legal entity.",
-                "DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY");
+                ApiErrorCode.DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY);
     }
 
     private ResponseEntity<ProblemDetail> response(
             HttpServletRequest request, HttpStatus status, String typeSlug,
-            String title, String detail, String code) {
+            String title, String detail, ApiErrorCode code) {
         return entity(status, problem(
                 request, status, typeSlug, title, detail, code));
     }
 
     private ProblemDetail problem(
             HttpServletRequest request, HttpStatus status, String typeSlug,
-            String title, String detail, String code) {
+            String title, String detail, ApiErrorCode code) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 status, detail);
         problem.setType(URI.create(
                 "https://problems.m4trust.internal/" + typeSlug));
         problem.setTitle(title);
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("code", code);
+        problem.setProperty("code", code.name());
         Object correlationId = request.getAttribute(
                 CorrelationIdFilter.ATTRIBUTE);
         problem.setProperty("correlationId",

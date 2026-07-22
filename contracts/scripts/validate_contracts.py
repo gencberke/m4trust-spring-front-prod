@@ -696,6 +696,11 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "409"): "DisputeMutationConflict",
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "422"): "ValidationFailed",
 }
+REMOVED_COMBINED_API_ERROR_CODES = {
+    "DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN",
+    "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN",
+}
+
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
     "CreateLegalEntityRequest", "LegalEntity", "LegalEntityRole",
@@ -703,7 +708,8 @@ REQUIRED_CORE_API_SCHEMAS = {
     "LegalEntityMember", "LegalEntityMemberList",
     "CreateDealRequest", "UpdateDealRequest", "UpdateDealPartiesRequest", "DealStatus",
     "DealLifecycleProjection", "DealAvailableActions", "DealSummary",
-    "DealParticipant", "DealPartyRole", "DealParty", "DealDetail", "DealPage", "UtcTimestamp", "ProblemDetail", "FieldError",
+    "DealParticipant", "DealPartyRole", "DealParty", "DealDetail", "DealPage", "UtcTimestamp",
+    "ApiErrorCode", "FieldErrorCode", "ProblemDetail", "FieldError",
     "CreateDealInvitationRequest", "AcceptDealInvitationRequest", "DealInvitationTerminalActionRequest",
     "DealInvitationStatus", "DealInvitationAvailableActions", "DealInvitationDeal",
     "DealInvitation", "IncomingDealInvitation", "DealInvitationPage", "IncomingDealInvitationPage",
@@ -820,6 +826,213 @@ def expect_valid(label: str, schema_path: Path, instance: dict[str, Any], store:
         failures.append(f"FAIL expected-valid {label}: {format_errors(errors)}")
     else:
         print(f"PASS expected-valid {label}")
+
+
+def closed_string_enum(schema: dict[str, Any] | None) -> list[str] | None:
+    if not isinstance(schema, dict) or schema.get("type") != "string":
+        return None
+    values = schema.get("enum")
+    if not isinstance(values, list) or not values:
+        return None
+    if any(not isinstance(value, str) or not value for value in values):
+        return None
+    return list(values)
+
+
+def read_java_enum_names(java_path: Path, enum_name: str) -> set[str] | None:
+    if not java_path.is_file():
+        return None
+    text = java_path.read_text(encoding="utf-8")
+    match = re.search(
+        rf"public\s+enum\s+{re.escape(enum_name)}\s*\{{([^}}]*?)(?:;|\}})",
+        text,
+        re.S,
+    )
+    if match is None:
+        return None
+    body = match.group(1)
+    names = re.findall(r"\b([A-Z][A-Z0-9_]*)\b", body)
+    return set(names)
+
+
+def extract_documented_api_error_codes(core_openapi: dict[str, Any]) -> set[str]:
+    """Collect stable public codes mentioned by reusable response descriptions."""
+    catalog = set(closed_string_enum(core_openapi.get("components", {}).get("schemas", {}).get("ApiErrorCode")) or [])
+    documented: set[str] = set()
+    code_token = re.compile(r"\b([A-Z][A-Z0-9_]{2,})\b")
+    for response in core_openapi.get("components", {}).get("responses", {}).values():
+        if not isinstance(response, dict):
+            continue
+        description = response.get("description", "")
+        if not isinstance(description, str):
+            continue
+        for token in code_token.findall(description):
+            if token in catalog:
+                documented.add(token)
+    return documented
+
+
+def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[str]) -> None:
+    schemas = core_openapi.get("components", {}).get("schemas", {})
+    api_schema = schemas.get("ApiErrorCode")
+    field_schema = schemas.get("FieldErrorCode")
+    api_values = closed_string_enum(api_schema)
+    field_values = closed_string_enum(field_schema)
+    local_failures: list[str] = []
+
+    if api_values is None:
+        local_failures.append("FAIL Core API ApiErrorCode: closed string enum catalog is required")
+    if field_values is None:
+        local_failures.append("FAIL Core API FieldErrorCode: closed string enum catalog is required")
+    if local_failures:
+        failures.extend(local_failures)
+        return
+
+    assert api_values is not None and field_values is not None
+
+    if len(api_values) != len(set(api_values)):
+        local_failures.append("FAIL Core API ApiErrorCode: duplicate enum values")
+    if len(field_values) != len(set(field_values)):
+        local_failures.append("FAIL Core API FieldErrorCode: duplicate enum values")
+
+    removed = sorted(REMOVED_COMBINED_API_ERROR_CODES.intersection(api_values))
+    if removed:
+        local_failures.append(
+            "FAIL Core API ApiErrorCode: removed combined fulfillment codes present: "
+            + ", ".join(removed)
+        )
+
+    problem_code = schemas.get("ProblemDetail", {}).get("properties", {}).get("code")
+    field_code = schemas.get("FieldError", {}).get("properties", {}).get("code")
+    if problem_code != {"$ref": "#/components/schemas/ApiErrorCode"}:
+        local_failures.append("FAIL Core API ProblemDetail.code: must $ref ApiErrorCode (open string rejected)")
+    if field_code != {"$ref": "#/components/schemas/FieldErrorCode"}:
+        local_failures.append("FAIL Core API FieldError.code: must $ref FieldErrorCode (open string rejected)")
+
+    documented = extract_documented_api_error_codes(core_openapi)
+    missing_documented = sorted(documented - set(api_values))
+    if missing_documented:
+        local_failures.append(
+            "FAIL Core API ApiErrorCode: endpoint/reusable-response codes absent from catalog: "
+            + ", ".join(missing_documented)
+        )
+
+    repo_root = ROOT.parent
+    java_api = read_java_enum_names(
+        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/ApiErrorCode.java",
+        "ApiErrorCode",
+    )
+    java_field = read_java_enum_names(
+        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/FieldErrorCode.java",
+        "FieldErrorCode",
+    )
+    if java_api is None:
+        local_failures.append("FAIL Core API ApiErrorCode: Java enum source not found for exact-set check")
+    elif java_api != set(api_values):
+        only_java = sorted(java_api - set(api_values))
+        only_openapi = sorted(set(api_values) - java_api)
+        local_failures.append(
+            "FAIL Core API ApiErrorCode exact-set mismatch"
+            + (f"; java-only={','.join(only_java)}" if only_java else "")
+            + (f"; openapi-only={','.join(only_openapi)}" if only_openapi else "")
+        )
+    if java_field is None:
+        local_failures.append("FAIL Core API FieldErrorCode: Java enum source not found for exact-set check")
+    elif java_field != set(field_values):
+        only_java = sorted(java_field - set(field_values))
+        only_openapi = sorted(set(field_values) - java_field)
+        local_failures.append(
+            "FAIL Core API FieldErrorCode exact-set mismatch"
+            + (f"; java-only={','.join(only_java)}" if only_java else "")
+            + (f"; openapi-only={','.join(only_openapi)}" if only_openapi else "")
+        )
+
+    failures.extend(local_failures)
+    if not local_failures:
+        print(
+            f"PASS Core API closed error catalogs "
+            f"(ApiErrorCode={len(set(api_values))}, FieldErrorCode={len(set(field_values))})"
+        )
+
+
+def sample_problem_detail(code: str, field_code: str | None = None) -> dict[str, Any]:
+    problem: dict[str, Any] = {
+        "type": "https://problems.m4trust.internal/validation-failed",
+        "title": "Validation failed",
+        "status": 422,
+        "detail": "One or more fields are invalid.",
+        "code": code,
+        "correlationId": "00000000-0000-4000-8000-000000000001",
+    }
+    if field_code is not None:
+        problem["errors"] = [{"field": "email", "code": field_code, "message": "Field is invalid."}]
+    return problem
+
+
+def validate_error_catalog_fixtures(core_openapi: dict[str, Any], failures: list[str]) -> None:
+    """Validate ProblemDetail/FieldError against OpenAPI component schemas via jsonschema."""
+    schemas = core_openapi.get("components", {}).get("schemas", {})
+    api_values = closed_string_enum(schemas.get("ApiErrorCode"))
+    field_values = closed_string_enum(schemas.get("FieldErrorCode"))
+    if not api_values or not field_values:
+        failures.append("FAIL error-catalog fixtures: closed catalogs unavailable")
+        return
+
+    store: dict[str, dict[str, Any]] = {}
+    for name, schema in schemas.items():
+        if isinstance(schema, dict):
+            cloned = copy.deepcopy(schema)
+            cloned["$id"] = f"https://schemas.m4trust.internal/openapi/{name}"
+            store[cloned["$id"]] = cloned
+
+    def resolve_ref(ref: str) -> dict[str, Any]:
+        name = ref.rsplit("/", 1)[-1]
+        return store[f"https://schemas.m4trust.internal/openapi/{name}"]
+
+    def rewrite(node: Any) -> Any:
+        if isinstance(node, dict):
+            if set(node.keys()) == {"$ref"} and isinstance(node["$ref"], str) and node["$ref"].startswith("#/components/schemas/"):
+                return rewrite(copy.deepcopy(resolve_ref(node["$ref"])))
+            return {key: rewrite(value) for key, value in node.items()}
+        if isinstance(node, list):
+            return [rewrite(item) for item in node]
+        return node
+
+    problem_schema = rewrite(copy.deepcopy(schemas["ProblemDetail"]))
+    problem_schema["$id"] = "https://schemas.m4trust.internal/openapi/ProblemDetail-resolved"
+    store[problem_schema["$id"]] = problem_schema
+    schema_path = Path("openapi/ProblemDetail-resolved")
+
+    def local_errors(instance: dict[str, Any]) -> list[Any]:
+        validator = Draft202012Validator(problem_schema, resolver=RefResolver(
+            base_uri=problem_schema["$id"], referrer=problem_schema, store=store
+        ), format_checker=FormatChecker())
+        return sorted(validator.iter_errors(instance), key=lambda error: list(error.path))
+
+    valid = sample_problem_detail(api_values[0], field_values[0])
+    if local_errors(valid):
+        failures.append(f"FAIL expected-valid ProblemDetail catalog member: {format_errors(local_errors(valid))}")
+    else:
+        print("PASS expected-valid ProblemDetail with catalog ApiErrorCode/FieldErrorCode")
+
+    open_code = sample_problem_detail("NOT_IN_CATALOG")
+    if not local_errors(open_code):
+        failures.append("FAIL expected-invalid ProblemDetail open ApiErrorCode: instance unexpectedly passed")
+    else:
+        print(f"PASS expected-invalid ProblemDetail open ApiErrorCode: {format_errors(local_errors(open_code))}")
+
+    bad_field = sample_problem_detail(api_values[0], "TOO_SHORT")
+    if not local_errors(bad_field):
+        failures.append("FAIL expected-invalid FieldError open FieldErrorCode: instance unexpectedly passed")
+    else:
+        print(f"PASS expected-invalid FieldError open FieldErrorCode: {format_errors(local_errors(bad_field))}")
+
+    for removed in sorted(REMOVED_COMBINED_API_ERROR_CODES):
+        removed_instance = sample_problem_detail(removed)
+        if not local_errors(removed_instance):
+            failures.append(f"FAIL expected-invalid removed combined code {removed}: instance unexpectedly passed")
+        else:
+            print(f"PASS expected-invalid removed combined code {removed}")
 
 
 def event_properties(schema: dict[str, Any]) -> dict[str, Any]:
@@ -2014,6 +2227,8 @@ def validate_contract_documents(failures: list[str]) -> None:
             actual_ref = core_paths.get(path, {}).get(method, {}).get("responses", {}).get(status, {}).get("$ref")
             if actual_ref != expected_ref:
                 failures.append(f"FAIL Core API error response: {method.upper()} {path} {status}")
+        validate_closed_error_catalogs(core_openapi, failures)
+        validate_error_catalog_fixtures(core_openapi, failures)
         for message in asyncapi.get("components", {}).get("messages", {}).values():
             reference = message.get("payload", {}).get("$ref")
             if isinstance(reference, str) and reference.startswith("../"):

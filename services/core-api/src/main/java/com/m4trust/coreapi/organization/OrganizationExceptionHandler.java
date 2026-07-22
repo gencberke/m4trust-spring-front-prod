@@ -2,6 +2,7 @@ package com.m4trust.coreapi.organization;
 
 import java.net.URI;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.api.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -24,7 +25,7 @@ class OrganizationExceptionHandler {
         return response(request, HttpStatus.BAD_REQUEST,
                 "malformed-request", "Malformed request",
                 "The legal entity identifier could not be parsed.",
-                "MALFORMED_REQUEST");
+                ApiErrorCode.MALFORMED_REQUEST);
     }
 
     @ExceptionHandler(LegalEntityAccessDeniedException.class)
@@ -33,7 +34,7 @@ class OrganizationExceptionHandler {
         return response(request, HttpStatus.FORBIDDEN,
                 "legal-entity-access-denied", "Legal entity access denied",
                 "The required legal entity context is invalid.",
-                "LEGAL_ENTITY_ACCESS_DENIED");
+                ApiErrorCode.LEGAL_ENTITY_ACCESS_DENIED);
     }
 
     @ExceptionHandler(LegalEntityNotFoundException.class)
@@ -42,7 +43,7 @@ class OrganizationExceptionHandler {
         return response(request, HttpStatus.NOT_FOUND,
                 "legal-entity-not-found", "Legal entity not found",
                 "The legal entity was not found.",
-                "LEGAL_ENTITY_NOT_FOUND");
+                ApiErrorCode.LEGAL_ENTITY_NOT_FOUND);
     }
 
     private ResponseEntity<ProblemDetail> response(
@@ -51,14 +52,14 @@ class OrganizationExceptionHandler {
             String typeSlug,
             String title,
             String detail,
-            String code) {
+            ApiErrorCode code) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 status, detail);
         problem.setType(URI.create(
                 "https://problems.m4trust.internal/" + typeSlug));
         problem.setTitle(title);
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("code", code);
+        problem.setProperty("code", code.name());
         Object correlationId = request.getAttribute(
                 CorrelationIdFilter.ATTRIBUTE);
         problem.setProperty("correlationId",
