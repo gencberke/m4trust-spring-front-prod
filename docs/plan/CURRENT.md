@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 ## Phase
 
@@ -124,15 +124,22 @@ ADR-005/007/016/017/018/020 hardening requirements for that demo only.
 
 Slice 15 P1 public error authority is accepted at `d69d7e00`; P2–P3 contract
 packaging/runtime inventory controls are accepted at `4845a03`; P4 Railway-demo
-repository reconciliation is accepted at `381ed5b`. The user stopped 15-T03
+repository reconciliation is accepted at `381ed5b`; P5 existing-staging
+reconciliation is accepted for exact `main@23a4428ad76a5fdcf694dbca83104aca389e826d`.
+The user stopped 15-T03
 before implementation and withdrew the former P4–P9 production-hardening scope
-from ready. ADR-022 and the replacement Railway-demo plan are accepted at
-`docs/plan/ready/15-railway-demo-reconciliation-and-deployment.md`. The user-owned
+from ready. ADR-022 and the replacement Railway-demo plan are accepted and archived at
+`docs/plan/done/15-railway-demo-reconciliation-and-deployment.md`. The user-owned
 UI/UX insertion gate is complete at `fbcbb7f`; independent review and real-browser
 desktop/mobile acceptance passed and the plan is archived at
 `docs/plan/done/15a-frontend-experience-redesign.md`. The user explicitly authorized
 autonomous continuation to P5/P6 in the active goal. Consolidated post-Slice-13
 evidence is in `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
+P5 evidence is in `docs/plan/done/review/15p5-implementation-review-handoff.md`.
+P6 is independently accepted for the same exact source SHA. Production Web, Core,
+PostgreSQL and versioned private MinIO are live in the existing Railway production
+environment; the resulting controlled-demo state is `RAILWAY_DEMO_READY`. Evidence
+is in `docs/plan/done/review/15p6-implementation-review-handoff.md`.
 Slice 14B remains planning-only.
 
 ## Accepted foundations
@@ -276,6 +283,16 @@ Slice 14B remains planning-only.
   focused validation passed through revisions `c1206cf`, `3bc077f` and
   `381ed5b`. Full Core/frontend suites were intentionally not run; the accepted
   plan reserves them for the single final P6 gate.
+- The one Slice 15 P6 final gate ran on 2026-07-23 and passed: contract validation
+  covered 21 schemas and 13 fixtures; Core `mvn verify` passed 383 tests; frontend
+  clean install, typecheck and production build passed; Core/Web Docker image builds
+  and `git diff --check` passed. The external AI baseline remains the separately
+  owned `UNVERIFIED_EXTERNAL_GATE` and is not claimed by the main team.
+- Production-demo deployment and independent review passed on 2026-07-23 for exact
+  `main@23a4428ad76a5fdcf694dbca83104aca389e826d`. Public health returned 200;
+  public actuator/internal paths returned 404; the three-session invitation,
+  non-disclosure, document PUT/finalize/exact-version download and logout smoke
+  passed. Core same-commit redeploy passed after production MinIO credential rotation.
 - Gates G2/G3 were accepted on 2026-07-21. G2's former test-merchant-pool route
   was superseded on 2026-07-22 by the accepted simulation-only decision; no
   Moka account, credential or provider call exists in scope. Production legal/
@@ -289,7 +306,6 @@ Slice 14B remains planning-only.
 
 ## Not yet stable or accepted
 
-- Slice 15 Railway staging reconciliation and production-demo evidence.
 - Production AI capability remains owned and accepted separately by the AI team;
   Slice 15 may report shared-contract compatibility but cannot select or change
   providers, models, workers, images or AI deployment.
@@ -298,20 +314,19 @@ Slice 14B remains planning-only.
 
 ## Active work
 
-Slice 15 Railway Demo Reconciliation and Deployment is the sole ready deployment
-plan. P4 and the user-owned UI/UX insertion gate are accepted. P5 reconciliation
-of the existing Railway staging environment is active under the user's explicit
-autonomous continuation authorization. On 2026-07-23 the founder/user accepted that
-live document storage smoke remains mandatory while live fulfillment-evidence smoke
-is a no-seed/no-bypass deferred risk until an authorized public `ACTIVE + FUNDED`
-creation path exists. Slice 14B and the R2–R7 capability roadmap have no
-implementation authority.
+Slice 15 Railway Demo Reconciliation and Deployment is accepted and archived under
+`docs/plan/done/`. The existing Railway production environment is
+`RAILWAY_DEMO_READY` for exact
+`main@23a4428ad76a5fdcf694dbca83104aca389e826d`. This is not broad-production or
+AI-readiness acceptance. Live fulfillment-evidence smoke remains a no-seed/no-bypass
+deferred risk until an authorized public `ACTIVE + FUNDED` creation path exists.
+Slice 14B and the R2–R7 capability roadmap have no implementation authority.
 
 ## Known blockers
 
-Controlled Railway demo deployment remains blocked on staging proof and the one
-final validation/production-demo gate; deferred live evidence smoke is not a
-blocker under the 2026-07-23 accepted reconciliation.
+No controlled-demo deployment blocker remains. The unavailable native backups and
+accepted first-demo data-loss risk remain recorded under ADR-022 §2.7. Deferred live
+evidence smoke is not a blocker under the 2026-07-23 accepted reconciliation.
 Broad production remains explicitly out of scope.
 AI-enabled readiness additionally requires compatible evidence from the AI owner;
 its absence cannot be repaired by the main implementer.
@@ -319,9 +334,8 @@ No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next work is Slice 15 P5 existing Railway staging reconciliation. Repository-
-wide backend/frontend suites run once at final P6; intermediate deployment review
-uses only minimum affected health, configuration, storage and browser checks.
+No next implementation slice is authorized. Any move beyond `RAILWAY_DEMO_READY`,
+including broad-production hardening or Slice 14B, requires a new accepted plan.
 
 ## Update rule
 
