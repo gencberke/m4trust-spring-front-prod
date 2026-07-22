@@ -36,6 +36,7 @@ interface Props {
   dealId: string;
   evidenceSubmissionId: string;
   expectedEvidenceVersion: number;
+  readOnly?: boolean;
 }
 
 export function EvidenceVideoAnalysisPanel({
@@ -43,6 +44,7 @@ export function EvidenceVideoAnalysisPanel({
   dealId,
   evidenceSubmissionId,
   expectedEvidenceVersion,
+  readOnly = false,
 }: Props) {
   const queryClient = useQueryClient();
   const requestKeyRef = useRef<string | undefined>(undefined);
@@ -124,7 +126,7 @@ export function EvidenceVideoAnalysisPanel({
     <div className="video-analysis-panel" aria-live="polite">
       <h4>Video analizi</h4>
       <VideoAnalysisBody analysis={analysis} />
-      {analysis.availableActions?.canRequest === true ? (
+      {!readOnly && analysis.availableActions?.canRequest === true ? (
         <button
           type="button"
           className="secondary-button"
@@ -151,7 +153,7 @@ function VideoAnalysisBody({ analysis }: { analysis: VideoAnalysisDetail }) {
   if (analysis.status === "NOT_REQUESTED") {
     return (
       <p className="video-analysis-empty-copy">
-        Bu evidence için henüz video analizi talep edilmedi.
+        Bu teslimat kanıtı için henüz video analizi talep edilmedi.
       </p>
     );
   }
@@ -163,7 +165,7 @@ function VideoAnalysisBody({ analysis }: { analysis: VideoAnalysisDetail }) {
         <div>
           <strong>Video analizi sırada bekliyor</strong>
           <p>
-            Bu bölüm otomatik yenilenir. Analiz tamamlanana kadar evidence
+            Bu bölüm otomatik yenilenir. Analiz tamamlanana kadar teslimat kanıtı
             incelemesine devam edebilirsiniz.
           </p>
         </div>
@@ -193,7 +195,7 @@ function VideoAnalysisFailureView({
       <h5>Video analizi tamamlanamadı</h5>
       <p>{labelFailureCode(failure.code)}</p>
       <p className="analysis-advisory">
-        Bu sonuç yalnızca danışmanlık amaçlıdır; evidence kabul veya red kararı
+        Bu sonuç yalnızca danışmanlık amaçlıdır; teslimat kanıtı kabul veya red kararı
         vermez.
       </p>
       {failure.retryRecommended ? (
@@ -220,7 +222,7 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
             Video analizi tamamlandı; sonuç yalnızca danışmanlık amaçlıdır.
           </strong>
           <p>
-            Teslimat onayı, ödeme serbest bırakma veya evidence kabul/red
+            Teslimat onayı, ödeme serbest bırakma veya teslimat kanıtı kabul/red
             kararları bu sonuçtan otomatik türetilmez.
           </p>
         </div>

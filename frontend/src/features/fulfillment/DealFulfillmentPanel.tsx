@@ -63,14 +63,14 @@ function formatBytes(bytes: number): string {
 const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
   NOT_STARTED: "Başlatılmadı",
   IN_PROGRESS: "Devam ediyor",
-  EVIDENCE_REQUIRED: "Evidence bekleniyor",
+  EVIDENCE_REQUIRED: "Teslimat kanıtı bekleniyor",
   REVIEW_REQUIRED: "İnceleme bekleniyor",
   COMPLETED: "Tamamlandı",
   CANCELLED: "İptal edildi",
 };
 
 const EVIDENCE_STATUS_LABELS: Record<string, string> = {
-  PENDING_UPLOAD: "Yükleme bekleniyor",
+  PENDING_UPLOAD: "Yüklenecek",
   SUBMITTED: "Sunuldu",
   ACCEPTED: "Onaylandı",
   REJECTED: "Reddedildi",
@@ -142,9 +142,10 @@ function isIntentExpired(intent: EvidenceUploadIntent | undefined): boolean {
 interface Props {
   deal: DealDetail;
   legalEntityId: string;
+  readOnly?: boolean;
 }
 
-export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
+export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: Props) {
   const queryClient = useQueryClient();
   const startKeyRef = useRef<string | undefined>(undefined);
   const finalizeKeyRef = useRef<string | undefined>(undefined);
@@ -456,15 +457,15 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
     rejectMutation.mutate({ evidence, reason });
   }
 
-  const canStart = deal.availableActions.canStartFulfillment;
-  const canUpload = fulfillment?.milestone.availableActions.canUpload ?? false;
-  const canAccept = deal.availableActions.canAcceptEvidence;
-  const canReject = deal.availableActions.canRejectEvidence;
+  const canStart = !readOnly && deal.availableActions.canStartFulfillment;
+  const canUpload = !readOnly && (fulfillment?.milestone.availableActions.canUpload ?? false);
+  const canAccept = !readOnly && deal.availableActions.canAcceptEvidence;
+  const canReject = !readOnly && deal.availableActions.canRejectEvidence;
 
   if (fulfillmentQuery.isLoading) {
     return (
       <section className="panel" aria-live="polite">
-        <h2>Fulfillment</h2>
+        <h2>Teslimat</h2>
         <p>Yükleniyor…</p>
       </section>
     );
@@ -473,7 +474,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
   if (fulfillmentQuery.isError && !isFulfillmentNotFound(fulfillmentQuery.error)) {
     return (
       <section className="panel" aria-live="polite">
-        <h2>Fulfillment</h2>
+        <h2>Teslimat</h2>
         <p className="error-text" role="alert">
           {getFulfillmentErrorMessage(fulfillmentQuery.error)}
         </p>
@@ -496,11 +497,15 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
 
   return (
     <section className="panel" aria-live="polite">
-      <h2>Fulfillment</h2>
+      <h2>Teslimat</h2>
+
+      {readOnly ? (
+        <p className="muted-copy">Bu aşama salt okunurdur; teslimat geçmişi aşağıda korunur.</p>
+      ) : null}
 
       {!fulfillment && canStart && (
         <div className="fulfillment-start">
-          <p>Fulfillment henüz başlatılmadı.</p>
+          <p>Teslimat henüz başlatılmadı.</p>
           {notice && (
             <p className="error-text" role="alert">
               {notice}
@@ -515,13 +520,13 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
             }}
             disabled={startMutation.isPending}
           >
-            {startMutation.isPending ? "Başlatılıyor…" : "Fulfillment başlat"}
+            {startMutation.isPending ? "Başlatılıyor…" : "Teslimatı başlat"}
           </button>
         </div>
       )}
 
       {!fulfillment && !canStart && (
-        <p>Fulfillment henüz başlatılmadı.</p>
+        <p>Teslimat henüz başlatılmadı.</p>
       )}
 
       {fulfillment && (
@@ -553,7 +558,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
 
           {canUpload && (
             <div className="evidence-upload">
-              <h4>Yeni evidence yükle</h4>
+              <h4>Yeni teslimat kanıtı yükle</h4>
               {uploadState.stage === "idle" && (
                 <EvidenceUploadForm onFileSelected={handleFileSelected} />
               )}
@@ -574,7 +579,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
               )}
               {uploadState.stage === "done" && (
                 <p className="success-text">
-                  Evidence yüklendi ve incelemeye gönderildi.
+                  Teslimat kanıtı yüklendi ve incelemeye gönderildi.
                 </p>
               )}
               {uploadState.stage === "failed" && (
@@ -604,7 +609,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
 
           {currentEvidence && currentEvidence.status === "SUBMITTED" && (
             <div className="current-evidence">
-              <h4>Mevcut evidence</h4>
+              <h4>Mevcut teslimat kanıtı</h4>
               <EvidenceSummary submission={currentEvidence} />
               {isVideoMp4Evidence(currentEvidence) && (
                 <EvidenceVideoAnalysisPanel
@@ -612,6 +617,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
                   dealId={deal.id}
                   evidenceSubmissionId={currentEvidence.id}
                   expectedEvidenceVersion={currentEvidence.version}
+                  readOnly={readOnly}
                 />
               )}
               {canAccept && (
@@ -629,7 +635,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
                   >
                     {acceptMutation.isPending
                       ? "Onaylanıyor…"
-                      : "Evidence’i onayla"}
+                      : "Teslimat kanıtını onayla"}
                   </button>
                   <div className="reject-form">
                     <label htmlFor="rejection-reason">Reddetme sebebi</label>
@@ -653,7 +659,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
                     >
                       {rejectMutation.isPending
                         ? "Reddediliyor…"
-                        : "Evidence’i reddet"}
+                        : "Teslimat kanıtını reddet"}
                     </button>
                   </div>
                 </div>
@@ -663,7 +669,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
 
           {fulfillment.history.length > 0 && (
             <div className="evidence-history">
-              <h4>Evidence geçmişi</h4>
+              <h4>Teslimat kanıtı geçmişi</h4>
               {downloadError && (
                 <p className="error-text" role="alert">
                   {downloadError}
@@ -680,6 +686,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId }: Props) {
                         dealId={deal.id}
                         evidenceSubmissionId={submission.id}
                         expectedEvidenceVersion={submission.version}
+                        readOnly={readOnly}
                       />
                     )}
                     {submission.availableActions.canDownload && (
@@ -717,7 +724,7 @@ function EvidenceUploadForm({
 
   return (
     <div className="evidence-upload-form">
-      <label htmlFor="evidence-type">Evidence türü</label>
+      <label htmlFor="evidence-type">Kanıt türü</label>
       <select
         id="evidence-type"
         value={evidenceType}
@@ -762,7 +769,7 @@ function EvidenceSummary({ submission }: { submission: EvidenceSubmission }) {
       <div className="evidence-meta">
         <span>Durum: {evidenceStatusLabel(submission.status)}</span>
         {" | "}
-        <span>Medya: {submission.mediaType}</span>
+          <span>Dosya türü: {submission.mediaType}</span>
         {" | "}
         <span>
           Boyut:{" "}

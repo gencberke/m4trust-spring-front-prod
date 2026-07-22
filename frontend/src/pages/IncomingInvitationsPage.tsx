@@ -43,26 +43,26 @@ function AcceptInvitationDialog({
       <h3 id="accept-invitation-title">Daveti kabul et</h3>
       <p>
         <strong>{invitation.deal.initiatorLegalName}</strong> tarafından davet
-        edildiğiniz <strong>{invitation.deal.title}</strong> Deal’ine hangi legal
-        entity ile katılacağınızı seçin.
+        edildiğiniz <strong>{invitation.deal.title}</strong> anlaşmasına hangi
+        kuruluşla katılacağınızı seçin.
       </p>
       {error ? (
         <p className="form-alert" role="alert">{getInvitationErrorMessage(error)}</p>
       ) : null}
       {memberships.length === 0 ? (
         <p className="form-alert" role="alert">
-          Daveti kabul etmek için önce üyesi olduğunuz bir legal entity gerekir.
+          Daveti kabul etmek için önce üyesi olduğunuz bir kuruluş gerekir.
         </p>
       ) : (
         <label className="field-group" htmlFor="accept-invitation-entity">
-          <span>Katılımcı legal entity</span>
+          <span>Katılımcı kuruluş</span>
           <select
             id="accept-invitation-entity"
             value={legalEntityId}
             onChange={(event) => setLegalEntityId(event.target.value)}
             disabled={isPending}
           >
-            <option value="">Legal entity seçin</option>
+            <option value="">Kuruluş seçin</option>
             {memberships.map((membership) => (
               <option key={membership.legalEntityId} value={membership.legalEntityId}>
                 {membership.legalName}
@@ -138,12 +138,12 @@ export function IncomingInvitationsPage() {
 
   return (
     <main className="workspace-main invitation-workspace">
-      <div className="workspace-column">
+      <div className="workspace-column invitation-column">
         <div className="page-introduction invitation-page-heading">
           <span className="section-kicker">Katılım davetleri</span>
           <h1>Gelen davetler</h1>
           <p>
-            Davetler hesabınıza gönderilir; kabul ederken katılacak legal entity’yi
+            Davetler hesabınıza gönderilir; kabul ederken katılacak kuruluşu
             seçersiniz.
           </p>
         </div>
@@ -172,7 +172,7 @@ export function IncomingInvitationsPage() {
         {invitationsQuery.data?.items.length === 0 ? (
           <section className="workspace-panel workspace-state" role="status">
             <h2>Bekleyen davet yok</h2>
-            <p>Hesabınıza gönderilmiş bekleyen bir Deal daveti bulunmuyor.</p>
+            <p>Hesabınıza gönderilmiş bekleyen bir anlaşma daveti bulunmuyor.</p>
           </section>
         ) : null}
         {invitationsQuery.data?.items.length ? (
@@ -183,7 +183,7 @@ export function IncomingInvitationsPage() {
                   <span className="section-kicker">{invitation.deal.reference}</span>
                   <h2>{invitation.deal.title}</h2>
                   <p className="inviter-legal-name">{invitation.deal.initiatorLegalName}</p>
-                  <p className="muted-copy">Davet eden legal entity</p>
+                  <p className="muted-copy">Daveti gönderen kuruluş</p>
                 </div>
                 <div className="invitation-card-actions">
                   {invitation.availableActions.canAccept ? (

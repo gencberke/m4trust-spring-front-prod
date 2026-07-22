@@ -36,9 +36,9 @@ function formatDate(value: string): string {
 
 const PACKAGE_STATUS_LABELS: Record<string, string> = {
   PENDING: "Onay bekliyor",
-  RATIFIED: "Onaylandı (RATIFIED)",
+  RATIFIED: "Onaylandı",
   REJECTED: "Reddedildi",
-  SUPERSEDED: "Yerini aldı (superseded)",
+  SUPERSEDED: "Yerine yeni koşullar sunuldu",
 };
 
 function packageStatusLabel(status: string): string {
@@ -164,7 +164,7 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
     },
     onSuccess: (created) => {
       createKeyRef.current = undefined;
-      setNotice(`Package oluşturuldu (sürüm ${created.version}); taraf onayı bekleniyor.`);
+      setNotice("Ticari koşullar onaya sunuldu; diğer tarafın onayı bekleniyor.");
       refreshAfterMutation();
     },
     onError: (error) => {
@@ -189,7 +189,7 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
       setConfirmAction(undefined);
       setNotice(
         updated.status === "RATIFIED"
-          ? "Package RATIFIED oldu; Deal ACTIVE durumuna geçti."
+          ? "Her iki tarafın onayı kaydedildi."
           : "Onayınız kaydedildi; diğer tarafın onayı bekleniyor.",
       );
       refreshAfterMutation();
@@ -215,7 +215,7 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
     onSuccess: () => {
       rejectKeyRef.current = undefined;
       setConfirmAction(undefined);
-      setNotice("Package reddedildi. Devam etmek için yeni bir package oluşturulmalı.");
+      setNotice("Ticari koşullar reddedildi. Devam etmek için yeniden onaya sunulmalıdır.");
       refreshAfterMutation();
     },
     onError: (error) => {
@@ -230,11 +230,11 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
     return (
       <section className="workspace-panel ratification-panel" aria-labelledby="ratification-title">
         <div className="panel-heading">
-          <span className="section-kicker">Ratification</span>
-          <h2 id="ratification-title">Ticari onay (ratification)</h2>
+          <span className="section-kicker">Onay</span>
+          <h2 id="ratification-title">Ticari koşullar</h2>
         </div>
         <p className="muted-copy">
-          Bu Deal için ratification projeksiyonu şu anda sunulmuyor; bölüm salt
+          Bu anlaşma için ticari onay bilgisi şu anda sunulmuyor; bölüm salt
           okunur kabul edilir.
         </p>
       </section>
@@ -254,11 +254,11 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
   return (
     <section className="workspace-panel ratification-panel" aria-labelledby="ratification-title">
       <div className="panel-heading">
-        <span className="section-kicker">Ratification</span>
-        <h2 id="ratification-title">Ticari onay (ratification)</h2>
+        <span className="section-kicker">Onay</span>
+        <h2 id="ratification-title">Ticari koşulları onaylayın</h2>
         <p>
-          İki tarafın ADMIN kullanıcısı aynı immutable package'ı onayladığında
-          Deal ACTIVE olur. Onay, şirketi bağlayan rızadır.
+          Her iki taraf, aynı ticari koşulları şirketi adına onaylamalıdır.
+          Bu onay bağlayıcıdır.
         </p>
       </div>
 
@@ -268,8 +268,8 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
         </strong>
         <span>
           {readiness === "READY"
-            ? "Taraflar, kabul edilmiş rule-set ve güncel belge mevcut."
-            : "Package oluşturmak için taraflar, kabul edilmiş rule-set ve güncel bir belge gereklidir."}
+            ? "Taraflar ve güncel sözleşme belgesi hazır."
+            : "Onaya sunmak için taraflar ve güncel sözleşme belgesi gereklidir."}
         </span>
       </div>
 
@@ -298,7 +298,7 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
           onReject={() => setConfirmAction("reject")}
         />
       ) : (
-        <p className="muted-copy">Bu Deal için henüz bir ratification package oluşturulmadı.</p>
+        <p className="muted-copy">Ticari koşullar henüz tarafların onayına sunulmadı.</p>
       )}
 
       {confirmAction === "approve" && currentPackage ? (
@@ -374,7 +374,7 @@ function CurrentPackage({
 
       <dl className="ratification-summary-list">
         <div>
-          <dt>Deal</dt>
+          <dt>Anlaşma</dt>
           <dd>{snapshot.dealReference} · {snapshot.dealTitle}</dd>
         </div>
         <div>
@@ -394,29 +394,17 @@ function CurrentPackage({
             </strong>
           </dd>
         </div>
-        <div>
-          <dt>Rule-set</dt>
-          <dd>
-            v{snapshot.ruleSet.version} · {snapshot.ruleSet.rules.length} kural
-          </dd>
-        </div>
-        <div>
-          <dt>Belge</dt>
-          <dd>
-            objectVersion {snapshot.document.objectVersion} · sha256{" "}
-            <HexValue value={snapshot.document.sha256} label="sha256" />
-          </dd>
-        </div>
-        <div>
-          <dt>Content hash</dt>
-          <dd>
-            <HexValue value={pkg.contentHash} label="hash" />
-          </dd>
-        </div>
       </dl>
 
+      <details className="ratification-technical-details">
+        <summary>Teknik ayrıntılar</summary>
+        <p>Koşul sürümü: {snapshot.ruleSet.version} · Belge sürümü: {snapshot.document.objectVersion}</p>
+        <p>Belge özeti: <HexValue value={snapshot.document.sha256} label="sha256" /></p>
+        <p>İçerik özeti: <HexValue value={pkg.contentHash} label="hash" /></p>
+      </details>
+
       <details className="ratification-rules-detail">
-        <summary>Package içindeki kurallar ({snapshot.ruleSet.rules.length})</summary>
+        <summary>Koşul ayrıntıları ({snapshot.ruleSet.rules.length})</summary>
         <ul>
           {snapshot.ruleSet.rules.map((rule) => (
             <li key={rule.ruleReference}>
@@ -458,12 +446,12 @@ function CurrentPackage({
         <div className="ratification-current-actions">
           {mayApprove ? (
             <button className="primary-button" type="button" onClick={onApprove}>
-              Package'ı onayla
+              Ticari koşulları onayla
             </button>
           ) : null}
           {mayReject ? (
             <button className="danger-button" type="button" onClick={onReject}>
-              Package'ı reddet
+              Koşulları reddet
             </button>
           ) : null}
         </div>
@@ -490,9 +478,9 @@ function ApproveConfirmation({
       aria-modal="true"
       aria-labelledby="ratification-approve-title"
     >
-      <h3 id="ratification-approve-title">Package'ı onaylıyor musunuz?</h3>
+      <h3 id="ratification-approve-title">Ticari koşulları onaylıyor musunuz?</h3>
       <p>
-        Şirketiniz adına bu package içeriğini bağlayıcı olarak
+        Şirketiniz adına bu ticari koşulları bağlayıcı olarak
         onaylıyorsunuz. Bu, ticari bir taahhüttür ve geri alınamaz.
       </p>
       <p>
@@ -501,9 +489,6 @@ function ApproveConfirmation({
           {decimalFromMinor(pkg.snapshot.commercialTerms.amountMinor)}{" "}
           {pkg.snapshot.commercialTerms.currency}
         </strong>
-      </p>
-      <p>
-        Content hash: <HexValue value={pkg.contentHash} label="hash" />
       </p>
       <div>
         <button className="text-button" type="button" onClick={onCancel} disabled={pending}>
@@ -535,21 +520,18 @@ function RejectConfirmation({
       aria-modal="true"
       aria-labelledby="ratification-reject-title"
     >
-      <h3 id="ratification-reject-title">Package'ı reddediyor musunuz?</h3>
+      <h3 id="ratification-reject-title">Ticari koşulları reddediyor musunuz?</h3>
       <p>
-        Şirketiniz adına bu package'ı reddediyorsunuz. Devam etmek için
-        başlatıcı tarafın farklı veya aynı şartlarla yeni bir package
-        oluşturması gerekir; mevcut onaylar yeni package'a taşınmaz.
-      </p>
-      <p>
-        Content hash: <HexValue value={pkg.contentHash} label="hash" />
+        Şirketiniz adına bu ticari koşulları reddediyorsunuz. Devam etmek için
+        yeni koşulların yeniden onaya sunulması gerekir; mevcut onaylar
+        yeni koşullara taşınmaz.
       </p>
       <div>
         <button className="text-button" type="button" onClick={onCancel} disabled={pending}>
           Vazgeç
         </button>
         <button className="danger-button" type="button" onClick={onConfirm} disabled={pending}>
-          {pending ? "Reddediliyor…" : "Package'ı reddet"}
+          {pending ? "Reddediliyor…" : "Koşulları reddet"}
         </button>
       </div>
     </div>
@@ -604,17 +586,16 @@ function CreatePackageForm({
 
   return (
     <div className="ratification-create">
-      <h3>{hasCurrentPackage ? "Şartları değiştirip yeni package oluştur" : "Ratification package oluştur"}</h3>
+      <h3>{hasCurrentPackage ? "Koşulları güncelleyip yeniden onaya sun" : "Ticari koşulları onaya sun"}</h3>
       {hasCurrentPackage ? (
         <p className="field-hint">
-          Farklı bir exact tutar ile yeni package oluşturmak, mevcut PENDING
-          package'ı SUPERSEDED yapar; eski onaylar yeni package'a taşınmaz.
+          Farklı bir tutarla yeniden onaya sunmak, önceki koşullar için verilen
+          onayları geçersiz kılar; eski onaylar yeni koşullara taşınmaz.
         </p>
       ) : null}
       {!ready ? (
         <p className="field-hint">
-          Package şu anda oluşturulamaz: taraflar, kabul edilmiş rule-set ve
-          güncel bir belge gereklidir.
+          Koşullar şu anda onaya sunulamaz: taraflar ve güncel bir belge gereklidir.
         </p>
       ) : null}
 
@@ -627,7 +608,7 @@ function CreatePackageForm({
       {!suggestionsLoading && suggestions.length ? (
         <div className="ratification-suggestions">
           <span className="field-hint">
-            Kabul edilmiş rule-set'teki MONEY kuralları (yalnızca öneri; hiçbiri
+            Kabul edilmiş sözleşme koşullarındaki tutar önerileri (yalnızca öneri; hiçbiri
             otomatik seçilmez):
           </span>
           <ul>
@@ -684,7 +665,7 @@ function CreatePackageForm({
           {currencyError ? <span className="field-error">{currencyError}</span> : null}
         </div>
         <button className="primary-button" type="submit" disabled={pending || !ready}>
-          {pending ? "Oluşturuluyor…" : "Exact tutarı teyit et ve package oluştur"}
+          {pending ? "Hazırlanıyor…" : "Tutarı teyit et ve onaya sun"}
         </button>
       </form>
     </div>
@@ -707,7 +688,7 @@ function PackageHistory({
   const historical = items.filter((item) => item.id !== currentPackageId);
   return (
     <section className="ratification-history">
-      <h3>Package geçmişi</h3>
+      <h3>Onay geçmişi</h3>
       {loading ? (
         <p className="inline-state" role="status">
           <span className="loading-line" aria-hidden="true" />
@@ -723,7 +704,7 @@ function PackageHistory({
         </div>
       ) : null}
       {!loading && !error && historical.length === 0 ? (
-        <p className="muted-copy">Geçersizleşmiş veya reddedilmiş bir package yok.</p>
+        <p className="muted-copy">Önceki veya reddedilmiş bir onay kaydı yok.</p>
       ) : null}
       {historical.length ? (
         <ul>

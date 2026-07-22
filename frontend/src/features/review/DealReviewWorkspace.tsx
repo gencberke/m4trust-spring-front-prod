@@ -412,11 +412,11 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
     >
       <div className="panel-heading">
         <span className="section-kicker">Kural incelemesi</span>
-        <h2 id="review-title">Rule-set çalışma alanı</h2>
+        <h2 id="review-title">Ticari koşullar incelemesi</h2>
         <p>
           Hukuki dayanak ve güven bilgisi danışma amaçlıdır. Bu işlem, sonraki
-          ratification için kural-set temelini oluşturur; sözleşme veya
-          ratification onayı değildir.
+          ticari onay için koşul temelini oluşturur; sözleşme veya ticari onay
+          değildir.
         </p>
       </div>
       {deal.currentRuleSet ? (
@@ -426,7 +426,7 @@ export function DealReviewWorkspace({ deal, legalEntityId }: Props) {
         />
       ) : (
         <p className="review-current-empty">
-          Güncel kabul edilmiş rule-set yok. Geçmiş sürümler yalnızca
+          Güncel kabul edilmiş ticari koşul sürümü yok. Geçmiş sürümler yalnızca
           okunabilir.
         </p>
       )}
@@ -855,7 +855,7 @@ function CurrentRuleSet({
   return (
     <div className="review-current">
       <div>
-        <strong>Güncel rule-set: v{summary.version}</strong>
+        <strong>Güncel ticari koşullar: sürüm {summary.version}</strong>
         <span>
           {summary.ruleCount} kural ·{" "}
           {dateFormat.format(new Date(summary.createdAt))}
@@ -876,7 +876,7 @@ function RuleSetHistory({
 }) {
   return (
     <section className="review-history">
-      <h3>Rule-set geçmişi</h3>
+      <h3>Ticari koşul geçmişi</h3>
       {history.length ? (
         <ul>
           {history.map((item) => (
@@ -916,7 +916,7 @@ function RuleSetDetail({
   return (
     <section className="review-detail" aria-live="polite">
       <div>
-        <h3>Immutable sürüm detayı</h3>
+        <h3>Kaydedilmiş sürüm detayı</h3>
         <button className="text-button" type="button" onClick={onClose}>
           Kapat
         </button>
@@ -926,8 +926,7 @@ function RuleSetDetail({
       ) : version ? (
         <>
           <p>
-            v{version.version} · {version.ruleCount} kural · Kaynak extraction:{" "}
-            {version.sourceExtractionResultVersionId}
+            Sürüm {version.version} · {version.ruleCount} kural
           </p>
           <ul>
             {version.rules.map((rule) => (
@@ -943,8 +942,7 @@ function RuleSetDetail({
           </ul>
           {version.excludedRuleReferences.length ? (
             <p>
-              Hariç tutulan çıkarılmış kurallar:{" "}
-              {version.excludedRuleReferences.join(", ")}
+              Hariç tutulan çıkarılmış kurallar bulunuyor.
             </p>
           ) : null}
         </>
@@ -974,8 +972,8 @@ function Confirmation({
     >
       <h3 id="review-confirm-title">İncelemeyi kabul etmek istiyor musunuz?</h3>
       <p>
-        Bu işlem, sonraki ratification için rule-set temelini oluşturur.
-        Sözleşme onayı veya ratification onayı değildir.
+        Bu işlem, sonraki ticari onay için koşul temelini oluşturur.
+        Sözleşme onayı veya ticari onay değildir.
       </p>
       <div>
         <button
@@ -992,7 +990,7 @@ function Confirmation({
           onClick={onConfirm}
           disabled={pending}
         >
-          {pending ? "Kaydediliyor…" : "Rule-set’i oluştur"}
+          {pending ? "Kaydediliyor…" : "Ticari koşulları oluştur"}
         </button>
       </div>
     </div>

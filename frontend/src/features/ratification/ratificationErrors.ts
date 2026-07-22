@@ -23,29 +23,29 @@ export function getRatificationErrorMessage(error: unknown): string {
     case "VALIDATION_FAILED":
       return "Lütfen işaretli alanlardaki değerleri kontrol edin.";
     case "DEAL_STALE_VERSION":
-      return "Deal başka bir işlemle değişti. Güncel Deal verisi yenilendi; değerlerinizi gözden geçirip yeniden deneyin.";
+      return "Anlaşma başka bir işlemle değişti. Güncel bilgiler yenilendi; değerlerinizi gözden geçirip yeniden deneyin.";
     case "DEAL_STATE_CONFLICT":
-      return "Deal artık DRAFT durumunda değil; bu işlem kapalı. Güncel Deal verisi yenilendi.";
+      return "Anlaşma artık bu işlem için uygun değil. Güncel bilgiler yenilendi.";
     case "RATIFICATION_NOT_READY":
-      return "Taraflar, kabul edilmiş rule-set veya güncel belge eksik; package oluşturulamaz. Güncel Deal verisi yenilendi.";
+      return "Taraflar, kabul edilmiş ticari koşullar veya güncel belge eksik; koşullar onaya sunulamaz. Güncel bilgiler yenilendi.";
     case "RATIFICATION_PACKAGE_CREATE_FORBIDDEN":
-      return "Yalnızca bu Deal'in başlatıcısı ratification package oluşturabilir.";
+      return "Yalnızca anlaşmayı başlatan kuruluş ticari koşulları onaya sunabilir.";
     case "RATIFICATION_STALE_PACKAGE":
-      return "Bu package başka bir işlemle değişti (superseded olmuş olabilir). Güncel package verisi yenilendi; lütfen tekrar kontrol edin.";
+      return "Bu ticari koşullar başka bir işlemle değişti veya yerini yeni koşullar aldı. Güncel bilgiler yenilendi; lütfen tekrar kontrol edin.";
     case "RATIFICATION_PACKAGE_STATE_CONFLICT":
-      return "Bu package artık onaylanamaz veya reddedilemez durumda. Güncel veri yenilendi.";
+      return "Bu ticari koşullar artık onaylanamaz veya reddedilemez durumda. Güncel bilgiler yenilendi.";
     case "RATIFICATION_APPROVAL_FORBIDDEN":
-      return "Aktif legal entity bu package'ı onaylamaya/reddetmeye yetkili değil.";
+      return "Aktif kuruluş bu ticari koşulları onaylamaya veya reddetmeye yetkili değil.";
     case "RATIFICATION_PACKAGE_NOT_FOUND":
-      return "Bu package bulunamadı veya artık erişilebilir değil.";
+      return "Bu ticari koşullar bulunamadı veya artık erişilebilir değil.";
     case "IDEMPOTENCY_KEY_REUSED":
       return "Bu istek anahtarı farklı bir içerikle kullanılmış. Değişikliklerinizi gözden geçirip yeniden deneyin.";
     case "CSRF_TOKEN_INVALID":
       return "Güvenlik doğrulaması yenilenemedi. Lütfen tekrar deneyin.";
     case "LEGAL_ENTITY_ACCESS_DENIED":
-      return "Aktif legal entity bağlamı doğrulanamadı. Lütfen yeniden seçim yapın.";
+      return "Aktif kuruluş bağlamı doğrulanamadı. Lütfen yeniden seçim yapın.";
     default:
-      return "İşlem tamamlanamadı. Lütfen güncel Deal ve package durumunu kontrol edin.";
+      return "İşlem tamamlanamadı. Lütfen güncel anlaşma ve onay durumunu kontrol edin.";
   }
 }
 

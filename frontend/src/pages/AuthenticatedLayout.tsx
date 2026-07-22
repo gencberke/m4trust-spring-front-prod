@@ -48,7 +48,7 @@ function EntitySwitcher({
 }: EntitySwitcherProps) {
   return (
     <label className="entity-switcher">
-      <span>Aktif legal entity</span>
+      <span>Aktif kuruluş</span>
       <select
         value={selectedLegalEntityId ?? ""}
         onChange={(event) => onChange(event.target.value || undefined)}
@@ -90,7 +90,7 @@ export function AuthenticatedLayout() {
     clearSelectedLegalEntityId();
     setSelectedLegalEntityId(undefined);
     setSelectionNotice(
-      "Seçili legal entity bulunamadı veya erişiminiz kaldırıldı. Lütfen yeniden seçim yapın.",
+      "Seçili kuruluşa erişiminiz artık yok. Lütfen yeniden seçim yapın.",
     );
   }, []);
 
@@ -101,7 +101,7 @@ export function AuthenticatedLayout() {
     clearSelectedLegalEntityId();
     setSelectedLegalEntityId(undefined);
     setSelectionNotice(
-      "Önceki legal entity seçiminiz artık üyelikleriniz arasında değil ve temizlendi.",
+      "Önceki kuruluş seçiminiz artık üyelikleriniz arasında değil ve temizlendi.",
     );
   }, [missingSelectedMembership]);
 
@@ -117,16 +117,19 @@ export function AuthenticatedLayout() {
 
   async function clearVerifiedSession() {
     clearActiveSelectionUser();
+    navigate("/login", { replace: true, state: { reason: "logged-out" } });
     await queryClient.cancelQueries();
     queryClient.removeQueries({ queryKey: ["organization"] });
     queryClient.removeQueries({ queryKey: ["deals"] });
     queryClient.removeQueries({ queryKey: ["deal-invitations"] });
     queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
-    navigate("/login", { replace: true, state: { reason: "logged-out" } });
   }
 
   const logoutMutation = useMutation({
     mutationFn: logout,
+    onMutate: async () => {
+      await queryClient.cancelQueries();
+    },
     onSuccess: clearVerifiedSession,
   });
 
@@ -149,9 +152,9 @@ export function AuthenticatedLayout() {
   return (
     <div className="app-shell authenticated-shell">
       <header className="site-header authenticated-header workspace-header">
-        <span className="brand" aria-label="M4Trust">
+        <NavLink className="brand brand-link" to="/app" aria-label="M4Trust ana çalışma alanı">
           M4Trust
-        </span>
+        </NavLink>
         <EntitySwitcher
           memberships={memberships}
           selectedLegalEntityId={selectedLegalEntityId}
@@ -173,10 +176,7 @@ export function AuthenticatedLayout() {
           </button>
         </div>
         <nav className="workspace-nav" aria-label="Çalışma alanı">
-          <NavLink end to="/app">
-            Organizasyon
-          </NavLink>
-          <NavLink to="/app/deals">Deals</NavLink>
+          <NavLink to="/app/deals">Anlaşmalar</NavLink>
           <NavLink to="/app/invitations">Davetler</NavLink>
         </nav>
       </header>
@@ -193,8 +193,7 @@ export function AuthenticatedLayout() {
 
       <footer className="site-footer">
         <p>
-          Aktif legal entity seçimi yalnızca istemci bağlamıdır; tüm yetki Core
-          API tarafından doğrulanır.
+          Aktif kuruluş seçiminiz için tüm yetkiler sunucu tarafından doğrulanır.
         </p>
       </footer>
     </div>

@@ -48,8 +48,8 @@ const DISPUTE_STATUS_LABELS: Record<string, string> = {
 
 const REASON_CODE_LABELS: Record<DisputeReasonCode, string> = {
   NON_DELIVERY: "Teslimat yapılmadı",
-  EVIDENCE_QUALITY: "Evidence kalitesi",
-  EVIDENCE_REJECTION: "Evidence reddi",
+  EVIDENCE_QUALITY: "Teslimat kanıtı kalitesi",
+  EVIDENCE_REJECTION: "Teslimat kanıtı reddi",
   CONTRACT_NON_CONFORMANCE: "Sözleşmeye aykırılık",
   OTHER: "Diğer",
 };
@@ -325,7 +325,7 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
   return (
     <section className="workspace-panel casework-panel" aria-labelledby="casework-title">
       <div className="panel-heading">
-        <p className="section-kicker">Casework</p>
+        <p className="section-kicker">Uyuşmazlık</p>
         <h2 id="casework-title">Uyuşmazlık</h2>
       </div>
 
@@ -333,7 +333,7 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
 
       {showEmptyState ? (
         <p className="muted-copy invitation-empty">
-          Henüz bu Deal için uyuşmazlık kaydı yok.
+          Henüz bu anlaşma için uyuşmazlık kaydı yok.
         </p>
       ) : null}
 
@@ -341,8 +341,8 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
         <form className="casework-open-form" onSubmit={handleOpenSubmit}>
           <h3>Yeni uyuşmazlık aç</h3>
           <p className="muted-copy">
-            Bu işlem yalnızca backend izin verdiğinde görünür. Açılış anındaki
-            fulfillment ve evidence durumu değişmez şekilde sabitlenir.
+            Bu işlem yalnızca izin verildiğinde görünür. Açılış anındaki teslimat
+            ve kanıt durumu değişmez şekilde kaydedilir.
           </p>
           {fulfillmentQuery.isLoading ? (
             <p>Yükleniyor…</p>
@@ -624,14 +624,14 @@ function SnapshotSection({
   const snapshot = dispute.openingSnapshot;
   return (
     <section className="casework-snapshot" aria-labelledby="casework-snapshot-title">
-      <h4 id="casework-snapshot-title">Açılış anındaki snapshot</h4>
+      <h4 id="casework-snapshot-title">Açılış anındaki kayıt</h4>
       <dl className="casework-snapshot-meta">
         <div>
-          <dt>Fulfillment durumu</dt>
-          <dd>{snapshot.fulfillmentStatusAtOpen}</dd>
+          <dt>Teslimat durumu</dt>
+          <dd>Kaydedildi</dd>
         </div>
         <div>
-          <dt>Evidence sayısı</dt>
+          <dt>Kanıt sayısı</dt>
           <dd>{snapshot.evidence.length}</dd>
         </div>
       </dl>
@@ -640,12 +640,14 @@ function SnapshotSection({
           <li key={evidence.evidenceSubmissionId}>
             <div>
               <strong>{evidence.fileName}</strong>
-              <span>{evidence.evidenceType}</span>
-              <span>{evidence.statusAtOpen}</span>
+              <span>Teslimat kanıtı</span>
+              <span>Açılışta kaydedildi</span>
             </div>
-            <p className="muted-copy">
-              SHA-256: <code>{truncateHex(evidence.verifiedSha256)}</code>
-            </p>
+            <details className="casework-technical-details">
+              <summary>Teknik ayrıntılar</summary>
+              <p>SHA-256: <code>{truncateHex(evidence.verifiedSha256)}</code></p>
+              <p>Tür: {evidence.evidenceType} · Durum: {evidence.statusAtOpen}</p>
+            </details>
             <button
               type="button"
               className="secondary-button"
@@ -663,7 +665,7 @@ function SnapshotSection({
         <div key={entry.jobId} className="casework-pinned-video">
           <h5>Sabitlenmiş video analizi</h5>
           <p className="muted-copy">
-            Evidence: <code>{entry.evidenceSubmissionId}</code>
+            Bu video kanıtına aittir.
           </p>
           <PinnedVideoResult result={entry.result} />
         </div>
@@ -677,7 +679,7 @@ function PinnedVideoResult({ result }: { result: VideoAnalysisResult }) {
   return (
     <div className="casework-pinned-video-result">
       <p className="analysis-advisory">
-        Bu sonuç açılış anında sabitlenmiş danışmanlık verisidir; evidence veya
+        Bu sonuç açılış anında sabitlenmiş danışmanlık verisidir; teslimat kanıtı veya
         ödeme kararı vermez.
       </p>
       {advisory ? (

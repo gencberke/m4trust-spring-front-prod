@@ -3,7 +3,7 @@ import { ApiError } from "../../app/coreApi";
 export type LegalEntityField = "legalName" | "registrationNumber";
 
 const REQUIRED_MESSAGES: Record<LegalEntityField, string> = {
-  legalName: "Legal entity adını girin.",
+  legalName: "Kuruluş adını girin.",
   registrationNumber: "Kayıt numarasını girin.",
 };
 
@@ -51,9 +51,9 @@ export function getOrganizationErrorMessage(error: unknown): string {
     case "CSRF_TOKEN_INVALID":
       return "Güvenlik doğrulaması yenilenemedi. Lütfen tekrar deneyin.";
     case "LEGAL_ENTITY_ACCESS_DENIED":
-      return "Seçili legal entity için erişim doğrulanamadı. Lütfen yeniden seçim yapın.";
+      return "Seçili kuruluş için erişim doğrulanamadı. Lütfen yeniden seçim yapın.";
     case "LEGAL_ENTITY_NOT_FOUND":
-      return "Seçili legal entity bulunamadı veya artık erişiminiz yok.";
+      return "Seçili kuruluş bulunamadı veya artık erişiminiz yok.";
     default:
       return "İşlem tamamlanamadı. Lütfen daha sonra yeniden deneyin.";
   }

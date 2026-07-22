@@ -32,7 +32,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-shell--entry">
       <header className="auth-header">
         <Link className="brand brand-link" to="/" aria-label="M4Trust ana sayfa">
           M4Trust
@@ -41,7 +41,7 @@ export function RegisterPage() {
       </header>
 
       <main className="auth-main">
-        <section className="auth-introduction" aria-labelledby="register-title">
+        <section className="auth-introduction auth-introduction--register" aria-labelledby="register-title">
           <span className="section-kicker">M4Trust’a katılın</span>
           <h1 id="register-title">Güvenle çalışmaya başlayın.</h1>
           <p>

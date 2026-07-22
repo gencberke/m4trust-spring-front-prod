@@ -22,17 +22,17 @@ export function getReviewErrorMessage(error: unknown): string {
     case "VALIDATION_FAILED":
       return "Lütfen işaretli alanlardaki değerleri kontrol edin.";
     case "DEAL_STALE_VERSION":
-      return "Deal başka bir işlemle değişti. Güncel inceleme ve Deal verisi yenilendi; değişikliklerinizi gözden geçirip yeniden deneyin.";
+      return "Anlaşma başka bir işlemle değişti. Güncel inceleme bilgileri yenilendi; değişikliklerinizi gözden geçirip yeniden deneyin.";
     case "DEAL_STATE_CONFLICT":
-      return "Bu extraction artık kabul edilemez. Güncel Deal ve inceleme verisi yenilendi.";
+      return "Bu çıkarım artık kabul edilemez. Güncel anlaşma ve inceleme bilgileri yenilendi.";
     case "DEAL_REVIEW_ACCEPTANCE_FORBIDDEN":
-      return "Aktif legal entity bu incelemeyi kabul etmeye yetkili değil.";
+      return "Aktif kuruluş bu incelemeyi kabul etmeye yetkili değil.";
     case "IDEMPOTENCY_KEY_REUSED":
       return "Bu istek anahtarı farklı bir içerikle kullanılmış. Değişikliklerinizi gözden geçirip yeniden deneyin.";
     case "CSRF_TOKEN_INVALID":
       return "Güvenlik doğrulaması yenilenemedi. Lütfen tekrar deneyin.";
     default:
-      return "İnceleme şu anda kaydedilemedi. Lütfen güncel Deal durumunu kontrol edin.";
+      return "İnceleme şu anda kaydedilemedi. Lütfen güncel anlaşma durumunu kontrol edin.";
   }
 }
 

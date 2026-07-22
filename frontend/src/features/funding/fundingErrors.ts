@@ -9,23 +9,23 @@ export function getFundingErrorMessage(error: unknown): string {
     return "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.";
   switch (error.code) {
     case "VALIDATION_FAILED":
-      return "İstek sunucu tarafından reddedildi. Lütfen güncel Deal ve funding durumunu kontrol edin.";
+      return "İstek sunucu tarafından reddedildi. Lütfen güncel anlaşma ve ödeme durumunu kontrol edin.";
     case "DEAL_STALE_VERSION":
-      return "Deal başka bir işlemle değişti. Güncel Deal verisi yenilendi; lütfen tekrar deneyin.";
+      return "Anlaşma başka bir işlemle değişti. Güncel bilgiler yenilendi; lütfen tekrar deneyin.";
     case "DEAL_STATE_CONFLICT":
-      return "Deal artık ACTIVE durumunda değil; bu funding işlemi kapalı. Güncel Deal verisi yenilendi.";
+      return "Anlaşma artık bu ödeme işlemi için uygun değil. Güncel bilgiler yenilendi.";
     case "FUNDING_PLAN_ALREADY_EXISTS":
-      return "Bu Deal için funding planı zaten oluşturulmuş. Güncel plan yenilendi.";
+      return "Bu anlaşma için ödeme planı zaten oluşturulmuş. Güncel plan yenilendi.";
     case "FUNDING_PLAN_NOT_FOUND":
-      return "Bu Deal için henüz bir funding planı oluşturulmadı.";
+      return "Bu anlaşma için henüz bir ödeme planı oluşturulmadı.";
     case "FUNDING_UNIT_NOT_FOUND":
-      return "Funding unit bulunamadı veya artık erişilebilir değil.";
+      return "Ödeme adımı bulunamadı veya artık erişilebilir değil.";
     case "FUNDING_UNIT_STALE_VERSION":
-      return "Funding unit başka bir işlemle değişti. Güncel durum yenilendi; lütfen tekrar deneyin.";
+      return "Ödeme adımı başka bir işlemle değişti. Güncel durum yenilendi; lütfen tekrar deneyin.";
     case "FUNDING_UNIT_ALREADY_FUNDED":
-      return "Bu funding unit zaten FUNDED durumunda; yeni bir ödeme başlatılamaz. Güncel durum yenilendi.";
+      return "Bu ödeme adımı zaten tamamlandı; yeni bir ödeme başlatılamaz. Güncel durum yenilendi.";
     case "PAYMENT_OPERATION_IN_FLIGHT":
-      return "Bu unit için zaten devam eden bir ödeme işlemi var. Güncel durum yenilendi.";
+      return "Bu ödeme adımı için zaten devam eden bir işlem var. Güncel durum yenilendi.";
     case "PAYMENT_OPERATION_NOT_FOUND":
       return "Bu ödeme işlemi bulunamadı veya artık erişilebilir değil.";
     case "PAYMENT_OPERATION_STALE_VERSION":
@@ -33,15 +33,15 @@ export function getFundingErrorMessage(error: unknown): string {
     case "PAYMENT_OPERATION_STATE_CONFLICT":
       return "Bu ödeme işlemi artık doğrulama (reconciliation) için uygun değil; sonuç zaten kesinleşmiş. Güncel durum yenilendi.";
     case "FUNDING_MUTATION_FORBIDDEN":
-      return "Bu işlem yalnızca alıcı (buyer) tarafının ADMIN kullanıcısına açıktır.";
+      return "Bu işlem yalnızca alıcı kuruluşun yetkili yöneticisine açıktır.";
     case "IDEMPOTENCY_KEY_REUSED":
       return "Bu istek anahtarı farklı bir içerikle kullanılmış. Güncel durumu gözden geçirip yeniden deneyin.";
     case "CSRF_TOKEN_INVALID":
       return "Güvenlik doğrulaması yenilenemedi. Lütfen tekrar deneyin.";
     case "LEGAL_ENTITY_ACCESS_DENIED":
-      return "Aktif legal entity bağlamı doğrulanamadı. Lütfen yeniden seçim yapın.";
+      return "Aktif kuruluş bağlamı doğrulanamadı. Lütfen yeniden seçim yapın.";
     default:
-      return "İşlem tamamlanamadı. Lütfen güncel Deal ve funding durumunu kontrol edin.";
+      return "İşlem tamamlanamadı. Lütfen güncel anlaşma ve ödeme durumunu kontrol edin.";
   }
 }
 

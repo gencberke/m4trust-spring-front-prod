@@ -20,7 +20,7 @@ export function DealMembershipBootstrapState({
         >
           {error ? (
             <>
-              <h2>Legal entity bağlamı alınamadı</h2>
+              <h2>Kuruluş bilgisi alınamadı</h2>
               <p>{getOrganizationErrorMessage(error)}</p>
               <button
                 className="secondary-button"
@@ -34,8 +34,8 @@ export function DealMembershipBootstrapState({
           ) : (
             <>
               <span className="loading-line" aria-hidden="true" />
-              <h2>Legal entity bağlamı yükleniyor</h2>
-              <p>Deal çalışma alanı için üyelikleriniz hazırlanıyor.</p>
+              <h2>Kuruluş bilgisi yükleniyor</h2>
+              <p>Anlaşma çalışma alanı için üyelikleriniz hazırlanıyor.</p>
             </>
           )}
         </section>
