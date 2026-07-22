@@ -2,9 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile",
+    "dockerfilePath": "services/core-api/Dockerfile",
     "watchPatterns": [
-      "/services/core-api/**"
+      "/services/core-api/**",
+      "/contracts/**"
     ]
   },
   "deploy": {

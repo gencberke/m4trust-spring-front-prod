@@ -20,6 +20,18 @@ class ErrorCatalogExactSetTest {
             "DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN",
             "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN");
 
+    private static final Set<String> REMOVED_UNRELEASED_ADR_017_018 = Set.of(
+            "AUTH_INVITATION_NOT_FOUND_OR_INVALID",
+            "AUTH_INVITATION_STATE_CONFLICT",
+            "AUTH_PASSWORD_RESET_NOT_FOUND_OR_INVALID",
+            "AUTH_REGISTRATION_CLOSED",
+            "MEMBER_INVITATION_ACTIVE_EXISTS",
+            "MEMBER_INVITATION_NOT_FOUND_OR_HIDDEN",
+            "MEMBER_INVITATION_STATE_CONFLICT",
+            "UPLOAD_REJECTED_MALWARE",
+            "UPLOAD_SCAN_PENDING",
+            "UPLOAD_SCAN_UNAVAILABLE");
+
     @Test
     void javaApiErrorCodeMatchesOpenApiExactSet() throws IOException {
         Set<String> openApi = readOpenApiEnum("ApiErrorCode");
@@ -29,6 +41,8 @@ class ErrorCatalogExactSetTest {
         assertEquals(openApi, java);
         assertFalse(java.stream().anyMatch(REMOVED_COMBINED::contains));
         assertFalse(openApi.stream().anyMatch(REMOVED_COMBINED::contains));
+        assertFalse(java.stream().anyMatch(REMOVED_UNRELEASED_ADR_017_018::contains));
+        assertFalse(openApi.stream().anyMatch(REMOVED_UNRELEASED_ADR_017_018::contains));
     }
 
     @Test

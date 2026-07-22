@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Removed unreleased ADR-017/018-only public ApiErrorCode catalog values that had
+  no runtime endpoint or reusable response ownership yet:
+  `AUTH_INVITATION_NOT_FOUND_OR_INVALID`, `AUTH_INVITATION_STATE_CONFLICT`,
+  `AUTH_PASSWORD_RESET_NOT_FOUND_OR_INVALID`, `AUTH_REGISTRATION_CLOSED`,
+  `MEMBER_INVITATION_ACTIVE_EXISTS`, `MEMBER_INVITATION_NOT_FOUND_OR_HIDDEN`,
+  `MEMBER_INVITATION_STATE_CONFLICT`, `UPLOAD_REJECTED_MALWARE`,
+  `UPLOAD_SCAN_PENDING`, and `UPLOAD_SCAN_UNAVAILABLE`. Existing `ACCESS_DENIED`
+  and all `DEAL_INVITATION_*` codes remain.
+
 - AI consumer compatibility accepts only optional read-only `M4TRUST_AI_CONTRACTS_ROOT`
   (no `eval` / `M4TRUST_AI_CONSUMER_CHECK_CMD`). Mismatch reports per-file expected/actual
   SHA-256 hashes; absent baseline emits exact

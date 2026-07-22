@@ -118,14 +118,15 @@ Railway dashboard'da iki GitHub service aynı `main` branch'ine bağlanır:
 
 | Service | Root Directory | Config File | Docker build context |
 | --- | --- | --- | --- |
-| `m4trust-core-api` | `/services/core-api` | `/services/core-api/railway.json` | `/services/core-api` |
+| `m4trust-core-api` | `/` | `/services/core-api/railway.json` | repository root (`services/core-api/Dockerfile`) |
 | `m4trust-web-edge` | `/` | `/frontend/railway.json` | repository root |
 
 Web edge'in root'u bilerek repository köküdür. `frontend/Dockerfile`, frontend
 type generation sırasında commit edilmiş
-`contracts/openapi/core-api-v1.yaml` dosyasını okur. Core service ise yalnız
-kendi root'undan build edilir. Config File yolu Root Directory'den bağımsız
-olarak Railway service ayarında açıkça seçilmelidir.
+`contracts/openapi/core-api-v1.yaml` dosyasını okur. Core service de monorepo
+root context'inden `services/core-api/Dockerfile` ile build edilir ve
+`contracts/**` watch kapsamına dahildir (ADR-022). Config File yolu Root
+Directory'den bağımsız olarak Railway service ayarında açıkça seçilmelidir.
 
 Yalnız `m4trust-web-edge` için public domain üretilir. `m4trust-core-api` ve
 Railway PostgreSQL public domain/TCP proxy almaz; aralarındaki trafik aynı
