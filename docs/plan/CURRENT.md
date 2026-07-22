@@ -107,9 +107,17 @@ browser Section 6 matrix that was deferred at 14A closure was completed and
 accepted as gate C0 on 2026-07-21
 (`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
+ADR-014–ADR-019 were accepted on 2026-07-22. They fix the demo-only settlement
+boundary, conditional event/outbox rule, production runtime/recovery topology,
+invite-only identity, scanned S3 quarantine, and production AI provider/privacy
+authority. Slice 15 Production Reconciliation and Readiness is human-approved
+under `docs/plan/ready/`; no Slice 15 implementation or production acceptance is
+claimed yet. Slice 14B remains planning-only behind Slice 15 `PROD-READY` and
+the seven-day pilot exit.
+
 ## Accepted foundations
 
-- ADR-001 through ADR-013 are accepted and remain authoritative.
+- ADR-001 through ADR-019 are accepted and remain authoritative.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
 - Slice 2 organization and membership is accepted under `docs/plan/done/`.
@@ -256,26 +264,36 @@ accepted as gate C0 on 2026-07-21
 
 ## Not yet stable or accepted
 
-- FastAPI AI service skeleton
+- Slice 15 production reconciliation implementation and its full-stack
+  staging/production-pilot evidence.
+- Production OpenAI/private-Roboflow/local-model execution; the current FastAPI
+  service remains a non-production foundation until Slice 15 is accepted.
+- Slice 14B settlement/release implementation and every later capability in the
+  post-fix roadmap.
 
 ## Active work
 
-Slice 11B-A is accepted and merged into `main`. The real-provider Slice 11B-B/
-G1 route is superseded by the founder's simulation-only decision. G1-S and
-C3–C4/G4c are accepted for simulation scope. C6 ADR-014 and C7 Slice 14B ready
-remain blocked, so Slice 14B has no implementation authority yet.
+Slice 15 Production Reconciliation and Readiness is the sole ready implementation
+plan. It must execute in reviewed packets against exact bases; task acceptance
+does not imply `PROD-READY`, staging acceptance, pilot entry, or pilot exit.
+Slice 14B and the R2–R8 capability roadmap have no implementation authority.
 
 ## Known blockers
 
-No external credential/provider blocker remains. ADR-014 must still close
-simulation state, race, authorization, cardinality, idempotency, lock and
-transaction decisions. No open 14A/Slice 13 browser acceptance debt remains.
+Production release remains blocked until Slice 15 closes contract/runtime drift,
+invite onboarding, scanned object storage, AI fail-closed/model-supply-chain,
+private deployment, immutable release, recovery, telemetry and operational
+acceptance. External gates still require Postmark domain authentication,
+production S3/KMS/GuardDuty resources, OpenAI/Roboflow contractual and private
+model provenance, Grafana Cloud, and Railway production/PITR configuration. No
+open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next work is ADR-014 for simulation-only settlement/release. After ADR-014
-is accepted, the eight-section Slice 14B plan must receive separate ready
-approval before any implementation task packet is issued.
+The next work is Slice 15 P1–P10 in dependency-ordered task packets, beginning
+with contract/error authority and contract-bundle/runtime drift controls. After
+all Slice 15 gates and the seven-day pilot are accepted, Slice 14B is replanned
+against the then-current exact base and may receive separate ready approval.
 
 ## Update rule
 

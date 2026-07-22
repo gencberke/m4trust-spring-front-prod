@@ -1,22 +1,26 @@
 # Slice 14B — Settlement and Release
 
-- Status: planning — gated future work; not implementation-authorizing
+- Status: planning — post-production-fix gated work; not implementation-authorizing
 - Draft date: 21 July 2026; simulation-only replan started 22 July 2026
 - Current repository baseline:
-  `main@7e597c0ae48ec7e40b51373cfc7c606cf2aa282f`
+  `main@b2ae2dee63d58a44cddacb49814f17049c7720d3`
 - Required predecessors:
   - accepted Slice 14A Dispute and Casework Foundation;
   - accepted Slice 7 staging deployment;
   - accepted Slice 11B-A simulation transport foundation;
-  - accepted simulation-only founder decision/G1-S/G4c; and
-  - accepted ratification-contract decision G3.
-- Future decision: ADR-014 Settlement and Release must be created from accepted
-  gate evidence before this plan can become decision-complete or move to
-  `ready/`.
-- Approval boundary: no implementer task packet may be produced until ADR-014
-  is accepted and this eight-section plan receives separate ready approval.
-- Deployment/payment boundary: no Moka account, credential, provider call,
-  production enablement or real money movement exists in this scope.
+  - accepted ADR-014 settlement/demo-simulation authority; and
+  - accepted Slice 15 Production Reconciliation, a `PROD-READY` decision, and
+    successful seven-day production pilot exit.
+- Decision authority: ADR-014 Settlement, Release and Production Demo
+  Simulation is accepted. Its schema, state, authorization, race, lock,
+  transaction, query-first and production-demo boundaries are binding.
+- Approval boundary: this plan cannot move to `ready/`, and no 14B task packet
+  may be issued, until Slice 15 and its production pilot are accepted and this
+  eight-section plan receives separate human ready approval.
+- Deployment/payment boundary: production may run only the separately deployed
+  `DEMO_SIMULATED` service defined by ADR-014/ADR-016. Moka sandbox credentials,
+  test scenario controls, provider fallback and real money movement remain
+  forbidden.
 
 ## 1. Goal
 
@@ -29,11 +33,10 @@ when a dispute opens is handled through query-first simulator reconciliation
 and is never assumed cancelled. Only query-verified `SIMULATED_SETTLED` may
 change the demo Deal from `ACTIVE` to `COMPLETED`.
 
-This document plans the complete dependency, decision, implementation,
-validation, and acceptance sequence. It deliberately remains gated because the
-ADR-014 must still fix exact state, race, authorization, cardinality,
-idempotency, lock and transaction decisions. This plan never claims real money
-movement or financial settlement.
+This document plans the complete dependency, implementation, validation, and
+acceptance sequence under accepted ADR-014. It deliberately remains gated by
+Slice 15 production readiness, pilot exit, and separate ready approval. This
+plan never claims real money movement or financial settlement.
 
 ## 2. Current State and Accepted Inputs
 
@@ -96,15 +99,16 @@ movement or financial settlement.
 - Deal `ACTIVE -> COMPLETED` only when simulator query proves
   `SIMULATED_SETTLED`; this is demo workflow completion, not financial finality.
 - Contract-first Core API, forward-only persistence, audit, concurrency,
-  staging-simulation validation, and planner-owned browser acceptance.
+  staging plus limited-production demo validation, and planner-owned browser
+  acceptance.
 
 ### Permanently out of scope for 14B
 
 - Automatic release on fulfillment completion, window expiry, scheduler, AI
   output, callback, or browser redirect.
 - Refund, reversal, chargeback, approve-then-refund, or post-settlement recovery.
-- Production simulator enablement, provider credentials, real money movement,
-  or production payment/release deployment.
+- Moka/test-sandbox production enablement, public scenario controls, provider
+  credentials, real money movement, or any non-`DEMO_SIMULATED` release path.
 - Platform-held/manual-payout assumption without accepted legal approval.
 - AI involvement.
 - Case resolution, mutual cancellation, or casework-driven ACTIVE cancellation.
@@ -129,12 +133,13 @@ movement or financial settlement.
 - Release acceptance, local dispatch completion, synchronous success-like
   response, timeout or callback-like input is not terminal simulation proof.
 
-### G1-S — Accepted simulation safety gate
+### G1-S — Accepted simulation safety gate, reconciled by ADR-014
 
 Accepted by the founder/user on 22 July 2026:
 
-- deterministic external simulator only in local/CI/staging simulation modes;
-- no production fallback or runtime scenario-control surface;
+- deterministic test simulator only in local/CI/staging simulation modes;
+- a separate private `DEMO_SIMULATED` production service, with no test-sandbox
+  fallback or production runtime scenario-control surface;
 - lifetime-fixed operation identity and query-only terminal proof;
 - explicit `SIMULATED` projection and `SIMULATED_SETTLED` terminal state;
 - unknown/timeout/crash remains reconcilable and blocks another release; and
@@ -149,25 +154,24 @@ marketplace, sub-dealer, KYC, fee, split, payout, Law 6493, real settlement or
 manual-payout conclusion is made. Buyer-ADMIN authority is a demo workflow
 rule, not a legal/payment-services opinion.
 
-### G3 — Ratification contract compatibility gate
+### G3 — Accepted ratification contract compatibility gate
 
-Human acceptance must choose and fully specify:
+ADR-014 fixes the decision as follows:
 
-- the versioned ratification snapshot carrying `disputeWindowDays`;
-- its integer unit, allowed range, canonical ordering/hash input, and validation;
-- whether a new endpoint/schema version or additive compatibility transition is
-  used;
-- frontend/generated-client migration;
-- behavior of new package creation when the term is absent; and
-- proof that existing clients and already-ratified packages are not silently
-  changed.
+- ratification schema v2 carries integer `disputeWindowDays` in range `1..365`;
+- one day is exactly 24 UTC hours and eligibility begins at
+  `completedAt + disputeWindowDays * 24 hours`, inclusive;
+- the value is an immutable canonical snapshot/hash input and is required for
+  newly created release-eligible packages;
+- schema v1 remains readable but permanently release-ineligible; and
+- committed OpenAPI/JSON Schema and generated-client compatibility are delivered
+  contract-first in B-P1.
 
-Existing accepted packages remain release-ineligible. A migration must not
-invent contractual consent for them.
+No migration may invent contractual consent for an existing package.
 
-### G4 — Accepted prerequisite gate
+### G4 — Accepted and remaining prerequisite gates
 
-Before ADR-014 or a ready plan:
+Before this plan may move to `ready/`:
 
 - Slice 7 staging is accepted;
 - Slice 11B-A simulation transport foundation is accepted;
@@ -175,7 +179,9 @@ Before ADR-014 or a ready plan:
 - the accepted external emulator/adapter exposes query-first provider-neutral
   primitives; and
 - no real-provider, credential, refund workaround or legal-compliance claim is
-  introduced.
+  introduced;
+- Slice 15 Production Reconciliation is accepted `PROD-READY`; and
+- its seven-day limited production pilot exits within the accepted thresholds.
 
 ### Target ownership and module boundaries
 
@@ -193,7 +199,7 @@ Before ADR-014 or a ready plan:
 - Simulator calls occur after durable intent commit and outside database
   transactions.
 
-### Target public API — provisional until ADR-014
+### Target public API — fixed by ADR-014
 
 ```text
 GET  /api/v1/deals/{dealId}/settlement
@@ -219,8 +225,9 @@ POST /api/v1/release-operations/{operationId}/reconcile
   unknown simulated outcome, forbidden actor, hidden resource, validation, and
   idempotency reuse.
 
-Exact schema, operation states, lock order and compatibility remain ADR-014
-work. This section is a target boundary, not an implementation contract.
+The schema details are committed contract-first in B-P1. State, lock order,
+compatibility and transaction semantics may narrow only within ADR-014; any
+contradiction requires `REPLAN`, not implementer invention.
 
 ### Target state, transactions, and persistence
 
@@ -228,8 +235,8 @@ work. This section is a target boundary, not an implementation contract.
   `NOT_READY`, `READY`, `PROCESSING`, `ON_HOLD`, `SETTLED`, `FAILED`, and
   `CANCELLED`.
 - ADR-014 adds `SIMULATED_SETTLED`. Financial `SETTLED`, refund/reversal states
-  and production paths are unreachable in 14B. No generic free status setter is
-  permitted.
+  and real-money paths are unreachable in 14B. The explicit production
+  `DEMO_SIMULATED` path is allowed; no generic free status setter is permitted.
 - A durable release operation distinguishes local intent, simulator dispatch,
   unknown outcome, query-verified simulated result and terminal simulation.
 - Unknown/timeout/crash state remains reconcilable and never becomes automatic
@@ -246,43 +253,36 @@ work. This section is a target boundary, not an implementation contract.
 
 ## 5. Detailed Implementation Phases
 
-Only G0 is actionable decision work. B-P1–B-P7 are sequenced future phases, but
-no implementer may execute them until ADR-014 and this revised plan receive
-explicit human approval.
+B-P1–B-P7 remain sequenced future phases. No implementer may execute them until
+the Slice 15 `PROD-READY` decision, seven-day pilot exit, and separate human
+approval move this plan to `ready/`.
 
-### G0 — Close ADR-014 decisions
+### G0 — Close the production-readiness entry gate
 
 Objective:
-Convert the accepted simulation/G3/prerequisite inputs into a decision-complete
-ADR-014.
+Prove that 14B will start from the hardened production baseline rather than
+reopening deployment, identity, storage, AI, release or recovery debt.
 
-Exact scope:
+Exact scope and evidence:
 
-- Fix simulator mappings, operation/cardinality/state transitions, query-only
-  `SIMULATED_SETTLED`, late-dispute behavior and demo Deal completion.
-- Publish a complete transition/UI-label matrix: every failure and terminal
-  label is simulation-qualified and financial `SETTLED` remains unreachable.
-- Fix authorization/read disclosure, HTTP/operation-key idempotency, lock order,
-  transaction boundaries, audit and compatibility.
-- Explicitly extend ADR-010 §2.6 from local-only scenario selection to a
-  separate `staging-simulated` profile while preserving production rejection.
-- Consume accepted G3 and exact Slice 7, 11B-A and 14A prerequisites.
-- Preserve production exclusion and prohibited financial/provider claims.
-- Change no application code, migration, public contract, or accepted ADR.
-
-Validation and completion evidence:
-
-- Decision table covers every state/race/lock/auth/idempotency/transaction and
-  simulation-label boundary; explicit human ADR acceptance exists.
+- Slice 15 is archived as accepted with every automated, staging, recovery and
+  operational gate complete.
+- The seven-day pilot exits within ADR-016 thresholds with exact-digest rollback
+  and restore evidence.
+- Contract bundle/runtime OpenAPI authority, scanned storage, invite-only
+  identity, provider fail-closed behavior and production observability remain
+  green at the 14B base commit.
+- ADR-014 remains accepted without an unresolved contradiction from pilot
+  evidence; any material change is decided by a new superseding ADR.
 
 Stop/escalation conditions:
 
-- Stop if simulator terminal semantics, duplicate safety, authority,
-  ratification rollout, production exclusion or dispute race remains unknown.
-- Do not design a workaround or start B-P1.
+- Do not start B-P1 while Slice 15/pilot evidence is partial, a production gate
+  is waived, or ADR-014 requires reinterpretation.
 
 Planner review checkpoint:
-Explicit ADR-014 acceptance is required before contract implementation.
+Explicit G0 acceptance and a new exact-base ready revision are required before
+the first 14B implementation packet.
 
 ### B-P1 — Contract-first simulation design
 
@@ -440,7 +440,7 @@ Completion evidence:
 Stop/escalation conditions:
 
 - Stop on unsafe automatic retry, new operation key for an unknown operation,
-  production enablement or proposed refund workaround.
+  non-`DEMO_SIMULATED` production path or proposed refund workaround.
 
 Planner review checkpoint:
 Simulator/reconciliation evidence review before terminal completion.
@@ -502,7 +502,7 @@ Exact scope and tests:
 - Funding/payment reconciliation, fulfillment completion, 14A disclosure,
   Deal lifecycle, ratification hashing/versioning, and module architecture.
 - Before/after assertions for no refund, reversal, cancellation, automatic
-  release, AI effect, production enablement, credential or financial claim.
+  release, AI effect, sandbox fallback, credential or financial claim.
 
 Completion evidence:
 
@@ -512,7 +512,7 @@ Completion evidence:
 Stop/escalation conditions:
 
 - Stop on any FORBIDDEN behavior, ambiguous simulated mode, or need to broaden
-  refund/legal/production scope.
+  refund/legal/real-money scope.
 
 Planner review checkpoint:
 Focused hardening review before full validation.
@@ -523,22 +523,24 @@ Objective:
 Submit the implementation for planner review without claiming staging/browser
 acceptance or plan completion.
 
-Required validation after ADR-014 makes commands exact:
+Required validation after the ready revision fixes exact commands:
 
 - contract validator and compatibility checks;
 - full Core API verify;
 - frontend typecheck and production build;
 - external simulator adapter/integration suite;
 - Compose/config checks where applicable;
-- bootstrap/profile guard proving production rejects every simulator mode;
-- CI/config test proving only explicit local/CI/`staging-simulated` profiles
-  can start the simulator adapter;
+- bootstrap/profile guard proving production rejects test/sandbox simulator
+  modes and accepts only the private `DEMO_SIMULATED` configuration;
+- CI/config test proving scenario controls remain confined to explicit
+  local/CI/`staging-simulated` profiles;
 - focused simulator/reconciliation/dispute/terminality matrix; and
 - `git diff --check`, status, and complete prerequisite-base-to-HEAD diff.
 
 The implementer report must include exact simulation profile/scenario, call
 counts, unknown outcomes, migrations, contract delta, branch/base/HEAD,
-production-exclusion proof, deviations, and `Plan completion claim: NO`.
+production demo-mode/sandbox-exclusion proof, deviations, and
+`Plan completion claim: NO`.
 
 Stop/escalation conditions:
 
@@ -547,10 +549,11 @@ Stop/escalation conditions:
 
 ## 6. Browser Acceptance
 
-Owner: planner. This section is blocked until ADR-014 and B-P1–B-P7 are accepted.
+Owner: planner. This section is blocked until G0 and B-P1–B-P7 are accepted.
 
-Use accepted staging plus the external simulator in an explicit simulation
-profile. Never use production payment/release mode or real money.
+Run the matrix first on accepted staging and then on the limited production
+`DEMO_SIMULATED` deployment using the exact promoted digests. Never use a test
+sandbox in production or real money.
 
 Before or as part of this section, confirm gate C0 remains accepted:
 `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md` already retires the
@@ -582,8 +585,8 @@ evidence separately.
 11. Exercise the accepted release-first/dispute-later simulator path and
     confirm query-first fail-closed reconciliation.
 12. Confirm no financial `SETTLED`, refund, reversal, automatic release,
-    cancellation, credential, production enablement, real money movement or AI
-    side effect.
+    cancellation, credential, sandbox fallback, real money movement or AI side
+    effect.
 13. Regress Slice 14A party-only disclosure and accepted fulfillment/video
     history behavior.
 
@@ -592,18 +595,18 @@ not replace this single final user-visible simulation check.
 
 ## 7. Validation and Review Handoff
 
-- This document cannot move to `ready/` before accepted ADR-014 and separate
-  ready approval.
-- G0 is planner/human decision work, not an implementer authorization.
+- ADR-014 is accepted; this document cannot move to `ready/` before accepted
+  Slice 15/pilot G0 evidence and separate ready approval.
+- G0 is planner-owned acceptance work, not an implementer authorization.
 - After a future implementation request, reviewer independently verifies
   simulation decision, contract compatibility, migration safety,
   money types, authorization, idempotency, external-call boundaries,
-  reconciliation, dispute races, simulated terminality, production exclusion
-  and the full diff.
+  reconciliation, dispute races, simulated terminality, production demo-mode
+  isolation and the full diff.
 - Simulation screenshots/log references contain no raw transport payload,
   unnecessary PII or wording that implies real payment.
-- Acceptance requires automated validation plus staging-simulation browser
-  evidence.
+- Acceptance requires automated validation plus staging and limited-production
+  `DEMO_SIMULATED` browser evidence over the same promoted digests.
 - If simulation semantics or accepted G3 contradict ADR-014, return `REPLAN`;
   never create a workaround.
 - Task acceptance does not complete the plan. All phases, browser steps,
@@ -619,7 +622,8 @@ not replace this single final user-visible simulation check.
 - [x] G4a Slice 14A prerequisite is accepted
 - [x] G4b Slice 7 staging prerequisite is accepted
 - [x] G4c Slice 11B-A simulation foundation is accepted; 11B-B is superseded
-- [ ] ADR-014 is decision-complete and human-accepted
+- [x] ADR-014 is decision-complete and human-accepted
+- [ ] Slice 15 is accepted `PROD-READY` and its seven-day pilot exits successfully
 - [ ] This revised 14B plan is human-approved and moved to `ready/`
 - [ ] Ratified dispute-window terms are immutable, versioned, and canonical-hash inputs
 - [ ] Existing packages without the term remain release-ineligible
@@ -631,10 +635,10 @@ not replace this single final user-visible simulation check.
 - [ ] Unknown simulator outcomes never become automatic success or failure
 - [ ] Lifetime-fixed operation identity prevents duplicate release
 - [ ] Only query-verified SIMULATED_SETTLED completes the demo Deal
-- [ ] No automatic release, refund, reversal, cancellation, AI effect, or production money movement exists
+- [ ] No automatic release, refund, reversal, cancellation, AI effect, or real production money movement exists
 - [ ] Implementer-owned full validation and focused simulator matrix pass
 - [ ] Implementer reports all phases with `Plan completion claim: NO`
 - [ ] Planner independently reviews the complete diff and evidence
-- [ ] Planner-owned staging-simulation browser acceptance passes
+- [ ] Planner-owned staging plus limited-production demo browser acceptance passes
 - [x] Transferred Slice 14A Section 6 and Slice 13 historical VIDEO/MP4 browser debt is visibly retired (gate C0; `docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`)
 - [ ] The plan is archived only after every gate, phase, invariant, browser step, validation, and Done item is proven

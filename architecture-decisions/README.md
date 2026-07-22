@@ -89,6 +89,42 @@ Buyer/seller party-only dispute foundation'ını; open, comment, acknowledge ve
 withdraw actor modelini; immutable opening snapshot'ını; actor-aware lifecycle
 disclosure, concurrency ve no-side-effect sınırlarını tanımlar.
 
+### ADR-014 — Settlement, Release, and Production Demo Simulation
+
+Production'da gerçek para iddiası taşımayan `DEMO_SIMULATED` settlement/release
+modunu, ratified dispute window'u, release recovery'sini, dispute yarışlarını ve
+yalnız query-verified `SIMULATED_SETTLED` ile Deal completion'ı tanımlar.
+
+### ADR-015 — Domain Event and Outbox Policy
+
+Business audit ile integration event/durable dispatch'i ayırır; outbox'ın yalnız
+accepted operation bir event veya dış iş tanımladığında zorunlu olduğunu ve
+tanımlı kayıtların business mutation ile atomik yazılacağını sabitler.
+
+### ADR-016 — Production Runtime, Release, and Recovery
+
+Railway/AWS production topolojisini, private transport'u, immutable OCI digest
+promotion'ını, fail-fast config, migration/rollback, PITR, observability ve
+sınırlı production pilot kapısını tanımlar.
+
+### ADR-017 — Invite-Only Identity and Transactional Notification
+
+Production self-registration kapısını, account/member invitation ayrımını,
+email verification, password recovery, multi-replica throttling, Postmark
+notification outbox ve one-shot operator bootstrap davranışını tanımlar.
+
+### ADR-018 — Upload Quarantine, Malware, and Retention
+
+AWS S3 quarantine ve GuardDuty scan proof'ünü, clean tag olmadan finalize/read/AI
+yasağını, exact object-version bütünlüğünü ve bounded orphan cleanup davranışını
+tanımlar.
+
+### ADR-019 — Production AI Providers, Privacy, and Model Supply Chain
+
+OpenAI/private Roboflow/local BGE-M3/licensed Turkish NER provider allowlist'ini,
+masking ve RAG fail-closed politikasını, exact-hash offline model supply chain'ini
+ve robust worker recovery/readiness davranışını tanımlar.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:
