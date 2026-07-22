@@ -309,7 +309,7 @@ export function DealDocumentManagement({
     <section className="workspace-panel document-management-panel">
       <div className="panel-heading">
         <span className="section-kicker">Belgeler</span>
-        <h2>Deal belgesi</h2>
+        <h2>Anlaşma belgesi</h2>
         <p>Güncel sözleşme belgesi ve geçmiş sürümler burada listelenir.</p>
       </div>
 
@@ -338,7 +338,7 @@ export function DealDocumentManagement({
             ) : null}
           </div>
         ) : (
-          <p className="muted-copy">Bu Deal için henüz onaylanmış bir belge yok.</p>
+          <p className="muted-copy">Bu anlaşma için henüz onaylanmış bir belge yok.</p>
         )}
       </div>
 
@@ -410,7 +410,7 @@ export function DealDocumentManagement({
           </>
         ) : (
           <p className="muted-copy">
-            Belge yükleme yalnızca bu Deal’i başlatan taraf tarafından yapılabilir.
+            Belge yükleme yalnızca bu anlaşmayı başlatan taraf tarafından yapılabilir.
           </p>
         )}
       </div>

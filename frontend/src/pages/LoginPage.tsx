@@ -49,7 +49,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-shell--entry">
       <header className="auth-header">
         <Link className="brand brand-link" to="/" aria-label="M4Trust ana sayfa">
           M4Trust
@@ -58,7 +58,7 @@ export function LoginPage() {
       </header>
 
       <main className="auth-main">
-        <section className="auth-introduction" aria-labelledby="login-title">
+        <section className="auth-introduction auth-introduction--login" aria-labelledby="login-title">
           <span className="section-kicker">Tekrar hoş geldiniz</span>
           <h1 id="login-title">Hesabınıza giriş yapın.</h1>
           <p>

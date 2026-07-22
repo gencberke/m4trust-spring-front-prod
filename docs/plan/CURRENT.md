@@ -128,11 +128,12 @@ repository reconciliation is accepted at `381ed5b`. The user stopped 15-T03
 before implementation and withdrew the former P4–P9 production-hardening scope
 from ready. ADR-022 and the replacement Railway-demo plan are accepted at
 `docs/plan/ready/15-railway-demo-reconciliation-and-deployment.md`. The user-owned
-UI/UX insertion gate is now active; P5/P6 deployment is not authorized until that
-revision is implemented, reviewed and the user explicitly continues. Consolidated
-post-Slice-13 evidence is in
-`docs/plan/done/review/14a-15p4-implementation-review-handoff.md`. Slice 14B remains
-planning-only.
+UI/UX insertion gate is complete at `fbcbb7f`; independent review and real-browser
+desktop/mobile acceptance passed and the plan is archived at
+`docs/plan/done/15a-frontend-experience-redesign.md`. The user explicitly authorized
+autonomous continuation to P5/P6 in the active goal. Consolidated post-Slice-13
+evidence is in `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
+Slice 14B remains planning-only.
 
 ## Accepted foundations
 
@@ -288,8 +289,7 @@ planning-only.
 
 ## Not yet stable or accepted
 
-- Slice 15 user-owned UI/UX gate, Railway staging reconciliation and
-  production-demo evidence.
+- Slice 15 Railway staging reconciliation and production-demo evidence.
 - Production AI capability remains owned and accepted separately by the AI team;
   Slice 15 may report shared-contract compatibility but cannot select or change
   providers, models, workers, images or AI deployment.
@@ -299,15 +299,19 @@ planning-only.
 ## Active work
 
 Slice 15 Railway Demo Reconciliation and Deployment is the sole ready deployment
-plan. P4 is accepted. The user-owned UI/UX insertion gate is active; no P5/P6
-deployment packet may be issued until that revision is implemented, reviewed and
-the user explicitly authorizes continuation. Slice 14B and the R2–R7 capability
-roadmap have no implementation authority.
+plan. P4 and the user-owned UI/UX insertion gate are accepted. P5 reconciliation
+of the existing Railway staging environment is active under the user's explicit
+autonomous continuation authorization. On 2026-07-23 the founder/user accepted that
+live document storage smoke remains mandatory while live fulfillment-evidence smoke
+is a no-seed/no-bypass deferred risk until an authorized public `ACTIVE + FUNDED`
+creation path exists. Slice 14B and the R2–R7 capability roadmap have no
+implementation authority.
 
 ## Known blockers
 
-Controlled Railway demo deployment remains blocked on the user-owned UI/UX
-insertion gate, staging proof and the one final validation/production-demo gate.
+Controlled Railway demo deployment remains blocked on staging proof and the one
+final validation/production-demo gate; deferred live evidence smoke is not a
+blocker under the 2026-07-23 accepted reconciliation.
 Broad production remains explicitly out of scope.
 AI-enabled readiness additionally requires compatible evidence from the AI owner;
 its absence cannot be repaired by the main implementer.
@@ -315,11 +319,9 @@ No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next work is the user's separate UI/UX revision plan. Repository-wide
-backend/frontend suites run once at final P6; intermediate implementation and
-review use only minimum affected tests. After the UI/UX revision is accepted and
-the user explicitly continues, the next Slice 15 packet is P5 existing Railway
-staging reconciliation.
+The next work is Slice 15 P5 existing Railway staging reconciliation. Repository-
+wide backend/frontend suites run once at final P6; intermediate deployment review
+uses only minimum affected health, configuration, storage and browser checks.
 
 ## Update rule
 

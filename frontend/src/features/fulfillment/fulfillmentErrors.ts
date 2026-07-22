@@ -27,51 +27,51 @@ export function getFulfillmentErrorMessage(error: unknown): string {
     case "MALFORMED_REQUEST":
       return "İstek biçimi geçersiz. Lütfen sayfayı yenileyip tekrar deneyin.";
     case "DEAL_STALE_VERSION":
-      return "Deal başka bir işlemle değişti. Güncel veri yenilendi; lütfen tekrar deneyin.";
+      return "Anlaşma başka bir işlemle değişti. Güncel bilgiler yenilendi; lütfen tekrar deneyin.";
     case "DEAL_STATE_CONFLICT":
-      return "Deal artık bu işlem için uygun durumda değil. Güncel veri yenilendi.";
+      return "Anlaşma artık bu işlem için uygun durumda değil. Güncel bilgiler yenilendi.";
     case "FULFILLMENT_START_FORBIDDEN":
-      return "Bu işlemi yalnızca satıcı (seller) tarafı yapabilir.";
+      return "Bu işlemi yalnızca satıcı kuruluş yapabilir.";
     case "FULFILLMENT_ALREADY_EXISTS":
-      return "Bu Deal için fulfillment zaten başlatılmış. Güncel durum yenilendi.";
+      return "Bu anlaşma için teslimat süreci zaten başlatılmış. Güncel durum yenilendi.";
     case "FULFILLMENT_STATE_CONFLICT":
-      return "Fulfillment artık bu işlem için uygun durumda değil.";
+      return "Teslimat süreci artık bu işlem için uygun durumda değil.";
     case "FULFILLMENT_NOT_FOUND":
-      return "Bu Deal için fulfillment kaydı bulunamadı.";
+      return "Bu anlaşma için teslimat kaydı bulunamadı.";
     case "DEAL_NOT_FOUND":
     case "LEGAL_ENTITY_NOT_FOUND":
-      return "İstenen kayıt bulunamadı veya bu legal entity için görünür değil.";
+      return "İstenen kayıt bulunamadı veya bu kuruluş için görünür değil.";
     case "EVIDENCE_NOT_FOUND":
-      return "İstenen evidence bulunamadı veya bu Deal için görünür değil.";
+      return "İstenen teslimat kanıtı bulunamadı veya bu anlaşma için görünür değil.";
     case "FULFILLMENT_COMPLETED":
-      return "Fulfillment zaten tamamlanmış.";
+      return "Teslimat süreci zaten tamamlanmış.";
     case "EVIDENCE_UPLOAD_FORBIDDEN":
-      return "Evidence yüklemeye yalnızca satıcı (seller) tarafı yetkilidir.";
+      return "Teslimat kanıtı yüklemeye yalnızca satıcı kuruluş yetkilidir.";
     case "EVIDENCE_ALREADY_SUBMITTED":
-      return "Bu milestone için zaten inceleme bekleyen evidence var.";
+      return "Bu teslimat adımı için zaten inceleme bekleyen bir kanıt var.";
     case "EVIDENCE_UPLOAD_EXPIRED":
-      return "Evidence yükleme süresi doldu. Yeni bir yükleme başlatın.";
+      return "Teslimat kanıtı yükleme süresi doldu. Yeni bir yükleme başlatın.";
     case "EVIDENCE_UPLOAD_STATE_CONFLICT":
     case "EVIDENCE_MILESTONE_CONFLICT":
-      return "Evidence artık bu milestone için tamamlanamıyor.";
+      return "Teslimat kanıtı artık bu teslimat adımı için tamamlanamıyor.";
     case "EVIDENCE_VERIFICATION_FAILED":
       return "Yüklenen dosyanın boyut, checksum veya media type doğrulaması başarısız.";
     case "EVIDENCE_REVIEW_FORBIDDEN":
-      return "Evidence onaylama/reddetme yalnızca alıcı (buyer) ADMIN kullanıcısına açıktır.";
+      return "Teslimat kanıtını onaylama veya reddetme yalnızca alıcı kuruluşun yetkili yöneticisine açıktır.";
     case "EVIDENCE_STALE_VERSION":
-      return "Evidence başka bir işlemle değişti. Güncel durum yenilendi; lütfen tekrar deneyin.";
+      return "Teslimat kanıtı başka bir işlemle değişti. Güncel durum yenilendi; lütfen tekrar deneyin.";
     case "EVIDENCE_STATE_CONFLICT":
-      return "Evidence artık incelenmek için uygun durumda değil.";
+      return "Teslimat kanıtı artık incelenmek için uygun durumda değil.";
     case "EVIDENCE_DOWNLOAD_NOT_AVAILABLE":
-      return "Bu evidence için indirme bağlantısı şu anda kullanılamıyor.";
+      return "Bu teslimat kanıtı için indirme bağlantısı şu anda kullanılamıyor.";
     case "IDEMPOTENCY_KEY_REUSED":
       return "Bu istek anahtarı farklı bir içerikle kullanılmış. Güncel durumu gözden geçirip yeniden deneyin.";
     case "CSRF_TOKEN_INVALID":
       return "Güvenlik doğrulaması yenilenemedi. Lütfen tekrar deneyin.";
     case "LEGAL_ENTITY_ACCESS_DENIED":
-      return "Aktif legal entity bağlamı doğrulanamadı. Lütfen yeniden seçim yapın.";
+      return "Aktif kuruluş bağlamı doğrulanamadı. Lütfen yeniden seçim yapın.";
     default:
-      return "İşlem tamamlanamadı. Lütfen güncel Deal ve fulfillment durumunu kontrol edin.";
+      return "İşlem tamamlanamadı. Lütfen güncel anlaşma ve teslimat durumunu kontrol edin.";
   }
 }
 

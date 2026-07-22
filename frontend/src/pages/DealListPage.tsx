@@ -81,7 +81,7 @@ function CreateDealForm({
     event.preventDefault();
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
-      setClientTitleError("Deal başlığını girin.");
+      setClientTitleError("Anlaşma başlığını girin.");
       return;
     }
     onSubmit({
@@ -93,10 +93,10 @@ function CreateDealForm({
   return (
     <section className="workspace-panel deal-create-panel" id="create-deal">
       <div className="panel-heading">
-        <span className="section-kicker">Yeni Deal</span>
+        <span className="section-kicker">Yeni anlaşma</span>
         <h2>Bir taslak oluşturun</h2>
         <p>
-          Aktif legal entity ilk katılımcı olur. Yalnızca başlık zorunludur.
+          Aktif kuruluş ilk katılımcı olur. Yalnızca başlık zorunludur.
         </p>
       </div>
 
@@ -140,7 +140,7 @@ function CreateDealForm({
           ) : null}
         </div>
         <button className="primary-button" type="submit" disabled={isPending}>
-          {isPending ? "Deal oluşturuluyor…" : "Taslak Deal oluştur"}
+          {isPending ? "Anlaşma oluşturuluyor…" : "Taslak anlaşma oluştur"}
         </button>
       </form>
     </section>
@@ -183,7 +183,7 @@ export function DealListPage() {
       setSort("createdAt,desc");
       setPage(0);
       setCreationNotice(
-        `${created.reference} oluşturuldu ve en yeni Deal olarak listelendi.`,
+        `${created.reference} oluşturuldu ve en yeni anlaşma olarak listelendi.`,
       );
       await queryClient.invalidateQueries({
         queryKey: ["deals", selectedLegalEntityId, "list"],
@@ -231,10 +231,10 @@ export function DealListPage() {
     return (
       <main className="workspace-main deal-workspace">
         <div className="workspace-column">
-          <span className="section-kicker">Deal çalışma alanı</span>
-          <h1>Aktif legal entity seçin.</h1>
+          <span className="section-kicker">Anlaşmalar</span>
+          <h1>Aktif kuruluş seçin.</h1>
           <p className="workspace-lead">
-            Deal istekleri yalnız seçili ve sunucuda doğrulanan legal entity
+            Anlaşma işlemleri yalnız seçili ve sunucuda doğrulanan kuruluş
             bağlamıyla yapılır. Üst menüden bir seçim yapın.
           </p>
           {selectionNotice ? (
@@ -255,12 +255,12 @@ export function DealListPage() {
 
   return (
     <main className="workspace-main deal-workspace">
-      <div className="workspace-column">
-        <span className="section-kicker">Deal çalışma alanı</span>
-        <h1>{selectedMembership.legalName} Deals</h1>
+      <div className="workspace-column deal-list-column">
+        <span className="section-kicker">Anlaşmalar</span>
+        <h1>{selectedMembership.legalName} anlaşmaları</h1>
         <p className="workspace-lead">
-          Gerçek Core API üzerinden Deal oluşturun, filtreleyin ve detaylarını
-          yönetin.
+          Anlaşmaları görüntüleyin, filtreleyin ve uygun olduğunda yeni bir taslak
+          oluşturun.
         </p>
 
         {creationNotice ? (
@@ -274,14 +274,14 @@ export function DealListPage() {
             <div className="panel-heading deal-list-heading">
               <div>
                 <span className="section-kicker">Katılımcı olduğunuz kayıtlar</span>
-                <h2>Deals</h2>
+                <h2>Anlaşmalar</h2>
               </div>
               <a className="secondary-link-button" href="#create-deal">
-                Yeni Deal
+                Yeni anlaşma
               </a>
             </div>
 
-            <div className="deal-filters" aria-label="Deal liste kontrolleri">
+            <div className="deal-filters" aria-label="Anlaşma liste kontrolleri">
               <label>
                 <span>Durum</span>
                 <select
@@ -316,13 +316,13 @@ export function DealListPage() {
             {dealsQuery.isPending ? (
               <div className="panel-loading" role="status">
                 <span className="loading-line" aria-hidden="true" />
-                <p>Deals yükleniyor…</p>
+                <p>Anlaşmalar yükleniyor…</p>
               </div>
             ) : null}
 
             {dealsQuery.isError && !invalidSelection ? (
               <div className="deal-state" role="alert">
-                <h3>Deal listesi alınamadı</h3>
+                <h3>Anlaşma listesi alınamadı</h3>
                 <p>{getDealErrorMessage(dealsQuery.error)}</p>
                 <button
                   className="secondary-button"
@@ -339,12 +339,12 @@ export function DealListPage() {
               <div className="deal-state deal-empty-state">
                 <h3>
                   {isFiltered
-                    ? "Bu filtreyle eşleşen Deal yok."
-                    : "Henüz bir Deal yok."}
+                    ? "Bu filtreyle eşleşen anlaşma yok."
+                    : "Henüz bir anlaşma yok."}
                 </h3>
                 <p>
                   {isFiltered
-                    ? "Başka bir durum seçin veya tüm Deal’leri görüntüleyin."
+                    ? "Başka bir durum seçin veya tüm anlaşmaları görüntüleyin."
                     : "İlk taslağı oluşturarak bu çalışma alanını başlatın."}
                 </p>
                 {isFiltered ? (
@@ -357,7 +357,7 @@ export function DealListPage() {
                   </button>
                 ) : (
                   <a className="primary-link-button" href="#create-deal">
-                    İlk Deal’i oluştur
+                    İlk anlaşmayı oluştur
                   </a>
                 )}
               </div>
@@ -375,15 +375,13 @@ export function DealListPage() {
                       <span className="deal-reference">{deal.reference}</span>
                       <h3>{deal.title}</h3>
                       <p>
-                        Güncellendi {formatDate(deal.updatedAt)} · Sürüm{" "}
-                        {deal.version}
+                        Güncellendi {formatDate(deal.updatedAt)}
                       </p>
                     </div>
                     <div className="deal-list-meta">
                       <span className="status-badge" data-status={deal.status}>
                         {statusLabel(deal.status)}
                       </span>
-                      <span>{deal.lifecycle}</span>
                     </div>
                   </Link>
                 ))}

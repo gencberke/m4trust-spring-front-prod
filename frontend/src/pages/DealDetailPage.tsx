@@ -53,6 +53,68 @@ function formatDate(value: string): string {
   return DATE_FORMATTER.format(new Date(value));
 }
 
+type WorkspaceArea = "agreement" | "review" | "approval" | "payment" | "delivery";
+
+const WORKSPACE_AREAS: ReadonlyArray<{ id: WorkspaceArea; label: string }> = [
+  { id: "agreement", label: "Anlaşma" },
+  { id: "review", label: "İnceleme" },
+  { id: "approval", label: "Onay" },
+  { id: "payment", label: "Ödeme" },
+  { id: "delivery", label: "Teslimat" },
+];
+
+function workspaceAreaForLifecycle(lifecycle: DealDetail["lifecycle"]): WorkspaceArea {
+  switch (lifecycle) {
+    case "CONTRACT_ANALYSIS":
+    case "MANUAL_REVIEW":
+      return "review";
+    case "RATIFICATION":
+      return "approval";
+    case "FUNDING":
+      return "payment";
+    case "FULFILLMENT":
+    case "SETTLEMENT":
+    case "DISPUTE":
+    case "COMPLETED":
+    case "CANCELLED":
+    case "ARCHIVED":
+      return "delivery";
+    default:
+      return "agreement";
+  }
+}
+
+function lifecycleLabel(lifecycle: DealDetail["lifecycle"]): string {
+  const labels: Record<DealDetail["lifecycle"], string> = {
+    DRAFT: "Hazırlık",
+    CONTRACT_ANALYSIS: "Belge incelemesi",
+    MANUAL_REVIEW: "Manuel inceleme",
+    RATIFICATION: "Ticari onay",
+    FUNDING: "Ödeme",
+    FULFILLMENT: "Teslimat",
+    SETTLEMENT: "Sonuç izleme",
+    DISPUTE: "Uyuşmazlık",
+    COMPLETED: "Tamamlandı",
+    CANCELLED: "İptal edildi",
+    ARCHIVED: "Arşivde",
+  };
+  return labels[lifecycle];
+}
+
+function nextTask(deal: DealDetail): string {
+  if (deal.lifecycle === "SETTLEMENT") return "Ödeme sonucu bu aşamada salt okunur izlenir";
+  if (deal.lifecycle === "COMPLETED") return "Anlaşma tamamlandı";
+  if (deal.lifecycle === "CANCELLED") return "Anlaşma iptal edildi";
+  if (deal.lifecycle === "ARCHIVED") return "Anlaşma arşivde";
+  if (deal.availableActions.canCreateDocumentUploadIntent) return "Sözleşme belgesini ekleyin";
+  if (deal.availableActions.canRequestAnalysis) return "Belge analizini başlatın";
+  if (deal.availableActions.canReviewExtraction) return "Çıkarımı manuel olarak inceleyin";
+  if (deal.availableActions.canCreateRatificationPackage || deal.availableActions.canApproveRatification) return "Onay paketini gözden geçirin";
+  if (deal.availableActions.canCreateFundingPlan || deal.availableActions.canInitiateFunding) return "Ödemeyi güvenceye alın";
+  if (deal.availableActions.canStartFulfillment || deal.availableActions.canUploadEvidence || deal.availableActions.canAcceptEvidence) return "Teslimat kanıtını yönetin";
+  return "Güncel durum sunucudan takip ediliyor";
+}
+
 interface EditDealFormProps {
   deal: DealDetail;
   isPending: boolean;
@@ -80,7 +142,7 @@ function EditDealForm({
     event.preventDefault();
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
-      setClientTitleError("Deal başlığını girin.");
+      setClientTitleError("Anlaşma başlığını girin.");
       return;
     }
     onSubmit({
@@ -94,8 +156,8 @@ function EditDealForm({
     <section className="workspace-panel deal-edit-panel">
       <div className="panel-heading">
         <span className="section-kicker">Temel bilgiler</span>
-        <h2>Deal’i düzenle</h2>
-        <p>Bu form sunucudan yüklenen sürüm {deal.version} ile kaydedilir.</p>
+        <h2>Anlaşmayı düzenle</h2>
+        <p>Değişiklikler güncel kayıtla güvenli biçimde kaydedilir.</p>
       </div>
 
       {error ? (
@@ -282,16 +344,26 @@ export function DealDetailPage() {
   const queryClient = useQueryClient();
   const [updateNotice, setUpdateNotice] = useState<string>();
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
+  const [activeArea, setActiveArea] = useState<WorkspaceArea>("agreement");
   const detailQuery = useQuery(
     dealDetailQueryOptions(selectedLegalEntityId, dealId),
   );
   const invalidSelection = isInvalidLegalEntitySelection(detailQuery.error);
+  const settlementReadOnly = detailQuery.data?.lifecycle === "SETTLEMENT";
+  const terminalLifecycle = ["SETTLEMENT", "COMPLETED", "CANCELLED", "ARCHIVED"]
+    .includes(detailQuery.data?.lifecycle ?? "");
 
   useEffect(() => {
     if (invalidSelection) {
       clearInvalidSelection();
     }
   }, [clearInvalidSelection, invalidSelection]);
+
+  useEffect(() => {
+    if (detailQuery.data) {
+      setActiveArea(workspaceAreaForLifecycle(detailQuery.data.lifecycle));
+    }
+  }, [detailQuery.data?.lifecycle]);
 
   const updateMutation = useMutation({
     mutationFn: (request: UpdateDealRequest) =>
@@ -376,10 +448,10 @@ export function DealDetailPage() {
     return (
       <main className="workspace-main deal-workspace">
         <div className="workspace-column">
-          <span className="section-kicker">Deal detayı</span>
-          <h1>Aktif legal entity seçin.</h1>
+          <span className="section-kicker">Anlaşma</span>
+          <h1>Aktif kuruluşu seçin.</h1>
           <p className="workspace-lead">
-            Bu Deal’i görüntülemek için üst menüden bir legal entity seçin.
+            Bu anlaşmayı görüntülemek için üst menüden bir kuruluş seçin.
           </p>
           {selectionNotice ? (
             <p className="form-notice workspace-notice" role="status">
@@ -400,8 +472,8 @@ export function DealDetailPage() {
         <div className="workspace-column">
           <section className="workspace-panel workspace-state" role="status">
             <span className="loading-line" aria-hidden="true" />
-            <h2>Deal yükleniyor</h2>
-            <p>Güncel detay ve kullanılabilir aksiyonlar alınıyor.</p>
+            <h2>Anlaşma yükleniyor</h2>
+            <p>Güncel bilgiler ve izin verilen işlemler alınıyor.</p>
           </section>
         </div>
       </main>
@@ -414,13 +486,13 @@ export function DealDetailPage() {
         <div className="workspace-column">
           <section className="workspace-panel workspace-state" role="alert">
             <span className="section-kicker">Bilgi ifşa edilmedi</span>
-            <h2>Deal bulunamadı</h2>
+            <h2>Anlaşma bulunamadı</h2>
             <p>
               Kayıt mevcut olmayabilir veya {selectedMembership.legalName} bu
-              Deal’in katılımcısı değildir.
+              anlaşmanın katılımcısı değildir.
             </p>
             <Link className="primary-link-button" to="/app/deals">
-              Deal listesine dön
+              Anlaşmalara dön
             </Link>
           </section>
         </div>
@@ -433,7 +505,7 @@ export function DealDetailPage() {
       <main className="workspace-main deal-workspace">
         <div className="workspace-column">
           <section className="workspace-panel workspace-state" role="alert">
-            <h2>Deal detayı alınamadı</h2>
+            <h2>Anlaşma bilgileri alınamadı</h2>
             <p>{getDealErrorMessage(detailQuery.error)}</p>
             <button
               className="secondary-button"
@@ -458,23 +530,48 @@ export function DealDetailPage() {
     <main className="workspace-main deal-workspace">
       <div className="workspace-column">
         <Link className="back-link" to="/app/deals">
-          ← Deal listesine dön
+          ← Anlaşmalara dön
         </Link>
         <div className="deal-detail-heading">
           <div>
             <span className="deal-reference">{deal.reference}</span>
             <h1>{deal.title}</h1>
             <p className="workspace-lead">
-              {deal.description ?? "Bu Deal için açıklama girilmemiş."}
+              {deal.description ?? "Bu anlaşma için açıklama girilmemiş."}
             </p>
           </div>
           <div className="deal-status-stack">
             <span className="status-badge" data-status={deal.status}>
-              {deal.status}
+              {lifecycleLabel(deal.lifecycle)}
             </span>
-            <span>Lifecycle: {deal.lifecycle}</span>
+            <span>{formatDate(deal.updatedAt)} tarihinde güncellendi</span>
           </div>
         </div>
+
+        <section className="deal-stage-card" aria-labelledby="deal-stage-title">
+          <div>
+            <span className="section-kicker">Mevcut aşama</span>
+            <h2 id="deal-stage-title">{nextTask(deal)}</h2>
+            <p>İlerleme ve izin verilen işlemler sunucunun güncel proje alanına göre gösterilir.</p>
+          </div>
+          <ol className="deal-stage-list" aria-label="Anlaşma aşamaları">
+            {WORKSPACE_AREAS.map((area) => {
+              const current = area.id === workspaceAreaForLifecycle(deal.lifecycle);
+              return (
+                <li key={area.id} aria-current={current ? "step" : undefined}>
+                  <button
+                    className="deal-stage-button"
+                    data-active={area.id === activeArea}
+                    type="button"
+                    onClick={() => setActiveArea(area.id)}
+                  >
+                    {area.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
 
         {updateNotice ? (
           <p className="success-notice workspace-notice" role="status">
@@ -487,22 +584,14 @@ export function DealDetailPage() {
           </p>
         ) : null}
 
+        {activeArea === "agreement" ? (
+          <>
+        <div className="agreement-stage-layout">
+          <aside className="agreement-supporting-rail" aria-label="Anlaşma bilgileri">
         <dl className="deal-facts">
           <div>
             <dt>Referans</dt>
             <dd>{deal.reference}</dd>
-          </div>
-          <div>
-            <dt>Durum</dt>
-            <dd>{deal.status}</dd>
-          </div>
-          <div>
-            <dt>Lifecycle</dt>
-            <dd>{deal.lifecycle}</dd>
-          </div>
-          <div>
-            <dt>Sürüm</dt>
-            <dd>{deal.version}</dd>
           </div>
           <div>
             <dt>Oluşturuldu</dt>
@@ -514,10 +603,28 @@ export function DealDetailPage() {
           </div>
         </dl>
 
+        <details className="deal-technical-details">
+          <summary>Teknik ayrıntılar</summary>
+          <dl>
+            <div><dt>Durum</dt><dd>{deal.status}</dd></div>
+            <div><dt>Lifecycle</dt><dd>{deal.lifecycle}</dd></div>
+            <div><dt>Sürüm</dt><dd>{deal.version}</dd></div>
+            <div>
+              <dt>İzin verilen işlemler</dt>
+              <dd>
+                {Object.entries(deal.availableActions)
+                  .filter(([, available]) => available)
+                  .map(([action]) => action)
+                  .join(", ") || "Yok"}
+              </dd>
+            </div>
+          </dl>
+        </details>
+
         <section className="workspace-panel deal-participants-panel">
           <div className="panel-heading">
             <span className="section-kicker">Katılımcılar</span>
-            <h2>Deal görünürlüğü olan legal entity’ler</h2>
+            <h2>Katılımcı kuruluşlar</h2>
             <p>Katılım, taraf rolü veya sözleşmesel onay anlamına gelmez.</p>
           </div>
           <ul className="participant-list">
@@ -541,12 +648,15 @@ export function DealDetailPage() {
             ))}
           </ul>
         </section>
+          </aside>
+
+          <div className="agreement-stage-main">
 
         <section className="workspace-panel deal-parties-panel">
           <div className="panel-heading">
             <span className="section-kicker">Taraflar</span>
             <h2>Alıcı ve satıcı atamaları</h2>
-            <p>Taraf rolleri onay veya Deal aktivasyonu anlamına gelmez.</p>
+            <p>Taraf rolleri tek başına ticari onay anlamına gelmez.</p>
           </div>
           <dl className="party-assignment-list">
             <div>
@@ -607,8 +717,7 @@ export function DealDetailPage() {
                 <span className="section-kicker">Salt okunur</span>
                 <h2>Düzenleme kapalı</h2>
                 <p>
-                  Sunucunun güncel action projection’ı bu Deal için düzenlemeye
-                  izin vermiyor.
+                  Sunucunun güncel izni bu anlaşma için düzenlemeye izin vermiyor.
                 </p>
               </div>
             </section>
@@ -617,9 +726,9 @@ export function DealDetailPage() {
           <aside className="workspace-panel deal-actions-panel">
             <div className="panel-heading">
               <span className="section-kicker">İşlemler</span>
-              <h2>Deal aksiyonları</h2>
+              <h2>Anlaşma işlemleri</h2>
               <p>
-                Kontroller sunucunun güncel availableActions alanından gelir.
+                Kontroller sunucunun güncel izinlerine göre gösterilir.
               </p>
             </div>
 
@@ -629,11 +738,11 @@ export function DealDetailPage() {
                 type="button"
                 onClick={() => setCancelConfirmationOpen(true)}
               >
-                Deal’i iptal et
+                Anlaşmayı iptal et
               </button>
             ) : (
               <p className="muted-copy">
-                Bu Deal için kullanılabilir iptal aksiyonu yok.
+                Bu anlaşma için kullanılabilir iptal işlemi yok.
               </p>
             )}
 
@@ -644,10 +753,9 @@ export function DealDetailPage() {
                 aria-modal="true"
                 aria-labelledby="cancel-deal-title"
               >
-                <h3 id="cancel-deal-title">Deal iptal edilsin mi?</h3>
+                <h3 id="cancel-deal-title">Anlaşma iptal edilsin mi?</h3>
                 <p>
-                  Bu işlem Deal’i CANCELLED durumuna taşır ve düzenleme
-                  aksiyonlarını kapatır.
+                  Bu işlem anlaşmayı iptal eder ve düzenleme işlemlerini kapatır.
                 </p>
                 <div>
                   <button
@@ -676,26 +784,54 @@ export function DealDetailPage() {
           deal={deal}
           legalEntityId={selectedLegalEntityId}
         />
-
-        <DealContractAnalysis
-          deal={deal}
-          legalEntityId={selectedLegalEntityId}
-        />
-
-        <DealReviewWorkspace deal={deal} legalEntityId={selectedLegalEntityId} />
-
-        <DealRatificationPanel deal={deal} legalEntityId={selectedLegalEntityId} />
-
-        <DealFundingPanel deal={deal} legalEntityId={selectedLegalEntityId} />
-
-        <DealFulfillmentPanel deal={deal} legalEntityId={selectedLegalEntityId} />
-
-        <DealCaseworkPanel deal={deal} legalEntityId={selectedLegalEntityId} />
-
         <DealInvitationManagement
           deal={deal}
           legalEntityId={selectedLegalEntityId}
         />
+          </div>
+        </div>
+          </>
+        ) : null}
+
+        {activeArea === "review" ? (
+          <>
+        <DealContractAnalysis
+          deal={deal}
+          legalEntityId={selectedLegalEntityId}
+        />
+        <DealReviewWorkspace deal={deal} legalEntityId={selectedLegalEntityId} />
+          </>
+        ) : null}
+
+        {activeArea === "approval" ? (
+        <DealRatificationPanel deal={deal} legalEntityId={selectedLegalEntityId} />
+        ) : null}
+
+        {activeArea === "payment" ? (
+        <DealFundingPanel
+          key={`${selectedLegalEntityId}:${deal.id}`}
+          deal={deal}
+          legalEntityId={selectedLegalEntityId}
+        />
+        ) : null}
+
+        {activeArea === "delivery" ? (
+          <>
+            {terminalLifecycle ? (
+              <section className="workspace-panel terminal-state-panel" aria-labelledby="terminal-state-title">
+                <span className="section-kicker">Durum</span>
+                <h2 id="terminal-state-title">{nextTask(deal)}</h2>
+                <p>
+                  {settlementReadOnly
+                    ? "Bu aşamada yeni işlem başlatılamaz; mevcut kayıtlar yalnızca görüntülenir."
+                    : "Bu anlaşma için yeni işlem sunulmuyor; mevcut kayıtlar aşağıda görüntülenir."}
+                </p>
+              </section>
+            ) : null}
+        <DealFulfillmentPanel deal={deal} legalEntityId={selectedLegalEntityId} readOnly={settlementReadOnly} />
+        {!settlementReadOnly ? <DealCaseworkPanel deal={deal} legalEntityId={selectedLegalEntityId} /> : null}
+          </>
+        ) : null}
       </div>
     </main>
   );

@@ -24,15 +24,15 @@ export function getInvitationErrorMessage(error: unknown): string {
     case "DEAL_INVITATION_STATE_CONFLICT":
       return "Davetin güncel durumu bu işleme izin vermiyor.";
     case "DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY":
-      return "Bu davet daha önce başka bir legal entity ile kabul edildi.";
+      return "Bu davet daha önce başka bir kuruluşla kabul edildi.";
     case "DEAL_INVITATION_PENDING_EXISTS":
       return "Bu e-posta için zaten bekleyen bir davet var.";
     case "IDEMPOTENCY_KEY_REUSED":
       return "Bu gönderim anahtarı başka bir davet isteğiyle kullanılmış. Formu sıfırlayıp yeniden deneyin.";
     case "DEAL_INVITATION_FORBIDDEN":
-      return "Bu Deal için davet işlemi yapma yetkiniz yok.";
+      return "Bu anlaşma için davet işlemi yapma yetkiniz yok.";
     case "LEGAL_ENTITY_NOT_FOUND":
-      return "Seçilen legal entity bulunamadı veya artık üyeliğiniz yok.";
+      return "Seçilen kuruluş bulunamadı veya artık üyeliğiniz yok.";
     case "CSRF_TOKEN_INVALID":
       return "Güvenlik doğrulaması yenilenemedi. Lütfen tekrar deneyin.";
     default:

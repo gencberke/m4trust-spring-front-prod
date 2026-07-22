@@ -52,7 +52,7 @@ function MembershipList({
     <section className="workspace-panel" aria-labelledby="entities-title">
       <div className="panel-heading">
         <span className="section-kicker">Organizasyonlar</span>
-        <h2 id="entities-title">Legal entity’lerim</h2>
+        <h2 id="entities-title">Kuruluşlarım</h2>
         <p>Üyesi olduğunuz çalışma alanlarından birini aktif hale getirin.</p>
       </div>
       <div className="entity-list">
@@ -113,7 +113,7 @@ function CreateEntityForm({
     const validationErrors: Partial<Record<LegalEntityField, string>> = {};
 
     if (!request.legalName) {
-      validationErrors.legalName = "Legal entity adını girin.";
+      validationErrors.legalName = "Kuruluş adını girin.";
     }
     if (!request.registrationNumber) {
       validationErrors.registrationNumber = "Kayıt numarasını girin.";
@@ -133,7 +133,7 @@ function CreateEntityForm({
     >
       <div className="panel-heading">
         <span className="section-kicker">Yeni çalışma alanı</span>
-        <h2 id="create-entity-title">Legal entity oluşturun</h2>
+        <h2 id="create-entity-title">Kuruluş oluşturun</h2>
         <p>Resmî adı ve kurum kayıt numarasını girerek başlayın.</p>
       </div>
 
@@ -145,7 +145,7 @@ function CreateEntityForm({
 
       <form className="auth-form organization-form" onSubmit={handleSubmit}>
         <div className="field-group">
-          <label htmlFor="legal-entity-name">Legal entity adı</label>
+          <label htmlFor="legal-entity-name">Kuruluş adı</label>
           <input
             id="legal-entity-name"
             name="legalName"
@@ -202,7 +202,7 @@ function CreateEntityForm({
         </div>
 
         <button className="primary-button" type="submit" disabled={isPending}>
-          {isPending ? "Oluşturuluyor…" : "Legal entity oluştur"}
+          {isPending ? "Oluşturuluyor…" : "Kuruluş oluştur"}
         </button>
       </form>
     </section>
@@ -228,8 +228,7 @@ function SelectedEntityPanel({
         <span className="section-kicker">Aktif bağlam</span>
         <h2>{selectedMembership.legalName}</h2>
         <p>
-          Bu paneldeki istekler seçili legal entity kimliğiyle sunucuda yeniden
-          yetkilendirilir.
+          Bu alandaki işlemler seçili kuruluş için sunucuda yeniden yetkilendirilir.
         </p>
       </div>
 
@@ -242,7 +241,7 @@ function SelectedEntityPanel({
       {detailQuery.isPending || membersQuery.isPending ? (
         <div className="panel-loading" role="status">
           <span className="loading-line" aria-hidden="true" />
-          <p>Legal entity bilgileri yükleniyor…</p>
+          <p>Kuruluş bilgileri yükleniyor…</p>
         </div>
       ) : null}
 
@@ -267,7 +266,7 @@ function SelectedEntityPanel({
         <div className="members-region">
           <h3>Üyeler</h3>
           {membersQuery.data.items.length === 0 ? (
-            <p className="muted-copy">Bu legal entity için üye bulunamadı.</p>
+            <p className="muted-copy">Bu kuruluş için üye bulunamadı.</p>
           ) : (
             <ul className="member-list">
               {membersQuery.data.items.map((member: LegalEntityMember) => (
@@ -313,7 +312,7 @@ export function AuthenticatedAppPage() {
     mutationFn: createLegalEntity,
     onSuccess: async (createdEntity) => {
       setCreationNotice(
-        `${createdEntity.legalName} oluşturuldu ve aktif legal entity olarak seçildi.`,
+        `${createdEntity.legalName} oluşturuldu ve aktif kuruluş olarak seçildi.`,
       );
       await Promise.all([
         queryClient.invalidateQueries({
@@ -339,11 +338,11 @@ export function AuthenticatedAppPage() {
 
   return (
     <main className="workspace-main organization-workspace">
-      <div className="workspace-column">
+      <div className="workspace-column organization-column">
         <span className="section-kicker">Organizasyon çalışma alanı</span>
-        <h1>Legal entity bağlamınızı yönetin.</h1>
+        <h1>Kuruluş bağlamınızı yönetin.</h1>
         <p className="workspace-lead">
-          Üyesi olduğunuz legal entity’leri görüntüleyin, aktif bağlamı seçin
+          Üyesi olduğunuz kuruluşları görüntüleyin, aktif bağlamı seçin
           ve üyeleri sunucu doğrulamasıyla inceleyin.
         </p>
 
@@ -361,14 +360,14 @@ export function AuthenticatedAppPage() {
         {workspace.membershipsPending ? (
           <section className="workspace-panel workspace-state" role="status">
             <span className="loading-line" aria-hidden="true" />
-            <h2>Legal entity’ler yükleniyor</h2>
+            <h2>Kuruluşlar yükleniyor</h2>
             <p>Üyelikleriniz güvenli çalışma alanı için hazırlanıyor.</p>
           </section>
         ) : null}
 
         {workspace.membershipsError ? (
           <section className="workspace-panel workspace-state" role="alert">
-            <h2>Legal entity’ler alınamadı</h2>
+            <h2>Kuruluşlar alınamadı</h2>
             <p>{getOrganizationErrorMessage(workspace.membershipsError)}</p>
             <button
               className="secondary-button"
@@ -388,13 +387,13 @@ export function AuthenticatedAppPage() {
         workspace.memberships.length === 0 ? (
           <section className="workspace-panel empty-entity-state">
             <span className="section-kicker">İlk adım</span>
-            <h2>Henüz bir legal entity’niz yok.</h2>
+            <h2>Henüz bir kuruluşunuz yok.</h2>
             <p>
-              Çalışma alanını kullanmak için ilk legal entity’nizi oluşturun.
+              Çalışma alanını kullanmak için ilk kuruluşunuzu oluşturun.
               Oluşturan hesap otomatik olarak yönetici üye olur.
             </p>
             <a className="primary-link-button" href="#create-legal-entity">
-              Legal entity oluştur
+              Kuruluş oluştur
             </a>
           </section>
         ) : null}
@@ -416,10 +415,10 @@ export function AuthenticatedAppPage() {
               />
             ) : (
               <section className="workspace-panel workspace-state">
-                <h2>Aktif legal entity seçin</h2>
+                <h2>Aktif kuruluş seçin</h2>
                 <p>
                   Detayları ve üye listesini görüntülemek için listeden veya üst
-                  menüden bir legal entity seçin.
+                  menüden bir kuruluş seçin.
                 </p>
               </section>
             )}

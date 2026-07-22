@@ -96,8 +96,8 @@ export function DealInvitationManagement({
           <span className="section-kicker">Katılım</span>
           <h2>Davet yönetimi kapalı</h2>
           <p>
-            Sunucunun güncel action projection’ı bu Deal için davet oluşturmaya
-            izin vermiyor.
+            Sunucunun güncel işlem yetkisi bu anlaşma için davet oluşturmaya izin
+            vermiyor.
           </p>
         </div>
       </section>
@@ -108,7 +108,7 @@ export function DealInvitationManagement({
     <section className="workspace-panel invitation-management-panel">
       <div className="panel-heading">
         <span className="section-kicker">Katılım</span>
-        <h2>Deal davetleri</h2>
+        <h2>Anlaşma davetleri</h2>
         <p>Yeni katılımcıları e-posta adresleriyle davet edin.</p>
       </div>
 

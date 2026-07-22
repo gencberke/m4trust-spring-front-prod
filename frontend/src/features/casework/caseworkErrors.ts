@@ -63,10 +63,10 @@ export function getCaseworkErrorMessage(error: unknown): string {
     case "DEAL_STALE_VERSION":
       return "Deal başka bir işlemle değişti. Güncel Deal verisi yenilendi; lütfen tekrar deneyin.";
     case "FULFILLMENT_STALE_VERSION":
-      return "Fulfillment başka bir işlemle değişti. Güncel veri yenilendi; lütfen tekrar deneyin.";
+      return "Teslimat süreci başka bir işlemle değişti. Güncel bilgiler yenilendi; lütfen tekrar deneyin.";
     case "DEAL_STATE_CONFLICT":
     case "FULFILLMENT_STATE_CONFLICT":
-      return "Deal veya fulfillment artık bu işlem için uygun değil. Güncel veri yenilendi.";
+      return "Anlaşma veya teslimat süreci artık bu işlem için uygun değil. Güncel bilgiler yenilendi.";
     case "DISPUTE_ACTIVE_CASE_EXISTS":
       return "Bu Deal için zaten aktif bir uyuşmazlık var. Güncel veri yenilendi.";
     case "DISPUTE_STALE_VERSION":
@@ -74,13 +74,13 @@ export function getCaseworkErrorMessage(error: unknown): string {
     case "DISPUTE_STATE_CONFLICT":
       return "Uyuşmazlık artık bu işlem için uygun durumda değil. Güncel veri yenilendi.";
     case "DISPUTE_OPEN_FORBIDDEN":
-      return "Bu işlem yalnızca alıcı veya satıcı tarafının ADMIN kullanıcısına açıktır.";
+      return "Bu işlem yalnızca alıcı veya satıcı kuruluşun yetkili yöneticisine açıktır.";
     case "DISPUTE_COMMENT_FORBIDDEN":
       return "Bu yorum işlemi için yetkiniz yok.";
     case "DISPUTE_ACKNOWLEDGE_FORBIDDEN":
-      return "Uyuşmazlığı yalnızca karşı tarafın ADMIN kullanıcısı onaylayabilir.";
+      return "Uyuşmazlığı yalnızca karşı tarafın yetkili yöneticisi onaylayabilir.";
     case "DISPUTE_WITHDRAW_FORBIDDEN":
-      return "Geri çekme yalnızca açan tarafın ADMIN kullanıcısına açıktır.";
+      return "Geri çekme yalnızca kaydı açan tarafın yetkili yöneticisine açıktır.";
     case "IDEMPOTENCY_KEY_REUSED":
       return "Bu istek anahtarı farklı bir içerikle kullanılmış. Güncel durumu gözden geçirip yeniden deneyin.";
     case "CSRF_TOKEN_INVALID":

@@ -24,11 +24,11 @@ const FAILURE_MESSAGES: Readonly<Record<string, string>> = {
   CONTENT_HASH_MISMATCH:
     "Belgenin bütünlük bilgisi doğrulanamadı. Güncel belgeyi yeniden yükleyin.",
   MISSING_REQUIRED_FIELD:
-    "Analiz talebinin güvenli girdi bilgileri doğrulanamadı. Belgeyi ve Deal durumunu kontrol edin.",
+    "Analiz talebinin güvenli girdi bilgileri doğrulanamadı. Belgeyi ve anlaşma durumunu kontrol edin.",
   INVALID_DEADLINE:
     "Analiz talebinin zaman sınırı doğrulanamadı. Lütfen yeni bir analiz talebi oluşturun.",
   INVALID_DOWNLOAD_REFERENCE:
-    "Belgeye güvenli erişim bilgisi doğrulanamadı. Belgeyi ve Deal durumunu kontrol edin.",
+    "Belgeye güvenli erişim bilgisi doğrulanamadı. Belgeyi ve anlaşma durumunu kontrol edin.",
   INVALID_PROCESSING_PROFILE:
     "Analiz işleme profili doğrulanamadı. Lütfen daha sonra yeniden deneyin.",
   INVALID_EXPECTED_OBJECT:
@@ -46,10 +46,10 @@ export function getAnalysisReadErrorMessage(error: unknown): string {
   }
   switch (error.code) {
     case "DEAL_NOT_FOUND":
-      return "Bu Deal bulunamadı veya aktif legal entity için görünür değil.";
+      return "Bu anlaşma bulunamadı veya aktif kuruluş için görünür değil.";
     case "LEGAL_ENTITY_ACCESS_DENIED":
     case "LEGAL_ENTITY_NOT_FOUND":
-      return "Aktif legal entity bağlamı doğrulanamadı.";
+      return "Aktif kuruluş bağlamı doğrulanamadı.";
     default:
       return "Analiz bilgisi şu anda alınamıyor. Lütfen yeniden deneyin.";
   }
@@ -65,15 +65,15 @@ export function getAnalysisRequestErrorMessage(error: unknown): string {
     case "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE":
       return "Analiz için güncel ve kullanılabilir bir belge bulunamadı.";
     case "DEAL_STATE_CONFLICT":
-      return "Deal’in güncel durumu yeni analiz talebine izin vermiyor.";
+      return "Anlaşmanın güncel durumu yeni analiz talebine izin vermiyor.";
     case "IDEMPOTENCY_KEY_REUSED":
       return "Talep güvenli biçimde yinelenemedi. Lütfen yeniden deneyin.";
     case "DEAL_ANALYSIS_REQUEST_FORBIDDEN":
-      return "Bu legal entity analiz talebi oluşturamaz.";
+      return "Bu kuruluş analiz talebi oluşturamaz.";
     case "CSRF_TOKEN_INVALID":
       return "Güvenlik doğrulaması yenilenemedi. Lütfen tekrar deneyin.";
     default:
-      return "Analiz talebi kabul edilemedi. Güncel Deal durumunu kontrol edip yeniden deneyin.";
+      return "Analiz talebi kabul edilemedi. Güncel anlaşma durumunu kontrol edip yeniden deneyin.";
   }
 }
 

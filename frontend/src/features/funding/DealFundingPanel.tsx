@@ -78,6 +78,8 @@ interface Props {
 export function DealFundingPanel({ deal, legalEntityId }: Props) {
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string>();
+  const [createdPlan, setCreatedPlan] = useState<FundingPlanDetail>();
+  const [startAfterPlanCreation, setStartAfterPlanCreation] = useState(false);
 
   const createKeyRef = useRef<string | undefined>(undefined);
   const initiateKeyRef = useRef<string | undefined>(undefined);
@@ -86,12 +88,14 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
   const previousOperationStatusRef = useRef<string | undefined>(undefined);
 
   const funding = deal.funding ?? null;
-  const hasPlan = Boolean(funding && funding.fundingStatus !== "NOT_CONFIGURED");
+  const hasPlan = Boolean(
+    createdPlan || (funding && funding.fundingStatus !== "NOT_CONFIGURED"),
+  );
 
   const planQuery = useQuery(
     fundingPlanQueryOptions(legalEntityId, deal.id, hasPlan),
   );
-  const plan = planQuery.data;
+  const plan = planQuery.data ?? createdPlan;
 
   const [operationId, setOperationId] = useState<string | undefined>(undefined);
   const planOperationId = plan?.fundingUnit.currentOperation?.id;
@@ -150,9 +154,15 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
     },
     onSuccess: (created) => {
       createKeyRef.current = undefined;
+      setCreatedPlan(created);
       queryClient.setQueryData(fundingPlanQueryKey(legalEntityId, deal.id), created);
-      setNotice(`Funding planı oluşturuldu (sürüm ${created.version}).`);
+      setNotice("Ödeme hazırlığı tamamlandı.");
       refreshAfterMutation();
+      if (created.fundingUnit.availableActions.canInitiatePayment === true) {
+        setStartAfterPlanCreation(true);
+      } else {
+        setNotice("Ödeme hazırlığı tamamlandı; işlem başlatma izni sunucudan bekleniyor.");
+      }
     },
     onError: (error) => {
       if (shouldResetFundingIdempotencyKey(error, "create")) createKeyRef.current = undefined;
@@ -186,6 +196,12 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
     },
   });
 
+  useEffect(() => {
+    if (!startAfterPlanCreation || !plan || initiateMutation.isPending) return;
+    setStartAfterPlanCreation(false);
+    initiateMutation.mutate(plan.fundingUnit);
+  }, [initiateMutation, plan, startAfterPlanCreation]);
+
   const reconcileMutation = useMutation({
     mutationFn: (operation: PaymentOperation) => {
       reconcileKeyRef.current ??= crypto.randomUUID();
@@ -215,11 +231,11 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
     return (
       <section className="workspace-panel funding-panel" aria-labelledby="funding-title">
         <div className="panel-heading">
-          <span className="section-kicker">Funding</span>
-          <h2 id="funding-title">Fonlama</h2>
+          <span className="section-kicker">Ödeme</span>
+          <h2 id="funding-title">Ödeme durumu</h2>
         </div>
         <p className="muted-copy">
-          Bu Deal için funding projeksiyonu şu anda sunulmuyor; bölüm salt
+          Bu anlaşma için ödeme bilgisi şu anda sunulmuyor; bölüm salt
           okunur kabul edilir.
         </p>
       </section>
@@ -239,12 +255,11 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
   return (
     <section className="workspace-panel funding-panel" aria-labelledby="funding-title">
       <div className="panel-heading">
-        <span className="section-kicker">Funding</span>
-        <h2 id="funding-title">Fonlama</h2>
+        <span className="section-kicker">Ödeme</span>
+        <h2 id="funding-title">Ödemeyi güvenceye al</h2>
         <p>
-          Tutar, onaylanmış (RATIFIED) package'tan sunucu tarafında
-          kopyalanır; burada tutar girişi yoktur. Sandbox provider, gerçek
-          para hareketi olmadan sonucu simüle eder.
+          Tutar, iki tarafın onayladığı koşullardan gelir ve burada değiştirilemez.
+          Sonuç, sunucunun güncel ödeme kaydından izlenir.
         </p>
       </div>
 
@@ -268,7 +283,7 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
       {!hasPlan ? (
         <div className="funding-not-configured">
           <p className="muted-copy">
-            Bu Deal için henüz bir funding planı oluşturulmadı.
+            Ödeme hazırlığı henüz başlatılmadı.
           </p>
           {mayCreatePlan ? (
             <>
@@ -286,7 +301,7 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
                   createMutation.mutate();
                 }}
               >
-                {createMutation.isPending ? "Oluşturuluyor…" : "Funding planı oluştur"}
+                {createMutation.isPending ? "Hazırlanıyor…" : "Ödemeyi güvenceye al"}
               </button>
             </>
           ) : null}
@@ -352,7 +367,7 @@ function FundingPlanSection({
     return (
       <p className="inline-state" role="status">
         <span className="loading-line" aria-hidden="true" />
-        Funding planı yükleniyor…
+        Ödeme hazırlığı yükleniyor…
       </p>
     );
   }
@@ -376,7 +391,7 @@ function FundingPlanSection({
   if (!plan) {
     return (
       <p className="muted-copy">
-        Bu Deal için henüz bir funding planı oluşturulmadı.
+        Ödeme hazırlığı henüz bulunamadı.
       </p>
     );
   }
@@ -397,7 +412,7 @@ function FundingPlanSection({
           </dd>
         </div>
         <div>
-          <dt>Funding durumu</dt>
+          <dt>Ödeme durumu</dt>
           <dd>
             <span className="funding-status-badge" data-status={plan.fundingStatus}>
               {fundingStatusLabel(plan.fundingStatus)}
@@ -416,7 +431,7 @@ function FundingPlanSection({
 
       <div className="funding-unit-card">
         <div className="funding-unit-heading">
-          <span>Funding unit #{unit.sequenceNo}</span>
+          <span>Ödeme adımı #{unit.sequenceNo}</span>
           <span className="funding-unit-status-badge" data-status={unit.status}>
             {fundingUnitStatusLabel(unit.status)}
           </span>
@@ -442,26 +457,24 @@ function FundingPlanSection({
                 <dt>Güncellendi</dt>
                 <dd>{formatDate(currentOperation.updatedAt)}</dd>
               </div>
-              {currentOperation.providerReference ? (
-                <div>
-                  <dt>Provider referansı</dt>
-                  <dd>
-                    <code>{currentOperation.providerReference}</code>
-                  </dd>
-                </div>
-              ) : null}
             </dl>
+
+            {currentOperation.providerReference ? (
+              <details className="funding-technical-details">
+                <summary>Teknik işlem ayrıntıları</summary>
+                <p><code>{currentOperation.providerReference}</code></p>
+              </details>
+            ) : null}
 
             {reconciliationRequired ? (
               <p className="funding-reconciliation-notice" role="status">
                 Ödeme sonucu henüz kesinleşmedi; bu <strong>başarısızlık değildir</strong>.
-                Provider sonucu doğrulanana kadar bekleniyor. Gerekirse
-                aşağıdan doğrulamayı (reconciliation) tetikleyebilirsiniz.
+                Aynı işlem için doğrulama sonucu bekleniyor.
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="muted-copy">Bu unit için henüz bir ödeme başlatılmadı.</p>
+          <p className="muted-copy">Bu ödeme adımı için henüz işlem başlatılmadı.</p>
         )}
 
         {initiateError ? (
@@ -486,8 +499,8 @@ function FundingPlanSection({
               {initiatePending
                 ? "Başlatılıyor…"
                 : isRetry
-                  ? "Ödemeyi yeniden dene"
-                  : "Ödemeyi başlat"}
+                  ? "Ödemeyi güvenceye al"
+                  : "Ödemeyi güvenceye al"}
             </button>
           ) : null}
           {mayReconcile ? (
@@ -497,7 +510,7 @@ function FundingPlanSection({
               disabled={reconcilePending}
               onClick={onReconcile}
             >
-              {reconcilePending ? "Gönderiliyor…" : "Doğrulamayı tetikle (reconcile)"}
+              {reconcilePending ? "Gönderiliyor…" : "İşlemi doğrula"}
             </button>
           ) : null}
         </div>
