@@ -97,7 +97,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Database column adlarını public sort/filter contract'ı yapmak | ADR-006 §11, §53 |
 | Duplicate riskli endpoint'te yalnız frontend button-disable'a güvenmek | ADR-006 §25, §53 |
 | Generated client yerine paralel/tahmini TypeScript modelleri yazmak | ADR-004 §27; ADR-006 §44, §53 |
-| Runtime OpenAPI ile committed contract'ın sessizce ayrışmasına izin vermek | ADR-006 §43, §53 |
+| Runtime OpenAPI ile committed contract'ın sessizce ayrışmasına izin vermek veya committed alanları actual runtime dokümanına kopyalayıp false-green eşitlik üretmek | ADR-006 §43, §53; ADR-021 §2 |
 | Internal exception, SQL, stack trace bilgisini public hata response'una koymak | ADR-006 §15, §53 |
 | Business aggregate'te generic `DELETE` veya `/update-status` tarzı endpoint | ADR-006 §4–5 |
 | GET isteğinin business mutation üretmesi | ADR-006 §5 |

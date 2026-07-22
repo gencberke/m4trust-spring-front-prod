@@ -133,6 +133,12 @@ Main image'ların önce immutable digest ile üretilmesini, release manifestinin
 sonra bu digest'leri tek yönlü referanslamasını ve release-manifest digest'inin
 image config'e geri yazılmamasını sabitler.
 
+### ADR-021 — Observable Runtime Contract Verification
+
+Committed OpenAPI'yi tek design authority olarak korur; raw Spring çıktısını exact
+servlet inventory için, security/response semantiğini ise odaklı gerçek HTTP behavior
+testleri için kullanır. False-green projection ve geniş annotation programını reddeder.
+
 ## ADR durumu
 
 ADR dosyalarında aşağıdaki durumlar kullanılabilir:

@@ -68,7 +68,7 @@ fallback or widen the task.
 
 | Input/evidence | Owner | Required before | Current state |
 |---|---|---|---|
-| ADR-014–ADR-020, this ready plan and main base SHA | Planner/user | 15-T01 | Closed |
+| ADR-014–ADR-021, this ready plan and main base SHA | Planner/user | 15-T02 Rev 4 | Closed |
 | Postmark server/stream, verified domain, DKIM/SPF/DMARC and webhook source policy | User/planner | live P5 staging acceptance | External gate; not a code-start blocker |
 | AWS staging/production S3, KMS and GuardDuty roles | User/planner | P9 staging deployment | External gate; P6 IaC remains implementable offline |
 | AI-owner contract compatibility and capability evidence | AI owner/user | AI-enabled staging/pilot | External dependency; main implementer reports mismatch and never changes AI repo |
@@ -355,17 +355,22 @@ Exit checks:
 ### P3 — Enforce runtime OpenAPI and main-side consumer CI
 
 Outcome:
-Spring runtime surface, committed public contract, frontend output and the
-main-authority compatibility report cannot drift in a mergeable main PR.
+Committed public contract remains the single design authority; raw Spring runtime
+inventory, generated frontend output and the main-authority compatibility report
+cannot silently drift in a mergeable main PR.
 
 Direction:
 
 - Generate runtime OpenAPI only in test/contract profile; production docs routes
   remain disabled/private.
-- Compare the live Spring runtime document with committed OpenAPI for paths,
-  methods, parameter name/location/required, security, status, media type and
-  schema references. Do not erase a named parameter mismatch; descriptions and
-  example ordering are non-semantic.
+- Per ADR-021, compare raw live Spring output with committed OpenAPI only for exact
+  public paths/methods and reliably emitted named servlet parameter
+  name/location/required. Do not project committed fields into the actual document
+  or erase a named parameter mismatch.
+- Keep security, status, media type, schema and Problem Details semantics under the
+  committed validator/negative fixtures plus focused MockMvc HTTP behavior tests;
+  do not claim raw springdoc full equality or add broad annotations/overlay/codegen
+  solely to manufacture it.
 - Application code changes that can affect API run contracts workflow.
 - Frontend workflow regenerates types and fails on dirty diff.
 - When an AI baseline and compatible read-only validator are supplied by its
@@ -379,8 +384,12 @@ P1, P2.
 
 Exit checks:
 
-- Deliberate live-runtime fixtures independently fail parameter, security, status,
-  media-type and schema-reference gates.
+- A deliberate runtime-side route or named-parameter drift fails the raw live
+  inventory gate.
+- Committed semantic negative fixtures and focused security/status/content-type/
+  Problem Details HTTP behavior tests pass.
+- No expected-to-actual projection, disabled full-equality test or redundant
+  runtime-self-mutation test remains.
 - Main workflow fails when an owner-supplied AI consumer check rejects a proposed
   contract or synchronized contract bytes differ; the failure reports the exact
   contract delta for joint review.
@@ -676,7 +685,7 @@ implemented scripts.
 
 ## 8. Done tanımı
 
-- [x] ADR-014–ADR-020 accepted and ADR index/FORBIDDEN synchronized
+- [x] ADR-014–ADR-021 accepted and ADR index/FORBIDDEN synchronized
 - [x] ADR-019 contains only ownership governance; every AI-internal implementation decision is removed from main authority
 - [x] P1 closed error authority accepted
 - [ ] P2 packaged contract bundle/digest accepted

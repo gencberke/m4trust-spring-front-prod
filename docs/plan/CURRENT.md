@@ -107,15 +107,19 @@ browser Section 6 matrix that was deferred at 14A closure was completed and
 accepted as gate C0 on 2026-07-21
 (`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
-ADR-014–ADR-020 were accepted on 2026-07-22. They fix the demo-only settlement
+ADR-014–ADR-021 were accepted on 2026-07-22. They fix the demo-only settlement
 boundary, conditional event/outbox rule, main Core/Web production
 runtime/recovery topology, invite-only identity and scanned S3 quarantine.
 The original AI provider/model draft for ADR-019 was withdrawn before
 implementation and replaced by an ownership-governance ADR: AI provider/model/
 worker/deployment decisions belong to the separate AI owner. ADR-020 removes the
 circular image-label/release-manifest dependency: images are built first and the
-signed manifest references their exact digests in one direction. Slice 15
-Production Reconciliation and Readiness is human-approved for the main backend/frontend and
+signed manifest references their exact digests in one direction. ADR-021 keeps
+committed OpenAPI as the single design authority while limiting raw
+Spring comparison to observable servlet inventory and using focused HTTP behavior
+tests for security/response semantics.
+
+Slice 15 Production Reconciliation and Readiness is human-approved for the main backend/frontend and
 their deployment under `docs/plan/ready/`. P1 public error authority is accepted
 at `d69d7e00`; P2–P9 and main production acceptance are not accepted yet. Slice
 14B remains planning-only behind Slice 15 `MAIN-PROD-READY` and the seven-day main
@@ -123,7 +127,7 @@ pilot exit.
 
 ## Accepted foundations
 
-- ADR-001 through ADR-020 are accepted and remain authoritative; ADR-019 grants
+- ADR-001 through ADR-021 are accepted and remain authoritative; ADR-019 grants
   no AI-internal implementation authority to the main team.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.

@@ -126,7 +126,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | idempotency (HTTP) | ADR-006 §24–25 | Claim server-side, double-click korumasından fazlası |
 | migration / Flyway | ADR-007 §21–25 | Uygulanmış migration değiştirilmez |
 | tenant | ADR-003 §5; ADR-008 | Tenant ≠ LegalEntity |
-| public OpenAPI | ADR-006 §42–48 | Implementasyondan önce |
+| public OpenAPI / runtime drift | ADR-006 §42–48; ADR-021 | Committed spec tek design authority; raw runtime exact servlet inventory |
 | error / Problem Details | ADR-006 §13–20 | Stable code |
 | money / percentage | ADR-003 §21, §27; ADR-006 §28–29 | integer |
 | payment / funding | ADR-003 §12, §21; ADR-010; ADR-014 | Slice 11 sandbox production'a çıkmaz; production yalnız açık `DEMO_SIMULATED`, gerçek provider/sapma ESKALASYON |
@@ -194,10 +194,12 @@ messaging reuse ve advisory-only manual-review sınırı için bağlayıcıdır.
 `ADR-013` kabul edilmiştir. Dispute/Casework V1 actor, party-only disclosure,
 opening snapshot, concurrency ve no-side-effect sınırı için bağlayıcıdır.
 
-`ADR-014`–`ADR-020` kabul edilmiştir. Settlement demo boundary, event/outbox
+`ADR-014`–`ADR-021` kabul edilmiştir. Settlement demo boundary, event/outbox
 semantics, main application production runtime, invite-only identity, upload
 quarantine, cross-repository AI ownership governance ve tek yönlü release manifest
-kimliği kararları için bağlayıcıdır. ADR-019 AI internal implementation seçimi yapmaz.
+kimliği kararları için bağlayıcıdır. ADR-021 runtime contract doğrulamasını yalnız
+gözlemlenebilir inventory ve gerçek HTTP davranış kanıtlarına ayırır. ADR-019 AI
+internal implementation seçimi yapmaz.
 
 ---
 
@@ -241,6 +243,7 @@ kimliği kararları için bağlayıcıdır. ADR-019 AI internal implementation s
 | ADR-018 | S3 quarantine, GuardDuty clean gate, immutable-version read ve orphan retention |
 | ADR-019 | Main/AI karar yetkisi, read-only contract compatibility ve non-authoritative observation sınırı |
 | ADR-020 | Main image digest'leri ile release manifesti arasındaki tek yönlü, döngüsüz kimlik bağı |
+| ADR-021 | Committed OpenAPI otoritesi ile gözlemlenebilir runtime inventory ve HTTP behavior doğrulaması |
 
 ## Reading rules
 
