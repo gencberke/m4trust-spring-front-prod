@@ -26,11 +26,9 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Yeni current document'a geçerken eski RuleSetVersion'ı current/ratification-ready bırakmak | ADR-003 §18–§20 |
 | Video/AI sonucunun otomatik fulfillment completion, evidence kabul/red, dispute veya payment release üretmesi | ADR-002 §10.1; ADR-003 §22; ADR-012 §2.4 |
 | AI/video sonucunun dispute/casework açması, acknowledge/comment/withdraw/resolve etmesi veya priority/state değiştirmesi | ADR-012 §2.4; ADR-013 §2.9 |
-| PII masker veya retrieval/RAG arızasında raw/eksik korunmuş içeriği üçüncü taraf modele göndermeye devam etmek | ADR-001 §16; ADR-019 §§2.3–2.4 |
-| Production AI worker'ın floating model revision indirmesi veya model hash doğrulamadan ready olması | ADR-019 §§2.4, 2.8 |
-| Masking'i anonimleştirme garantisi saymak veya privacy/DPA/customer-notice approval reference olmadan external AI processing'i production'da açmak | ADR-019 §§2.2–2.3 |
-| Açık production-use lisansı/provenance'i olmayan model weight'i seçmek ya da allowlist dışı/pickle weight'i worker image'a almak | ADR-019 §2.4 |
-| Roboflow credential'ını query string'e koymak veya public/community model kimliğini production allowlist olarak kullanmak | ADR-019 §2.5 |
+| Main planner/implementer'ın AI provider, model/revision, prompt/RAG/NER, worker, dependency, image, CI/CD, scaling veya deployment seçmesi ya da değiştirmesi | ADR-019 §2.2 |
+| Main task packet'ına AI repository write scope'u koymak veya öneriyi AI owner kabulü olmadan Accepted/Closed/Done saymak | ADR-019 §§2.2, 2.4 |
+| AI-owner evidence olmadan mock/local worker ile production AI readiness iddiası üretmek | ADR-019 §2.5 |
 | Ratify edilmemiş AI `deliveryRequirements` çıktısını contractual checklist, milestone veya completion kuralı saymak | ADR-011 §1, §2.1 |
 | Broker mesajında provider-specific payload, raw doküman/video, secret, credential, session token taşımak | ADR-001 §20; ADR-002 §29 |
 | Contract'ı tek taraflı değiştirmek (FastAPI model gerekçesiyle, Spring yeni required alan dayatarak) | ADR-001 §9; ADR-002 §28 |
@@ -39,7 +37,6 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Exactly-once delivery varsaymak | ADR-001 §13; ADR-002 §17 |
 | Raw stack trace, provider hata mesajı veya PII'yi error/warning payload'ına koymak | ADR-002 §12.3, §13 |
 | Servisler arası source code seviyesinde domain entity paylaşmak; generated transport modelini domain entity yapmak | ADR-001 §20; ADR-002 §23 |
-| FastAPI'ye object storage'da genel/sınırsız bucket erişimi vermek | ADR-001 §6 |
 
 ## 2. Domain ve veri (Spring)
 
@@ -144,7 +141,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 
 | Yasak | Kaynak |
 | --- | --- |
-| FastAPI'yi public internete açmak; PostgreSQL/RabbitMQ'yu public erişilebilir yapmak | ADR-007 §4–5, §46 |
+| Main-owned PostgreSQL/RabbitMQ'yu public erişilebilir veya cleartext açmak | ADR-007 §4–5, §46; ADR-016 §§2.2–2.3 |
 | Mock AI Worker'ı production'da çalıştırmak veya production queue'larına bağlamak | ADR-007 §10, §46 |
 | Production'da `latest` image tag'ine güvenmek | ADR-007 §15, §46 |
 | Staging'de doğrulanmamış veya farklı build edilmiş image'ı production'a deploy etmek; digest yerine mutable tag promote etmek | ADR-016 §§2.4, 2.9 |
@@ -165,7 +162,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | --- | --- |
 | Parola ve parola hash'i | ADR-005 §13, §17; ADR-007 §33 |
 | Raw session ID, CSRF token, cookie içeriği | ADR-005 §17; ADR-007 §33 |
-| DB / RabbitMQ / object storage / AI provider credential'ları | ADR-007 §33 |
+| DB / RabbitMQ / object storage / notification credential'ları | ADR-007 §33; ADR-016 §2.6 |
 | Raw doküman ve video içeriği; raw prompt | ADR-001 §17; ADR-002 §29; ADR-007 §33 |
 | Tam payment credential | ADR-007 §33 |
 | Gereksiz kişisel veri (PII) | ADR-001 §16; ADR-007 §33 |

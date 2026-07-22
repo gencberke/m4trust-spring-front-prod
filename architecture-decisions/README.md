@@ -103,9 +103,10 @@ tanımlı kayıtların business mutation ile atomik yazılacağını sabitler.
 
 ### ADR-016 — Production Runtime, Release, and Recovery
 
-Railway/AWS production topolojisini, private transport'u, immutable OCI digest
-promotion'ını, fail-fast config, migration/rollback, PITR, observability ve
-sınırlı production pilot kapısını tanımlar.
+Main repository'deki Core/Web Railway/AWS production topolojisini, private
+transport'u, iki main OCI artifact'ının immutable digest promotion'ını, fail-fast
+config, migration/rollback, PITR, observability ve sınırlı production pilot
+kapısını tanımlar. AI repository runtime/deployment kararlarını kapsamaz.
 
 ### ADR-017 — Invite-Only Identity and Transactional Notification
 
@@ -119,11 +120,12 @@ AWS S3 quarantine ve GuardDuty scan proof'ünü, clean tag olmadan finalize/read
 yasağını, exact object-version bütünlüğünü ve bounded orphan cleanup davranışını
 tanımlar.
 
-### ADR-019 — Production AI Providers, Privacy, and Model Supply Chain
+### ADR-019 — Cross-Repository AI Ownership and Integration Governance
 
-OpenAI/private Roboflow/local BGE-M3/licensed Turkish NER provider allowlist'ini,
-masking ve RAG fail-closed politikasını, exact-hash offline model supply chain'ini
-ve robust worker recovery/readiness davranışını tanımlar.
+Main backend/frontend/deployment ekibi ile ayrı AI owner arasındaki karar
+yetkisini sabitler. Main ekip AI provider/model/worker/image/deployment seçmez veya
+değiştirmez; yalnız shared-contract uyumunu yönetir, read-only mismatch raporu ve
+non-authoritative öneri sunar.
 
 ## ADR durumu
 

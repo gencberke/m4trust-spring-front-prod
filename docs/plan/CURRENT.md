@@ -108,16 +108,20 @@ accepted as gate C0 on 2026-07-21
 (`docs/plan/done/review/c0-14a-browser-debt-acceptance-2026-07-21.md`).
 
 ADR-014–ADR-019 were accepted on 2026-07-22. They fix the demo-only settlement
-boundary, conditional event/outbox rule, production runtime/recovery topology,
-invite-only identity, scanned S3 quarantine, and production AI provider/privacy
-authority. Slice 15 Production Reconciliation and Readiness is human-approved
-under `docs/plan/ready/`; no Slice 15 implementation or production acceptance is
-claimed yet. Slice 14B remains planning-only behind Slice 15 `PROD-READY` and
-the seven-day pilot exit.
+boundary, conditional event/outbox rule, main Core/Web production
+runtime/recovery topology, invite-only identity and scanned S3 quarantine.
+The original AI provider/model draft for ADR-019 was withdrawn before
+implementation and replaced by an ownership-governance ADR: AI provider/model/
+worker/deployment decisions belong to the separate AI owner. Slice 15 Production
+Reconciliation and Readiness is human-approved for the main backend/frontend and
+their deployment under `docs/plan/ready/`; no Slice 15 implementation or main
+production acceptance is claimed yet. Slice 14B remains planning-only behind
+Slice 15 `MAIN-PROD-READY` and the seven-day main pilot exit.
 
 ## Accepted foundations
 
-- ADR-001 through ADR-019 are accepted and remain authoritative.
+- ADR-001 through ADR-019 are accepted and remain authoritative; ADR-019 grants
+  no AI-internal implementation authority to the main team.
 - Slice 0 platform foundation is accepted under `docs/plan/done/`.
 - Slice 1 authentication is accepted under `docs/plan/done/`.
 - Slice 2 organization and membership is accepted under `docs/plan/done/`.
@@ -266,8 +270,9 @@ the seven-day pilot exit.
 
 - Slice 15 production reconciliation implementation and its full-stack
   staging/production-pilot evidence.
-- Production OpenAI/private-Roboflow/local-model execution; the current FastAPI
-  service remains a non-production foundation until Slice 15 is accepted.
+- Production AI capability remains owned and accepted separately by the AI team;
+  Slice 15 may report shared-contract compatibility but cannot select or change
+  providers, models, workers, images or AI deployment.
 - Slice 14B settlement/release implementation and every later capability in the
   post-fix roadmap.
 
@@ -276,21 +281,23 @@ the seven-day pilot exit.
 Slice 15 Production Reconciliation and Readiness is the sole ready implementation
 plan. It must execute in reviewed packets against exact bases; task acceptance
 does not imply `PROD-READY`, staging acceptance, pilot entry, or pilot exit.
-Slice 14B and the R2–R8 capability roadmap have no implementation authority.
+Slice 14B and the R2–R7 capability roadmap have no implementation authority.
 
 ## Known blockers
 
-Production release remains blocked until Slice 15 closes contract/runtime drift,
-invite onboarding, scanned object storage, AI fail-closed/model-supply-chain,
-private deployment, immutable release, recovery, telemetry and operational
-acceptance. External gates still require Postmark domain authentication,
-production S3/KMS/GuardDuty resources, OpenAI/Roboflow contractual and private
-model provenance, Grafana Cloud, and Railway production/PITR configuration. No
-open 14A/Slice 13 browser acceptance debt remains.
+Main production release remains blocked until Slice 15 closes contract/runtime
+drift, invite onboarding, scanned object storage, private Core/Web deployment,
+immutable release, recovery, telemetry and operational acceptance. External main
+gates still require Postmark domain authentication, production S3/KMS/GuardDuty
+resources, Grafana Cloud and Railway production/PITR configuration. AI-enabled
+product readiness additionally requires a compatible capability/evidence packet
+from the AI owner; its absence is reported and cannot be repaired by the main
+implementer. See `docs/plan/planning/ai-integration-observations-2026-07-22.md`.
+No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next work is Slice 15 P1–P10 in dependency-ordered task packets, beginning
+The next work is Slice 15 P1–P9 in dependency-ordered main-repository task packets, beginning
 with contract/error authority and contract-bundle/runtime drift controls. After
 all Slice 15 gates and the seven-day pilot are accepted, Slice 14B is replanned
 against the then-current exact base and may receive separate ready approval.

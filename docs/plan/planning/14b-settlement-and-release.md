@@ -9,14 +9,14 @@
   - accepted Slice 7 staging deployment;
   - accepted Slice 11B-A simulation transport foundation;
   - accepted ADR-014 settlement/demo-simulation authority; and
-  - accepted Slice 15 Production Reconciliation, a `PROD-READY` decision, and
-    successful seven-day production pilot exit.
+  - accepted Slice 15 Production Reconciliation, a `MAIN-PROD-READY` decision, and
+    successful seven-day main-application production pilot exit.
 - Decision authority: ADR-014 Settlement, Release and Production Demo
   Simulation is accepted. Its schema, state, authorization, race, lock,
   transaction, query-first and production-demo boundaries are binding.
 - Approval boundary: this plan cannot move to `ready/`, and no 14B task packet
-  may be issued, until Slice 15 and its production pilot are accepted and this
-  eight-section plan receives separate human ready approval.
+  may be issued, until Slice 15 and its main-application production pilot are
+  accepted and this eight-section plan receives separate human ready approval.
 - Deployment/payment boundary: production may run only the separately deployed
   `DEMO_SIMULATED` service defined by ADR-014/ADR-016. Moka sandbox credentials,
   test scenario controls, provider fallback and real money movement remain
@@ -180,8 +180,8 @@ Before this plan may move to `ready/`:
   primitives; and
 - no real-provider, credential, refund workaround or legal-compliance claim is
   introduced;
-- Slice 15 Production Reconciliation is accepted `PROD-READY`; and
-- its seven-day limited production pilot exits within the accepted thresholds.
+- Slice 15 Production Reconciliation is accepted `MAIN-PROD-READY`; and
+- its seven-day limited main-application production pilot exits within the accepted thresholds.
 
 ### Target ownership and module boundaries
 
@@ -254,20 +254,22 @@ contradiction requires `REPLAN`, not implementer invention.
 ## 5. Detailed Implementation Phases
 
 B-P1–B-P7 remain sequenced future phases. No implementer may execute them until
-the Slice 15 `PROD-READY` decision, seven-day pilot exit, and separate human
+the Slice 15 `MAIN-PROD-READY` decision, seven-day main pilot exit, and separate human
 approval move this plan to `ready/`.
 
 ### G0 — Close the production-readiness entry gate
 
 Objective:
-Prove that 14B will start from the hardened production baseline rather than
-reopening deployment, identity, storage, AI, release or recovery debt.
+Prove that 14B will start from the hardened main-application production baseline
+rather than reopening Core/Web deployment, identity, storage, release or recovery
+debt. AI internal readiness is separately owned and is not a 14B implementation
+authority.
 
 Exact scope and evidence:
 
 - Slice 15 is archived as accepted with every automated, staging, recovery and
   operational gate complete.
-- The seven-day pilot exits within ADR-016 thresholds with exact-digest rollback
+- The seven-day main pilot exits within ADR-016 thresholds with exact-digest rollback
   and restore evidence.
 - Contract bundle/runtime OpenAPI authority, scanned storage, invite-only
   identity, provider fail-closed behavior and production observability remain
@@ -623,7 +625,7 @@ not replace this single final user-visible simulation check.
 - [x] G4b Slice 7 staging prerequisite is accepted
 - [x] G4c Slice 11B-A simulation foundation is accepted; 11B-B is superseded
 - [x] ADR-014 is decision-complete and human-accepted
-- [ ] Slice 15 is accepted `PROD-READY` and its seven-day pilot exits successfully
+- [ ] Slice 15 is accepted `MAIN-PROD-READY` and its seven-day main pilot exits successfully
 - [ ] This revised 14B plan is human-approved and moved to `ready/`
 - [ ] Ratified dispute-window terms are immutable, versioned, and canonical-hash inputs
 - [ ] Existing packages without the term remain release-ineligible

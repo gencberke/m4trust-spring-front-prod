@@ -5,16 +5,15 @@
   handoff before a separate implementer starts
 - Baseline: `main@b2ae2dee63d58a44cddacb49814f17049c7720d3`
 - Accepted decisions: ADR-001–ADR-019
-- Cross-repository AI baseline:
-  `RqyRen/M4Trust-Gayrettepe@bf985e7a396f82f437ad0dcacdcad5bb431fe18d`
 - Plan ownership: planner; implementer may execute only assigned task-packet phases
 - Completion boundary: implementation completion is not production/pilot acceptance
 
 ## 1. Amaç ve kullanıcı sonucu
 
-M4Trust'ın accepted Slice 0–14A davranışlarını yeniden yazmadan, gerçek full-stack
-staging ve kontrollü production pilot için bilinen contract, authentication,
-storage, AI runtime, release ve recovery boşluklarını kapatmak.
+M4Trust'ın accepted Slice 0–14A davranışlarını yeniden yazmadan, Core backend,
+web frontend ve bunların gerçek staging/kontrollü production pilot deployment'ı
+için bilinen contract, authentication, storage, release ve recovery boşluklarını
+kapatmak.
 
 Observable user result:
 
@@ -22,12 +21,13 @@ Observable user result:
    entity membership invitation'ını ayrıca kabul eder ve session ile giriş yapar.
 2. Document/evidence upload malware scan temizlenmeden finalize, download veya AI
    action'a açılamaz.
-3. Document extraction OpenAI + local masking/RAG; video analysis private Roboflow
-   ile asynchronous çalışır ve AI sonucu advisory kalır.
-4. Aynı reviewed artifact digest'leri full-stack staging'den production pilot'a
+3. AI-enabled action'lar yalnız accepted shared async contract üzerinden ayrı AI
+   owner capability'sine teslim edilir; sonuç advisory kalır ve uyumsuzluk main
+   business state'inde sahte başarı üretmez.
+4. Aynı reviewed Core/Web artifact digest'leri main staging'den production pilot'a
    promote edilir; rollback/restore/alert kanıtı bulunur.
-5. Public API runtime, committed OpenAPI, frontend generated types ve AI shared
-   contracts sessizce drift edemez.
+5. Public API runtime, committed OpenAPI ve frontend generated types sessizce
+   drift edemez; shared AI contract uyumsuzluğu exact diff olarak raporlanır.
 
 ## 2. Kapsam ve sınırlar
 
@@ -40,10 +40,9 @@ Observable user result:
   login throttling, notification outbox, Postmark adapter and frontend flows.
 - ADR-018 AWS S3/GuardDuty clean-scan gate for Deal documents and fulfillment
   evidence, exact-version cleanup and IaC.
-- ADR-019 AI provider/privacy/model/worker hardening in the AI repository.
-- ADR-016 production profiles, private topology config, Caddy security, health,
+- ADR-016 main production profiles, private topology config, Caddy security, health,
   release manifest/workflows, migration/rollback/restore, observability and runbooks.
-- Full local/CI integration proof and deployable staging/production configuration.
+- Main local/CI integration proof and deployable Core/Web staging/production configuration.
 - Planner-owned staging browser acceptance and production pilot evidence.
 
 ### Out of scope
@@ -55,7 +54,10 @@ Observable user result:
   enterprise SSO.
 - Real payment/provider/custody/payout behavior.
 - Accepted evidence/document overwrite or deletion.
-- Implementer creation of AWS/Railway/Postmark/OpenAI/Roboflow/Grafana accounts,
+- Any AI repository change or decision: provider/model/revision, prompt/masking/RAG,
+  framework/dependency, worker topology/concurrency/recovery, image, CI/CD,
+  observability or AI service deployment.
+- Implementer creation of AWS/Railway/Postmark/Grafana accounts,
   production secrets, legal/DPA approval, DNS changes or production traffic.
 - Claiming the 7-day pilot passed without real elapsed-time evidence.
 
@@ -66,13 +68,11 @@ fallback or widen the task.
 
 | Input/evidence | Owner | Required before | Current state |
 |---|---|---|---|
-| ADR-014–ADR-019, this ready plan, main/AI base SHAs | Planner/user | 15-T01 | Closed |
-| Exact BGE/NER revisions, runtime file hashes and licenses | Planner | 15-T05 | Closed in ADR-019 |
+| ADR-014–ADR-019, this ready plan and main base SHA | Planner/user | 15-T01 | Closed |
 | Postmark server/stream, verified domain, DKIM/SPF/DMARC and webhook source policy | User/planner | live P5 staging acceptance | External gate; not a code-start blocker |
-| AWS staging/production S3, KMS and GuardDuty roles | User/planner | P10 staging deployment | External gate; P6 IaC remains implementable offline |
-| OpenAI project/DPA/retention/region/privacy approval reference | User/privacy owner | real-provider P8/P10 evidence | External gate; processing remains disabled |
-| Private Roboflow workspace plus exact owned model version IDs/DPA/golden set | User/privacy owner | real-provider P8/P10 evidence | External gate; community IDs remain rejected |
-| Railway production project/Pro registry access/PITR and Grafana Cloud endpoints | User/planner | P10 operative acceptance | External gate; config/runbooks remain implementable |
+| AWS staging/production S3, KMS and GuardDuty roles | User/planner | P9 staging deployment | External gate; P6 IaC remains implementable offline |
+| AI-owner contract compatibility and capability evidence | AI owner/user | AI-enabled staging/pilot | External dependency; main implementer reports mismatch and never changes AI repo |
+| Railway production project/Pro registry access/PITR and Grafana Cloud endpoints | User/planner | P9 operative acceptance | External gate; config/runbooks remain implementable |
 | Pilot cohort and business-data retention/legal sign-off | User/legal/product | pilot entry / broad release | External acceptance; implementer cannot choose |
 
 No secret or external account value is committed. An unavailable external gate is
@@ -87,20 +87,23 @@ evidence or waived by the implementer.
 - Authentication/session/non-disclosure: ADR-005 §§5–17, 20–23; ADR-017.
 - Direct storage, immutable evidence and malware gate: ADR-001 §6; ADR-011
   §§2.3–2.6; ADR-018.
-- AI ownership/advisory boundary: ADR-001 §§2, 7, 10, 16–19; ADR-002 §§17–30;
-  ADR-012; ADR-019.
+- AI ownership/advisory boundary: ADR-001 §§2, 7, 10, 16–20; ADR-002 §§17–30;
+  ADR-012; ADR-019. AI internals remain outside this plan.
 - Deployment, migration, recovery and promotion: ADR-007 §§21–43; ADR-016.
 - ADR-014 changes decision authority only. No settlement/release API or state is
   implemented in this plan.
 
 Binding implementation choices:
 
-- Main shared contracts are authoritative.
+- Committed shared contracts in the main repository are the integration
+  authority; semantic/breaking changes require main and AI owner review.
 - Production registration is invite-only; Postmark is the notification adapter.
 - Production object storage is AWS S3/KMS/GuardDuty.
-- Production AI scope is OpenAI snapshot + private Roboflow + offline BGE-M3/NER.
+- Main controls only shared AI contracts and Spring/frontend integration behavior;
+  it does not select or change AI internals.
 - Railway EU West is the runtime; only web-edge is public.
-- Build once and promote exact OCI digests; no production rebuild/latest tag.
+- Build `web` and `core` once and promote exact OCI digests; no production
+  rebuild/latest tag.
 - RPO `<=15m`, RTO `<=4h`; pilot is 7 days/max 3 entities/15 users.
 
 ## 4. Public interface, state ve data etkisi
@@ -255,8 +258,9 @@ operational observation only.
 - Existing v1 frontend is regenerated; no handwritten parallel DTOs.
 - Existing finalized object is never auto-marked clean. Staging/production launch
   inventory must scan/re-upload it.
-- Shared AI event schemas remain wire-compatible; this plan changes validation/
-  packaging/producer runtime, not their payload semantics.
+- Shared AI event schemas remain wire-compatible. This plan may change main-side
+  validation, packaging and Spring producer/consumer behavior, but never AI
+  repository implementation or payload semantics without joint contract review.
 - Database changes are additive/expand-only; previous accepted image remains
   runnable until an explicit later contract phase.
 
@@ -272,9 +276,8 @@ packet; placeholders below are not implementation authority:
 | `15-T02` | main | P2–P3 | accepted 15-T01 base |
 | `15-T03` | main | P4–P5 | accepted 15-T02 base |
 | `15-T04` | main | P6–P7 | accepted 15-T03 base |
-| `15-T05` | AI | P8 | accepted P2 authority + exact AI baseline |
-| `15-T06` | main | P9 | accepted 15-T01–15-T05 evidence |
-| `15-T07` | main; accepted AI head is validation input, not write scope | P10 | accepted P1–P9 heads |
+| `15-T05` | main | P8 | accepted 15-T01–15-T04 evidence |
+| `15-T06` | main | P9 | accepted P1–P8 main head; AI evidence is read-only external input if available |
 
 The user owns every handoff/merge. No implementer moves this plan, updates
 `CURRENT.md`, folds two repository writes into a singular branch/base packet, or
@@ -310,7 +313,7 @@ Exit checks:
 
 Outcome:
 Packaged Core and the language-neutral reference implementation load the exact
-reviewed contract bundle and produce the digest that P8 must consume in AI.
+reviewed contract bundle and publish a deterministic main authority digest.
 
 Direction:
 
@@ -320,8 +323,9 @@ Direction:
 - Add `core-internal-v1.yaml`, endpoint implementation and validator coverage.
 - Change Core Docker build to monorepo-root context and copy schemas into JAR;
   production image smoke must open every runtime schema.
-- Update main authority/sync expectations and the exact three ADR-016 Core OCI
-  labels; P8 updates the AI-owned manifest/labels and main remains authority.
+- Update main authority/sync expectations and the exact ADR-016 Core OCI labels.
+  Produce a language-neutral digest manifest that the AI owner may validate;
+  do not prescribe an AI endpoint, image label or repository change.
 - No runtime filesystem dependency on repository-relative `../../contracts`.
 
 Depends on:
@@ -330,8 +334,9 @@ P1.
 Exit checks:
 
 - Packaged JAR/image schema load test passes.
-- Main validator/Core/reference digest golden test returns the same value when run
-  over both repositories' unchanged contract bytes.
+- Main validator/Core/reference digest golden test returns the same value. A
+  read-only comparison against a named AI revision may report mismatched contract
+  bytes but does not modify that repository.
 - Internal OpenAPI validation and no-public-route test pass.
 - Internal contract endpoint rejects missing/wrong probe token and accepts
   active/rotation-overlap tokens without logging either value.
@@ -341,8 +346,7 @@ Exit checks:
 
 Outcome:
 Spring runtime surface, committed public contract, frontend output and the
-main-authority side of AI consumer validation cannot drift in a mergeable main PR.
-P8 installs the reciprocal AI-repository PR gate.
+main-authority compatibility report cannot drift in a mergeable main PR.
 
 Direction:
 
@@ -352,8 +356,10 @@ Direction:
   schema references; descriptions/example ordering are non-semantic.
 - Application code changes that can affect API run contracts workflow.
 - Frontend workflow regenerates types and fails on dirty diff.
-- Main contract PR checks out the exact AI baseline and runs its producer/consumer
-  validation against the proposed main bundle without writing the AI repository.
+- When an AI baseline and compatible read-only validator are supplied by its
+  owner, main contract PR checks may run them against the proposed main bundle
+  without writing the AI repository. Otherwise the workflow emits the exact
+  unverified external gate; it never invents AI compatibility.
 
 Depends on:
 P1, P2.
@@ -361,8 +367,9 @@ P1, P2.
 Exit checks:
 
 - Deliberate test fixture drift fails each gate.
-- Main workflow fails when the pinned AI consumer rejects a proposed contract or
-  its synchronized contract bytes differ.
+- Main workflow fails when an owner-supplied AI consumer check rejects a proposed
+  contract or synchronized contract bytes differ; the failure reports the exact
+  contract delta for joint review.
 - Production profile has no public Swagger/OpenAPI route.
 - Workflows are least-privilege and use pinned action SHAs/versions.
 
@@ -499,61 +506,7 @@ Exit checks:
 - Cleanup eligibility, duplicate lease/delete and immutable-history tests pass.
 - Frontend typecheck/build and focused upload-flow tests pass.
 
-### P8 — Harden the AI producer and worker repository
-
-Outcome:
-AI API/worker images use pinned providers/models, privacy gates and reconnect-safe
-async consumption while preserving canonical shared contracts.
-
-Direction:
-
-- Branch from exact AI baseline named in this plan; do not edit main repo contracts
-  from the AI task.
-- Pin Python 3.13 image digest and frozen/hash-locked Linux dependencies.
-- Split lightweight `ai-api` and model-bearing `ai-worker` targets; non-root and
-  offline runtime.
-- Vendor-lock the exact ADR-019 BGE-M3 dense-only and licensed Turkish NER
-  revisions/file allowlists; no implementer-selected revision or pickle weight.
-- Replace the current Savasy NER reference with the accepted Akdeniz27 adapter;
-  regenerate/pin legal-corpus embeddings with source/adapter/model digests and
-  prove representative masking/retrieval golden parity before switching.
-- Pin OpenAI snapshot, set `store=false`, fail closed on masker/RAG error and prove
-  zero provider call.
-- Implement closed `EXTERNAL_AI_PROCESSING_MODE`; production defaults disabled and
-  readiness requires the release-manifest privacy/DPA/notice approval reference.
-- Add cleartext masking sentinels plus representative Turkish NER report; never
-  label masking as anonymization or let the implementer choose legal acceptance.
-- Require private Roboflow allowlist, Bearer auth and redaction; reject current
-  community IDs in production.
-- Replace blocking Rabbit consumption with robust aio-pika/event-loop heartbeat,
-  bounded inference executor, confirms, reconnect, graceful drain and Redis lease/
-  PENDING_PUBLISH recovery.
-- Preserve canonical job identity but do not claim exactly-once provider calls;
-  give each bounded provider attempt a privacy-safe client request ID/metric and
-  keep duplicate results business-idempotent after ambiguous timeout/Redis loss.
-- Readiness requires broker, Redis, contracts and offline models.
-- Update the AI-owned sync manifest/OCI labels and add an every-PR workflow that
-  checks out its pinned main authority, exact-diffs bundle bytes and runs consumer
-  validation; weekly drift remains supplemental only.
-
-Depends on:
-P2. May run in parallel with P4–P7 in the separate AI repository.
-
-Exit checks:
-
-- Existing and new AI unit/contract tests pass under Python 3.13.
-- Masker/retrieval failure proves zero OpenAI calls.
-- Every masking sentinel is absent from provider-request snapshots; external
-  processing remains disabled without the accepted privacy approval reference.
-- Provider URL/log tests prove no key/raw PII.
-- Offline image/model hash/startup smoke passes with network unavailable.
-- Model lock rejects any unlisted file/hash and corpus/model digest mismatch.
-- Broker disconnect, long heartbeat, SIGTERM, duplicate and Redis-loss tests pass.
-- Provider-timeout/Redis-loss evidence reports exact attempt counts while proving
-  one canonical Spring job/result application and no invented success.
-- AI/main contract digest and sync manifest match.
-
-### P9 — Build production runtime, release and operations foundation
+### P8 — Build main production runtime, release and operations foundation
 
 Outcome:
 Repository contains deployable private topology configuration, immutable release
@@ -561,23 +514,24 @@ workflow, production guards, observability and executable recovery runbooks.
 
 Direction:
 
-- Add `application-production.yml` and base Rabbit/Redis/S3 mappings; validate all
+- Add `application-production.yml` and base Rabbit/S3 mappings; validate all
   required config and transport mode at startup.
 - Configure only web public; Caddy same-origin proxy, trusted Railway chain and
   ADR-016 security headers/path/body rules.
 - Add Railway config-as-code for region, replicas, health, pre-deploy migration,
   overlap/drain/restart and root Docker contexts.
-- Build four OCI artifacts once, publish GHCR digests, SBOM/provenance/release
-  manifest; promotion consumes manifest digest, never rebuilds.
+- Build `web` and `core` OCI artifacts once, publish GHCR digests, SBOM,
+  provenance and release manifest; promotion consumes manifest digest, never
+  rebuilds.
 - Add OTel/Micrometer/Faro privacy filters and required metrics/alerts definitions.
 - Make schedulers lifecycle-aware; tests shut down cleanly without forced JVM kill.
 - Write command-complete runbooks for deploy, rollback, sibling PITR restore, S3
-  version restore, DLQ/outbox reconciliation, provider degradation and secret
-  rotation. Commands use placeholders for secrets/account IDs and include stop/
-  verification gates.
+  version restore, DLQ/outbox reconciliation, external dependency degradation and
+  secret rotation. Commands use placeholders for secrets/account IDs and include
+  stop/verification gates.
 
 Depends on:
-P2, P3, P4, P6. AI artifact manifest fields depend on P8 evidence.
+P2, P3, P4, P6.
 
 Exit checks:
 
@@ -587,7 +541,7 @@ Exit checks:
 - Core full verify exits cleanly with no post-container scheduler access.
 - Runbooks pass static safety review; no secret/destructive broad target exists.
 
-### P10 — Integrate full-stack staging evidence and review handoff
+### P9 — Integrate main staging evidence and review handoff
 
 Outcome:
 Implementer provides a complete, reproducible validation bundle and deployable
@@ -595,24 +549,27 @@ staging candidate without claiming planner-owned browser/pilot acceptance.
 
 Direction:
 
-- Update local/CI integration orchestration for Core/Web/Postgres/Rabbit/Redis/
-  S3-compatible storage/AI API/AI worker; real provider calls remain opt-in secret
-  staging jobs, never default developer requirements.
-- Run contract, migration, backend, frontend, AI, container, policy and focused
+- Update local/CI integration orchestration for Core/Web/Postgres/Rabbit and
+  S3-compatible storage. The accepted local Mock AI Worker may validate Spring's
+  contract boundary, but is never production AI evidence.
+- Run contract, migration, backend, frontend, container, policy and focused
   failure/recovery suites.
-- Produce redacted release manifest, image digests, migration ceiling, contract/
-  model digests and exact commands/evidence locations.
+- Produce redacted main release manifest, image digests, migration ceiling,
+  contract digest and exact commands/evidence locations.
+- If an AI-owner evidence packet is available, attach its opaque reference and
+  read-only contract compatibility result. Do not run AI repository tests, build
+  its images, deploy it or prescribe corrective changes.
 - Do not deploy production, create external resources or run planner-owned browser
   acceptance unless a later task explicitly assigns it.
 
 Depends on:
-P1–P9.
+P1–P8.
 
 Exit checks:
 
 - All implementer validations in §7 pass or are honestly `NOT_RUN` for external
   credentials with a named planner gate.
-- `git diff --check`, status and base-to-HEAD scope checks pass in both repos.
+- `git diff --check`, status and base-to-HEAD scope checks pass in the main repo.
 - `docs/plan/review/req-review.md` is `COMPLETED` only for assigned phases and
   says `Plan completion claim: NO`.
 
@@ -622,13 +579,14 @@ Owner: planner/user after implementer review. Implementer tests do not replace i
 
 ### Staging prerequisites
 
-- Exact reviewed release manifest deployed; all service contract/model digests
-  match.
-- Separate staging Postgres/Rabbit/Redis/S3/provider projects and no production
-  secrets/data.
-- Postmark staging stream/domain, private Roboflow models and OpenAI project pass
-  external governance gates.
+- Exact reviewed main release manifest is deployed; Core/Web image and main
+  contract digests match.
+- Separate staging Postgres/Rabbit/S3 resources and no production secrets/data.
+- Postmark staging stream/domain passes the external main governance gate.
 - Existing retained objects have clean exact-version scan evidence.
+- If AI-enabled scenarios are included, the AI owner supplies a compatible
+  staging capability/evidence reference. The main implementer neither builds nor
+  deploys it.
 
 ### Browser matrix
 
@@ -646,14 +604,17 @@ Owner: planner/user after implementer review. Implementer tests do not replace i
    works without enumeration.
 7. Deal invitation sends notification/onboarding but still requires separate Deal
    acceptance and legal-entity choice.
-8. Document upload observes scan-pending, then clean finalize/download and real
-   document extraction; masking/RAG/provider errors remain technical and safe.
+8. Document upload observes scan-pending, then clean finalize/download. Main
+   submits document analysis only through the accepted async contract; a missing,
+   incompatible or failed external AI capability remains technical and never
+   invents business success.
 9. Malware/unsupported object never finalizes/downloads/starts AI and prompts a new
    upload without exposing signature/provider detail.
-10. VIDEO/MP4 evidence clean-finalizes, private Roboflow analysis remains advisory
-    and manual buyer accept/reject behavior is unchanged.
-11. Worker/broker restart preserves queued/unknown jobs and produces no duplicate
-    business result.
+10. VIDEO/MP4 evidence clean-finalizes; any contract-compatible AI-owner result
+    remains advisory and manual buyer accept/reject behavior is unchanged.
+11. Core broker disconnect/reconnect, duplicate delivery and result replay preserve
+    queued/unknown state and produce no duplicate business result. AI worker
+    restart evidence, if required, is supplied by the AI owner.
 12. Release candidate rollback restores the previous exact artifact while schema
     compatibility and login remain healthy.
 
@@ -661,9 +622,9 @@ Owner: planner/user after implementer review. Implementer tests do not replace i
 
 - Restore a production-like backup to sibling DB and prove RPO/RTO procedure.
 - Restore an S3 version without exposing bucket/object publicly.
-- Exercise DLQ/outbox reconciliation and provider-degradation runbooks.
-- Verify alerts for public 5xx/latency, backup, queue age/DLQ, outbox age, AI
-  failures and email bounce.
+- Exercise DLQ/outbox reconciliation and external-dependency degradation runbooks.
+- Verify alerts for public 5xx/latency, backup, queue age/DLQ, outbox age,
+  main-observed AI job failures/timeouts and email bounce.
 - After staging acceptance and external sign-off, run the 7-day/max 3 entity/15
   user production pilot. Any ADR-016 threshold breach stops the pilot.
 
@@ -685,18 +646,6 @@ Windows implementer may use repository-equivalent `python`, `mvnw.cmd` and
 container smoke and generated-clean-diff checks are additionally required by the
 implemented scripts.
 
-### AI repository
-
-```text
-python -m pip install --require-hashes -r <production-lock>
-pytest
-docker build --target ai-api .
-docker build --target ai-worker .
-git diff --check
-```
-
-Exact lock/script names are created in P8 and then used consistently in CI/docs.
-
 ### Invariants
 
 - No accepted migration V1–V22 is modified.
@@ -706,13 +655,14 @@ Exact lock/script names are created in P8 and then used consistently in CI/docs.
 - No token/credential/raw content/provider payload appears in logs/audit/public API.
 - No non-clean object is finalized, readable or AI-eligible.
 - No AI error mutates fulfillment/casework/payment state.
-- No production mock/sandbox/community model/floating model/latest image exists.
+- No main task changes or selects AI provider/model/worker/image/deployment internals.
 - No contract digest mismatch can become ready or promote.
 - No planner-owned production/pilot claim is made by implementer.
 
 ## 8. Done tanımı
 
 - [x] ADR-014–ADR-019 accepted and ADR index/FORBIDDEN synchronized
+- [x] ADR-019 contains only ownership governance; every AI-internal implementation decision is removed from main authority
 - [ ] P1 closed error authority accepted
 - [ ] P2 packaged contract bundle/digest accepted
 - [ ] P3 runtime/cross-repo drift gates accepted
@@ -720,13 +670,13 @@ Exact lock/script names are created in P8 and then used consistently in CI/docs.
 - [ ] P5 notification/onboarding frontend accepted
 - [ ] P6 S3/GuardDuty infrastructure and adapter accepted
 - [ ] P7 scan enforcement/cleanup/frontend accepted
-- [ ] P8 AI hardening accepted in the AI repository
-- [ ] P9 production runtime/release/operations foundation accepted
-- [ ] P10 full validation/review handoff accepted
-- [ ] Planner independently reviews complete diffs and validations in both repos
-- [ ] Planner-owned full-stack staging browser matrix passes
+- [ ] P8 main production runtime/release/operations foundation accepted
+- [ ] P9 main validation/review handoff accepted
+- [ ] Planner independently reviews the complete main-repository diff and validations
+- [ ] Planner-owned main staging browser matrix passes
 - [ ] Backup, restore, rollback, DLQ and alert drills pass
-- [ ] External Postmark/OpenAI/Roboflow/AWS/Railway/Grafana gates are recorded
+- [ ] External Postmark/AWS/Railway/Grafana gates are recorded
+- [ ] AI-owner compatibility/evidence is recorded if AI-enabled pilot flows are claimed
 - [ ] Seven-day production pilot exits within ADR-016 SLO/security limits
 - [ ] Retention/legal owner signs off before broad production
 - [ ] Plan archived to `done/` and `CURRENT.md` updated only after every item above

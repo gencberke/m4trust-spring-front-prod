@@ -76,7 +76,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | İletişim | Asenkron RabbitMQ; senkron inference endpoint'i yok | ADR-001 §7; ADR-002 §21.5 |
 | Completed event | Teknik başarı; business kabul değil | ADR-002 §11; ADR-003 §17 |
 | Delivery | At-least-once; consumer duplicate-safe | ADR-002 §17 |
-| Retry | FastAPI teknik retry; yeni job kararı Spring | ADR-002 §18 |
+| Retry | Yeni job kararı Spring; AI-side technical retry implementation'ı AI owner'dadır ve contract-visible semantiği korur | ADR-002 §18; ADR-019 §2.2 |
 | Dosya | Broker'da raw binary yok; presigned reference | ADR-002 §7.1, §29 |
 | Contract değişikliği | Koddan önce, ortak review + fixture/validator | ADR-002 §25 |
 
@@ -100,8 +100,8 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Secret | Repo/image/frontend bundle dışında | ADR-007 §19–20 |
 | Log | Structured stdout/stderr + correlation/release identity | ADR-007 §28, §32 |
 | Ortamlar | local / staging / production kaynak paylaşmaz | ADR-007 §3 |
-| Production topology | Railway EU West; yalnız web public; Core/AI/DB/Rabbit/Redis private; AWS S3 external | ADR-016 §§2.1–2.3 |
-| Production artifact | `web`, `core`, `ai-api`, `ai-worker`; build once, immutable digest promotion | ADR-016 §§2.4–2.5 |
+| Production topology | Railway EU West; yalnız web public; Core/DB/Rabbit private; AWS S3 external | ADR-016 §§2.1–2.3 |
+| Production artifact | Main-owned `web` ve `core`; build once, immutable digest promotion | ADR-016 §§2.4–2.5 |
 | Recovery | PostgreSQL PITR RPO ≤15m/RTO ≤4h; sibling restore + cutover | ADR-016 §2.8 |
 
 ---
@@ -134,7 +134,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | production runtime / digest / PITR | ADR-016 | Private topology, build-once promotion, fail-fast config, RPO/RTO ve pilot gate |
 | account invitation / password reset / Postmark | ADR-017 | Production invite-only, token body/fragment, ayrı business consent, notification outbox |
 | malware / quarantine / GuardDuty | ADR-018 | Clean tag olmadan finalize/read/AI yok; existing business lifecycle korunur |
-| OpenAI / Roboflow / BGE / NER / masking | ADR-019 | Provider allowlist, licensed/hash-pinned offline models, privacy gate, masking/RAG fail-closed, robust worker |
+| AI provider / model / worker internals | ADR-019 §§2.1–2.2 | AI owner kararıdır; main ekip yalnız shared-contract uyumu ve Spring boundary'sini yönetir, öneri/uyumsuzluk raporlar |
 | fulfillment / evidence | ADR-003 §13, §22; ADR-011 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review |
 | video analysis V1 | ADR-002 §9–§10; ADR-003 §22; ADR-012 | Evidence-bound job/result history; buyer ADMIN request, participant read, advisory-only |
 | object storage | ADR-001 §6; ADR-007 §14; ADR-018 | Private, presigned, exact-version quarantine; clean tag olmadan read/AI yok |
@@ -194,8 +194,9 @@ messaging reuse ve advisory-only manual-review sınırı için bağlayıcıdır.
 opening snapshot, concurrency ve no-side-effect sınırı için bağlayıcıdır.
 
 `ADR-014`–`ADR-019` kabul edilmiştir. Settlement demo boundary, event/outbox
-semantics, production runtime, invite-only identity, upload quarantine ve
-production AI provider/privacy kararları için bağlayıcıdır.
+semantics, main application production runtime, invite-only identity, upload
+quarantine ve cross-repository AI ownership governance kararları için
+bağlayıcıdır. ADR-019 AI internal implementation seçimi yapmaz.
 
 ---
 
@@ -234,10 +235,10 @@ production AI provider/privacy kararları için bağlayıcıdır.
 | ADR-013 | Dispute/Casework V1 actor, lifecycle, snapshot, disclosure ve no-side-effect sınırı |
 | ADR-014 | Demo-simulated settlement/release, contractual window, dispute race ve query-only terminality |
 | ADR-015 | Audit, integration event, durable dispatch, notification outbox ve inbox atomicity |
-| ADR-016 | Production topology, immutable release, recovery, observability ve pilot gate |
+| ADR-016 | Main Core/Web production topology, immutable release, recovery, observability ve pilot gate |
 | ADR-017 | Invite-only identity, account/member invitation, recovery, throttling ve Postmark |
 | ADR-018 | S3 quarantine, GuardDuty clean gate, immutable-version read ve orphan retention |
-| ADR-019 | AI provider allowlist, privacy fail-closed, model supply chain ve worker recovery |
+| ADR-019 | Main/AI karar yetkisi, read-only contract compatibility ve non-authoritative observation sınırı |
 
 ## Reading rules
 

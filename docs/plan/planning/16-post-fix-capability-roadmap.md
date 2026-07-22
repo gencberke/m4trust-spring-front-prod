@@ -2,8 +2,8 @@
 
 - Status: `planning` — gated portfolio plan; not implementation-authorizing
 - Draft/approval input: founder/user, 22 July 2026
-- Entry gate: Slice 15 archived `done`, seven-day production pilot accepted, and
-  no open Contract/ADR/security/recovery finding
+- Entry gate: Slice 15 archived `done`, `MAIN-PROD-READY` and seven-day main
+  production pilot accepted, with no open Contract/ADR/security/recovery finding
 - Decision authority: each package requires the named Accepted ADR and a separate
   eight-section `ready` plan before any implementer task packet
 - Payment boundary: every financial-looking capability remains
@@ -19,7 +19,6 @@ birbirinin authority ve state sınırlarını bozmadan paketlemek. Roadmap bitti
 - retained data lifecycle açık policy ile yönetilir;
 - mutual/casework cancellation ve simulated recovery query-first yürür;
 - multi-milestone/partial fulfillment mümkün olur;
-- AI work durable human-review workflow kazanır;
 - enterprise/public-client authentication ayrı trust modeline sahip olur.
 
 ## 2. Kapsam, sıra ve global sınırlar
@@ -33,13 +32,11 @@ R1 Slice 14B Demo Settlement/Release
 -> R4 Data Lifecycle/Retention
 -> R5 Simulated Recovery and ACTIVE Cancellation
 -> R6 Multi-Milestone/Partial Fulfillment
--> R7 AI Work Management
--> R8 Enterprise/Public-Client Authentication
+-> R7 Enterprise/Public-Client Authentication
 ```
 
-R7, R4 sonrasında R5/R6 ile ancak ilgili ready plan açıkça paralel yetki verirse
-paralel olabilir. R2 tamamlanmadan platform operator açılmaz. R3 tamamlanmadan
-casework-driven cancellation yoktur. R5 tamamlanmadan partial release/refund yoktur.
+R2 tamamlanmadan platform operator açılmaz. R3 tamamlanmadan casework-driven
+cancellation yoktur. R5 tamamlanmadan partial release/refund yoktur.
 
 Global yasaklar:
 
@@ -60,8 +57,7 @@ Global yasaklar:
 - R4: ADR-022 — Retention, Legal Hold, Export and Erasure.
 - R5: ADR-023 — Demo Reversal/Refund and ACTIVE Cancellation Consent.
 - R6: ADR-024 — Multi-Milestone Commercial Allocation and Partial Release.
-- R7: ADR-025 — AI Work Management and Human Review Queue.
-- R8: ADR-026 — Enterprise OIDC and Public-Client Authentication.
+- R7: ADR-025 — Enterprise OIDC and Public-Client Authentication.
 
 Future ADR numbers are reserved by this roadmap but remain `Proposed`/absent until
 their package decision work starts. Implementer may not author or infer them.
@@ -134,15 +130,6 @@ milestone reaches the ADR-024 terminal condition.
 
 ### R7 target
 
-- durable human manual-review queue and assignment;
-- immutable reviewer decision history;
-- cooperative job cancellation;
-- backend progress projection and SSE reconnect;
-- bounded batch submission with per-item result;
-- AI remains advisory and cannot produce R3/R5/R6 decisions.
-
-### R8 target
-
 - tenant/domain-bound OIDC/SSO;
 - invite-linked JIT default; open JIT/self-registration disabled;
 - IdP claims pass backend mapping and never directly grant ADMIN/operator;
@@ -160,7 +147,7 @@ Outcome:
 Existing 14B planning document exactly matches ADR-014, removes stale production
 exclusion/G3 contradictions and receives separate human ready approval.
 
-Depends on: Slice 15/pilot accepted.
+Depends on: Slice 15 `MAIN-PROD-READY`/main pilot accepted.
 
 Exit checks: no open state/lock/auth/idempotency/compatibility decision.
 
@@ -345,57 +332,30 @@ Per-milestone operations use ADR-014/023 query-first rules and exact allocated a
 Backend derives per-milestone and Deal actions; prove exact-sum/no-rounding,
 parallel milestone races and terminal completion.
 
-### R7 — AI Work Management
+### R7 — Enterprise and Public-Client Authentication
 
-#### R7-P0 — ADR-025 and contracts
-
-Fix review item subject/cardinality/assignment, cancel/progress/SSE/batch schemas,
-retention and advisory/no-side-effect boundary.
-
-#### R7-P1 — Review/job persistence
-
-Add durable review queue, assignment/decision history, cancel intent and progress
-snapshots with inbox/outbox identity.
-
-#### R7-P2 — Cooperative cancellation/progress
-
-Spring owns job decision; AI honors best-effort cancel and may return late result;
-no terminal result loss or duplicate job.
-
-#### R7-P3 — SSE and batch API/frontend
-
-SSE reconnect uses event identity/cursor; batch returns bounded per-item async
-operations; UI never derives business acceptance.
-
-#### R7-P4 — Acceptance
-
-Prove cancel/result race, duplicate/reconnect, partial batch failure, assignment
-authority and no AI-created case/payment/fulfillment decision.
-
-### R8 — Enterprise and Public-Client Authentication
-
-#### R8-P0 — Product consumers and ADR-026
+#### R7-P0 — Product consumers and ADR-025
 
 Identify exact enterprise IdPs, tenant-domain ownership, mobile/public clients,
 token scopes/TTL/rotation and admin mapping. No generic auth platform is built
 without named consumers.
 
-#### R8-P1 — OIDC tenant linking
+#### R7-P1 — OIDC tenant linking
 
 Contract/persistence for domain/issuer/client mapping, invite-linked JIT and safe
 account linking; IdP claim never directly grants privileged role.
 
-#### R8-P2 — Public/mobile clients
+#### R7-P2 — Public/mobile clients
 
-Only if R8-P0 names consumers: registered confidential/public clients, scoped
+Only if R7-P0 names consumers: registered confidential/public clients, scoped
 OAuth2 tokens, PKCE where applicable, rotation/revocation/rate/audit.
 
-#### R8-P3 — Enterprise frontend/admin
+#### R7-P3 — Enterprise frontend/admin
 
 Safe SSO initiation/callback UX and tenant admin mapping without enumeration or
 open redirect.
 
-#### R8-P4 — Acceptance
+#### R7-P4 — Acceptance
 
 Prove issuer/domain/tenant isolation, account takeover/linking, key rotation,
 scope enforcement, logout/revoke and fallback recovery.
@@ -412,8 +372,8 @@ Every package has planner-owned browser acceptance with at least:
 - explicit simulated/no-real-money wording for R1/R5/R6;
 - before/after regression of all predecessor package invariants.
 
-R4 additionally requires real object version restore; R7 real worker reconnect;
-R8 real configured staging IdP. Mock-only evidence cannot complete a plan.
+R4 additionally requires real object version restore; R7 requires a real configured
+staging IdP. Mock-only evidence cannot complete a plan.
 
 ## 7. Minimum invariant ve validation
 
@@ -425,7 +385,8 @@ Each ready package must require:
 - no external call in DB transaction;
 - architecture/module ownership tests;
 - backend/frontend full validation;
-- affected AI producer/consumer validation;
+- if a shared AI contract is touched, read-only compatibility reporting and AI
+  owner review; no AI repository write or prescribed implementation;
 - exact base-to-HEAD review and `git diff --check`;
 - planner browser/operative acceptance.
 
@@ -435,15 +396,14 @@ packages additionally prove enumeration/replay/session/token secrecy.
 
 ## 8. Portfolio Done tanımı
 
-- [ ] Slice 15 and seven-day pilot accepted and archived
+- [ ] Slice 15 `MAIN-PROD-READY` and seven-day main pilot accepted and archived
 - [ ] R1 ADR-014 implementation/14B accepted and archived
 - [ ] ADR-020/R2 privileged identity accepted and archived
 - [ ] ADR-021/R3 casework completion accepted and archived
 - [ ] ADR-022/R4 legal data lifecycle accepted and archived
 - [ ] ADR-023/R5 demo recovery/ACTIVE cancellation accepted and archived
 - [ ] ADR-024/R6 multi-milestone/partial fulfillment accepted and archived
-- [ ] ADR-025/R7 AI work management accepted and archived
-- [ ] ADR-026/R8 named enterprise/public clients accepted and archived
+- [ ] ADR-025/R7 named enterprise/public clients accepted and archived
 - [ ] Every package's browser, operational, migration and invariant evidence accepted
 - [ ] No real payment/custody/payout or AI business-authority behavior introduced
 - [ ] `CURRENT.md` updated only as each package becomes accepted project state
