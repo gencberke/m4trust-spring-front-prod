@@ -85,9 +85,6 @@ jobs:
           echo "BUILD_TIME=$(git show -s --format='%cI' "${GITHUB_SHA}")" >> "${GITHUB_ENV}"
           DIGEST="$(python contracts/scripts/validate_contracts.py --print-digest)"
           echo "CONTRACT_BUNDLE_DIGEST=${DIGEST}" >> "${GITHUB_ENV}"
-          # Release manifest digest is owned by the release pipeline; CI image builds
-          # stamp the contract-bundle digest into both labels when a manifest is absent.
-          echo "RELEASE_MANIFEST_DIGEST=${DIGEST}" >> "${GITHUB_ENV}"
       - name: Build Core API image from repository root
         run: |
           docker build \
@@ -97,7 +94,6 @@ jobs:
             --build-arg APP_ENVIRONMENT=ci \
             --build-arg BUILD_TIME="${BUILD_TIME}" \
             --build-arg CONTRACT_BUNDLE_DIGEST="${CONTRACT_BUNDLE_DIGEST}" \
-            --build-arg RELEASE_MANIFEST_DIGEST="${RELEASE_MANIFEST_DIGEST}" \
             --tag "m4trust-core-api:${GITHUB_SHA}" \
             .
       - name: Build web-edge image from repository root
@@ -115,7 +111,7 @@ jobs:
           test "$(docker image inspect "m4trust-core-api:${GITHUB_SHA}" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "${GITHUB_SHA}"
           test "$(docker image inspect "m4trust-web-edge:${GITHUB_SHA}" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "${GITHUB_SHA}"
           test "$(docker image inspect "m4trust-core-api:${GITHUB_SHA}" --format '{{ index .Config.Labels "io.m4trust.contract-bundle-digest" }}')" = "${CONTRACT_BUNDLE_DIGEST}"
-          test "$(docker image inspect "m4trust-core-api:${GITHUB_SHA}" --format '{{ index .Config.Labels "io.m4trust.release-manifest-digest" }}')" = "${RELEASE_MANIFEST_DIGEST}"
+          test -z "$(docker image inspect "m4trust-core-api:${GITHUB_SHA}" --format '{{ index .Config.Labels "io.m4trust.release-manifest-digest" }}')"
           test "$(docker image inspect "m4trust-core-api:${GITHUB_SHA}" --format '{{ .Config.User }}')" = "m4trust"
           test "$(docker image inspect "m4trust-web-edge:${GITHUB_SHA}" --format '{{ .Config.User }}')" = "caddy-runtime"
           docker run --rm --entrypoint /bin/sh "m4trust-core-api:${GITHUB_SHA}" -c 'command -v m4trust-core-api'

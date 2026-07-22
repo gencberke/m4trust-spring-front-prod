@@ -25,19 +25,17 @@ RUN ./mvnw -B -q clean package -DskipTests
 FROM eclipse-temurin:21-jre-jammy AS runtime
 
 ARG APP_VERSION=unknown
-ARG GIT_COMMIT_SHA=unknown
+ARG GIT_COMMIT_SHA=
 ARG APP_ENVIRONMENT=unknown
 ARG BUILD_TIME=unknown
-ARG CONTRACT_BUNDLE_DIGEST=unknown
-ARG RELEASE_MANIFEST_DIGEST=unknown
+ARG CONTRACT_BUNDLE_DIGEST=
 
 LABEL org.opencontainers.image.title="m4trust-core-api" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${GIT_COMMIT_SHA}" \
       org.opencontainers.image.created="${BUILD_TIME}" \
       io.m4trust.image.environment="${APP_ENVIRONMENT}" \
-      io.m4trust.contract-bundle-digest="${CONTRACT_BUNDLE_DIGEST}" \
-      io.m4trust.release-manifest-digest="${RELEASE_MANIFEST_DIGEST}"
+      io.m4trust.contract-bundle-digest="${CONTRACT_BUNDLE_DIGEST}"
 
 RUN groupadd --system m4trust && useradd --system --gid m4trust --no-create-home m4trust
 
@@ -57,8 +55,7 @@ ENV SERVER_PORT=8080 \
     GIT_COMMIT_SHA="${GIT_COMMIT_SHA}" \
     APP_ENVIRONMENT="${APP_ENVIRONMENT}" \
     BUILD_TIME="${BUILD_TIME}" \
-    CONTRACT_BUNDLE_DIGEST="${CONTRACT_BUNDLE_DIGEST}" \
-    RELEASE_MANIFEST_DIGEST="${RELEASE_MANIFEST_DIGEST}"
+    CONTRACT_BUNDLE_DIGEST="${CONTRACT_BUNDLE_DIGEST}"
 EXPOSE 8080
 
 ENTRYPOINT ["m4trust-core-api"]

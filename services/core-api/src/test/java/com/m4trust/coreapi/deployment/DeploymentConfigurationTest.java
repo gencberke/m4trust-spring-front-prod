@@ -1,6 +1,7 @@
 package com.m4trust.coreapi.deployment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.Map;
@@ -27,6 +28,14 @@ class DeploymentConfigurationTest {
         assertEquals("framework", staging.getProperty("server.forward-headers-strategy"));
         assertEquals("true", local.getProperty("spring.flyway.enabled"));
         assertEquals("none", local.getProperty("server.forward-headers-strategy"));
+    }
+
+    @Test
+    void releaseRevisionDefaultIsEmptyNotFortyZeros() throws IOException {
+        PropertySourcesPropertyResolver base = resolver();
+        assertEquals("", base.getProperty("m4trust.release.git-commit-sha"));
+        assertTrue(
+                !("0".repeat(40)).equals(base.getProperty("m4trust.release.git-commit-sha")));
     }
 
     @Test

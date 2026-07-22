@@ -5,29 +5,40 @@ import java.util.regex.Pattern;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * ADR-016/020 release revision: exact 40-hex git SHA only.
+ * Missing or malformed values fail closed; never substitute forty zeros.
+ */
 @ConfigurationProperties("m4trust.release")
 public record ReleaseIdentityProperties(String gitCommitSha) {
 
     private static final Pattern FORTY_HEX = Pattern.compile("^[a-f0-9]{40}$");
-    private static final String UNKNOWN_ZEROS = "0".repeat(40);
 
     public ReleaseIdentityProperties {
-        gitCommitSha = normalize(gitCommitSha);
+        gitCommitSha = requireValidFortyHex(gitCommitSha);
     }
 
     public String releaseRevision() {
         return gitCommitSha;
     }
 
-    private static String normalize(String value) {
+    static String requireValidFortyHex(String value) {
         if (value == null || value.isBlank()) {
-            return UNKNOWN_ZEROS;
+            throw new IllegalArgumentException(
+                    "m4trust.release.git-commit-sha is required (40-hex); "
+                            + "missing values fail closed and must never become forty zeros");
         }
         String normalized = value.trim().toLowerCase(Locale.ROOT);
-        if (FORTY_HEX.matcher(normalized).matches()) {
-            return normalized;
+        if ("0000000000000000000000000000000000000000".equals(normalized)) {
+            throw new IllegalArgumentException(
+                    "m4trust.release.git-commit-sha must not be forty zeros (ADR-020)");
         }
-        // Non-40-hex values (including "unknown" and short build stubs) map to zeros.
-        return UNKNOWN_ZEROS;
+        if (!FORTY_HEX.matcher(normalized).matches()) {
+            throw new IllegalArgumentException(
+                    "m4trust.release.git-commit-sha must be a 40-hex git SHA; "
+                            + "malformed values fail closed and must never become forty zeros: "
+                            + value);
+        }
+        return normalized;
     }
 }

@@ -5,43 +5,64 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class OpenApiStructuralFingerprintTest {
 
     @Test
     void deliberatePathInjectionFailsStructuralComparison() throws Exception {
-        Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
-        Map<String, Object> mutated = OpenApiStructuralFingerprint.withInjectedFakePath(committed);
+        assertDimensionDrift(
+                OpenApiStructuralFingerprint::withInjectedFakePath,
+                "/__drift_probe__/fake");
+    }
 
-        List<String> diffs = OpenApiStructuralFingerprint.diff(
-                OpenApiStructuralFingerprint.fromDocument(committed),
-                OpenApiStructuralFingerprint.fromDocument(mutated));
-
-        assertFalse(diffs.isEmpty(), "negative fixture must detect injected path drift");
-        assertTrue(diffs.stream().anyMatch(diff -> diff.contains("/__drift_probe__/fake")),
-                () -> "expected fake-path drift, got: " + diffs);
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "parameter, parameter drift",
+            "security, security drift",
+            "status, status drift",
+            "media-type, media-type drift",
+            "schema-ref, schema $ref drift"
+    })
+    void negativeMatrixFailsIndependentDimensions(String dimension, String expectedFragment)
+            throws Exception {
+        Function<Map<String, Object>, Map<String, Object>> mutator = switch (dimension) {
+            case "parameter" -> OpenApiStructuralFingerprint::withMutatedParameter;
+            case "security" -> OpenApiStructuralFingerprint::withMutatedSecurity;
+            case "status" -> OpenApiStructuralFingerprint::withMutatedStatus;
+            case "media-type" -> OpenApiStructuralFingerprint::withMutatedMediaType;
+            case "schema-ref" -> OpenApiStructuralFingerprint::withMutatedSchemaRef;
+            default -> throw new IllegalArgumentException(dimension);
+        };
+        assertDimensionDrift(mutator, expectedFragment);
     }
 
     @Test
-    void pathTemplatesNormalizePositionally() throws Exception {
+    void pathTemplatesKeepNamedParameters() throws Exception {
         Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
         var keys = OpenApiStructuralFingerprint.fromDocument(committed).keySet();
-        // Fingerprint compares path templates positionally so design/runtime
-        // parameter names may differ without creating a false drift signal.
-        assertTrue(keys.stream().anyMatch(key -> key.contains("/deals/{}/")),
-                () -> "expected positional {} path templates, got: " + keys);
-        assertTrue(keys.stream().noneMatch(key -> key.contains("{dealId}")),
-                () -> "path parameter names must be positional {}, got: " + keys);
+        assertTrue(keys.stream().anyMatch(key -> key.contains("/deals/{dealId}/")),
+                () -> "expected named {dealId} path templates, got: " + keys);
+        assertTrue(keys.stream().noneMatch(key -> key.contains("/deals/{}/")),
+                () -> "positional {} path templates must not be used, got: " + keys);
+        assertTrue(keys.stream().anyMatch(key -> key.contains("{ruleSetVersionId}")),
+                () -> "expected named {ruleSetVersionId}, got: " + keys);
+    }
 
-        // Loader must still restore real braces before fingerprinting; otherwise
-        // SnakeYAML would drop templates entirely and leave bare /deals/ segments.
-        Map<String, Object> rawLoaded = OpenApiYamlDocuments.loadCoreApiV1();
-        Object paths = rawLoaded.get("paths");
-        assertTrue(paths instanceof Map<?, ?> pathMap
-                        && pathMap.keySet().stream().map(String::valueOf)
-                        .anyMatch(path -> path.contains("{dealId}")),
-                "YAML loader must preserve {dealId} before positional normalize");
+    private static void assertDimensionDrift(
+            Function<Map<String, Object>, Map<String, Object>> mutator,
+            String expectedFragment) throws Exception {
+        Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
+        Map<String, Object> mutated = mutator.apply(committed);
+        List<String> diffs = OpenApiStructuralFingerprint.diff(
+                OpenApiStructuralFingerprint.fromDocument(committed),
+                OpenApiStructuralFingerprint.fromDocument(mutated));
+        assertFalse(diffs.isEmpty(), "negative fixture must detect drift for " + expectedFragment);
+        assertTrue(diffs.stream().anyMatch(diff -> diff.contains(expectedFragment)),
+                () -> "expected fragment '" + expectedFragment + "', got: " + diffs);
     }
 }

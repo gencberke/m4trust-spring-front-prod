@@ -20,10 +20,10 @@ permissions:
   contents: read
 
 env:
-  # Optional owner-supplied AI baseline / read-only check. Leave unset to emit
-  # the explicit unverified external gate (ADR-019); never invent AI compatibility.
+  # Optional owner-supplied read-only AI baseline directory (ADR-019).
+  # Leave unset to emit the exact unverified external gate; never invent AI
+  # compatibility and never eval owner shell commands.
   M4TRUST_AI_CONTRACTS_ROOT: ${{ vars.M4TRUST_AI_CONTRACTS_ROOT }}
-  M4TRUST_AI_CONSUMER_CHECK_CMD: ${{ vars.M4TRUST_AI_CONSUMER_CHECK_CMD }}
 
 jobs:
   validate-contracts:
@@ -41,31 +41,9 @@ jobs:
         run: python -m pip install -r contracts/requirements.txt
       - name: Validate contracts
         run: python contracts/scripts/validate_contracts.py
-      - name: Structural OpenAPI negative fixture
+      - name: Structural OpenAPI negative matrix
         run: |
           python contracts/scripts/compare_openapi_structure.py \
             --expected contracts/openapi/core-api-v1.yaml \
             --actual contracts/openapi/core-api-v1.yaml \
             --negative-fixture
-      - name: AI consumer compatibility (owner-supplied, read-only)
-        run: |
-          if [ -z "${M4TRUST_AI_CONTRACTS_ROOT}" ] && [ -z "${M4TRUST_AI_CONSUMER_CHECK_CMD}" ]; then
-            echo "UNVERIFIED_EXTERNAL_GATE: AI contract baseline not supplied"
-            exit 0
-          fi
-          if [ -n "${M4TRUST_AI_CONSUMER_CHECK_CMD}" ]; then
-            set +e
-            eval "${M4TRUST_AI_CONSUMER_CHECK_CMD}"
-            status=$?
-            set -e
-            if [ "${status}" -ne 0 ]; then
-              echo "main contract revision: ${GITHUB_SHA}"
-              echo "AI repository revision: (see owner-supplied check output)"
-              echo "affected schema/event/fixture: (see owner-supplied check output)"
-              echo "exact expected vs actual difference: (see owner-supplied check output)"
-              echo "compatibility and rollout impact: joint review required before merge"
-              echo "joint decision required: yes"
-              echo "AI owner acknowledgement: pending"
-              exit "${status}"
-            fi
-          fi

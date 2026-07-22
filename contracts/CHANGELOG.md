@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- AI consumer compatibility accepts only optional read-only `M4TRUST_AI_CONTRACTS_ROOT`
+  (no `eval` / `M4TRUST_AI_CONSUMER_CHECK_CMD`). Mismatch reports per-file expected/actual
+  SHA-256 hashes; absent baseline emits exact
+  `UNVERIFIED_EXTERNAL_GATE: AI contract baseline not supplied`.
+
 - Added deterministic main contract-bundle digest foundation (ADR-016 §2.5): inclusion
   globs over `asyncapi`/`openapi`/`schemas`/`examples`, per-file SHA-256 of exact
   committed bytes, POSIX ordinal UTF-8/LF manifest, and `sha256:<hex>` digest via

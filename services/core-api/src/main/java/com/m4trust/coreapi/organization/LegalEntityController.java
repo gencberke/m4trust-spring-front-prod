@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -52,7 +53,10 @@ public class LegalEntityController {
             @ResolvedOperationContext(
                     value = RequestedOperation.LEGAL_ENTITY_DETAIL_READ,
                     legalEntityPathVariable = "legalEntityId")
-            OperationContext context) {
+            OperationContext context,
+            @PathVariable("legalEntityId") String legalEntityId) {
+        // Path variable is declared for springdoc/OpenAPI; resolution still uses
+        // ResolvedOperationContext + URI template attributes.
         return service.get(context);
     }
 
@@ -61,7 +65,8 @@ public class LegalEntityController {
             @ResolvedOperationContext(
                     value = RequestedOperation.LEGAL_ENTITY_MEMBERS_READ,
                     legalEntityPathVariable = "legalEntityId")
-            OperationContext context) {
+            OperationContext context,
+            @PathVariable("legalEntityId") String legalEntityId) {
         return service.listMembers(context);
     }
 

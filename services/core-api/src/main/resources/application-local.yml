@@ -1,3 +1,8 @@
+m4trust:
+  release:
+    # Explicit local/test fixture (ADR-020). Override with GIT_COMMIT_SHA when set.
+    git-commit-sha: ${GIT_COMMIT_SHA:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+
 spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:127.0.0.1}

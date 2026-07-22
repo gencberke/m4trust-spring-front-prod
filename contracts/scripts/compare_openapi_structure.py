@@ -49,8 +49,6 @@ def server_base_path(document: dict[str, Any]) -> str:
 
 
 def normalize_path(path: str, base: str) -> str:
-    import re
-
     normalized = path if path.startswith("/") else f"/{path}"
     if base and normalized.startswith(base + "/"):
         normalized = normalized[len(base) :]
@@ -61,9 +59,8 @@ def normalize_path(path: str, base: str) -> str:
         normalized = normalized[len("/api/v1") :]
     elif normalized == "/api/v1":
         normalized = "/"
-    # Path-parameter names may differ between design YAML and servlet reflection;
-    # compare positionally (matches Java OpenApiStructuralFingerprint).
-    return re.sub(r"\{[^}/]+\}", "{}", normalized)
+    # Keep named path templates (e.g. {dealId}); only strip server/base prefixes.
+    return normalized
 
 
 def schema_ref(node: Any) -> str | None:
@@ -71,7 +68,7 @@ def schema_ref(node: Any) -> str | None:
         return None
     ref = node.get("$ref")
     if isinstance(ref, str):
-        return ref
+        return ref.rsplit("/", 1)[-1]
     for key in ("allOf", "oneOf", "anyOf"):
         items = node.get(key)
         if isinstance(items, list):
@@ -121,17 +118,20 @@ def normalize_security(security: Any) -> list[tuple[str, tuple[str, ...]]]:
     return sorted(normalized)
 
 
-def extract_parameters(operation: dict[str, Any]) -> set[tuple[str, str, bool]]:
+def extract_parameters(
+    operation: dict[str, Any], document: dict[str, Any] | None = None
+) -> set[tuple[str, str, bool]]:
     params: set[tuple[str, str, bool]] = set()
     for parameter in operation.get("parameters") or []:
         if not isinstance(parameter, dict):
             continue
         if "$ref" in parameter:
-            # Keep only the local name so ordering/description of shared params
-            # does not create noise; identity is still comparable.
-            ref = str(parameter["$ref"]).rsplit("/", 1)[-1]
-            params.add((ref, "ref", True))
-            continue
+            resolved = resolve_parameter_ref(document or {}, str(parameter["$ref"]))
+            if resolved is None:
+                ref = str(parameter["$ref"]).rsplit("/", 1)[-1]
+                params.add((ref, "ref", True))
+                continue
+            parameter = resolved
         name = parameter.get("name")
         location = parameter.get("in")
         if not isinstance(name, str) or not isinstance(location, str):
@@ -143,7 +143,19 @@ def extract_parameters(operation: dict[str, Any]) -> set[tuple[str, str, bool]]:
     return params
 
 
-def extract_operation_structure(operation: dict[str, Any]) -> dict[str, Any]:
+def resolve_parameter_ref(document: dict[str, Any], ref: str) -> dict[str, Any] | None:
+    prefix = "#/components/parameters/"
+    if not ref.startswith(prefix):
+        return None
+    components = document.get("components") or {}
+    parameters = components.get("parameters") or {}
+    resolved = parameters.get(ref[len(prefix) :])
+    return resolved if isinstance(resolved, dict) else None
+
+
+def extract_operation_structure(
+    operation: dict[str, Any], document: dict[str, Any] | None = None
+) -> dict[str, Any]:
     responses = operation.get("responses") or {}
     status_codes = {str(code) for code in responses.keys()}
     media_types: set[str] = set()
@@ -152,7 +164,7 @@ def extract_operation_structure(operation: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(response, dict):
             continue
         if "$ref" in response:
-            schema_refs.add(str(response["$ref"]))
+            schema_refs.add(str(response["$ref"]).rsplit("/", 1)[-1])
             continue
         content = response.get("content")
         media_types |= content_media_types(content)
@@ -161,14 +173,14 @@ def extract_operation_structure(operation: dict[str, Any]) -> dict[str, Any]:
     request_body = operation.get("requestBody")
     if isinstance(request_body, dict):
         if "$ref" in request_body:
-            schema_refs.add(str(request_body["$ref"]))
+            schema_refs.add(str(request_body["$ref"]).rsplit("/", 1)[-1])
         else:
             content = request_body.get("content")
             media_types |= content_media_types(content)
             schema_refs |= content_schema_refs(content)
 
     return {
-        "parameters": extract_parameters(operation),
+        "parameters": extract_parameters(operation, document),
         "security": normalize_security(operation.get("security")),
         "status_codes": status_codes,
         "media_types": media_types,
@@ -190,7 +202,7 @@ def extract_structure(document: dict[str, Any], *, path_prefix_filter: str | Non
         for method in HTTP_METHODS:
             operation = item.get(method)
             if isinstance(operation, dict):
-                structure[(path, method)] = extract_operation_structure(operation)
+                structure[(path, method)] = extract_operation_structure(operation, document)
     return structure
 
 
@@ -249,6 +261,89 @@ def inject_fake_path(document: dict[str, Any]) -> dict[str, Any]:
     return mutated
 
 
+def _first_operation(document: dict[str, Any]) -> dict[str, Any]:
+    for item in (document.get("paths") or {}).values():
+        if not isinstance(item, dict):
+            continue
+        for method in HTTP_METHODS:
+            operation = item.get(method)
+            if isinstance(operation, dict):
+                return operation
+    raise ValueError("document has no operations")
+
+
+def inject_parameter_drift(document: dict[str, Any]) -> dict[str, Any]:
+    mutated = copy.deepcopy(document)
+    operation = _first_operation(mutated)
+    parameters = operation.setdefault("parameters", [])
+    parameters.append({"name": "__drift_param__", "in": "query", "required": True})
+    return mutated
+
+
+def inject_security_drift(document: dict[str, Any]) -> dict[str, Any]:
+    mutated = copy.deepcopy(document)
+    operation = _first_operation(mutated)
+    operation["security"] = [{"__drift_scheme__": []}]
+    return mutated
+
+
+def inject_status_drift(document: dict[str, Any]) -> dict[str, Any]:
+    mutated = copy.deepcopy(document)
+    operation = _first_operation(mutated)
+    responses = operation.setdefault("responses", {})
+    responses["599"] = {"description": "drift status probe"}
+    return mutated
+
+
+def inject_media_type_drift(document: dict[str, Any]) -> dict[str, Any]:
+    mutated = copy.deepcopy(document)
+    operation = _first_operation(mutated)
+    responses = operation.get("responses") or {}
+    if not responses:
+        raise ValueError("document has no responses to mutate")
+    code = next(iter(responses))
+    response = responses[code] if isinstance(responses[code], dict) else {}
+    content = response.setdefault("content", {})
+    content["application/vnd.m4trust.drift+json"] = {"schema": {"type": "string"}}
+    responses[code] = response
+    return mutated
+
+
+def inject_schema_ref_drift(document: dict[str, Any]) -> dict[str, Any]:
+    mutated = copy.deepcopy(document)
+    operation = _first_operation(mutated)
+    responses = operation.get("responses") or {}
+    if not responses:
+        raise ValueError("document has no responses to mutate")
+    code = next(iter(responses))
+    response = responses[code] if isinstance(responses[code], dict) else {}
+    content = response.setdefault("content", {})
+    content["application/json"] = {
+        "schema": {"$ref": "#/components/schemas/__DriftProbeSchema__"}
+    }
+    responses[code] = response
+    return mutated
+
+
+NEGATIVE_MUTATORS: dict[str, Any] = {
+    "path": inject_fake_path,
+    "parameter": inject_parameter_drift,
+    "security": inject_security_drift,
+    "status": inject_status_drift,
+    "media-type": inject_media_type_drift,
+    "schema-ref": inject_schema_ref_drift,
+}
+
+NEGATIVE_FRAGMENTS = {
+    "path": "/__drift_probe__/fake",
+    "parameter": "parameter drift",
+    "security": "security drift",
+    "status": "status drift",
+    "media-type": "media-type drift",
+    "schema-ref": "schema $ref drift",
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--expected", type=Path, required=True, help="Committed OpenAPI YAML/JSON")
@@ -256,23 +351,43 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--negative-fixture",
         action="store_true",
-        help="Mutate a copy of expected with a fake path and require comparison failure",
+        help="Run the full negative matrix (path/parameter/security/status/media-type/schema-ref)",
+    )
+    parser.add_argument(
+        "--negative-dimension",
+        choices=sorted(NEGATIVE_MUTATORS),
+        help="Run a single negative-matrix dimension (implies mutation of expected)",
     )
     args = parser.parse_args(argv)
 
     expected_doc = load_openapi(args.expected)
-    if args.negative_fixture:
-        actual_doc = inject_fake_path(expected_doc)
-        expected_structure = extract_structure(expected_doc)
-        actual_structure = extract_structure(actual_doc)
-        diffs = compare_structures(expected_structure, actual_structure)
-        if not diffs:
-            print("FAIL negative fixture: expected structural drift was not detected", file=sys.stderr)
-            return 1
-        print(f"PASS negative fixture detected {len(diffs)} drift(s)")
-        for diff in diffs:
-            print(f"  {diff}")
-        return 0
+    if args.negative_fixture or args.negative_dimension:
+        dimensions = (
+            [args.negative_dimension]
+            if args.negative_dimension
+            else list(NEGATIVE_MUTATORS)
+        )
+        failures = 0
+        for dimension in dimensions:
+            mutator = NEGATIVE_MUTATORS[dimension]
+            actual_doc = mutator(expected_doc)
+            diffs = compare_structures(
+                extract_structure(expected_doc), extract_structure(actual_doc)
+            )
+            fragment = NEGATIVE_FRAGMENTS[dimension]
+            if not diffs or not any(fragment in diff for diff in diffs):
+                print(
+                    f"FAIL negative fixture ({dimension}): expected drift fragment "
+                    f"{fragment!r} was not detected; diffs={diffs}",
+                    file=sys.stderr,
+                )
+                failures += 1
+                continue
+            print(f"PASS negative fixture ({dimension}) detected {len(diffs)} drift(s)")
+            for diff in diffs:
+                if fragment in diff:
+                    print(f"  {diff}")
+        return 1 if failures else 0
 
     actual_doc = load_openapi(args.actual)
     diffs = compare_structures(extract_structure(expected_doc), extract_structure(actual_doc))

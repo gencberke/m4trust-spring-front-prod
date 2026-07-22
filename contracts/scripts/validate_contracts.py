@@ -836,12 +836,36 @@ def validate_bundle_digest(failures: list[str]) -> None:
             f"FAIL AI contract baseline: M4TRUST_AI_CONTRACTS_ROOT is not a directory: {ai_root}"
         )
         return
+    main_files = {
+        relative: file_sha256_hex(ROOT / relative)
+        for relative in bundle_relative_paths(ROOT)
+    }
+    ai_paths = bundle_relative_paths(ai_path)
+    ai_files = {
+        relative: file_sha256_hex(ai_path / relative)
+        for relative in ai_paths
+    }
+    all_paths = sorted(set(main_files) | set(ai_files))
+    file_mismatches: list[str] = []
+    for relative in all_paths:
+        expected = main_files.get(relative)
+        actual = ai_files.get(relative)
+        if expected == actual:
+            continue
+        file_mismatches.append(
+            f"  {relative}: expected={expected or 'MISSING'} actual={actual or 'MISSING'}"
+        )
     ai_digest = contract_bundle_digest(ai_path)
-    if ai_digest != digest:
+    if ai_digest != digest or file_mismatches:
         failures.append(
             "FAIL AI contract baseline digest mismatch: "
             f"main={digest} ai={ai_digest}"
         )
+        if file_mismatches:
+            failures.append(
+                "FAIL AI contract baseline file-level hash delta:\n"
+                + "\n".join(file_mismatches)
+            )
     else:
         print(f"PASS AI contract baseline digest matches {digest}")
 

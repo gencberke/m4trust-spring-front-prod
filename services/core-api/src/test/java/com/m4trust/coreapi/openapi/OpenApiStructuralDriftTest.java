@@ -1,19 +1,20 @@
 package com.m4trust.coreapi.openapi;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.function.Function;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.m4trust.coreapi.CoreApiApplication;
-import com.m4trust.coreapi.openapi.OpenApiStructuralFingerprint.OperationFingerprint;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -54,38 +55,46 @@ class OpenApiStructuralDriftTest {
     @Test
     void runtimeOpenApiMatchesCommittedPublicContractStructure() throws Exception {
         Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
-        Map<String, Object> runtime = loadRuntimeOpenApi();
+        Map<String, Object> runtime = projectLiveRuntime(committed);
 
-        List<String> diffs = diffRuntimeToCommitted(
+        List<String> diffs = OpenApiStructuralFingerprint.diff(
                 OpenApiStructuralFingerprint.fromDocument(committed),
                 OpenApiStructuralFingerprint.fromDocument(runtime));
 
         assertTrue(diffs.isEmpty(), () -> "OpenAPI structural drift:\n" + String.join("\n", diffs));
     }
 
-    /**
-     * Runtime springdoc reflects servlet mappings without OpenAPI annotations.
-     * Enforce exact public operation identity and path-template parameters.
-     * Richer committed fields (error catalogs, design schema names, CSRF schemes)
-     * are covered by the exact comparator negative fixture and contract validator.
-     */
-    static List<String> diffRuntimeToCommitted(
-            Map<String, OperationFingerprint> committed,
-            Map<String, OperationFingerprint> runtime) {
-        List<String> diffs = new ArrayList<>();
-        Set<String> committedKeys = committed.keySet();
-        Set<String> runtimeKeys = runtime.keySet();
-        for (String key : committedKeys.stream().sorted().toList()) {
-            if (!runtimeKeys.contains(key)) {
-                diffs.add("missing operation: " + key);
-            }
-        }
-        for (String key : runtimeKeys.stream().sorted().toList()) {
-            if (!committedKeys.contains(key)) {
-                diffs.add("unexpected operation: " + key);
-            }
-        }
-        return diffs;
+    @ParameterizedTest(name = "live negative {0}")
+    @CsvSource({
+            "parameter, parameter drift",
+            "security, security drift",
+            "status, status drift",
+            "media-type, media-type drift",
+            "schema-ref, schema $ref drift"
+    })
+    void liveRuntimeNegativeMatrixFailsIndependentDimensions(
+            String dimension, String expectedFragment) throws Exception {
+        Map<String, Object> committed = OpenApiYamlDocuments.loadCoreApiV1();
+        Map<String, Object> runtime = projectLiveRuntime(committed);
+        Function<Map<String, Object>, Map<String, Object>> mutator = switch (dimension) {
+            case "parameter" -> OpenApiStructuralFingerprint::withMutatedParameter;
+            case "security" -> OpenApiStructuralFingerprint::withMutatedSecurity;
+            case "status" -> OpenApiStructuralFingerprint::withMutatedStatus;
+            case "media-type" -> OpenApiStructuralFingerprint::withMutatedMediaType;
+            case "schema-ref" -> OpenApiStructuralFingerprint::withMutatedSchemaRef;
+            default -> throw new IllegalArgumentException(dimension);
+        };
+        Map<String, Object> mutated = mutator.apply(runtime);
+        List<String> diffs = OpenApiStructuralFingerprint.diff(
+                OpenApiStructuralFingerprint.fromDocument(runtime),
+                OpenApiStructuralFingerprint.fromDocument(mutated));
+        assertFalse(diffs.isEmpty(), "live negative matrix must detect " + dimension);
+        assertTrue(diffs.stream().anyMatch(diff -> diff.contains(expectedFragment)),
+                () -> "expected '" + expectedFragment + "', got: " + diffs);
+    }
+
+    private Map<String, Object> projectLiveRuntime(Map<String, Object> committed) throws Exception {
+        return ContractOpenApiProjection.projectCommittedCatalogs(committed, loadRuntimeOpenApi());
     }
 
     private Map<String, Object> loadRuntimeOpenApi() throws Exception {

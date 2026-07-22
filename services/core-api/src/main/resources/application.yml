@@ -41,8 +41,9 @@ spring:
 
 m4trust:
   release:
-    # ADR-016 releaseRevision: 40-hex git SHA when available; unknown maps to zeros.
-    git-commit-sha: ${GIT_COMMIT_SHA:0000000000000000000000000000000000000000}
+    # ADR-016/020 releaseRevision: exact 40-hex only. Empty/unknown fails closed at
+    # binding (never forty zeros). Local/test supply an explicit fixture SHA.
+    git-commit-sha: ${GIT_COMMIT_SHA:}
   contracts:
     probe-token: ${CONTRACT_PROBE_TOKEN:}
     probe-token-previous: ${CONTRACT_PROBE_TOKEN_PREVIOUS:}
