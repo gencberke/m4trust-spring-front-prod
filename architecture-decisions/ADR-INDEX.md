@@ -103,6 +103,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Controlled demo topology | Mevcut Railway US West; web public, Core/DB private, versioned MinIO bucket private ve yalnız presigned S3 API erişilebilir | ADR-022 §§2.1–2.4 |
 | Controlled demo artifact | Exact main SHA'dan Railway native build; environment deployment/image kimliği kaydedilir, `latest` yoktur | ADR-022 §2.5 |
 | Controlled demo evidence smoke | Document storage smoke zorunludur; fulfillment evidence yalnız meşru public `ACTIVE + FUNDED` yolu varsa canlı doğrulanır. Yoksa no-seed/no-bypass deferred risk; local/test fixture geçmişi korunur | ADR-022 §2.10 |
+| Controlled demo backup waiver | Railway native backup Pro gerektirdiği ve founder geçemediği için yalnız ilk production-demo deploy'unda backup gate açıkça waive edilmiştir; inventory zorunlu, data-loss riski kabul, backup/PITR/RPO/RTO iddiası yok | ADR-022 §2.7 |
 | Broad production release/recovery | GHCR manifest promotion ve PITR/RPO/RTO ADR-016/020'de tanımlıdır fakat controlled demo için ertelenmiştir | ADR-016 §§2.4, 2.8; ADR-020 §2; ADR-022 §§2.5, 2.7 |
 
 ---

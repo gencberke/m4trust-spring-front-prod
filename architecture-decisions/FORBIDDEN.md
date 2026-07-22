@@ -151,6 +151,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Breaking DB değişikliğini tek rollout'ta yapmak (expand–contract yerine) | ADR-007 §25, §46 |
 | Container filesystem'ini business storage olarak kullanmak; session'ı yalnız memory'de tutmak | ADR-007 §8, §46 |
 | Production deploy'u staging kontrolü ve manual approval olmadan otomatikleştirmek | ADR-007 §26, §46 |
+| ADR-022 §2.7'deki explicit controlled-demo waiver'ı backup/snapshot/PITR/RPO/RTO kanıtı gibi sunmak veya waiver nedeniyle existing production resource'u silmek, detach/reset/purge etmek | ADR-022 §2.7 |
 | Railway'e özel business logic yazmak | ADR-007 §43, §46 |
 | Railway staging/production fulfillment-evidence smoke'unu DB seed, bootstrap/admin/state-override endpoint, authorization relaxation veya AI/payment bypass ile üretmek (meşru local/test fixture geçmişi etkilenmez) | ADR-022 §2.10 |
 | Object storage'ı public bucket olarak açmak | ADR-007 §14, §46 |

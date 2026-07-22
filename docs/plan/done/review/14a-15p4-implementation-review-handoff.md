@@ -36,7 +36,7 @@ En önemli durum ayrımı:
 - Planlar:
   - [`14a-dispute-and-casework-foundation.md`](../14a-dispute-and-casework-foundation.md)
   - [`11b-a-moka-provider-foundation.md`](../11b-a-moka-provider-foundation.md)
-  - [`15-railway-demo-reconciliation-and-deployment.md`](../../ready/15-railway-demo-reconciliation-and-deployment.md)
+  - [`15-railway-demo-reconciliation-and-deployment.md`](../15-railway-demo-reconciliation-and-deployment.md)
 - Ana kararlar: ADR-013–ADR-022; özellikle ADR-019, ADR-021 ve ADR-022.
 - Migration sınırı: V22 Slice 14A'dır; V1–V22 frozen accepted history'dir.
 

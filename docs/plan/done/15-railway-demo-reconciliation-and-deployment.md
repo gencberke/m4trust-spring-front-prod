@@ -222,6 +222,13 @@ Exit checks:
 
 ### P6 — Run the one final gate and deploy the production demo
 
+Acceptance: `ACCEPT` on 23 July 2026 for
+`main@23a4428ad76a5fdcf694dbca83104aca389e826d`. The one final repository gate,
+existing production inventory, narrow ADR-022 §2.7 backup waiver, non-destructive
+deployment, exact-version document smoke, same-commit Core redeploy and independent
+review passed. Evidence is recorded in
+`docs/plan/done/review/15p6-implementation-review-handoff.md`.
+
 Outcome:
 Final repository gate bir kez geçtikten sonra aynı accepted source SHA mevcut
 production environment'a non-destructive ve manual olarak deploy edilir.
@@ -230,8 +237,9 @@ Direction:
 
 - Önce final full contract/Core/frontend/image gate'ini bir kez çalıştır; sonraki
   review yalnız başarısız alanı tekrarlar.
-- Production PostgreSQL ve mevcut MinIO service/volume için önce inventory ve
-  backup/snapshot evidence al. Hiçbir resource'u silme, detach/reset/purge etme.
+- Production PostgreSQL ve mevcut MinIO service/volume için önce inventory al.
+  Native backup mevcutsa kanıtını kaydet; mevcut Pro kısıtı altında ADR-022 §2.7'deki
+  explicit founder waiver'ını kaydet. Hiçbir resource'u silme, detach/reset/purge etme.
 - Existing production MinIO non-destructive doğrulanırsa versioned private bucket ile
   reuse et; doğrulanamıyorsa yeni service+volume oluştur ve eskisini untouched bırak.
 - Web/Core'i staging'de kabul edilen exact source SHA'dan birer replica deploy et;
@@ -252,8 +260,8 @@ Exit checks:
   production smoke'u geçer; tenant/participant non-disclosure spot-check edilir.
   Evidence canlı smoke'u P5'teki aynı meşru önkoşula bağlıdır; yokluğunda deferred
   risk olarak kalır.
-- Exact source SHA, deployment IDs/image digest'leri, backup evidence ve rollback
-  target kaydedilir.
+- Exact source SHA, deployment IDs/image digest'leri, backup evidence veya explicit
+  ADR-022 §2.7 waiver ve rollback target kaydedilir.
 - Sonuç `RAILWAY_DEMO_READY` olarak planner tarafından kabul edilir.
 
 ## 6. Gerçek browser kabulü
@@ -328,9 +336,9 @@ başarısız alan tekrar edilir; tüm final gate baştan döndürülmez.
 - [x] ADR-022 founder/user tarafından Accepted
 - [x] P4 repository reconciliation accepted (`381ed5b`)
 - [x] G-UI user-owned revision completed and user authorizes deployment (`fbcbb7f`)
-- [ ] P5 existing Railway staging reconciliation accepted
-- [ ] P6 one final gate and production demo deployment accepted
-- [ ] Existing Railway persistent resources remained non-destructive
-- [ ] Planner independently reviewed final evidence and browser smoke
-- [ ] `CURRENT.md`, ADR index ve FORBIDDEN yalnız ADR/plan acceptance sonrası updated
-- [ ] Plan `done/` altında `RAILWAY_DEMO_READY` sonucu ve açık deferred risks ile archived
+- [x] P5 existing Railway staging reconciliation accepted
+- [x] P6 one final gate and production demo deployment accepted
+- [x] Existing Railway persistent resources remained non-destructive
+- [x] Planner independently reviewed final evidence and browser smoke
+- [x] `CURRENT.md`, ADR index ve FORBIDDEN yalnız ADR/plan acceptance sonrası updated
+- [x] Plan `done/` altında `RAILWAY_DEMO_READY` sonucu ve açık deferred risks ile archived

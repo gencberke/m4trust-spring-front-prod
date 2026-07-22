@@ -140,6 +140,16 @@ Grafana Cloud/OTel/Faro kurulmaz. Production demo deployment'ından önce mevcut
 PostgreSQL ve MinIO persistent resource'ları için non-destructive backup/snapshot
 kanıtı alınır. RPO/RTO veya PITR iddiası yapılmaz.
 
+23 Temmuz 2026 founder kararı: authenticated Railway UI her iki existing production
+volume için `No Backups` göstermekte ve native backup/PITR için Pro workspace
+istemektedir; founder bu demo öncesinde Pro'ya geçememektedir. Bu nedenle yalnız ilk
+controlled production-demo deployment'ı için backup/snapshot evidence gate'i açıkça
+waive edilmiştir. Mutation öncesinde volume kimliği, mount, state, boyut ve önceki
+deployment kimliği salt-okunur kaydedilir; hiçbir resource silinmez, detach/reset/
+purge edilmez. Founder mevcut verinin geri getirilemeyebileceği riski kabul eder.
+Bu istisna backup, restore, PITR, RPO/RTO veya broad-production readiness kanıtı
+oluşturmaz ve sonraki production-hardening kararlarına taşınmaz.
+
 İlk production demo deploy'u manual approval ile yapılır. Resource silme, volume
 detach/reset, bucket purge veya credential rotation ayrı açık kullanıcı onayı ister.
 
