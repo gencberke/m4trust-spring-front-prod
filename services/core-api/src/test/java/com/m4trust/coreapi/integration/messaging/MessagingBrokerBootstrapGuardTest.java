@@ -79,6 +79,42 @@ class MessagingBrokerBootstrapGuardTest {
                 .run(context -> assertThat(context).hasNotFailed());
     }
 
+    @Test
+    void malformedPortFailsWhenMessagingEnabled() {
+        assertInvalidPortFails("not-a-port", "not a valid integer");
+    }
+
+    @Test
+    void zeroPortFailsWhenMessagingEnabled() {
+        assertInvalidPortFails("0", "outside TCP range 1..65535");
+    }
+
+    @Test
+    void negativePortFailsWhenMessagingEnabled() {
+        assertInvalidPortFails("-1", "outside TCP range 1..65535");
+    }
+
+    @Test
+    void aboveRangePortFailsWhenMessagingEnabled() {
+        assertInvalidPortFails("65536", "outside TCP range 1..65535");
+    }
+
+    private void assertInvalidPortFails(String port, String expectedMessageFragment) {
+        runner.withPropertyValues(
+                        "app.messaging.topology.enabled=true",
+                        "app.messaging.relay.enabled=false",
+                        "spring.rabbitmq.host=127.0.0.1",
+                        "spring.rabbitmq.port=" + port,
+                        "spring.rabbitmq.username=user",
+                        "spring.rabbitmq.password=secret")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasMessageContaining("spring.rabbitmq.port")
+                            .hasMessageContaining(expectedMessageFragment);
+                });
+    }
+
     @Configuration(proxyBeanMethods = false)
     static class GuardConfiguration {
         @Bean
