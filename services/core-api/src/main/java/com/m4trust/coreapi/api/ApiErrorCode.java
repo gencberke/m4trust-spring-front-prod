@@ -4,6 +4,7 @@ package com.m4trust.coreapi.api;
  * Closed public Problem Details codes. Exact-set must match OpenAPI ApiErrorCode.
  */
 public enum ApiErrorCode {
+    ACCESS_DENIED,
     AUTH_EMAIL_ALREADY_EXISTS,
     AUTH_INVALID_CREDENTIALS,
     AUTH_INVITATION_NOT_FOUND_OR_INVALID,

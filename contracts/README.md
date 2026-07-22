@@ -62,13 +62,13 @@ python -m pip install -r contracts/requirements.txt
 python contracts/scripts/validate_contracts.py
 ```
 
-The validator checks every JSON Schema with Draft 2020-12 schema checks, resolves local canonical `$ref` references, checks unique IDs and exact event versions, validates every canonical JSON fixture, validates the AsyncAPI/OpenAPI YAML references and path invariants, requires the public error components, enforces the closed `ApiErrorCode` and `FieldErrorCode` catalogs (including OpenAPI↔Java exact-set comparison and rejection of open/`TOO_SHORT`/removed combined fulfillment codes), and runs expected-invalid checks for schema versions, non-UTC timestamps, error combinations, strict structured values, plus an expected-valid future optional field. It prints JSON paths for failures and exits non-zero on failure.
+The validator checks every JSON Schema with Draft 2020-12 schema checks, resolves local canonical `$ref` references, checks unique IDs and exact event versions, validates every canonical JSON fixture, validates the AsyncAPI/OpenAPI YAML references and path invariants, requires the public error components, enforces the closed `ApiErrorCode` and `FieldErrorCode` catalogs via machine-readable `components.x-m4trust-api-error-ownership` exact-set matching (including OpenAPI↔Java comparison and rejection of open/`TOO_SHORT`/removed combined fulfillment codes), and runs expected-invalid checks for schema versions, non-UTC timestamps, error combinations, strict structured values, plus an expected-valid future optional field. It prints JSON paths for failures and exits non-zero on failure.
 
 The same command runs in [GitHub Actions](../.github/workflows/contracts-validation.yml) for pushes to `main` and pull requests targeting `main` when contract or workflow files change.
 
 ### Public error catalogs
 
-`openapi/core-api-v1.yaml` owns closed `ApiErrorCode` and `FieldErrorCode` string enums. `ProblemDetail.code` and `FieldError.code` `$ref` those schemas; open strings are invalid. Catalog contents are the union of codes documented by endpoint/reusable responses, ADR-006 global stable codes, and Slice 15 readiness codes. Undocumented combined fulfillment codes `DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN` and `FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN` are not part of the catalog. Core Java enums must exact-set match the committed OpenAPI catalogs; the contract validator rejects drift.
+`openapi/core-api-v1.yaml` owns closed `ApiErrorCode` and `FieldErrorCode` string enums. `ProblemDetail.code` and `FieldError.code` `$ref` those schemas; open strings are invalid. Catalog contents exact-set match `components.x-m4trust-api-error-ownership` (`global` plus every reusable response `byResponse` entry). Undocumented combined fulfillment codes `DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN` and `FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN` are not part of the catalog. Core Java enums must exact-set match the committed OpenAPI catalogs; the contract validator rejects drift, including removal of an owned catalog member.
 
 ## Compatibility and consumers
 

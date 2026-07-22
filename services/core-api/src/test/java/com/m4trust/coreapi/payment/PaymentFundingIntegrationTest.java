@@ -15,6 +15,7 @@ import java.net.ServerSocket;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -839,7 +840,7 @@ class PaymentFundingIntegrationTest {
         static ExternalMokaEmulator start(String scenarios) throws Exception {
             int port;
             try (ServerSocket socket = new ServerSocket(0)) { port = socket.getLocalPort(); }
-            ProcessBuilder builder = new ProcessBuilder("python3", "-m", "m4trust_moka_emulator");
+            ProcessBuilder builder = new ProcessBuilder(pythonExecutable(), "-m", "m4trust_moka_emulator");
             builder.directory(java.nio.file.Path.of("..", "..", "tools", "moka-emulator").toFile());
             builder.environment().put("PYTHONPATH", "src");
             builder.environment().put("M4TRUST_MOKA_EMULATOR_ENABLED", "true");
@@ -858,6 +859,16 @@ class PaymentFundingIntegrationTest {
             }
             process.destroyForcibly();
             throw new IllegalStateException("Moka emulator did not become healthy");
+        }
+        private static String pythonExecutable() {
+            String override = System.getenv("M4TRUST_PYTHON");
+            if (override != null && !override.isBlank()) {
+                return override.trim();
+            }
+            // Windows Store python3.exe stub is not a real interpreter; prefer python.exe.
+            return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")
+                    ? "python"
+                    : "python3";
         }
         URI baseUri() { return baseUri; }
         @Override public void close() { process.destroyForcibly(); }

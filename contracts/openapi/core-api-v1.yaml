@@ -2040,6 +2040,251 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
 components:
+  x-m4trust-api-error-ownership:
+    global:
+      - ACCESS_DENIED
+      - AUTH_INVITATION_NOT_FOUND_OR_INVALID
+      - AUTH_INVITATION_STATE_CONFLICT
+      - AUTH_PASSWORD_RESET_NOT_FOUND_OR_INVALID
+      - AUTH_REGISTRATION_CLOSED
+      - INTERNAL_ERROR
+      - MEMBER_INVITATION_ACTIVE_EXISTS
+      - MEMBER_INVITATION_NOT_FOUND_OR_HIDDEN
+      - MEMBER_INVITATION_STATE_CONFLICT
+      - RATE_LIMIT_EXCEEDED
+      - UPLOAD_REJECTED_MALWARE
+      - UPLOAD_SCAN_PENDING
+      - UPLOAD_SCAN_UNAVAILABLE
+    byResponse:
+      CaseworkNotFoundOrHidden:
+        - CASEWORK_NOT_FOUND_OR_HIDDEN
+      CsrfRejected:
+        - CSRF_TOKEN_INVALID
+      DealAnalysisRequestForbidden:
+        - CSRF_TOKEN_INVALID
+        - DEAL_ANALYSIS_REQUEST_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+        - LEGAL_ENTITY_NOT_FOUND
+      DealDocumentAnalysisRequestConflict:
+        - DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS
+        - DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE
+        - DEAL_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
+      DealDocumentIntentConflict:
+        - DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED
+      DealDocumentMutationForbidden:
+        - CSRF_TOKEN_INVALID
+        - DEAL_DOCUMENT_MUTATION_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DealDocumentNotFoundOrHidden:
+        - DEAL_DOCUMENT_NOT_FOUND
+      DealInvitationAcceptConflict:
+        - DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY
+        - DEAL_INVITATION_STALE_VERSION
+        - DEAL_INVITATION_STATE_CONFLICT
+      DealInvitationAcceptNotFoundOrHidden:
+        - DEAL_INVITATION_NOT_FOUND
+        - LEGAL_ENTITY_NOT_FOUND
+      DealInvitationCreateConflict:
+        - DEAL_INVITATION_PENDING_EXISTS
+        - IDEMPOTENCY_KEY_REUSED
+      DealInvitationListForbidden:
+        - DEAL_INVITATION_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DealInvitationMutationForbidden:
+        - CSRF_TOKEN_INVALID
+        - DEAL_INVITATION_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DealInvitationNotFoundOrHidden:
+        - DEAL_INVITATION_NOT_FOUND
+      DealInvitationOrLegalEntityNotFoundOrHidden:
+        - DEAL_INVITATION_NOT_FOUND
+        - LEGAL_ENTITY_NOT_FOUND
+      DealInvitationTerminalConflict:
+        - DEAL_INVITATION_STALE_VERSION
+        - DEAL_INVITATION_STATE_CONFLICT
+      DealOrLegalEntityNotFoundOrHidden:
+        - DEAL_NOT_FOUND
+        - LEGAL_ENTITY_NOT_FOUND
+      DealPartiesConflict:
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+      DealReviewAcceptanceConflict:
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
+      DealReviewAcceptanceForbidden:
+        - CSRF_TOKEN_INVALID
+        - DEAL_REVIEW_ACCEPTANCE_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DealReviewConflict:
+        - DEAL_STATE_CONFLICT
+      DealScopedMutationForbidden:
+        - CSRF_TOKEN_INVALID
+        - DEAL_MUTATION_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+        - LEGAL_ENTITY_NOT_FOUND
+      DealStateConflict:
+        - DEAL_STATE_CONFLICT
+      DealUpdateConflict:
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+      DisputeAcknowledgeForbidden:
+        - CSRF_TOKEN_INVALID
+        - DISPUTE_ACKNOWLEDGE_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DisputeCommentForbidden:
+        - CSRF_TOKEN_INVALID
+        - DISPUTE_COMMENT_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DisputeMutationConflict:
+        - DISPUTE_STALE_VERSION
+        - DISPUTE_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
+      DisputeNotFoundOrHidden:
+        - DISPUTE_NOT_FOUND_OR_HIDDEN
+      DisputeOpenConflict:
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+        - DISPUTE_ACTIVE_CASE_EXISTS
+        - FULFILLMENT_STALE_VERSION
+        - FULFILLMENT_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
+      DisputeOpenForbidden:
+        - CASEWORK_NOT_FOUND_OR_HIDDEN
+        - CSRF_TOKEN_INVALID
+        - DISPUTE_OPEN_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DisputeWithdrawForbidden:
+        - CSRF_TOKEN_INVALID
+        - DISPUTE_WITHDRAW_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      DocumentDownloadConflict:
+        - DOCUMENT_DOWNLOAD_NOT_AVAILABLE
+      DocumentFinalizeConflict:
+        - DOCUMENT_UPLOAD_EXPIRED
+        - DOCUMENT_UPLOAD_STATE_CONFLICT
+        - DOCUMENT_VERIFICATION_FAILED
+        - IDEMPOTENCY_KEY_REUSED
+      EmailAlreadyExists:
+        - AUTH_EMAIL_ALREADY_EXISTS
+      EvidenceDownloadConflict:
+        - EVIDENCE_DOWNLOAD_NOT_AVAILABLE
+      EvidenceFinalizeConflict:
+        - EVIDENCE_MILESTONE_CONFLICT
+        - EVIDENCE_UPLOAD_EXPIRED
+        - EVIDENCE_UPLOAD_STATE_CONFLICT
+        - EVIDENCE_VERIFICATION_FAILED
+        - IDEMPOTENCY_KEY_REUSED
+      EvidenceNotFoundOrHidden:
+        - DEAL_NOT_FOUND
+        - EVIDENCE_NOT_FOUND
+        - FULFILLMENT_NOT_FOUND
+        - LEGAL_ENTITY_NOT_FOUND
+      EvidenceReviewConflict:
+        - DEAL_STALE_VERSION
+        - EVIDENCE_STALE_VERSION
+        - EVIDENCE_STATE_CONFLICT
+        - FULFILLMENT_COMPLETED
+        - IDEMPOTENCY_KEY_REUSED
+      EvidenceReviewForbidden:
+        - CSRF_TOKEN_INVALID
+        - EVIDENCE_REVIEW_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      EvidenceUploadConflict:
+        - DEAL_STATE_CONFLICT
+        - EVIDENCE_ALREADY_SUBMITTED
+        - FULFILLMENT_STATE_CONFLICT
+      EvidenceUploadForbidden:
+        - CSRF_TOKEN_INVALID
+        - EVIDENCE_UPLOAD_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      FulfillmentNotFoundOrHidden:
+        - DEAL_NOT_FOUND
+        - FULFILLMENT_NOT_FOUND
+        - LEGAL_ENTITY_NOT_FOUND
+      FulfillmentStartConflict:
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+        - FULFILLMENT_ALREADY_EXISTS
+        - IDEMPOTENCY_KEY_REUSED
+      FulfillmentStartForbidden:
+        - CSRF_TOKEN_INVALID
+        - FULFILLMENT_START_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      FundingMutationForbidden:
+        - CSRF_TOKEN_INVALID
+        - FUNDING_MUTATION_FORBIDDEN
+        - LEGAL_ENTITY_ACCESS_DENIED
+      FundingPlanCreateConflict:
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+        - FUNDING_PLAN_ALREADY_EXISTS
+        - IDEMPOTENCY_KEY_REUSED
+      FundingPlanNotFoundOrHidden:
+        - DEAL_NOT_FOUND
+        - FUNDING_PLAN_NOT_FOUND
+        - LEGAL_ENTITY_NOT_FOUND
+      FundingUnitNotFoundOrHidden:
+        - FUNDING_UNIT_NOT_FOUND
+        - LEGAL_ENTITY_NOT_FOUND
+      InvalidCredentials:
+        - AUTH_INVALID_CREDENTIALS
+      LegalEntityAccessDenied:
+        - LEGAL_ENTITY_ACCESS_DENIED
+      LegalEntityNotFoundOrHidden:
+        - LEGAL_ENTITY_NOT_FOUND
+      MalformedRequest:
+        - MALFORMED_REQUEST
+      PaymentOperationInitiateConflict:
+        - DEAL_STATE_CONFLICT
+        - FUNDING_UNIT_ALREADY_FUNDED
+        - FUNDING_UNIT_STALE_VERSION
+        - IDEMPOTENCY_KEY_REUSED
+        - PAYMENT_OPERATION_IN_FLIGHT
+      PaymentOperationNotFoundOrHidden:
+        - LEGAL_ENTITY_NOT_FOUND
+        - PAYMENT_OPERATION_NOT_FOUND
+      PaymentOperationReconcileConflict:
+        - IDEMPOTENCY_KEY_REUSED
+        - PAYMENT_OPERATION_STALE_VERSION
+        - PAYMENT_OPERATION_STATE_CONFLICT
+      RatificationPackageActionConflict:
+        - DEAL_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
+        - RATIFICATION_PACKAGE_STATE_CONFLICT
+        - RATIFICATION_STALE_PACKAGE
+      RatificationPackageActionForbidden:
+        - CSRF_TOKEN_INVALID
+        - LEGAL_ENTITY_ACCESS_DENIED
+        - RATIFICATION_APPROVAL_FORBIDDEN
+      RatificationPackageCreateConflict:
+        - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
+        - RATIFICATION_NOT_READY
+      RatificationPackageCreateForbidden:
+        - CSRF_TOKEN_INVALID
+        - LEGAL_ENTITY_ACCESS_DENIED
+        - RATIFICATION_PACKAGE_CREATE_FORBIDDEN
+      RatificationPackageNotFoundOrHidden:
+        - RATIFICATION_PACKAGE_NOT_FOUND
+      RuleSetVersionNotFoundOrHidden:
+        - RULE_SET_VERSION_NOT_FOUND
+      SessionRequired:
+        - AUTH_SESSION_EXPIRED
+      ValidationFailed:
+        - VALIDATION_FAILED
+      VideoAnalysisRequestConflict:
+        - EVIDENCE_STALE_VERSION
+        - IDEMPOTENCY_KEY_REUSED
+        - VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS
+        - VIDEO_ANALYSIS_ALREADY_COMPLETED
+        - VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE
+      VideoAnalysisRequestForbidden:
+        - CSRF_TOKEN_INVALID
+        - LEGAL_ENTITY_ACCESS_DENIED
+        - VIDEO_ANALYSIS_REQUEST_FORBIDDEN
   securitySchemes:
     SessionCookie:
       type: apiKey
@@ -2704,9 +2949,10 @@ components:
         The active legal entity is nonexistent or hidden because the authenticated
         user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is
         hidden because the authorized active legal entity is not a participant
-        (DEAL_NOT_FOUND), or the evidence submission does not exist or does not belong
-        to the visible Deal's fulfillment milestone (EVIDENCE_NOT_FOUND). All cases
-        return 404 and preserve non-disclosure.
+        (DEAL_NOT_FOUND), the visible Deal has no fulfillment record yet
+        (FULFILLMENT_NOT_FOUND), or the evidence submission does not exist or does not
+        belong to the visible Deal's fulfillment milestone (EVIDENCE_NOT_FOUND). All
+        cases return 404 and preserve non-disclosure.
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/ProblemDetail'}
@@ -6084,6 +6330,7 @@ components:
       type: string
       description: Closed catalog of stable public Problem Details codes. OpenAPI is the authority.
       enum:
+        - ACCESS_DENIED
         - AUTH_EMAIL_ALREADY_EXISTS
         - AUTH_INVALID_CREDENTIALS
         - AUTH_INVITATION_NOT_FOUND_OR_INVALID

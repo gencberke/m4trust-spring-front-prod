@@ -44,7 +44,7 @@ class AnalysisExceptionHandler {
     @ExceptionHandler(AnalysisExceptions.Conflict.class)
     ResponseEntity<ProblemDetail> conflict(AnalysisExceptions.Conflict exception,
             HttpServletRequest request) {
-        ApiErrorCode code = ApiErrorCode.valueOf(exception.code());
+        ApiErrorCode code = exception.code();
         return response(request, HttpStatus.CONFLICT,
                 code.name().toLowerCase().replace('_', '-'),
                 "Analysis request conflict",

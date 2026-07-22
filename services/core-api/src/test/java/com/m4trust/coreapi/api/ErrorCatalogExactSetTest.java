@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test;
 class ErrorCatalogExactSetTest {
 
     private static final Set<String> REMOVED_COMBINED = Set.of(
-            "ACCESS_DENIED",
             "DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN",
             "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN");
 

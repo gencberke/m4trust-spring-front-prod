@@ -52,6 +52,20 @@ class FulfillmentExceptionHandlerTest {
     }
 
     @Test
+    void authorizationOrderPreservesForbiddenBeforeNotFoundSemanticsInHandlerMapping() {
+        ResponseEntity<ProblemDetail> forbidden = handler.handleStartForbidden(
+                new MockHttpServletRequest("POST", "/api/v1/deals/x/fulfillment"));
+        assertEquals(403, forbidden.getStatusCode().value());
+        assertEquals("FULFILLMENT_START_FORBIDDEN",
+                forbidden.getBody().getProperties().get("code"));
+
+        ResponseEntity<ProblemDetail> dealMissing = handler.handleDealNotFound(
+                new MockHttpServletRequest("GET", "/api/v1/deals/x/fulfillment"));
+        assertEquals(404, dealMissing.getStatusCode().value());
+        assertEquals("DEAL_NOT_FOUND", dealMissing.getBody().getProperties().get("code"));
+    }
+
+    @Test
     void serializesGranularCodesThroughMvc() throws Exception {
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new Probe())
                 .setControllerAdvice(handler)

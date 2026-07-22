@@ -855,21 +855,33 @@ def read_java_enum_names(java_path: Path, enum_name: str) -> set[str] | None:
     return set(names)
 
 
-def extract_documented_api_error_codes(core_openapi: dict[str, Any]) -> set[str]:
-    """Collect stable public codes mentioned by reusable response descriptions."""
-    catalog = set(closed_string_enum(core_openapi.get("components", {}).get("schemas", {}).get("ApiErrorCode")) or [])
-    documented: set[str] = set()
-    code_token = re.compile(r"\b([A-Z][A-Z0-9_]{2,})\b")
-    for response in core_openapi.get("components", {}).get("responses", {}).values():
-        if not isinstance(response, dict):
-            continue
-        description = response.get("description", "")
-        if not isinstance(description, str):
-            continue
-        for token in code_token.findall(description):
-            if token in catalog:
-                documented.add(token)
-    return documented
+def owned_api_error_codes(core_openapi: dict[str, Any]) -> set[str] | None:
+    """Catalog-independent ownership from components.x-m4trust-api-error-ownership."""
+    ownership = core_openapi.get("components", {}).get("x-m4trust-api-error-ownership")
+    if not isinstance(ownership, dict):
+        return None
+    owned: set[str] = set()
+    global_codes = ownership.get("global")
+    if not isinstance(global_codes, list) or not global_codes:
+        return None
+    for code in global_codes:
+        if not isinstance(code, str) or not code:
+            return None
+        owned.add(code)
+    by_response = ownership.get("byResponse")
+    if not isinstance(by_response, dict) or not by_response:
+        return None
+    responses = core_openapi.get("components", {}).get("responses", {})
+    if set(by_response) != set(responses):
+        return None
+    for name, codes in by_response.items():
+        if not isinstance(codes, list) or not codes:
+            return None
+        for code in codes:
+            if not isinstance(code, str) or not code:
+                return None
+            owned.add(code)
+    return owned
 
 
 def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[str]) -> None:
@@ -909,13 +921,38 @@ def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[
     if field_code != {"$ref": "#/components/schemas/FieldErrorCode"}:
         local_failures.append("FAIL Core API FieldError.code: must $ref FieldErrorCode (open string rejected)")
 
-    documented = extract_documented_api_error_codes(core_openapi)
-    missing_documented = sorted(documented - set(api_values))
-    if missing_documented:
+    owned = owned_api_error_codes(core_openapi)
+    if owned is None:
         local_failures.append(
-            "FAIL Core API ApiErrorCode: endpoint/reusable-response codes absent from catalog: "
-            + ", ".join(missing_documented)
+            "FAIL Core API x-m4trust-api-error-ownership: machine-readable ownership "
+            "must list global codes and exact byResponse coverage for every reusable response"
         )
+    else:
+        catalog_set = set(api_values)
+        missing_owned = sorted(owned - catalog_set)
+        extra_catalog = sorted(catalog_set - owned)
+        if missing_owned or extra_catalog:
+            local_failures.append(
+                "FAIL Core API ApiErrorCode ownership exact-set mismatch"
+                + (f"; owned-missing-from-catalog={','.join(missing_owned)}" if missing_owned else "")
+                + (f"; catalog-not-owned={','.join(extra_catalog)}" if extra_catalog else "")
+            )
+        # Negative proof: removing one owned catalog member must be detectable.
+        if catalog_set and not missing_owned and not extra_catalog:
+            probe = copy.deepcopy(core_openapi)
+            removed = next(iter(sorted(catalog_set)))
+            probe["components"]["schemas"]["ApiErrorCode"]["enum"] = [
+                code for code in api_values if code != removed
+            ]
+            probe_owned = owned_api_error_codes(probe)
+            probe_catalog = set(closed_string_enum(probe["components"]["schemas"]["ApiErrorCode"]) or [])
+            if probe_owned is None or probe_owned == probe_catalog or removed not in (probe_owned - probe_catalog):
+                local_failures.append(
+                    "FAIL Core API ApiErrorCode negative ownership drift detector: "
+                    "removing a documented/global catalog member was not detected"
+                )
+            else:
+                print(f"PASS expected-invalid ApiErrorCode ownership drift when removing {removed}")
 
     repo_root = ROOT.parent
     java_api = read_java_enum_names(

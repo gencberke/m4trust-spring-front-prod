@@ -1,28 +1,27 @@
 # Review Request
 Task: 15-T01
-Revision: 2
+Revision: 3
 Plan: docs/plan/ready/15-production-reconciliation-and-readiness.md
 Phases: P1
-Status: PARTIAL
+Status: COMPLETED
 Branch: codex/s15-t01-error-authority
-Base: codex/production-reconciliation-fix@6205be89274494aa5f035371fc673dd3096cd140
+Base: codex/s15-t01-error-authority@b9e53578b5c104381952b54549c166abd67d7093
 Plan completion claim: NO
 
 ## Phase outcomes
-- P1 — PARTIAL — Closed OpenAPI/Java ApiErrorCode (89) and FieldErrorCode (10) catalogs with validator exact-set and expected-invalid coverage; fulfillment/evidence emit granular DEAL/FULFILLMENT/EVIDENCE_NOT_FOUND; frontend uses generated ApiErrorCode types. Full `mvnw verify` blocked by local Docker daemon unavailable (0 assertion failures, 34 Testcontainers bootstrap errors).
+- P1 — DONE — Restored non-CSRF AccessDenied to ACCESS_DENIED/403 (CSRF unchanged); added contract-first ACCESS_DENIED and catalog-independent OpenAPI error ownership with exact-set + negative drift detection; replaced public Conflict String/valueOf escapes with ApiErrorCode; nested evidence checks Deal visibility before evidence lookup and distinguishes FULFILLMENT_NOT_FOUND vs EVIDENCE_NOT_FOUND; service/API tests cover those boundaries. Windows Moka emulator tests launch via `python` (not Store `python3` stub) so verify includes real emulator health.
 
 ## Validation
-- `git merge-base --is-ancestor 6205be89274494aa5f035371fc673dd3096cd140 HEAD` — PASS
 - `python contracts/scripts/validate_contracts.py` — PASS
-- Focused Core unit tests (`ErrorCatalogExactSetTest`, `FulfillmentExceptionHandlerTest`, `AnalysisExceptionHandlerTest`, `FulfillmentServiceTest`, `ApiInfrastructureTest`) — PASS
-- `cd services/core-api; .\mvnw.cmd verify` — FAIL (environment: Docker engine not running; 0 assertion failures)
-- `cd frontend; npm.cmd ci && npm.cmd run generate:api && npm.cmd run typecheck && npm.cmd run build` — PASS
-- `rg removed combined fulfillment codes in production sources` — PASS
+- Focused Core tests (`ProblemDetailsAccessDeniedHandlerTest`, `ErrorCatalogExactSetTest`, `FulfillmentExceptionHandlerTest`, `FulfillmentServiceTest`, `MokaEmulatorClientIntegrationTest`) — PASS
+- `cd services/core-api; .\mvnw.cmd verify` — PASS (0 failures/errors, including Moka)
+- `cd frontend; npm.cmd ci && npm.cmd run typecheck && npm.cmd run build` — PASS
+- `rg DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN|FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN` in production sources — PASS (no matches)
+- `rg ApiErrorCode\.valueOf|Conflict\(String` in `services/core-api/src/main/java` — PASS (no matches)
 - `git diff --check` — PASS
 
 ## Decisions needed
-- None for catalog contents. Historical runtime `ACCESS_DENIED` is not in OpenAPI/ADR-006 named globals and was not added to the catalog.
+- None
 
 ## Deviation or risk
-- `ProblemDetailsAccessDeniedHandler` non-CSRF branch no longer emits uncatalogued `ACCESS_DENIED`. Unexpected `AccessDeniedException` logs and returns `INTERNAL_ERROR` / HTTP 500. CSRF remains `CSRF_TOKEN_INVALID` / 403. Under the current `anyRequest().authenticated()` filter chain this branch is defensive only.
-- Full Core verify requires a running Docker engine for Testcontainers; re-run after Docker is available before planner acceptance.
+- Moka emulator ProcessBuilder uses `python` on Windows and `python3` elsewhere (override via `M4TRUST_PYTHON`). Payment/Moka business behavior is unchanged; this only avoids the Windows Store `python3.exe` stub so the real emulator can start during verify.

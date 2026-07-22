@@ -85,7 +85,7 @@ public class CaseworkExceptionHandler {
     @ExceptionHandler(CaseworkExceptions.Conflict.class)
     ResponseEntity<ProblemDetail> handleConflict(CaseworkExceptions.Conflict exception,
             HttpServletRequest request) {
-        ApiErrorCode code = ApiErrorCode.valueOf(exception.code());
+        ApiErrorCode code = exception.code();
         String slug = code.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
         return response(request, HttpStatus.CONFLICT,
                 "https://problems.m4trust.internal/" + slug,

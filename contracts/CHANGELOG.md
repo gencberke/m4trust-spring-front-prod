@@ -3,11 +3,12 @@
 ## Unreleased
 
 - Closed public Problem Details catalogs in `core-api-v1.yaml`: `ProblemDetail.code`
-  now `$ref`s `ApiErrorCode` and `FieldError.code` `$ref`s `FieldErrorCode`. The
-  catalogs are the exact union of documented endpoint/global codes and include
-  Slice 15 readiness codes (`AUTH_*`, `MEMBER_INVITATION_*`, `UPLOAD_SCAN_*`,
-  `INTERNAL_ERROR`, `RATE_LIMIT_EXCEEDED`). Undocumented combined fulfillment
-  codes `DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN` and
+  now `$ref`s `ApiErrorCode` and `FieldError.code` `$ref`s `FieldErrorCode`. Catalog
+  ownership is machine-readable via `components.x-m4trust-api-error-ownership`
+  (exact-set of `global` plus every reusable-response `byResponse` entry) and includes
+  grandfathered `ACCESS_DENIED`, ADR-006 globals, Slice 15 readiness codes, and
+  documented endpoint codes. Undocumented combined fulfillment codes
+  `DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN` and
   `FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN` are removed; fulfillment/evidence
   authorization boundaries emit granular `LEGAL_ENTITY_NOT_FOUND`,
   `DEAL_NOT_FOUND`, `FULFILLMENT_NOT_FOUND`, and `EVIDENCE_NOT_FOUND`.

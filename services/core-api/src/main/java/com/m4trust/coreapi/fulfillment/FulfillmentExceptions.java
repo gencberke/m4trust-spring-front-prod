@@ -42,10 +42,6 @@ class FulfillmentExceptions {
             this.code = code;
         }
 
-        Conflict(String code) {
-            this(ApiErrorCode.valueOf(code));
-        }
-
         ApiErrorCode code() {
             return code;
         }
