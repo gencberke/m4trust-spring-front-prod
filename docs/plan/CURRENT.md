@@ -124,7 +124,9 @@ ADR-005/007/016/017/018/020 hardening requirements for that demo only.
 
 Slice 15 P1 public error authority is accepted at `d69d7e00`; P2–P3 contract
 packaging/runtime inventory controls are accepted at `4845a03`; P4 Railway-demo
-repository reconciliation is accepted at `381ed5b`. The user stopped 15-T03
+repository reconciliation is accepted at `381ed5b`; P5 existing-staging
+reconciliation is accepted for exact `main@23a4428ad76a5fdcf694dbca83104aca389e826d`.
+The user stopped 15-T03
 before implementation and withdrew the former P4–P9 production-hardening scope
 from ready. ADR-022 and the replacement Railway-demo plan are accepted at
 `docs/plan/ready/15-railway-demo-reconciliation-and-deployment.md`. The user-owned
@@ -133,6 +135,7 @@ desktop/mobile acceptance passed and the plan is archived at
 `docs/plan/done/15a-frontend-experience-redesign.md`. The user explicitly authorized
 autonomous continuation to P5/P6 in the active goal. Consolidated post-Slice-13
 evidence is in `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
+P5 evidence is in `docs/plan/done/review/15p5-implementation-review-handoff.md`.
 Slice 14B remains planning-only.
 
 ## Accepted foundations
@@ -299,19 +302,18 @@ Slice 14B remains planning-only.
 ## Active work
 
 Slice 15 Railway Demo Reconciliation and Deployment is the sole ready deployment
-plan. P4 and the user-owned UI/UX insertion gate are accepted. P5 reconciliation
-of the existing Railway staging environment is active under the user's explicit
-autonomous continuation authorization. On 2026-07-23 the founder/user accepted that
-live document storage smoke remains mandatory while live fulfillment-evidence smoke
-is a no-seed/no-bypass deferred risk until an authorized public `ACTIVE + FUNDED`
-creation path exists. Slice 14B and the R2–R7 capability roadmap have no
-implementation authority.
+plan. P4, the user-owned UI/UX insertion gate and P5 staging reconciliation are
+accepted. P6 final validation and production-demo deployment are active under the
+user's explicit autonomous continuation authorization. Live document storage smoke
+remains mandatory while live fulfillment-evidence smoke is a no-seed/no-bypass
+deferred risk until an authorized public `ACTIVE + FUNDED` creation path exists.
+Slice 14B and the R2–R7 capability roadmap have no implementation authority.
 
 ## Known blockers
 
-Controlled Railway demo deployment remains blocked on staging proof and the one
-final validation/production-demo gate; deferred live evidence smoke is not a
-blocker under the 2026-07-23 accepted reconciliation.
+Controlled Railway demo deployment remains gated only by the one final
+validation/production-demo phase; deferred live evidence smoke is not a blocker
+under the 2026-07-23 accepted reconciliation.
 Broad production remains explicitly out of scope.
 AI-enabled readiness additionally requires compatible evidence from the AI owner;
 its absence cannot be repaired by the main implementer.
@@ -319,9 +321,9 @@ No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-The next work is Slice 15 P5 existing Railway staging reconciliation. Repository-
-wide backend/frontend suites run once at final P6; intermediate deployment review
-uses only minimum affected health, configuration, storage and browser checks.
+The next work is the one Slice 15 P6 final gate followed by non-destructive
+production-demo deployment, smoke and rollback/redeploy evidence from the exact P5
+source SHA.
 
 ## Update rule
 

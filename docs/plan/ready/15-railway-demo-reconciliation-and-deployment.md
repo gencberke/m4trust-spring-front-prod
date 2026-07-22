@@ -179,6 +179,11 @@ Exit checks:
 
 ### P5 — Reconcile and prove the existing Railway staging environment
 
+Acceptance: `ACCEPT` on 23 July 2026 for
+`main@23a4428ad76a5fdcf694dbca83104aca389e826d`. Exact deployment, topology,
+storage, browser/API smoke and independent-review evidence is recorded in
+`docs/plan/done/review/15p5-implementation-review-handoff.md`.
+
 Outcome:
 Mevcut staging environment aynı source SHA'lı web/Core ve versioned MinIO ile gerçek
 browser demo akışını çalıştırır.
