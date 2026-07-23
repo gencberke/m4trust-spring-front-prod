@@ -3669,6 +3669,15 @@ a:hover {
   margin: 0;
 }
 
+.fulfillment-feedback .fulfillment-closure-nav {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
 .fulfillment-status-badge,
 .evidence-status-badge {
   display: inline-flex;

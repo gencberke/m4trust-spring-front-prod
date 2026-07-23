@@ -322,7 +322,7 @@ class DealService {
                 deal.title(),
                 deal.description(),
                 deal.status(),
-                lifecycle(deal, fundingSummary.fundingStatus(), caseworkSummary),
+                lifecycle(deal, fundingSummary.fundingStatus(), caseworkSummary, fulfillmentSummary),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
@@ -397,7 +397,7 @@ class DealService {
                 deal.reference(),
                 deal.title(),
                 deal.status(),
-                lifecycle(deal, fundingSummary.fundingStatus(), caseworkSummary),
+                lifecycle(deal, fundingSummary.fundingStatus(), caseworkSummary, fulfillmentSummary),
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
@@ -531,12 +531,16 @@ class DealService {
     }
 
     private DealLifecycleProjection lifecycle(
-            Deal deal, String fundingStatus, CaseworkDealProjectionPort.ActorSummary caseworkSummary) {
+            Deal deal, String fundingStatus, CaseworkDealProjectionPort.ActorSummary caseworkSummary,
+            FulfillmentProjectionPort.Summary fulfillmentSummary) {
         UUID documentId = deal.currentDocumentId();
         boolean current = documentId != null && currentDocumentQueries.findAvailable(documentId).isPresent();
         String status = current ? analysisProjections.summary(documentId).status() : "NOT_REQUESTED";
+        String fulfillmentStatus = fulfillmentSummary == null || fulfillmentSummary.status() == null
+                ? null : fulfillmentSummary.status().name();
         return DealLifecycleProjectionCalculator.calculate(
-                deal.status(), status, current, fundingStatus, caseworkSummary.activeDispute() != null);
+                deal.status(), status, current, fundingStatus,
+                caseworkSummary.activeDispute() != null, fulfillmentStatus);
     }
 
     private DealLifecycleProjection lifecycle(Deal deal, String fundingStatus) {

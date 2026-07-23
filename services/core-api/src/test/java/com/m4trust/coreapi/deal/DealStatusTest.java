@@ -85,6 +85,9 @@ class DealStatusTest {
         assertEquals(DealLifecycleProjection.FULFILLMENT,
                 DealLifecycleProjectionCalculator.calculate(
                         DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false));
+        assertEquals(DealLifecycleProjection.DISPUTE,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", true, "COMPLETED"));
     }
 
     @Test
@@ -95,5 +98,44 @@ class DealStatusTest {
         assertEquals(DealLifecycleProjection.FUNDING,
                 DealLifecycleProjectionCalculator.calculate(
                         DealStatus.ACTIVE, "ACCEPTED", true, "PENDING"));
+    }
+
+    @Test
+    void fundedActiveDealsAdvanceToSettlementWhenFulfillmentCompleted() {
+        assertEquals(DealLifecycleProjection.SETTLEMENT,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false, "COMPLETED"));
+        assertEquals(DealLifecycleProjection.FULFILLMENT,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false, "NOT_STARTED"));
+        assertEquals(DealLifecycleProjection.FULFILLMENT,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false, "IN_PROGRESS"));
+        assertEquals(DealLifecycleProjection.FULFILLMENT,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false, "EVIDENCE_REQUIRED"));
+        assertEquals(DealLifecycleProjection.FULFILLMENT,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false, "REVIEW_REQUIRED"));
+    }
+
+    @Test
+    void terminalDealStatusesWinBeforeActiveStageLogic() {
+        assertEquals(DealLifecycleProjection.COMPLETED,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.COMPLETED, "ACCEPTED", true, "FUNDED", false, "COMPLETED"));
+        assertEquals(DealLifecycleProjection.CANCELLED,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.CANCELLED, "ACCEPTED", true, "FUNDED", false, "COMPLETED"));
+        assertEquals(DealLifecycleProjection.ARCHIVED,
+                DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ARCHIVED, "ACCEPTED", true, "FUNDED", false, "COMPLETED"));
+    }
+
+    @Test
+    void unknownFulfillmentStatusFailsClosed() {
+        assertThrows(IllegalArgumentException.class,
+                () -> DealLifecycleProjectionCalculator.calculate(
+                        DealStatus.ACTIVE, "ACCEPTED", true, "FUNDED", false, "UNKNOWN"));
     }
 }

@@ -205,9 +205,15 @@ interface Props {
   deal: DealDetail;
   legalEntityId: string;
   readOnly?: boolean;
+  onNavigateToClosure?: () => void;
 }
 
-export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: Props) {
+export function DealFulfillmentPanel({
+  deal,
+  legalEntityId,
+  readOnly = false,
+  onNavigateToClosure,
+}: Props) {
   const queryClient = useQueryClient();
   const startKeyRef = useRef<string | undefined>(undefined);
   const finalizeKeyRef = useRef<string | undefined>(undefined);
@@ -590,7 +596,17 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
 
       {feedbackNotice ? (
         <p className="success-notice fulfillment-feedback" role="status">
-          {feedbackNotice}
+          {onNavigateToClosure ? (
+            <button
+              type="button"
+              className="text-button fulfillment-closure-nav"
+              onClick={onNavigateToClosure}
+            >
+              {feedbackNotice}
+            </button>
+          ) : (
+            feedbackNotice
+          )}
         </p>
       ) : null}
 
