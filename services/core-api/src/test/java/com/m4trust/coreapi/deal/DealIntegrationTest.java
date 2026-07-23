@@ -73,6 +73,9 @@ class DealIntegrationTest {
                     fulfillment_milestone_rule_reference,
                     fulfillment_milestone,
                     fulfillment,
+                    release_dispatch,
+                    release_operation,
+                    settlement,
                     payment_dispatch,
                     payment_operation,
                     funding_unit,
@@ -120,7 +123,7 @@ class DealIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(header().string("Location",
                         matchesPattern("/api/v1/deals/[0-9a-f-]{36}")))
-                .andExpect(jsonPath("$.*", hasSize(20)))
+                .andExpect(jsonPath("$.*", hasSize(21)))
                 .andExpect(jsonPath("$.reference")
                         .value(matchesPattern("DL-[0-9]{10}")))
                 .andExpect(jsonPath("$.title").value("Equipment Purchase"))
@@ -152,6 +155,7 @@ class DealIntegrationTest {
                 .andExpect(jsonPath("$.ratification.currentPackage").value((Object) null))
                 .andExpect(jsonPath("$.funding.fundingStatus").value("NOT_CONFIGURED"))
                 .andExpect(jsonPath("$.funding.fundingPlanId").value((Object) null))
+                .andExpect(jsonPath("$.settlement").value((Object) null))
                 .andExpect(jsonPath("$.participants", hasSize(1)))
                 .andExpect(jsonPath("$.participants[0].legalEntityId")
                         .value(owner.legalEntityId().toString()))
