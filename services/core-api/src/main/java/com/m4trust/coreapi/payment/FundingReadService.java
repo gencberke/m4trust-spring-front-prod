@@ -13,10 +13,13 @@ class FundingReadService {
 
     private final FundingSourcePorts.DealTarget deals;
     private final FundingRepository funding;
+    private final PaymentProviderModeResolver mode;
 
-    FundingReadService(FundingSourcePorts.DealTarget deals, FundingRepository funding) {
+    FundingReadService(FundingSourcePorts.DealTarget deals, FundingRepository funding,
+            PaymentProviderModeResolver mode) {
         this.deals = deals;
         this.funding = funding;
+        this.mode = mode;
     }
 
     @Transactional(readOnly = true)
@@ -30,7 +33,8 @@ class FundingReadService {
                 .orElseThrow(() -> new IllegalStateException("Funding plan is missing its funding unit"));
         FundingRepository.OperationRecord currentOperation = funding.findCurrentOperation(unit.id()).orElse(null);
         boolean buyerAdmin = FundingProjection.isBuyerAdmin(context, target);
-        return FundingProjection.plan(plan, unit, currentOperation, buyerAdmin, "ACTIVE".equals(target.status()));
+        return FundingProjection.plan(plan, unit, currentOperation, buyerAdmin, "ACTIVE".equals(target.status()),
+                mode.resolve());
     }
 
     @Transactional(readOnly = true)
@@ -41,7 +45,7 @@ class FundingReadService {
         FundingSourcePorts.Target target = deals.findVisible(context, lookup.dealId())
                 .orElseThrow(PaymentExceptions.PaymentOperationNotFound::new);
         boolean buyerAdmin = FundingProjection.isBuyerAdmin(context, target);
-        return FundingProjection.operation(lookup.operation(), buyerAdmin);
+        return FundingProjection.operation(lookup.operation(), buyerAdmin, mode.resolve());
     }
 
     private static void requireOperation(OperationContext context, RequestedOperation expected) {

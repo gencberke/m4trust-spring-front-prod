@@ -27,6 +27,17 @@ public interface PaymentProviderPort {
      */
     ProviderResult queryStatus(ProviderRequest request);
 
+    /**
+     * Visible simulated-mode label surfaced in participant-facing funding
+     * projections (2026-07-22 simulation-only decision §2; ADR-014 §2.1).
+     * Returns {@code null} for implementations that are not a demo simulator
+     * (for example the Moka emulator adapter); the label is never fabricated
+     * when no simulator is the active provider (ADR-014 §2.9).
+     */
+    default PaymentProviderMode mode() {
+        return null;
+    }
+
     record ProviderRequest(String providerKey, long amountMinor, String currency) {
         public ProviderRequest {
             Objects.requireNonNull(providerKey, "providerKey must not be null");

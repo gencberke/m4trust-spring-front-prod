@@ -1756,6 +1756,11 @@ export interface components {
          * @enum {string}
          */
         PaymentOperationStatus: "CREATED" | "SUCCEEDED" | "DECLINED" | "UNCONFIRMED";
+        /**
+         * @description Visible simulated-mode label (2026-07-22 simulation-only decision §2; ADR-014 §2.1). DEMO_SIMULATED is the only member until a separate, future ADR introduces a real-provider production mode. It never claims real money movement, custody, or provider-verified finality (ADR-014 §2.9).
+         * @enum {string}
+         */
+        PaymentSimulationMode: "DEMO_SIMULATED";
         /** @description Backend-derived action availability for this FundingUnit and actor context. */
         FundingUnitAvailableActions: {
             /** @description True only for buyer entity ADMIN while the unit is not FUNDED and has no CREATED or UNCONFIRMED in-flight PaymentOperation. */
@@ -1782,6 +1787,8 @@ export interface components {
             availableActions: components["schemas"]["PaymentOperationAvailableActions"];
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
+            /** @description DEMO_SIMULATED when the active payment provider is the in-process demo simulator, or null when no simulator is active. Never fabricated; null/absent is the only non-simulated representation (2026-07-22 simulation-only decision §2; ADR-014 §2.1/§2.9). */
+            mode?: components["schemas"]["PaymentSimulationMode"] | null;
         };
         FundingUnit: {
             /** Format: uuid */
@@ -1817,6 +1824,8 @@ export interface components {
             fundingUnit: components["schemas"]["FundingUnit"];
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
+            /** @description DEMO_SIMULATED when the active payment provider is the in-process demo simulator, or null when no simulator is active. Never fabricated; null/absent is the only non-simulated representation (2026-07-22 simulation-only decision §2; ADR-014 §2.1/§2.9). */
+            mode?: components["schemas"]["PaymentSimulationMode"] | null;
         };
         /** @description Optional backend-owned Deal funding summary; independent of the full plan/unit/operation projection. */
         DealFundingSummary: {

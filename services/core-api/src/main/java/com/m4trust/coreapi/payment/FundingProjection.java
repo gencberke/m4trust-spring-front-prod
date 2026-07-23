@@ -33,23 +33,26 @@ final class FundingProjection {
         };
     }
 
-    static FundingReadDtos.PaymentOperationView operation(FundingRepository.OperationRecord op, boolean buyerAdmin) {
+    static FundingReadDtos.PaymentOperationView operation(FundingRepository.OperationRecord op, boolean buyerAdmin,
+            PaymentProviderMode mode) {
         boolean reconciliationRequired = op.status() == PaymentOperationStatus.UNCONFIRMED;
         boolean canReconcile = buyerAdmin && op.status() == PaymentOperationStatus.UNCONFIRMED;
         return new FundingReadDtos.PaymentOperationView(op.id(), op.fundingUnitId(), op.status(),
                 reconciliationRequired, op.providerReference(), op.version(),
-                new FundingReadDtos.PaymentOperationAvailableActions(canReconcile), op.createdAt(), op.updatedAt());
+                new FundingReadDtos.PaymentOperationAvailableActions(canReconcile), op.createdAt(), op.updatedAt(),
+                mode);
     }
 
     static FundingReadDtos.FundingUnitView unit(FundingRepository.UnitRecord unit,
-            FundingRepository.OperationRecord currentOperation, boolean buyerAdmin, boolean dealActive) {
+            FundingRepository.OperationRecord currentOperation, boolean buyerAdmin, boolean dealActive,
+            PaymentProviderMode mode) {
         boolean inFlight = currentOperation != null
                 && (currentOperation.status() == PaymentOperationStatus.CREATED
                         || currentOperation.status() == PaymentOperationStatus.UNCONFIRMED);
         boolean canInitiatePayment = buyerAdmin && dealActive
                 && unit.status() != FundingUnitStatus.FUNDED && !inFlight;
         FundingReadDtos.PaymentOperationView operationView = currentOperation == null
-                ? null : operation(currentOperation, buyerAdmin);
+                ? null : operation(currentOperation, buyerAdmin, mode);
         return new FundingReadDtos.FundingUnitView(unit.id(), unit.sequenceNo(), unit.amountMinor(),
                 unit.currency(), unit.status(), unit.version(), operationView,
                 new FundingReadDtos.FundingUnitAvailableActions(canInitiatePayment), unit.createdAt(),
@@ -58,9 +61,10 @@ final class FundingProjection {
 
     static FundingReadDtos.FundingPlanDetailView plan(FundingRepository.PlanRecord plan,
             FundingRepository.UnitRecord unit, FundingRepository.OperationRecord currentOperation,
-            boolean buyerAdmin, boolean dealActive) {
+            boolean buyerAdmin, boolean dealActive, PaymentProviderMode mode) {
         return new FundingReadDtos.FundingPlanDetailView(plan.id(), plan.dealId(), plan.amountMinor(),
                 plan.currency(), dealFundingStatus(unit.status()), plan.version(),
-                unit(unit, currentOperation, buyerAdmin, dealActive), plan.createdAt(), plan.updatedAt());
+                unit(unit, currentOperation, buyerAdmin, dealActive, mode), plan.createdAt(), plan.updatedAt(),
+                mode);
     }
 }

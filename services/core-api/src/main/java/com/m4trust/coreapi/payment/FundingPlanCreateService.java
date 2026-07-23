@@ -38,10 +38,11 @@ class FundingPlanCreateService {
     private final Clock clock;
     private final PaymentCanonicalHasher hasher;
     private final ObjectMapper json;
+    private final PaymentProviderModeResolver mode;
 
     FundingPlanCreateService(FundingSourcePorts.DealTarget deals, FundingRepository funding,
             IdempotencyService idempotency, AuditAppendPort audit, TransactionTemplate transactions, Clock clock,
-            PaymentCanonicalHasher hasher, ObjectMapper json) {
+            PaymentCanonicalHasher hasher, ObjectMapper json, PaymentProviderModeResolver mode) {
         this.deals = deals;
         this.funding = funding;
         this.idempotency = idempotency;
@@ -50,6 +51,7 @@ class FundingPlanCreateService {
         this.clock = clock;
         this.hasher = hasher;
         this.json = json;
+        this.mode = mode;
     }
 
     FundingReadDtos.FundingPlanDetailView create(OperationContext context, UUID dealId, long expectedVersion,
@@ -102,7 +104,7 @@ class FundingPlanCreateService {
         audit.append(auditRecord(context, plan.id(), "FUNDING_PLAN_CREATED", correlationId, now));
         idempotency.recordResult(claim, new IdempotencyResultReference(IDEMPOTENCY_RESULT, plan.id()));
         boolean buyerAdmin = FundingProjection.isBuyerAdmin(context, target);
-        return FundingProjection.plan(plan.toRecord(), unit.toRecord(), null, buyerAdmin, true);
+        return FundingProjection.plan(plan.toRecord(), unit.toRecord(), null, buyerAdmin, true, mode.resolve());
     }
 
     private FundingReadDtos.FundingPlanDetailView replay(OperationContext context, FundingSourcePorts.Target target,
@@ -117,7 +119,8 @@ class FundingPlanCreateService {
                 .orElseThrow(() -> new IllegalStateException("Funding plan is missing its funding unit"));
         FundingRepository.OperationRecord currentOperation = funding.findCurrentOperation(unit.id()).orElse(null);
         boolean buyerAdmin = FundingProjection.isBuyerAdmin(context, target);
-        return FundingProjection.plan(plan, unit, currentOperation, buyerAdmin, "ACTIVE".equals(target.status()));
+        return FundingProjection.plan(plan, unit, currentOperation, buyerAdmin, "ACTIVE".equals(target.status()),
+                mode.resolve());
     }
 
     private AuditRecord auditRecord(OperationContext context, UUID planId, String action, UUID correlationId,

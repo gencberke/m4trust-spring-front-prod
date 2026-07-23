@@ -1645,10 +1645,19 @@ def validate_contract_documents(failures: list[str]) -> None:
             "InitiatePaymentOperationRequest": {"expectedVersion"},
             "ReconcilePaymentOperationRequest": {"expectedVersion"},
         }
+        # Additive, optional-only fields layered onto the Slice 11 closed sets by the
+        # 2026-07-22 simulation-only decision §2 / ADR-014 §2.1 visible-mode labeling
+        # requirement. Never required, so older consumers reading the closed Slice 11
+        # field set remain unaffected.
+        funding_optional_fields = {
+            "PaymentOperation": {"mode"},
+            "FundingPlanDetail": {"mode"},
+        }
         for schema_name, expected_fields in funding_closed_fields.items():
             schema = core_components.get("schemas", {}).get(schema_name, {})
+            optional_fields = funding_optional_fields.get(schema_name, set())
             if (schema.get("additionalProperties") is not False
-                    or set(schema.get("properties", {})) != expected_fields
+                    or set(schema.get("properties", {})) != expected_fields | optional_fields
                     or set(schema.get("required", [])) != expected_fields):
                 failures.append(f"FAIL Core API Slice 11 {schema_name}: closed field set changed")
         if (funding_status.get("enum") != ["NOT_CONFIGURED", "PLANNED", "PENDING", "PARTIALLY_FUNDED", "FUNDED"]
