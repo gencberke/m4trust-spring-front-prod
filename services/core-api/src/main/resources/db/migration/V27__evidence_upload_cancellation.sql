@@ -1,5 +1,5 @@
 -- Plan 18C-P2: pending evidence upload cancellation metadata.
--- Forward-only; V20-V25 remain frozen.
+-- Forward-only; V20-V26 remain frozen.
 
 ALTER TABLE fulfillment_evidence_submission
     ADD COLUMN cancelled_at TIMESTAMPTZ;

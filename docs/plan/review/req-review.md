@@ -10,7 +10,8 @@ Plan completion claim: NO
 
 ## Phase outcomes
 - 18C-P1 — DONE — contract committed at b789032
-- 18C-P2 — DONE — V26 migration + cancelEvidenceUpload backend (e54b66c)
+- 18C-P2 — DONE — cancelEvidenceUpload backend (e54b66c), migration
+  integration-renumbered to V27
 - 18C-P3 — DONE — Vazgeç wired to cancel-upload API (36c7289)
 - Review remediation — DONE — same-key no-file replay, active-pending
   cardinality, policy-owned aggregate completion, refresh-safe cancel UX,
@@ -31,6 +32,6 @@ Plan completion claim: NO
 ## Deviation or risk
 - Formal browser acceptance remains planner/user-owned and is not run here.
 - Plan 17 B5 staging acceptance remains separate.
-- Integration with `feat/video-analysis-photo-input@af977b6` must land that
-  branch's V24 first, then renumber Plan 18 V24/V25/V26 to V25/V26/V27 before
-  merging; no accepted migration is edited in this worktree yet.
+- Integration migration order is reserved for
+  `feat/video-analysis-photo-input@af977b6`: photo input V24, ratification v3
+  V25, fulfillment policy V26 and pending cancellation V27.
