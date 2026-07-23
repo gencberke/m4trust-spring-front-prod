@@ -25,6 +25,15 @@ class RatificationPackageProjectionService implements RatificationPackageProject
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<String> findPackageStatus(UUID dealId, UUID packageId) {
+        if (packageId == null) {
+            return Optional.empty();
+        }
+        return packages.findByDealAndId(dealId, packageId).map(record -> record.status().name());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<CurrentPackage> findCurrentPackage(
             OperationContext context, UUID dealId, String dealStatus, UUID packageId) {
         if (packageId == null) {
@@ -62,7 +71,8 @@ class RatificationPackageProjectionService implements RatificationPackageProject
                         new Document(
                                 snapshot.document().documentId(),
                                 snapshot.document().objectVersion(),
-                                snapshot.document().sha256())),
+                                snapshot.document().sha256()),
+                        snapshot.disputeWindowDays()),
                 detail.approvals().stream()
                         .map(approval -> new Approval(approval.legalEntityId(), approval.legalName(),
                                 approval.status(), approval.approvedAt(), approval.approverUserId()))

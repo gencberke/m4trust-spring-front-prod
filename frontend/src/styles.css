@@ -1014,6 +1014,11 @@ a:hover {
   color: var(--color-accent-dark);
 }
 
+.status-badge[data-status="COMPLETED"] {
+  background: #e8f4ec;
+  color: #1f5c38;
+}
+
 .status-badge[data-status="CANCELLED"] {
   background: #fff0f1;
   color: #8d2632;
@@ -2847,6 +2852,188 @@ a:hover {
   letter-spacing: 0.02em;
 }
 
+.settlement-panel {
+  margin-top: 24px;
+}
+
+.settlement-simulation-notice,
+.deal-header-simulation-notice {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0 0 18px;
+  padding: 8px 14px;
+  border: 1px solid #f0cf6b;
+  border-radius: 6px;
+  background: #fff5d9;
+  color: #745000;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.deal-header-simulation-notice {
+  margin: 0;
+}
+
+.deal-closure-separation-note {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--color-notice);
+  color: #234c83;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.settlement-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.settlement-closure-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e8f4ec;
+  color: #1f5c38;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.settlement-fulfillment-note {
+  color: var(--color-copy);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.settlement-plan-card {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--color-rule);
+  border-radius: 7px;
+  background: var(--color-surface);
+}
+
+.settlement-summary-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 0;
+}
+
+.settlement-summary-list dt {
+  color: var(--color-copy);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.settlement-summary-list dd {
+  margin: 4px 0 0;
+  color: var(--color-ink);
+}
+
+.settlement-status-badge,
+.settlement-operation-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #edf1f5;
+  color: #34425a;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.settlement-status-badge[data-status="READY"],
+.settlement-operation-status-badge[data-status="QUEUED"] {
+  background: var(--color-notice);
+  color: #234c83;
+}
+
+.settlement-status-badge[data-status="NOT_READY"],
+.settlement-status-badge[data-status="ON_HOLD"] {
+  background: #fff5d9;
+  color: #745000;
+}
+
+.settlement-status-badge[data-status="PROCESSING"],
+.settlement-operation-status-badge[data-status="PROCESSING"],
+.settlement-operation-status-badge[data-status="RECONCILIATION_REQUIRED"] {
+  background: #fff5d9;
+  color: #745000;
+}
+
+.settlement-status-badge[data-status="SIMULATED_SETTLED"],
+.settlement-operation-status-badge[data-status="SIMULATED_SETTLED"] {
+  background: #e8f4ec;
+  color: #1f5c38;
+}
+
+.settlement-status-badge[data-status="FAILED"],
+.settlement-operation-status-badge[data-status="SIMULATED_DECLINED"],
+.settlement-operation-status-badge[data-status="FAILED_BEFORE_DISPATCH"] {
+  background: #fff0f1;
+  color: #8d2632;
+}
+
+.settlement-operation-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.settlement-operation-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-ink);
+  font-weight: 750;
+}
+
+.settlement-operation-card .settlement-summary-list {
+  margin-top: 14px;
+}
+
+.settlement-reconciliation-notice {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-notice);
+  color: #234c83;
+  font-size: 0.85rem;
+}
+
+.settlement-poll-hint {
+  margin: 12px 0 0;
+}
+
+.settlement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
 .funding-unit-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3458,4 +3645,104 @@ a:hover {
   .agreement-stage-layout { display: grid; gap: 20px; }
   .agreement-supporting-rail { order: 2; min-width: 0; }
   .agreement-stage-main { order: 1; min-width: 0; }
+}
+
+/* Plan 17 Phase A — living fulfillment panel */
+.fulfillment-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.fulfillment-turn-banner {
+  margin: 0;
+  padding: 13px 15px;
+  border: 1px solid rgb(28 74 160 / 22%);
+  border-radius: 5px;
+  background: var(--color-notice);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.fulfillment-feedback {
+  margin: 0;
+}
+
+.fulfillment-status-badge,
+.evidence-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #eef2f7;
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.fulfillment-status-badge[data-status="COMPLETED"],
+.evidence-status-badge[data-status="ACCEPTED"] {
+  background: #e8f5ed;
+  color: #17663a;
+}
+
+.fulfillment-status-badge[data-status="REVIEW_REQUIRED"],
+.evidence-status-badge[data-status="SUBMITTED"] {
+  background: var(--color-notice);
+  color: #1c4aa0;
+}
+
+.fulfillment-status-badge[data-status="EVIDENCE_REQUIRED"],
+.fulfillment-status-badge[data-status="IN_PROGRESS"],
+.evidence-status-badge[data-status="PENDING_UPLOAD"] {
+  background: #fff7e8;
+  color: #8a5a12;
+}
+
+.fulfillment-status-badge[data-status="CANCELLED"],
+.evidence-status-badge[data-status="REJECTED"] {
+  background: #fff0f1;
+  color: #8d2632;
+}
+
+.evidence-timeline {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence-timeline-item {
+  position: relative;
+  padding: 14px 16px 14px 22px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  border-left: 3px solid #96a2b4;
+  background: #ffffff;
+}
+
+.evidence-timeline-item[data-status="ACCEPTED"] {
+  border-left-color: #17663a;
+}
+
+.evidence-timeline-item[data-status="SUBMITTED"] {
+  border-left-color: #1c4aa0;
+}
+
+.evidence-timeline-item[data-status="REJECTED"] {
+  border-left-color: #8d2632;
+}
+
+.evidence-timeline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 10px;
+  color: var(--color-copy);
+  font-size: 0.82rem;
+  font-weight: 650;
 }

@@ -103,16 +103,26 @@ class RatificationPackageReadService {
     private RatificationSnapshotAssembler.Snapshot parseAndVerifySnapshot(
             RatificationRepository.PackageRecord packageRecord) {
         try {
-            if (packageRecord.snapshotSchemaVersion() == null || packageRecord.snapshotSchemaVersion() != 1
+            Integer storedSchemaVersion = packageRecord.snapshotSchemaVersion();
+            if (storedSchemaVersion == null || (storedSchemaVersion != 1 && storedSchemaVersion != 2)
                     || !packageRecord.contentHash().matches("[a-f0-9]{64}")) {
                 throw corruption();
             }
             JsonNode raw = json.readTree(packageRecord.canonicalSnapshot());
             RatificationSnapshotAssembler.Snapshot snapshot = json.treeToValue(
                     raw, RatificationSnapshotAssembler.Snapshot.class);
-            if (snapshot.schemaVersion() != 1
+            if (snapshot.schemaVersion() != storedSchemaVersion
                     || !hasher.hash(packageRecord.canonicalSnapshot()).equals(packageRecord.contentHash())
                     || !hasher.hash(json.writeValueAsString(snapshot)).equals(packageRecord.contentHash())) {
+                throw corruption();
+            }
+            if (storedSchemaVersion == 1) {
+                if (snapshot.disputeWindowDays() != null) {
+                    throw corruption();
+                }
+            } else if (snapshot.disputeWindowDays() == null
+                    || snapshot.disputeWindowDays() < 0
+                    || snapshot.disputeWindowDays() > 365) {
                 throw corruption();
             }
             return snapshot;

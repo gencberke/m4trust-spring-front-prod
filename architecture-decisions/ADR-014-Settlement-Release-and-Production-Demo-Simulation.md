@@ -65,7 +65,7 @@ G3 kararı bağlayıcıdır:
 - mevcut snapshot `schemaVersion=1` olarak okunmaya devam eder;
 - existing `/api/v1` create request'ine optional `disputeWindowDays` eklenir;
 - alan varsa server closed `schemaVersion=2` snapshot oluşturur;
-- v2 içinde alan required integer ve inclusive `1..365` aralığındadır;
+- v2 içinde alan required integer ve inclusive `0..365` aralığındadır;
 - bir gün exact 24 saatlik UTC aralığıdır;
 - alan package create sonrasında immutable'dır; değişiklik yeni package version ve
   iki tarafın yeniden ratification'ını gerektirir;
@@ -83,6 +83,10 @@ completedAt + disputeWindowDays * 24 hours
 ```
 
 olur ve ilk eligible an `now >= deadline` sınırıdır.
+
+**Founder amendment (2026-07-23):** `disputeWindowDays` inclusive aralığı `1..365`'ten
+`0..365`'e genişletildi. `0` anında eligibility sağlar (`completedAt + 0`); v1
+packages ve missing window release-ineligible kalır.
 
 ### 2.3 Aggregate, cardinality ve state
 

@@ -24,7 +24,8 @@ record DealDetail(
         DealRatificationProjection ratification,
         DealFundingSummary funding,
         DealFulfillmentSummary fulfillment,
-        DealCaseworkSummary casework) {
+        DealCaseworkSummary casework,
+        DealSettlementSummary settlement) {
 
     DealDetail {
         participants = List.copyOf(participants);

@@ -1,6 +1,7 @@
 package com.m4trust.coreapi.ratification;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
@@ -19,6 +20,37 @@ class RatificationSnapshotAssemblerTest {
     private final ObjectMapper json = new ObjectMapper();
     private final CanonicalSnapshotHasher hasher = new CanonicalSnapshotHasher();
     private final RatificationSnapshotAssembler assembler = new RatificationSnapshotAssembler(json, hasher);
+
+    @Test
+    void absentDisputeWindowKeepsV1SnapshotShapeAndHash() throws Exception {
+        var result = assemble(rule("money", object("{\"type\":\"MONEY\",\"amountMinor\":99,\"currency\":\"USD\"}"), null));
+        JsonNode root = json.readTree(result.serializedSnapshot());
+        assertEquals(1, root.get("schemaVersion").asInt());
+        assertFalse(root.has("disputeWindowDays"));
+        assertEquals(result.contentHash(), hasher.hash(result.serializedSnapshot()));
+    }
+
+    @Test
+    void disputeWindowZeroAndOneProduceV2WithDistinctHashes() throws Exception {
+        var zero = assembleWithWindow(0, rule("r", textValue(), null));
+        var one = assembleWithWindow(1, rule("r", textValue(), null));
+        JsonNode zeroRoot = json.readTree(zero.serializedSnapshot());
+        JsonNode oneRoot = json.readTree(one.serializedSnapshot());
+        assertEquals(2, zeroRoot.get("schemaVersion").asInt());
+        assertEquals(0, zeroRoot.get("disputeWindowDays").asInt());
+        assertEquals(1, oneRoot.get("disputeWindowDays").asInt());
+        assertEquals(Set.of("schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet",
+                "commercialTerms", "document", "disputeWindowDays"), names(zeroRoot));
+        assertEquals(zero.contentHash(), hasher.hash(zero.serializedSnapshot()));
+        assertEquals(one.contentHash(), hasher.hash(one.serializedSnapshot()));
+        assertEquals(false, zero.contentHash().equals(one.contentHash()));
+    }
+
+    @Test
+    void rejectsOutOfRangeDisputeWindowDays() {
+        assertThrows(IllegalArgumentException.class, () -> assembleWithWindow(-1, rule("r", textValue(), null)));
+        assertThrows(IllegalArgumentException.class, () -> assembleWithWindow(366, rule("r", textValue(), null)));
+    }
 
     @Test
     void emitsOnlyEveryContractFieldWithCopiedValues() throws Exception {
@@ -127,6 +159,11 @@ class RatificationSnapshotAssemblerTest {
 
     private RatificationSnapshotAssembler.Result assemble(RatificationSourcePorts.Rule... rules) {
         return assembler.assemble(target(), document(), rules(1, List.of(rules)), 123, "TRY");
+    }
+
+    private RatificationSnapshotAssembler.Result assembleWithWindow(
+            int disputeWindowDays, RatificationSourcePorts.Rule... rules) {
+        return assembler.assemble(target(), document(), rules(1, List.of(rules)), 123, "TRY", disputeWindowDays);
     }
 
     private Set<String> names(JsonNode node) {

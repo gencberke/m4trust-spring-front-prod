@@ -22,6 +22,9 @@ public interface RatificationPackageProjectionPort {
     Optional<CurrentPackage> findCurrentPackage(
             OperationContext context, UUID dealId, String dealStatus, UUID packageId);
 
+    /** Wrapper status without parsing the immutable snapshot (v2-safe for settlement reads). */
+    Optional<String> findPackageStatus(UUID dealId, UUID packageId);
+
     record CurrentPackage(UUID id, long version, String status, String contentHash,
             Snapshot snapshot, List<Approval> approvals, AvailableActions availableActions,
             Instant createdAt) {
@@ -31,7 +34,8 @@ public interface RatificationPackageProjectionPort {
     }
 
     record Snapshot(int schemaVersion, String dealId, String dealReference, String dealTitle,
-            Party buyer, Party seller, RuleSet ruleSet, Terms commercialTerms, Document document) {
+            Party buyer, Party seller, RuleSet ruleSet, Terms commercialTerms, Document document,
+            Integer disputeWindowDays) {
     }
 
     record Party(String legalEntityId, String legalName) {

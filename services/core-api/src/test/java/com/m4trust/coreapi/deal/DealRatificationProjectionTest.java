@@ -25,6 +25,7 @@ import com.m4trust.coreapi.organization.LegalEntityRole;
 import com.m4trust.coreapi.organization.OperationContext;
 import com.m4trust.coreapi.organization.RequestedOperation;
 import com.m4trust.coreapi.payment.FundingProjectionPort;
+import com.m4trust.coreapi.payment.SettlementProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationPackageProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import org.junit.jupiter.api.Test;
@@ -59,18 +60,23 @@ class DealRatificationProjectionTest {
             mock(RatificationPackageProjectionPort.class);
     private final RatificationSupersessionPort supersessions = mock(RatificationSupersessionPort.class);
     private final FundingProjectionPort fundingProjections = mock(FundingProjectionPort.class);
+    private final SettlementProjectionPort settlementProjections = mock(SettlementProjectionPort.class);
     private final FulfillmentProjectionPort fulfillmentProjections = mock(FulfillmentProjectionPort.class);
     private final CaseworkDealProjectionPort caseworkProjections = mock(CaseworkDealProjectionPort.class);
     private final AuditAppendPort audit = mock(AuditAppendPort.class);
     private final DealService service = new DealService(
             repository, policy, legalEntities, documents, analysis, ruleSets,
-            ratificationProjections, supersessions, fundingProjections, fulfillmentProjections,
+            ratificationProjections, supersessions, fundingProjections, settlementProjections,
+            fulfillmentProjections,
             caseworkProjections, audit, Clock.fixed(NOW, ZoneOffset.UTC));
 
     {
         when(fundingProjections.summarize(any(), org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(
                         new FundingProjectionPort.Summary("NOT_CONFIGURED", null, null, null, false, false, false));
+        when(settlementProjections.summarize(any(), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(
+                        new SettlementProjectionPort.Summary(null, null, null, false, false));
         when(fulfillmentProjections.summarize(any())).thenReturn(null);
         when(caseworkProjections.forActor(any())).thenReturn(CaseworkDealProjectionPort.ActorSummary.hidden());
     }
@@ -206,7 +212,8 @@ class DealRatificationProjectionTest {
                         new RatificationPackageProjectionPort.Party(SELLER.toString(), "Seller"),
                         new RatificationPackageProjectionPort.RuleSet(RULE_SET.toString(), 1, List.of()),
                         new RatificationPackageProjectionPort.Terms(1, "TRY"),
-                        new RatificationPackageProjectionPort.Document(DOCUMENT.toString(), "v1", "a".repeat(64))),
+                        new RatificationPackageProjectionPort.Document(DOCUMENT.toString(), "v1", "a".repeat(64)),
+                        null),
                 List.of(),
                 new RatificationPackageProjectionPort.AvailableActions(canApprove, canReject),
                 NOW);

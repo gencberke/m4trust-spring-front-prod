@@ -91,7 +91,8 @@ class RatificationController {
 
     private static CreateRatificationPackageRequest toServiceRequest(CreateRatificationPackageHttpRequest request) {
         return new CreateRatificationPackageRequest(request.expectedVersion(),
-                request.commercialTerms().amountMinor(), request.commercialTerms().currency());
+                request.commercialTerms().amountMinor(), request.commercialTerms().currency(),
+                request.disputeWindowDays());
     }
 
     private static UUID id(String value) {

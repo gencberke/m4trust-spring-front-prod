@@ -96,7 +96,7 @@ class RatificationPackageCreateServiceTest {
         when(packages.findByDealAndId(dealId, replayId)).thenReturn(Optional.of(replay));
         when(reads.project(context, target, replay)).thenReturn(detail);
 
-        assertSame(detail, service.create(context, dealId, new CreateRatificationPackageRequest(-1, -1, "bad"), UUID.randomUUID(), UUID.randomUUID()));
+        assertSame(detail, service.create(context, dealId, new CreateRatificationPackageRequest(-1, -1, "bad", null), UUID.randomUUID(), UUID.randomUUID()));
 
         InOrder order = inOrder(deals, packages, idempotency);
         order.verify(deals).lockVisibleForCreate(context, dealId);
@@ -158,7 +158,7 @@ class RatificationPackageCreateServiceTest {
         assertFailure(target(UUID.randomUUID(), "ACTIVE", true, 7, null, true), request(), RatificationPackageCreateService.StateConflict.class);
         assertFailure(target(UUID.randomUUID(), "DRAFT", true, 8, null, true), request(), RatificationPackageCreateService.StaleDealVersion.class);
         assertFailure(target(UUID.randomUUID(), "DRAFT", true, 7, null, false), request(), RatificationPackageCreateService.NotReady.class);
-        assertFailure(target(UUID.randomUUID(), "DRAFT", true, 7, null, true), new CreateRatificationPackageRequest(7, 0, "try"), RatificationPackageCreateService.InvalidTerms.class);
+        assertFailure(target(UUID.randomUUID(), "DRAFT", true, 7, null, true), new CreateRatificationPackageRequest(7, 0, "try", null), RatificationPackageCreateService.InvalidTerms.class);
     }
 
     @Test
@@ -195,12 +195,12 @@ class RatificationPackageCreateServiceTest {
     @Test
     void fingerprintIsStableForEquivalentRequestAndChangesWithTerms() {
         UUID dealId = UUID.randomUUID(); var target = target(dealId, "DRAFT", true, 7, null, true); claimed(); ready(target, "same");
-        when(assembler.assemble(any(), any(), any(), anyLong(), anyString()))
-                .thenReturn(new RatificationSnapshotAssembler.Result(null, "{}", "same"));
+        when(assembler.assemble(any(), any(), any(), anyLong(), anyString(), any()))
+                .thenReturn(assembledResult("same"));
         when(deals.lockVisibleForCreate(context, dealId)).thenReturn(Optional.of(target)); when(reads.project(eq(context), eq(target), any())).thenReturn(mock(RatificationPackageReadDtos.Detail.class));
         service.create(context, dealId, request(), UUID.randomUUID(), UUID.randomUUID());
         service.create(context, dealId, request(), UUID.randomUUID(), UUID.randomUUID());
-        service.create(context, dealId, new CreateRatificationPackageRequest(7, 21, "TRY"), UUID.randomUUID(), UUID.randomUUID());
+        service.create(context, dealId, new CreateRatificationPackageRequest(7, 21, "TRY", null), UUID.randomUUID(), UUID.randomUUID());
         ArgumentCaptor<IdempotencyRequest> requests = ArgumentCaptor.forClass(IdempotencyRequest.class);
         verify(idempotency, times(3)).claim(requests.capture());
         assertEquals(requests.getAllValues().get(0).canonicalRequestHash(), requests.getAllValues().get(1).canonicalRequestHash());
@@ -217,11 +217,22 @@ class RatificationPackageCreateServiceTest {
     private void ready(RatificationSourcePorts.Target target, String hash) {
         when(documents.find(target.currentDocumentId())).thenReturn(Optional.of(new RatificationSourcePorts.Document(target.currentDocumentId(), target.dealId(), "v1", "a".repeat(64))));
         when(ruleSets.find(target.currentRuleSetId())).thenReturn(Optional.of(new RatificationSourcePorts.RuleSet(target.currentRuleSetId(), target.dealId(), 1, List.of())));
-        when(assembler.assemble(any(), any(), any(), eq(20L), eq("TRY"))).thenReturn(new RatificationSnapshotAssembler.Result(null, "{}", hash));
+        when(assembler.assemble(any(), any(), any(), eq(20L), eq("TRY"), any())).thenReturn(assembledResult(hash));
+    }
+
+    private RatificationSnapshotAssembler.Result assembledResult(String hash) {
+        var snapshot = new RatificationSnapshotAssembler.Snapshot(1, UUID.randomUUID().toString(), "DL-1", "Deal",
+                new RatificationSnapshotAssembler.Party(UUID.randomUUID().toString(), "Buyer"),
+                new RatificationSnapshotAssembler.Party(UUID.randomUUID().toString(), "Seller"),
+                new RatificationSnapshotAssembler.RuleSet(UUID.randomUUID().toString(), 1, List.of()),
+                new RatificationSnapshotAssembler.Terms(20, "TRY"),
+                new RatificationSnapshotAssembler.Document(UUID.randomUUID().toString(), "v1", "a".repeat(64)),
+                null);
+        return new RatificationSnapshotAssembler.Result(snapshot, "{}", hash);
     }
     private void claimed() { inTransaction(); when(idempotency.claim(any())).thenReturn(new IdempotencyClaim(UUID.randomUUID(), IdempotencyClaimStatus.CLAIMED, null)); }
     @SuppressWarnings("unchecked") private void inTransaction() { when(transactions.execute(any(TransactionCallback.class))).thenAnswer(i -> ((TransactionCallback<Object>) i.getArgument(0)).doInTransaction(mock(TransactionStatus.class))); }
-    private CreateRatificationPackageRequest request() { return new CreateRatificationPackageRequest(7, 20, "TRY"); }
+    private CreateRatificationPackageRequest request() { return new CreateRatificationPackageRequest(7, 20, "TRY", null); }
     private RatificationSourcePorts.Target target(UUID dealId, String status, boolean initiator, long version, UUID current, boolean ready) { UUID document = ready ? UUID.randomUUID() : null; UUID rules = ready ? UUID.randomUUID() : null; return new RatificationSourcePorts.Target(dealId, UUID.randomUUID(), status, version, "DL-1", "Deal", initiator, ready ? new RatificationSourcePorts.Party(UUID.randomUUID(), "Buyer") : null, ready ? new RatificationSourcePorts.Party(UUID.randomUUID(), "Seller") : null, document, rules, current); }
     private RatificationRepository.PackageRecord record(UUID id, UUID dealId, RatificationSourcePorts.Target target, String hash, RatificationPackageStatus status) { return new RatificationRepository.PackageRecord(id, dealId, UUID.randomUUID(), status, target.buyer().legalEntityId(), target.seller().legalEntityId(), 20, "TRY", NOW, 0, 1, "{}", hash); }
 }

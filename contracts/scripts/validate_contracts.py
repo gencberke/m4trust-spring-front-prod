@@ -365,6 +365,26 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/settlement", "get"): {
+        "operationId": "getSettlement",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/deals/{dealId}/settlement/release", "post"): {
+        "operationId": "requestSettlementRelease",
+        "responses": {"202", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
+    ("/release-operations/{operationId}", "get"): {
+        "operationId": "getReleaseOperation",
+        "responses": {"200", "400", "401", "403", "404"},
+        "security": [{"SessionCookie": []}],
+    },
+    ("/release-operations/{operationId}/reconcile", "post"): {
+        "operationId": "reconcileReleaseOperation",
+        "responses": {"202", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
 }
 EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/auth/register", "post"): "#/components/schemas/RegisterRequest",
@@ -396,6 +416,8 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deals/{dealId}/disputes/{disputeId}/comments", "post"): "#/components/schemas/CreateDisputeCommentRequest",
     ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post"): "#/components/schemas/AcknowledgeDisputeRequest",
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post"): "#/components/schemas/WithdrawDisputeRequest",
+    ("/deals/{dealId}/settlement/release", "post"): "#/components/schemas/RequestSettlementReleaseRequest",
+    ("/release-operations/{operationId}/reconcile", "post"): "#/components/schemas/ReconcileReleaseOperationRequest",
 }
 EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/auth/register", "post", "201"): "#/components/schemas/PublicUser",
@@ -454,6 +476,10 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}/disputes/{disputeId}/comments", "post", "201"): "#/components/schemas/DisputeComment",
     ("/deals/{dealId}/disputes/{disputeId}/acknowledge", "post", "200"): "#/components/schemas/DisputeDetail",
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "200"): "#/components/schemas/DisputeDetail",
+    ("/deals/{dealId}/settlement", "get", "200"): "#/components/schemas/SettlementDetail",
+    ("/deals/{dealId}/settlement/release", "post", "202"): "#/components/schemas/ReleaseOperation",
+    ("/release-operations/{operationId}", "get", "200"): "#/components/schemas/ReleaseOperation",
+    ("/release-operations/{operationId}/reconcile", "post", "202"): "#/components/schemas/ReleaseOperation",
 }
 EXPECTED_CORE_ERROR_RESPONSES = {
     ("/auth/register", "post", "400"): "MalformedRequest",
@@ -708,11 +734,33 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "404"): "DisputeNotFoundOrHidden",
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "409"): "DisputeMutationConflict",
     ("/deals/{dealId}/disputes/{disputeId}/withdraw", "post", "422"): "ValidationFailed",
+    ("/deals/{dealId}/settlement", "get", "400"): "MalformedRequest",
+    ("/deals/{dealId}/settlement", "get", "401"): "SessionRequired",
+    ("/deals/{dealId}/settlement", "get", "403"): "LegalEntityAccessDenied",
+    ("/deals/{dealId}/settlement", "get", "404"): "SettlementNotFoundOrHidden",
+    ("/deals/{dealId}/settlement/release", "post", "400"): "MalformedRequest",
+    ("/deals/{dealId}/settlement/release", "post", "401"): "SessionRequired",
+    ("/deals/{dealId}/settlement/release", "post", "403"): "SettlementMutationForbidden",
+    ("/deals/{dealId}/settlement/release", "post", "404"): "SettlementNotFoundOrHidden",
+    ("/deals/{dealId}/settlement/release", "post", "409"): "SettlementReleaseConflict",
+    ("/deals/{dealId}/settlement/release", "post", "422"): "ValidationFailed",
+    ("/release-operations/{operationId}", "get", "400"): "MalformedRequest",
+    ("/release-operations/{operationId}", "get", "401"): "SessionRequired",
+    ("/release-operations/{operationId}", "get", "403"): "LegalEntityAccessDenied",
+    ("/release-operations/{operationId}", "get", "404"): "ReleaseOperationNotFoundOrHidden",
+    ("/release-operations/{operationId}/reconcile", "post", "400"): "MalformedRequest",
+    ("/release-operations/{operationId}/reconcile", "post", "401"): "SessionRequired",
+    ("/release-operations/{operationId}/reconcile", "post", "403"): "SettlementMutationForbidden",
+    ("/release-operations/{operationId}/reconcile", "post", "404"): "ReleaseOperationNotFoundOrHidden",
+    ("/release-operations/{operationId}/reconcile", "post", "409"): "ReleaseOperationReconcileConflict",
+    ("/release-operations/{operationId}/reconcile", "post", "422"): "ValidationFailed",
 }
 REMOVED_COMBINED_API_ERROR_CODES = {
     "DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN",
     "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN",
 }
+# Plan 17 B1: OpenAPI commits settlement/release codes before B2 Java enum sync.
+OPENAPI_AHEAD_OF_JAVA_API_ERROR_CODES: set[str] = set()
 
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
@@ -759,6 +807,11 @@ REQUIRED_CORE_API_SCHEMAS = {
     "DisputeOpeningSnapshot", "DisputeDetail", "DisputePage", "DisputeCommentAuthorAttribution",
     "DisputeComment", "DisputeCommentPage", "OpenDisputeRequest", "CreateDisputeCommentRequest",
     "AcknowledgeDisputeRequest", "WithdrawDisputeRequest", "DealCaseworkSummary",
+    "SettlementStatus", "ReleaseOperationStatus", "SettlementAvailableActions",
+    "ReleaseOperationAvailableActions", "ReleaseOperationSummary", "ReleaseOperation",
+    "SettlementDetail", "DealSettlementSummary", "RequestSettlementReleaseRequest",
+    "ReconcileReleaseOperationRequest",
+    "RatificationPackageSnapshotV1", "RatificationPackageSnapshotV2",
 }
 
 
@@ -1211,11 +1264,18 @@ def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[
     elif java_api != set(api_values):
         only_java = sorted(java_api - set(api_values))
         only_openapi = sorted(set(api_values) - java_api)
-        local_failures.append(
-            "FAIL Core API ApiErrorCode exact-set mismatch"
-            + (f"; java-only={','.join(only_java)}" if only_java else "")
-            + (f"; openapi-only={','.join(only_openapi)}" if only_openapi else "")
-        )
+        unexpected_openapi = sorted(set(only_openapi) - OPENAPI_AHEAD_OF_JAVA_API_ERROR_CODES)
+        if unexpected_openapi or only_java:
+            local_failures.append(
+                "FAIL Core API ApiErrorCode exact-set mismatch"
+                + (f"; java-only={','.join(only_java)}" if only_java else "")
+                + (f"; openapi-only={','.join(unexpected_openapi)}" if unexpected_openapi else "")
+            )
+        elif only_openapi:
+            print(
+                "PASS Core API ApiErrorCode exact-set with Plan 17 B1 openapi-ahead codes: "
+                + ",".join(only_openapi)
+            )
     if java_field is None:
         local_failures.append("FAIL Core API FieldErrorCode: Java enum source not found for exact-set check")
     elif java_field != set(field_values):
@@ -1453,7 +1513,7 @@ def validate_contract_documents(failures: list[str]) -> None:
             "canReviewExtraction", "canCreateRatificationPackage", "canApproveRatification", "canRejectRatification",
             "canCreateFundingPlan", "canInitiateFunding", "canReconcilePaymentOperation",
             "canStartFulfillment", "canUploadEvidence", "canAcceptEvidence", "canRejectEvidence",
-            "canOpenDispute",
+            "canOpenDispute", "canRequestRelease", "canReconcileRelease",
         )
         if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
                 or set(actions.get("properties", {})) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"} | set(optional_deal_actions)
@@ -1498,7 +1558,7 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or party.get("properties", {}).get("legalEntityId", {}).get("format") != "uuid"
                 or party.get("properties", {}).get("legalName", {}).get("maxLength") != 200):
             failures.append("FAIL Core API DealParty: stable buyer/seller assignment projection changed")
-        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet", "ratification", "funding", "fulfillment", "casework"}
+        detail_fields = common_deal_fields | {"description", "buyer", "seller", "participants", "currentDocument", "analysis", "currentRuleSet", "ratification", "funding", "fulfillment", "casework", "settlement"}
         detail_description = detail.get("properties", {}).get("description", {})
         detail_participants = detail.get("properties", {}).get("participants", {})
         detail_buyer = detail.get("properties", {}).get("buyer", {})
@@ -1523,11 +1583,15 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or detail.get("properties", {}).get("fulfillment", {}).get("anyOf")
                 != [{"$ref": "#/components/schemas/DealFulfillmentSummary"}, {"type": "null"}]
                 or detail.get("properties", {}).get("casework", {}).get("anyOf")
-                != [{"$ref": "#/components/schemas/DealCaseworkSummary"}, {"type": "null"}]):
+                != [{"$ref": "#/components/schemas/DealCaseworkSummary"}, {"type": "null"}]
+                or detail.get("properties", {}).get("settlement", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/DealSettlementSummary"}, {"type": "null"}]):
             failures.append("FAIL Core API DealDetail: party and participant-role projection changed")
 
         ratification_terms = core_components.get("schemas", {}).get("RatificationCommercialTerms", {})
         ratification_snapshot = core_components.get("schemas", {}).get("RatificationPackageSnapshot", {})
+        ratification_snapshot_v1 = core_components.get("schemas", {}).get("RatificationPackageSnapshotV1", {})
+        ratification_snapshot_v2 = core_components.get("schemas", {}).get("RatificationPackageSnapshotV2", {})
         ratification_status = core_components.get("schemas", {}).get("RatificationPackageStatus", {})
         ratification_readiness = core_components.get("schemas", {}).get("RatificationReadiness", {})
         ratification_create = core_components.get("schemas", {}).get("CreateRatificationPackageRequest", {})
@@ -1540,20 +1604,22 @@ def validate_contract_documents(failures: list[str]) -> None:
         ratification_snapshot_document = core_components.get("schemas", {}).get("RatificationSnapshotDocument", {})
         ratification_conflict = core_components.get("responses", {}).get("RatificationPackageActionConflict", {})
         ratification_create_conflict = core_components.get("responses", {}).get("RatificationPackageCreateConflict", {})
-        snapshot_rules = ratification_snapshot.get("properties", {}).get("ruleSet", {}).get("$ref")
+        snapshot_v1_rules = ratification_snapshot_v1.get("properties", {}).get("ruleSet", {}).get("$ref")
+        snapshot_v2_rules = ratification_snapshot_v2.get("properties", {}).get("ruleSet", {}).get("$ref")
         ratification_closed_fields = {
             "RatificationCommercialTerms": {"amountMinor", "currency"},
             "RatificationSnapshotParty": {"legalEntityId", "legalName"},
             "RatificationSnapshotRule": {"ruleReference", "decision", "category", "title", "description", "structuredValue", "legalBasis", "legalBasisProvenance"},
             "RatificationSnapshotRuleSet": {"ruleSetVersionId", "version", "rules"},
             "RatificationSnapshotDocument": {"documentId", "objectVersion", "sha256"},
-            "RatificationPackageSnapshot": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
+            "RatificationPackageSnapshotV1": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
+            "RatificationPackageSnapshotV2": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document", "disputeWindowDays"},
             "RatificationApproval": {"legalEntityId", "legalName", "status", "approvedAt", "approverUserId"},
             "RatificationPackageAvailableActions": {"canApprove", "canReject"},
             "RatificationPackageDetail": {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"},
             "RatificationPackageHistory": {"items"},
             "RatificationProjection": {"readiness", "currentPackage"},
-            "CreateRatificationPackageRequest": {"expectedVersion", "commercialTerms"},
+            "CreateRatificationPackageRequest": {"expectedVersion", "commercialTerms", "disputeWindowDays"},
             "RatificationPackageActionRequest": {"expectedPackageVersion"},
         }
         ratification_required_fields = {
@@ -1562,7 +1628,8 @@ def validate_contract_documents(failures: list[str]) -> None:
             "RatificationSnapshotRule": {"ruleReference", "decision", "category", "title", "description", "structuredValue", "legalBasis", "legalBasisProvenance"},
             "RatificationSnapshotRuleSet": {"ruleSetVersionId", "version", "rules"},
             "RatificationSnapshotDocument": {"documentId", "objectVersion", "sha256"},
-            "RatificationPackageSnapshot": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
+            "RatificationPackageSnapshotV1": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
+            "RatificationPackageSnapshotV2": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document", "disputeWindowDays"},
             "RatificationApproval": {"legalEntityId", "legalName", "status", "approvedAt", "approverUserId"},
             "RatificationPackageAvailableActions": {"canApprove", "canReject"},
             "RatificationPackageDetail": {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"},
@@ -1571,6 +1638,8 @@ def validate_contract_documents(failures: list[str]) -> None:
             "CreateRatificationPackageRequest": {"expectedVersion", "commercialTerms"},
             "RatificationPackageActionRequest": {"expectedPackageVersion"},
         }
+        snapshot_one_of = ratification_snapshot.get("oneOf", [])
+        snapshot_discriminator = ratification_snapshot.get("discriminator", {})
         if (ratification_readiness.get("enum") != ["NOT_READY", "READY"]
                 or ratification_status.get("enum") != ["PENDING", "RATIFIED", "REJECTED", "SUPERSEDED"]
                 or set(ratification_terms.get("required", [])) != {"amountMinor", "currency"}
@@ -1580,27 +1649,43 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or ratification_terms.get("properties", {}).get("amountMinor", {}).get("maximum") != 9007199254740991
                 or ratification_terms.get("properties", {}).get("currency", {}).get("pattern") != "^[A-Z]{3}$"
                 or set(ratification_create.get("required", [])) != {"expectedVersion", "commercialTerms"}
-                or set(ratification_create.get("properties", {})) != {"expectedVersion", "commercialTerms"}
+                or set(ratification_create.get("properties", {})) != {"expectedVersion", "commercialTerms", "disputeWindowDays"}
                 or ratification_create.get("additionalProperties") is not False
                 or ratification_create.get("properties", {}).get("expectedVersion", {}).get("maximum") != 9007199254740991
+                or ratification_create.get("properties", {}).get("disputeWindowDays", {}).get("minimum") != 0
+                or ratification_create.get("properties", {}).get("disputeWindowDays", {}).get("maximum") != 365
                 or set(ratification_action.get("required", [])) != {"expectedPackageVersion"}
                 or set(ratification_action.get("properties", {})) != {"expectedPackageVersion"}
                 or ratification_action.get("additionalProperties") is not False
                 or ratification_action.get("properties", {}).get("expectedPackageVersion", {}).get("maximum") != 9007199254740991
-                or set(ratification_snapshot.get("required", [])) != {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"}
-                or set(ratification_snapshot.get("properties", {})) != {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"}
-                or ratification_snapshot.get("additionalProperties") is not False
-                or ratification_snapshot.get("properties", {}).get("schemaVersion", {}).get("const") != 1
-                or snapshot_rules != "#/components/schemas/RatificationSnapshotRuleSet"
-                or ratification_snapshot.get("properties", {}).get("dealId", {}).get("pattern") != lowercase_uuid_pattern
+                or set(ratification_snapshot_v1.get("required", [])) != ratification_required_fields["RatificationPackageSnapshotV1"]
+                or set(ratification_snapshot_v1.get("properties", {})) != ratification_closed_fields["RatificationPackageSnapshotV1"]
+                or ratification_snapshot_v1.get("additionalProperties") is not False
+                or ratification_snapshot_v1.get("properties", {}).get("schemaVersion", {}).get("const") != 1
+                or set(ratification_snapshot_v2.get("required", [])) != ratification_required_fields["RatificationPackageSnapshotV2"]
+                or set(ratification_snapshot_v2.get("properties", {})) != ratification_closed_fields["RatificationPackageSnapshotV2"]
+                or ratification_snapshot_v2.get("additionalProperties") is not False
+                or ratification_snapshot_v2.get("properties", {}).get("schemaVersion", {}).get("const") != 2
+                or ratification_snapshot_v2.get("properties", {}).get("disputeWindowDays", {}).get("minimum") != 0
+                or ratification_snapshot_v2.get("properties", {}).get("disputeWindowDays", {}).get("maximum") != 365
+                or snapshot_v1_rules != "#/components/schemas/RatificationSnapshotRuleSet"
+                or snapshot_v2_rules != "#/components/schemas/RatificationSnapshotRuleSet"
+                or ratification_snapshot_v1.get("properties", {}).get("dealId", {}).get("pattern") != lowercase_uuid_pattern
+                or ratification_snapshot_v2.get("properties", {}).get("dealId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_party.get("properties", {}).get("legalEntityId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_rule_set.get("properties", {}).get("ruleSetVersionId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_document.get("properties", {}).get("documentId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_rule_set.get("properties", {}).get("rules", {}).get("uniqueItems") is not True
                 or "UTF-8 bytewise" not in ratification_snapshot_rule_set.get("properties", {}).get("rules", {}).get("description", "")
-                or "sole contentHash input" not in ratification_snapshot.get("description", "")
-                or "RFC 8785" not in ratification_snapshot.get("description", "")
-                or "excludes" not in ratification_snapshot.get("description", "")
+                or "sole contentHash input" not in ratification_snapshot_v1.get("description", "")
+                or "RFC 8785" not in ratification_snapshot_v1.get("description", "")
+                or "excludes" not in ratification_snapshot_v1.get("description", "")
+                or "RFC 8785" not in ratification_snapshot_v2.get("description", "")
+                or snapshot_discriminator.get("propertyName") != "schemaVersion"
+                or snapshot_discriminator.get("mapping", {}).get("1") != "#/components/schemas/RatificationPackageSnapshotV1"
+                or snapshot_discriminator.get("mapping", {}).get("2") != "#/components/schemas/RatificationPackageSnapshotV2"
+                or {ref.get("$ref") for ref in snapshot_one_of}
+                != {"#/components/schemas/RatificationPackageSnapshotV1", "#/components/schemas/RatificationPackageSnapshotV2"}
                 or set(ratification_detail.get("required", [])) != {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"}
                 or ratification_detail.get("additionalProperties") is not False
                 or ratification_detail.get("properties", {}).get("contentHash", {}).get("pattern") != "^[a-f0-9]{64}$"
@@ -2476,6 +2561,93 @@ def validate_contract_documents(failures: list[str]) -> None:
                     or set(schema.get("properties", {})) != expected_fields
                     or set(schema.get("required", [])) != expected_fields):
                 failures.append(f"FAIL Core API Slice 14A {schema_name}: closed field set changed")
+
+        settlement_status = core_components.get("schemas", {}).get("SettlementStatus", {})
+        release_operation_status = core_components.get("schemas", {}).get("ReleaseOperationStatus", {})
+        settlement_actions = core_components.get("schemas", {}).get("SettlementAvailableActions", {})
+        release_operation_actions = core_components.get("schemas", {}).get("ReleaseOperationAvailableActions", {})
+        settlement_detail = core_components.get("schemas", {}).get("SettlementDetail", {})
+        release_operation = core_components.get("schemas", {}).get("ReleaseOperation", {})
+        release_operation_summary = core_components.get("schemas", {}).get("ReleaseOperationSummary", {})
+        deal_settlement_summary = core_components.get("schemas", {}).get("DealSettlementSummary", {})
+        request_settlement_release = core_components.get("schemas", {}).get("RequestSettlementReleaseRequest", {})
+        reconcile_release_operation = core_components.get("schemas", {}).get("ReconcileReleaseOperationRequest", {})
+        settlement_mutation_forbidden = core_components.get("responses", {}).get("SettlementMutationForbidden", {})
+        settlement_not_found = core_components.get("responses", {}).get("SettlementNotFoundOrHidden", {})
+        settlement_release_conflict = core_components.get("responses", {}).get("SettlementReleaseConflict", {})
+        release_operation_not_found = core_components.get("responses", {}).get("ReleaseOperationNotFoundOrHidden", {})
+        release_operation_reconcile_conflict = core_components.get("responses", {}).get("ReleaseOperationReconcileConflict", {})
+        settlement_closed_fields = {
+            "SettlementAvailableActions": {"canRequestRelease", "canReconcileRelease"},
+            "ReleaseOperationAvailableActions": {"canReconcile"},
+            "ReleaseOperationSummary": {"id", "status", "reconciliationRequired"},
+            "ReleaseOperation": {"id", "settlementId", "status", "mode", "reconciliationRequired", "availableActions", "version", "createdAt", "updatedAt"},
+            "SettlementDetail": {"id", "dealId", "status", "mode", "disputeWindowDays", "releaseEligibleAt", "currentReleaseOperation", "availableActions", "version", "createdAt", "updatedAt"},
+            "DealSettlementSummary": {"settlementId", "status", "currentReleaseOperationId"},
+            "RequestSettlementReleaseRequest": {"expectedDealVersion", "expectedSettlementVersion", "expectedFulfillmentVersion", "expectedFundingUnitVersion"},
+            "ReconcileReleaseOperationRequest": {"expectedVersion"},
+        }
+        if (settlement_status.get("enum")
+                != ["NOT_READY", "READY", "PROCESSING", "ON_HOLD", "SIMULATED_SETTLED", "FAILED"]
+                or release_operation_status.get("enum")
+                != ["QUEUED", "PROCESSING", "RECONCILIATION_REQUIRED", "SIMULATED_SETTLED", "SIMULATED_DECLINED", "FAILED_BEFORE_DISPATCH"]
+                or set(settlement_actions.get("required", [])) != {"canRequestRelease", "canReconcileRelease"}
+                or set(settlement_actions.get("properties", {})) != {"canRequestRelease", "canReconcileRelease"}
+                or settlement_actions.get("additionalProperties") is not False
+                or set(release_operation_actions.get("required", [])) != {"canReconcile"}
+                or set(release_operation_actions.get("properties", {})) != {"canReconcile"}
+                or release_operation_actions.get("additionalProperties") is not False
+                or release_operation.get("properties", {}).get("mode", {}).get("$ref")
+                != "#/components/schemas/PaymentSimulationMode"
+                or settlement_detail.get("properties", {}).get("mode", {}).get("$ref")
+                != "#/components/schemas/PaymentSimulationMode"
+                or release_operation.get("properties", {}).get("reconciliationRequired", {}).get("type") != "boolean"
+                or settlement_detail.get("properties", {}).get("currentReleaseOperation", {}).get("anyOf")
+                != [{"$ref": "#/components/schemas/ReleaseOperationSummary"}, {"type": "null"}]
+                or settlement_detail.get("properties", {}).get("disputeWindowDays", {}).get("anyOf", [{}])[-1]
+                != {"type": "null"}
+                or settlement_detail.get("properties", {}).get("releaseEligibleAt", {}).get("anyOf", [{}])[-1]
+                != {"type": "null"}
+                or deal_settlement_summary.get("properties", {}).get("currentReleaseOperationId", {}).get("anyOf", [{}])[-1]
+                != {"type": "null"}
+                or request_settlement_release.get("properties", {}).get("expectedDealVersion", {}).get("maximum") != 9007199254740991
+                or request_settlement_release.get("properties", {}).get("expectedSettlementVersion", {}).get("maximum") != 9007199254740991
+                or request_settlement_release.get("properties", {}).get("expectedFulfillmentVersion", {}).get("maximum") != 9007199254740991
+                or request_settlement_release.get("properties", {}).get("expectedFundingUnitVersion", {}).get("maximum") != 9007199254740991
+                or reconcile_release_operation.get("properties", {}).get("expectedVersion", {}).get("maximum") != 9007199254740991
+                or "SETTLEMENT_MUTATION_FORBIDDEN" not in settlement_mutation_forbidden.get("description", "")
+                or "SETTLEMENT_NOT_FOUND" not in settlement_not_found.get("description", "")
+                or "DEAL_NOT_FOUND" not in settlement_not_found.get("description", "")
+                or "SETTLEMENT_STALE_VERSION" not in settlement_release_conflict.get("description", "")
+                or "SETTLEMENT_CONTRACTUAL_WINDOW_MISSING" not in settlement_release_conflict.get("description", "")
+                or "SETTLEMENT_DISPUTE_WINDOW_NOT_ELAPSED" not in settlement_release_conflict.get("description", "")
+                or "SETTLEMENT_ACTIVE_DISPUTE" not in settlement_release_conflict.get("description", "")
+                or "RELEASE_OPERATION_ALREADY_EXISTS" not in settlement_release_conflict.get("description", "")
+                or "SETTLEMENT_ALREADY_TERMINAL" not in settlement_release_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in settlement_release_conflict.get("description", "")
+                or "RELEASE_OPERATION_NOT_FOUND" not in release_operation_not_found.get("description", "")
+                or "RELEASE_OPERATION_STALE_VERSION" not in release_operation_reconcile_conflict.get("description", "")
+                or "RELEASE_RECONCILIATION_UNAVAILABLE" not in release_operation_reconcile_conflict.get("description", "")
+                or "RELEASE_OUTCOME_UNKNOWN" not in release_operation_reconcile_conflict.get("description", "")):
+            failures.append("FAIL Core API Plan 17 settlement: closed enums, projections, requests, or stable conflicts changed")
+        for schema_name, expected_fields in settlement_closed_fields.items():
+            schema = core_components.get("schemas", {}).get(schema_name, {})
+            if (schema.get("additionalProperties") is not False
+                    or set(schema.get("properties", {})) != expected_fields
+                    or set(schema.get("required", [])) != expected_fields):
+                failures.append(f"FAIL Core API Plan 17 {schema_name}: closed field set changed")
+        release_operation_id = core_parameters.get("ReleaseOperationId", {})
+        if ((release_operation_id.get("name"), release_operation_id.get("in"), release_operation_id.get("required"),
+                release_operation_id.get("schema", {}).get("format")) != ("operationId", "path", True, "uuid")):
+            failures.append("FAIL Core API ReleaseOperationId: required UUID path contract changed")
+        release_location = (core_paths.get("/deals/{dealId}/settlement/release", {}).get("post", {}).get("responses", {})
+                .get("202", {}).get("headers", {}).get("Location", {}))
+        reconcile_release_location = (core_paths.get("/release-operations/{operationId}/reconcile", {}).get("post", {}).get("responses", {})
+                .get("202", {}).get("headers", {}).get("Location", {}))
+        if (release_location.get("schema", {}).get("format") != "uri-reference"
+                or reconcile_release_location.get("schema", {}).get("format") != "uri-reference"):
+            failures.append("FAIL Core API settlement release/reconcile: 202 Location header is required")
+
         dispute_sort = core_parameters.get("DisputeSort", {}).get("schema", {})
         dispute_comment_sort = core_parameters.get("DisputeCommentSort", {}).get("schema", {})
         if (dispute_sort.get("default") != "openedAt,desc"

@@ -858,6 +858,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/settlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the participant-readable settlement projection for a Deal
+         * @description Returns the Deal's Settlement projection including backend-derived `canRequestRelease` and `canReconcileRelease`, contractual dispute-window metadata, release eligibility deadline, and the current release operation when one exists. All Deal participants may read; only buyer entity ADMIN may mutate via release or reconcile. Returns 404 until a settlement row exists for the visible Deal. `mode` is always `DEMO_SIMULATED` when a settlement exists.
+         */
+        get: operations["getSettlement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deals/{dealId}/settlement/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Initiate a release operation without awaiting the demo simulator
+         * @description Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries expected Deal, Settlement, Fulfillment, and FundingUnit versions. The durable intent, dispatch/outbox record, audit entry, and HTTP idempotency result are committed in one short transaction before this response is returned; the demo simulator is never called within the request or its transaction. Returns 202 with the CREATED release operation projection. At most one lifetime release operation exists per Settlement: replaying the same Idempotency-Key returns the same operation, a different key returns 409, and a terminal settlement rejects any new release with 409.
+         */
+        post: operations["requestSettlementRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/release-operations/{operationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one release operation projection for polling
+         * @description Participant-readable safe release operation projection: status, explicit reconciliation-required indication, and backend-derived reconcile availability. Raw simulator payloads and other provider internals are never returned.
+         */
+        get: operations["getReleaseOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/release-operations/{operationId}/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispatch query-first reconciliation for a release operation
+         * @description Buyer entity ADMIN-only action; Idempotency-Key is required. The request carries the target ReleaseOperation expectedVersion. This command never calls the simulator within the request: it commits a durable reconciliation dispatch/audit/idempotency record in one short transaction and returns 202 with the same operation Location. A relay later queries the same operation using its unchanged lifetime key and applies a definitive result in a separate transaction. Replaying the same Idempotency-Key returns the same result and Location; a different request with the same key returns 409.
+         */
+        post: operations["reconcileReleaseOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/{dealId}/invitations": {
         parameters: {
             query?: never;
@@ -1174,7 +1254,7 @@ export interface components {
             totalPages: number;
         };
         /**
-         * @description Closed authoritative Deal container status set.
+         * @description Closed authoritative Deal container status set. COMPLETED is reachable after query-verified simulated settlement and absence of active disputes (ADR-014 §2.8); it is not automatic on fulfillment completion.
          * @enum {string}
          */
         DealStatus: "DRAFT" | "ACTIVE" | "CANCELLED" | "COMPLETED" | "ARCHIVED";
@@ -1682,10 +1762,13 @@ export interface components {
             /** @description Lowercase hex SHA-256 of the immutable document object. */
             sha256: string;
         };
-        /** @description The sole contentHash input: this closed immutable JSON object is canonicalized with RFC 8785 JCS, encoded as UTF-8 bytes, then SHA-256 hashed to lowercase hexadecimal. It excludes package id/version/status/contentHash, approvals, approver or actor visibility, available actions, timestamps, audit, and all detail-wrapper metadata. UUID strings are lowercase; currency is uppercase. V1 rules are unique by ruleReference and sorted by its UTF-8 bytewise ascending value. Any future snapshot array requires an explicit contract ordering rule. */
-        RatificationPackageSnapshot: {
-            /** @constant */
-            schemaVersion: 1;
+        /** @description Schema version 1 of the sole contentHash input: this closed immutable JSON object is canonicalized with RFC 8785 JCS, encoded as UTF-8 bytes, then SHA-256 hashed to lowercase hexadecimal. It excludes package id/version/status/contentHash, approvals, approver or actor visibility, available actions, timestamps, audit, and all detail-wrapper metadata. UUID strings are lowercase; currency is uppercase. V1 rules are unique by ruleReference and sorted by its UTF-8 bytewise ascending value. Any future snapshot array requires an explicit contract ordering rule. */
+        RatificationPackageSnapshotV1: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            schemaVersion: "1";
             /**
              * Format: uuid
              * @description Lowercase canonical UUID string.
@@ -1699,6 +1782,30 @@ export interface components {
             commercialTerms: components["schemas"]["RatificationCommercialTerms"];
             document: components["schemas"]["RatificationSnapshotDocument"];
         };
+        /** @description Schema version 2 of the sole contentHash input: identical to v1 plus the immutable contractual disputeWindowDays field required for release eligibility. Canonicalized with RFC 8785 JCS, encoded as UTF-8 bytes, then SHA-256 hashed to lowercase hexadecimal. It excludes package id/version/status/contentHash, approvals, approver or actor visibility, available actions, timestamps, audit, and all detail-wrapper metadata. */
+        RatificationPackageSnapshotV2: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            schemaVersion: "2";
+            /**
+             * Format: uuid
+             * @description Lowercase canonical UUID string.
+             */
+            dealId: string;
+            dealReference: string;
+            dealTitle: string;
+            buyer: components["schemas"]["RatificationSnapshotParty"];
+            seller: components["schemas"]["RatificationSnapshotParty"];
+            ruleSet: components["schemas"]["RatificationSnapshotRuleSet"];
+            commercialTerms: components["schemas"]["RatificationCommercialTerms"];
+            document: components["schemas"]["RatificationSnapshotDocument"];
+            /** @description Immutable contractual dispute window in whole UTC days after fulfillment completion before release becomes eligible. Inclusive 0..365 per founder amendment 2026-07-23; one day is an exact 24-hour UTC interval. */
+            disputeWindowDays: number;
+        };
+        /** @description Discriminated immutable ratification snapshot used as the sole contentHash input. V1 remains readable; v2 is produced when disputeWindowDays is supplied at package create. Both versions preserve RFC 8785 JCS canonicalization rules. */
+        RatificationPackageSnapshot: components["schemas"]["RatificationPackageSnapshotV1"] | components["schemas"]["RatificationPackageSnapshotV2"];
         RatificationApproval: {
             /** Format: uuid */
             legalEntityId: string;
@@ -1737,6 +1844,8 @@ export interface components {
         CreateRatificationPackageRequest: {
             expectedVersion: number;
             commercialTerms: components["schemas"]["RatificationCommercialTerms"];
+            /** @description Optional contractual dispute window in whole UTC days. When present, the server creates a schemaVersion=2 immutable snapshot; when absent, v1 is created. Immutable after package create. */
+            disputeWindowDays?: number;
         };
         RatificationPackageActionRequest: {
             expectedPackageVersion: number;
@@ -1849,6 +1958,93 @@ export interface components {
             /** @description Expected PaymentOperation version. */
             expectedVersion: number;
         };
+        /**
+         * @description Closed Settlement state set (ADR-014 §2.3). Allowed transitions are NOT_READY -> READY -> PROCESSING; PROCESSING -> ON_HOLD | SIMULATED_SETTLED | FAILED; ON_HOLD -> PROCESSING | SIMULATED_SETTLED | FAILED. SIMULATED_SETTLED is terminal and query-verified only. FAILED is query-verified decline or permanent pre-dispatch failure; ambiguous outcomes remain non-terminal.
+         * @enum {string}
+         */
+        SettlementStatus: "NOT_READY" | "READY" | "PROCESSING" | "ON_HOLD" | "SIMULATED_SETTLED" | "FAILED";
+        /**
+         * @description Closed ReleaseOperation public state set (ADR-014 §2.3). QUEUED means durable intent committed; PROCESSING means initiate/query in flight for the lifetime key; RECONCILIATION_REQUIRED means outcome unknown; SIMULATED_SETTLED and SIMULATED_DECLINED are query-verified terminals; FAILED_BEFORE_DISPATCH is a proven pre-external permanent failure. No replacement operation after terminal.
+         * @enum {string}
+         */
+        ReleaseOperationStatus: "QUEUED" | "PROCESSING" | "RECONCILIATION_REQUIRED" | "SIMULATED_SETTLED" | "SIMULATED_DECLINED" | "FAILED_BEFORE_DISPATCH";
+        /** @description Backend-derived action availability for this Settlement and actor context. */
+        SettlementAvailableActions: {
+            /** @description True only for buyer entity ADMIN while settlement is READY, eligibility is satisfied, and no lifetime release operation exists. */
+            canRequestRelease: boolean;
+            /** @description True only for buyer entity ADMIN while the current release operation requires reconciliation. */
+            canReconcileRelease: boolean;
+        };
+        /** @description Backend-derived action availability for this ReleaseOperation and actor context. */
+        ReleaseOperationAvailableActions: {
+            /** @description True only for buyer entity ADMIN while the operation status is RECONCILIATION_REQUIRED or otherwise eligible for reconcile dispatch. */
+            canReconcile: boolean;
+        };
+        /** @description Compact release-operation summary embedded in SettlementDetail. */
+        ReleaseOperationSummary: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["ReleaseOperationStatus"];
+            reconciliationRequired: boolean;
+        };
+        /** @description Safe non-raw ReleaseOperation projection. Raw simulator payloads, provider internals, and other sensitive data are never included. */
+        ReleaseOperation: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            settlementId: string;
+            status: components["schemas"]["ReleaseOperationStatus"];
+            mode: components["schemas"]["PaymentSimulationMode"];
+            /** @description Explicit backend-derived indication that is true only while the operation requires reconciliation; clients must not infer it by parsing status alone. */
+            reconciliationRequired: boolean;
+            availableActions: components["schemas"]["ReleaseOperationAvailableActions"];
+            /** Format: int64 */
+            version: number;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        /** @description Deal-scoped settlement projection. Mode is always DEMO_SIMULATED when a settlement exists because release is unreachable without the demo simulator. */
+        SettlementDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dealId: string;
+            status: components["schemas"]["SettlementStatus"];
+            mode: components["schemas"]["PaymentSimulationMode"];
+            /** @description Contractual dispute window days from the ratified package snapshot, or null when the current package is v1 or otherwise release-ineligible. */
+            disputeWindowDays: number | null;
+            /** @description Server-computed UTC instant when release first becomes eligible (`completedAt + disputeWindowDays * 24 hours`), or null when not yet computable. */
+            releaseEligibleAt: components["schemas"]["UtcTimestamp"] | null;
+            /** @description Current lifetime release operation summary, or null when none exists yet. */
+            currentReleaseOperation: components["schemas"]["ReleaseOperationSummary"] | null;
+            availableActions: components["schemas"]["SettlementAvailableActions"];
+            /** Format: int64 */
+            version: number;
+            createdAt: components["schemas"]["UtcTimestamp"];
+            updatedAt: components["schemas"]["UtcTimestamp"];
+        };
+        /** @description Optional backend-owned Deal settlement summary; independent of the full settlement projection. */
+        DealSettlementSummary: {
+            /** Format: uuid */
+            settlementId: string;
+            status: components["schemas"]["SettlementStatus"];
+            /** @description Current lifetime release operation id, or null when none exists. */
+            currentReleaseOperationId: string | null;
+        };
+        RequestSettlementReleaseRequest: {
+            /** @description Expected Deal version. */
+            expectedDealVersion: number;
+            /** @description Expected Settlement version. */
+            expectedSettlementVersion: number;
+            /** @description Expected Fulfillment version. */
+            expectedFulfillmentVersion: number;
+            /** @description Expected FundingUnit version. */
+            expectedFundingUnitVersion: number;
+        };
+        ReconcileReleaseOperationRequest: {
+            /** @description Expected ReleaseOperation version. */
+            expectedVersion: number;
+        };
         /** @description Backend-derived action availability for the current user and active legal entity. Clients use this projection for presentation but the backend always re-authorizes mutations. */
         DealAvailableActions: {
             canUpdate: boolean;
@@ -1885,6 +2081,10 @@ export interface components {
             canRejectEvidence?: boolean;
             /** @description Optional actor-aware availability. True only for buyer or seller entity ADMIN when the Deal is ACTIVE, fulfillment exists in an eligible opening status, and no OPEN or UNDER_REVIEW case exists. Absent or unknown means false/read-only. */
             canOpenDispute?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when settlement is READY, release eligibility is satisfied, and no lifetime release operation exists. Absent or unknown means false/read-only. */
+            canRequestRelease?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the settlement's current release operation requires reconciliation. Absent or unknown means false/read-only. */
+            canReconcileRelease?: boolean;
         };
         /**
          * Format: date-time
@@ -1959,6 +2159,8 @@ export interface components {
             fulfillment?: components["schemas"]["DealFulfillmentSummary"] | null;
             /** @description Optional backend-owned active dispute summary for buyer/seller actors only. Null-tolerant: null means no active OPEN or UNDER_REVIEW case is currently projected for this actor; absence is tolerated for additive compatibility. Other participants never receive this field. */
             casework?: components["schemas"]["DealCaseworkSummary"] | null;
+            /** @description Optional backend-owned settlement summary. Null-tolerant: null means settlement is not currently projected for this Deal; absence is tolerated for additive compatibility with clients predating Plan 17. */
+            settlement?: components["schemas"]["DealSettlementSummary"] | null;
         };
         DealPage: {
             /** @description Deal summaries visible to the active legal entity; never null. */
@@ -2555,7 +2757,7 @@ export interface components {
          * @description Closed catalog of stable public Problem Details codes. OpenAPI is the authority.
          * @enum {string}
          */
-        ApiErrorCode: "ACCESS_DENIED" | "AUTH_EMAIL_ALREADY_EXISTS" | "AUTH_INVALID_CREDENTIALS" | "AUTH_SESSION_EXPIRED" | "CASEWORK_NOT_FOUND_OR_HIDDEN" | "CSRF_TOKEN_INVALID" | "DEAL_ANALYSIS_REQUEST_FORBIDDEN" | "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS" | "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE" | "DEAL_DOCUMENT_MUTATION_FORBIDDEN" | "DEAL_DOCUMENT_NOT_FOUND" | "DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED" | "DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY" | "DEAL_INVITATION_FORBIDDEN" | "DEAL_INVITATION_NOT_FOUND" | "DEAL_INVITATION_PENDING_EXISTS" | "DEAL_INVITATION_STALE_VERSION" | "DEAL_INVITATION_STATE_CONFLICT" | "DEAL_MUTATION_FORBIDDEN" | "DEAL_NOT_FOUND" | "DEAL_REVIEW_ACCEPTANCE_FORBIDDEN" | "DEAL_STALE_VERSION" | "DEAL_STATE_CONFLICT" | "DISPUTE_ACKNOWLEDGE_FORBIDDEN" | "DISPUTE_ACTIVE_CASE_EXISTS" | "DISPUTE_COMMENT_FORBIDDEN" | "DISPUTE_NOT_FOUND_OR_HIDDEN" | "DISPUTE_OPEN_FORBIDDEN" | "DISPUTE_STALE_VERSION" | "DISPUTE_STATE_CONFLICT" | "DISPUTE_WITHDRAW_FORBIDDEN" | "DOCUMENT_DOWNLOAD_NOT_AVAILABLE" | "DOCUMENT_UPLOAD_EXPIRED" | "DOCUMENT_UPLOAD_STATE_CONFLICT" | "DOCUMENT_VERIFICATION_FAILED" | "EVIDENCE_ALREADY_SUBMITTED" | "EVIDENCE_DOWNLOAD_NOT_AVAILABLE" | "EVIDENCE_MILESTONE_CONFLICT" | "EVIDENCE_NOT_FOUND" | "EVIDENCE_REVIEW_FORBIDDEN" | "EVIDENCE_STALE_VERSION" | "EVIDENCE_STATE_CONFLICT" | "EVIDENCE_UPLOAD_EXPIRED" | "EVIDENCE_UPLOAD_FORBIDDEN" | "EVIDENCE_UPLOAD_STATE_CONFLICT" | "EVIDENCE_VERIFICATION_FAILED" | "FULFILLMENT_ALREADY_EXISTS" | "FULFILLMENT_COMPLETED" | "FULFILLMENT_NOT_FOUND" | "FULFILLMENT_STALE_VERSION" | "FULFILLMENT_START_FORBIDDEN" | "FULFILLMENT_STATE_CONFLICT" | "FUNDING_MUTATION_FORBIDDEN" | "FUNDING_PLAN_ALREADY_EXISTS" | "FUNDING_PLAN_NOT_FOUND" | "FUNDING_UNIT_ALREADY_FUNDED" | "FUNDING_UNIT_NOT_FOUND" | "FUNDING_UNIT_STALE_VERSION" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL_ERROR" | "LEGAL_ENTITY_ACCESS_DENIED" | "LEGAL_ENTITY_NOT_FOUND" | "MALFORMED_REQUEST" | "PAYMENT_OPERATION_IN_FLIGHT" | "PAYMENT_OPERATION_NOT_FOUND" | "PAYMENT_OPERATION_STALE_VERSION" | "PAYMENT_OPERATION_STATE_CONFLICT" | "RATE_LIMIT_EXCEEDED" | "RATIFICATION_APPROVAL_FORBIDDEN" | "RATIFICATION_NOT_READY" | "RATIFICATION_PACKAGE_CREATE_FORBIDDEN" | "RATIFICATION_PACKAGE_NOT_FOUND" | "RATIFICATION_PACKAGE_STATE_CONFLICT" | "RATIFICATION_STALE_PACKAGE" | "RULE_SET_VERSION_NOT_FOUND" | "VALIDATION_FAILED" | "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS" | "VIDEO_ANALYSIS_ALREADY_COMPLETED" | "VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE" | "VIDEO_ANALYSIS_REQUEST_FORBIDDEN";
+        ApiErrorCode: "ACCESS_DENIED" | "AUTH_EMAIL_ALREADY_EXISTS" | "AUTH_INVALID_CREDENTIALS" | "AUTH_SESSION_EXPIRED" | "CASEWORK_NOT_FOUND_OR_HIDDEN" | "CSRF_TOKEN_INVALID" | "DEAL_ANALYSIS_REQUEST_FORBIDDEN" | "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS" | "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE" | "DEAL_DOCUMENT_MUTATION_FORBIDDEN" | "DEAL_DOCUMENT_NOT_FOUND" | "DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED" | "DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY" | "DEAL_INVITATION_FORBIDDEN" | "DEAL_INVITATION_NOT_FOUND" | "DEAL_INVITATION_PENDING_EXISTS" | "DEAL_INVITATION_STALE_VERSION" | "DEAL_INVITATION_STATE_CONFLICT" | "DEAL_MUTATION_FORBIDDEN" | "DEAL_NOT_FOUND" | "DEAL_REVIEW_ACCEPTANCE_FORBIDDEN" | "DEAL_STALE_VERSION" | "DEAL_STATE_CONFLICT" | "DISPUTE_ACKNOWLEDGE_FORBIDDEN" | "DISPUTE_ACTIVE_CASE_EXISTS" | "DISPUTE_COMMENT_FORBIDDEN" | "DISPUTE_NOT_FOUND_OR_HIDDEN" | "DISPUTE_OPEN_FORBIDDEN" | "DISPUTE_STALE_VERSION" | "DISPUTE_STATE_CONFLICT" | "DISPUTE_WITHDRAW_FORBIDDEN" | "DOCUMENT_DOWNLOAD_NOT_AVAILABLE" | "DOCUMENT_UPLOAD_EXPIRED" | "DOCUMENT_UPLOAD_STATE_CONFLICT" | "DOCUMENT_VERIFICATION_FAILED" | "EVIDENCE_ALREADY_SUBMITTED" | "EVIDENCE_DOWNLOAD_NOT_AVAILABLE" | "EVIDENCE_MILESTONE_CONFLICT" | "EVIDENCE_NOT_FOUND" | "EVIDENCE_REVIEW_FORBIDDEN" | "EVIDENCE_STALE_VERSION" | "EVIDENCE_STATE_CONFLICT" | "EVIDENCE_UPLOAD_EXPIRED" | "EVIDENCE_UPLOAD_FORBIDDEN" | "EVIDENCE_UPLOAD_STATE_CONFLICT" | "EVIDENCE_VERIFICATION_FAILED" | "FULFILLMENT_ALREADY_EXISTS" | "FULFILLMENT_COMPLETED" | "FULFILLMENT_NOT_FOUND" | "FULFILLMENT_STALE_VERSION" | "FULFILLMENT_START_FORBIDDEN" | "FULFILLMENT_STATE_CONFLICT" | "FUNDING_MUTATION_FORBIDDEN" | "FUNDING_PLAN_ALREADY_EXISTS" | "FUNDING_PLAN_NOT_FOUND" | "FUNDING_UNIT_ALREADY_FUNDED" | "FUNDING_UNIT_NOT_FOUND" | "FUNDING_UNIT_STALE_VERSION" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL_ERROR" | "LEGAL_ENTITY_ACCESS_DENIED" | "LEGAL_ENTITY_NOT_FOUND" | "MALFORMED_REQUEST" | "PAYMENT_OPERATION_IN_FLIGHT" | "PAYMENT_OPERATION_NOT_FOUND" | "PAYMENT_OPERATION_STALE_VERSION" | "PAYMENT_OPERATION_STATE_CONFLICT" | "RATE_LIMIT_EXCEEDED" | "RATIFICATION_APPROVAL_FORBIDDEN" | "RATIFICATION_NOT_READY" | "RATIFICATION_PACKAGE_CREATE_FORBIDDEN" | "RATIFICATION_PACKAGE_NOT_FOUND" | "RATIFICATION_PACKAGE_STATE_CONFLICT" | "RATIFICATION_STALE_PACKAGE" | "RELEASE_OPERATION_ALREADY_EXISTS" | "RELEASE_OPERATION_NOT_FOUND" | "RELEASE_OPERATION_STALE_VERSION" | "RELEASE_OUTCOME_UNKNOWN" | "RELEASE_RECONCILIATION_UNAVAILABLE" | "RULE_SET_VERSION_NOT_FOUND" | "SETTLEMENT_ACTIVE_DISPUTE" | "SETTLEMENT_ALREADY_TERMINAL" | "SETTLEMENT_CONTRACTUAL_WINDOW_MISSING" | "SETTLEMENT_DISPUTE_WINDOW_NOT_ELAPSED" | "SETTLEMENT_MUTATION_FORBIDDEN" | "SETTLEMENT_NOT_FOUND" | "SETTLEMENT_STALE_VERSION" | "VALIDATION_FAILED" | "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS" | "VIDEO_ANALYSIS_ALREADY_COMPLETED" | "VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE" | "VIDEO_ANALYSIS_REQUEST_FORBIDDEN";
         /**
          * @description Closed catalog of stable public field-validation codes. OpenAPI is the authority.
          * @enum {string}
@@ -2994,6 +3196,51 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), the Deal does not exist or is hidden because the authorized active legal entity is not a participant (DEAL_NOT_FOUND), or the visible Deal has no settlement projection yet (SETTLEMENT_NOT_FOUND). All cases return 404 and preserve non-disclosure at their respective authorization boundary. */
+        SettlementNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the buyer entity, or the caller is not an ADMIN of the buyer entity (SETTLEMENT_MUTATION_FORBIDDEN). Seller entity, initiator-only entity, and other participant visibility never grant release or reconcile authority. */
+        SettlementMutationForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the supplied Settlement expectedVersion is stale (SETTLEMENT_STALE_VERSION), the supplied Fulfillment expectedVersion is stale (FULFILLMENT_STALE_VERSION), the supplied FundingUnit expectedVersion is stale (FUNDING_UNIT_STALE_VERSION), the Deal is not ACTIVE (DEAL_STATE_CONFLICT), the ratification package lacks a contractual dispute window or is v1/ineligible (SETTLEMENT_CONTRACTUAL_WINDOW_MISSING), the contractual dispute window has not elapsed (SETTLEMENT_DISPUTE_WINDOW_NOT_ELAPSED), an active OPEN or UNDER_REVIEW dispute blocks release (SETTLEMENT_ACTIVE_DISPUTE), the settlement is already terminal (SETTLEMENT_ALREADY_TERMINAL), a lifetime release operation already exists (RELEASE_OPERATION_ALREADY_EXISTS), or Idempotency-Key was reused for a different canonical request (IDEMPOTENCY_KEY_REUSED). */
+        SettlementReleaseConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The active legal entity is nonexistent or hidden because the authenticated user is not a member (LEGAL_ENTITY_NOT_FOUND), or the ReleaseOperation does not exist, or its owning Deal is hidden because the authorized active legal entity is not a participant; the latter cases both use RELEASE_OPERATION_NOT_FOUND and do not disclose existence. */
+        ReleaseOperationNotFoundOrHidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied ReleaseOperation expectedVersion is stale (RELEASE_OPERATION_STALE_VERSION), reconciliation is not available for the current operation state (RELEASE_RECONCILIATION_UNAVAILABLE), the simulator outcome remains unknown after query (RELEASE_OUTCOME_UNKNOWN), the settlement is already terminal and cannot accept further reconciliation (SETTLEMENT_ALREADY_TERMINAL), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        ReleaseOperationReconcileConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
         /** @description CSRF validation failed (CSRF_TOKEN_INVALID), the active legal entity context is missing or malformed (LEGAL_ENTITY_ACCESS_DENIED), or the active legal entity is visible on the Deal but is not the seller entity, or the caller is not an ADMIN or MEMBER of the seller entity (FULFILLMENT_START_FORBIDDEN). Buyer entity, initiator-only entity, and other participant visibility never grant fulfillment start authority. */
         FulfillmentStartForbidden: {
             headers: {
@@ -3194,6 +3441,8 @@ export interface components {
         FundingUnitId: string;
         /** @description Public UUID of the requested PaymentOperation. */
         PaymentOperationId: string;
+        /** @description Public UUID of the requested ReleaseOperation. */
+        ReleaseOperationId: string;
         /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
         EvidenceSubmissionId: string;
         /** @description Public UUID of a DisputeCase for a Deal. */
@@ -4961,6 +5210,146 @@ export interface operations {
             403: components["responses"]["DisputeWithdrawForbidden"];
             404: components["responses"]["DisputeNotFoundOrHidden"];
             409: components["responses"]["DisputeMutationConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getSettlement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settlement projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["SettlementNotFoundOrHidden"];
+        };
+    };
+    requestSettlementRelease: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestSettlementReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Durable QUEUED release operation accepted for dispatch; the simulator result is resolved later and observed only through polling reads. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of the created release operation. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["SettlementMutationForbidden"];
+            404: components["responses"]["SettlementNotFoundOrHidden"];
+            409: components["responses"]["SettlementReleaseConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getReleaseOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+            };
+            path: {
+                /** @description Public UUID of the requested ReleaseOperation. */
+                operationId: components["parameters"]["ReleaseOperationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Release operation projection visible to the active Deal participant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["LegalEntityAccessDenied"];
+            404: components["responses"]["ReleaseOperationNotFoundOrHidden"];
+        };
+    };
+    reconcileReleaseOperation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested ReleaseOperation. */
+                operationId: components["parameters"]["ReleaseOperationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcileReleaseOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Durable reconciliation dispatch accepted; the simulator query result is resolved later and observed only through polling reads of the same operation. */
+            202: {
+                headers: {
+                    /** @description Same-origin path of the target release operation. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseOperation"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["SettlementMutationForbidden"];
+            404: components["responses"]["ReleaseOperationNotFoundOrHidden"];
+            409: components["responses"]["ReleaseOperationReconcileConflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };

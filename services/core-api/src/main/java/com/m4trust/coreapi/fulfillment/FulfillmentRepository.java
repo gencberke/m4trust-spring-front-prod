@@ -24,12 +24,13 @@ class FulfillmentRepository {
         jdbcTemplate.update("""
                 INSERT INTO fulfillment (
                     id, deal_id, tenant_id, source_package_id, status,
-                    version, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    version, created_at, updated_at, completed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, fulfillment.id(), fulfillment.dealId(), fulfillment.tenantId(),
                 fulfillment.sourcePackageId(), fulfillment.status().name(),
                 fulfillment.version(), Timestamp.from(fulfillment.createdAt()),
-                Timestamp.from(fulfillment.updatedAt()));
+                Timestamp.from(fulfillment.updatedAt()),
+                fulfillment.completedAt() == null ? null : Timestamp.from(fulfillment.completedAt()));
     }
 
     Optional<Fulfillment.FulfillmentRecord> findByDealId(UUID dealId) {
@@ -55,10 +56,12 @@ class FulfillmentRepository {
     boolean update(Fulfillment.FulfillmentRecord fulfillment, long previousVersion) {
         return jdbcTemplate.update("""
                 UPDATE fulfillment
-                SET status = ?, updated_at = ?, version = ?
+                SET status = ?, updated_at = ?, completed_at = ?, version = ?
                 WHERE id = ? AND version = ?
                 """, fulfillment.status().name(),
-                Timestamp.from(fulfillment.updatedAt()), fulfillment.version(),
+                Timestamp.from(fulfillment.updatedAt()),
+                fulfillment.completedAt() == null ? null : Timestamp.from(fulfillment.completedAt()),
+                fulfillment.version(),
                 fulfillment.id(), previousVersion) == 1;
     }
 
@@ -72,6 +75,8 @@ class FulfillmentRepository {
                 FulfillmentStatus.valueOf(resultSet.getString("status")),
                 resultSet.getTimestamp("created_at").toInstant(),
                 resultSet.getTimestamp("updated_at").toInstant(),
+                resultSet.getTimestamp("completed_at") == null
+                        ? null : resultSet.getTimestamp("completed_at").toInstant(),
                 resultSet.getLong("version"));
     }
 }

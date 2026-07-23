@@ -71,6 +71,15 @@ class DisputeCaseRepository {
                 """, this::map, dealId).stream().findFirst();
     }
 
+    List<DisputeCase.DisputeCaseRecord> lockActiveByDealIdInOrder(UUID dealId) {
+        return jdbcTemplate.query("""
+                SELECT * FROM dispute_case
+                WHERE deal_id = ? AND status IN ('OPEN', 'UNDER_REVIEW')
+                ORDER BY id
+                FOR UPDATE
+                """, this::map, dealId);
+    }
+
     List<DisputeCase.DisputeCaseRecord> findByDealIdPage(
             UUID dealId, long offset, int limit, DisputeQuery.DisputeSort sort) {
         String orderBy = sort == DisputeQuery.DisputeSort.OPENED_AT_ASC

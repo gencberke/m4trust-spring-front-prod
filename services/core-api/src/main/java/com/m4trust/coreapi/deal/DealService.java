@@ -15,6 +15,7 @@ import com.m4trust.coreapi.organization.InvitationLegalEntityQueryPort;
 import com.m4trust.coreapi.organization.RequestedOperation;
 import com.m4trust.coreapi.fulfillment.FulfillmentProjectionPort;
 import com.m4trust.coreapi.payment.FundingProjectionPort;
+import com.m4trust.coreapi.payment.SettlementProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationPackageProjectionPort;
 import com.m4trust.coreapi.ratification.RatificationSupersessionPort;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ class DealService {
     private final RatificationPackageProjectionPort ratificationProjections;
     private final RatificationSupersessionPort ratificationSupersessions;
     private final FundingProjectionPort fundingProjections;
+    private final SettlementProjectionPort settlementProjections;
     private final FulfillmentProjectionPort fulfillmentProjections;
     private final CaseworkDealProjectionPort caseworkProjections;
     private final AuditAppendPort auditAppender;
@@ -52,6 +54,7 @@ class DealService {
             RatificationPackageProjectionPort ratificationProjections,
             RatificationSupersessionPort ratificationSupersessions,
             FundingProjectionPort fundingProjections,
+            SettlementProjectionPort settlementProjections,
             FulfillmentProjectionPort fulfillmentProjections,
             CaseworkDealProjectionPort caseworkProjections,
             AuditAppendPort auditAppender, Clock clock) {
@@ -64,6 +67,7 @@ class DealService {
         this.ratificationProjections = ratificationProjections;
         this.ratificationSupersessions = ratificationSupersessions;
         this.fundingProjections = fundingProjections;
+        this.settlementProjections = settlementProjections;
         this.fulfillmentProjections = fulfillmentProjections;
         this.caseworkProjections = caseworkProjections;
         this.auditAppender = auditAppender;
@@ -307,6 +311,8 @@ class DealService {
                 && context.activeLegalEntityRole() == com.m4trust.coreapi.organization.LegalEntityRole.ADMIN;
         FundingProjectionPort.Summary fundingSummary = fundingProjections.summarize(
                 deal.id(), deal.status() == DealStatus.ACTIVE, callerIsBuyerAdmin);
+        SettlementProjectionPort.Summary settlementSummary = settlementProjections.summarize(
+                deal.id(), deal.status() == DealStatus.ACTIVE, callerIsBuyerAdmin);
         FulfillmentProjectionPort.Summary fulfillmentSummary = fulfillmentProjections.summarize(deal.id());
         CaseworkDealProjectionPort.ActorSummary caseworkSummary = caseworkProjection(
                 deal, context, fulfillmentSummary);
@@ -320,15 +326,16 @@ class DealService {
                 deal.version(),
                 deal.createdAt(),
                 deal.updatedAt(),
-                actionsWithAnalysis(deal, context, ratification, fundingSummary, fulfillmentSummary,
-                        caseworkSummary),
+                actionsWithAnalysis(deal, context, ratification, fundingSummary, settlementSummary,
+                        fulfillmentSummary, caseworkSummary),
                 party(deal.buyerLegalEntityId(), participantProjections),
                 party(deal.sellerLegalEntityId(), participantProjections),
                 participantProjections,
                 currentDocument(deal), analysis(deal), currentRuleSet(deal), ratification,
                 fundingSummary(fundingSummary),
                 fulfillmentSummary(fulfillmentSummary),
-                toCaseworkSummary(caseworkSummary));
+                toCaseworkSummary(caseworkSummary),
+                toSettlementSummary(settlementSummary));
     }
 
     private DealFundingSummary fundingSummary(FundingProjectionPort.Summary summary) {
@@ -411,12 +418,13 @@ class DealService {
                 base.canCreateFundingPlan(), base.canInitiateFunding(),
                 base.canReconcilePaymentOperation(), base.canStartFulfillment(),
                 base.canUploadEvidence(), base.canAcceptEvidence(), base.canRejectEvidence(),
-                canOpenDispute);
+                canOpenDispute, false, false);
     }
 
     private DealAvailableActions actionsWithAnalysis(Deal deal,
             OperationContext context, DealRatificationProjection ratification,
             FundingProjectionPort.Summary fundingSummary,
+            SettlementProjectionPort.Summary settlementSummary,
             FulfillmentProjectionPort.Summary fulfillmentSummary,
             CaseworkDealProjectionPort.ActorSummary caseworkSummary) {
         DealAvailableActions base = actions(deal, context);
@@ -464,7 +472,8 @@ class DealService {
                 fundingSummary.canCreateFundingPlan(), fundingSummary.canInitiateFunding(),
                 fundingSummary.canReconcilePaymentOperation(),
                 canStartFulfillment, canUploadEvidence, canAcceptEvidence, canRejectEvidence,
-                caseworkSummary.canOpenDispute());
+                caseworkSummary.canOpenDispute(), settlementSummary.canRequestRelease(),
+                settlementSummary.canReconcileRelease());
     }
 
     private CaseworkDealProjectionPort.ActorSummary caseworkProjection(
@@ -481,6 +490,14 @@ class DealService {
                 context.activeLegalEntityId(),
                 context.activeLegalEntityRole(),
                 fulfillmentStatus));
+    }
+
+    private DealSettlementSummary toSettlementSummary(SettlementProjectionPort.Summary summary) {
+        if (summary.settlementId() == null) {
+            return null;
+        }
+        return new DealSettlementSummary(summary.settlementId(), summary.status(),
+                summary.currentReleaseOperationId());
     }
 
     private DealCaseworkSummary toCaseworkSummary(CaseworkDealProjectionPort.ActorSummary summary) {

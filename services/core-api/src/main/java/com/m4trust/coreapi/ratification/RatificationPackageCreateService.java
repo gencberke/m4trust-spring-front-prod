@@ -87,7 +87,7 @@ class RatificationPackageCreateService {
         RatificationSourcePorts.RuleSet ruleSet = ruleSets.find(target.currentRuleSetId())
                 .orElseThrow(NotReady::new);
         RatificationSnapshotAssembler.Result snapshot = assembler.assemble(target, document, ruleSet,
-                request.amountMinor(), request.currency());
+                request.amountMinor(), request.currency(), request.disputeWindowDays());
         if (current != null && current.status() == RatificationPackageStatus.PENDING
                 && current.contentHash().equals(snapshot.contentHash())) {
             idempotency.recordResult(claim, new IdempotencyResultReference(IDEMPOTENCY_RESULT, current.id()));
@@ -108,7 +108,8 @@ class RatificationPackageCreateService {
                 target.buyer().legalEntityId(), target.seller().legalEntityId(), request.amountMinor(),
                 request.currency(), now);
         RatificationRepository.SnapshotRecord snapshotRecord = new RatificationRepository.SnapshotRecord(
-                snapshotId, 1, snapshot.serializedSnapshot(), snapshot.contentHash(), now);
+                snapshotId, snapshot.snapshot().schemaVersion(), snapshot.serializedSnapshot(),
+                snapshot.contentHash(), now);
         RatificationRepository.PackageRecord createdRecord = created.toRecord();
         packages.insert(snapshotRecord, createdRecord);
         deals.pointCurrentPackage(dealId, created.id(), now);
@@ -131,8 +132,8 @@ class RatificationPackageCreateService {
             RatificationSnapshotAssembler.Result snapshot) {
         return new RatificationRepository.PackageRecord(record.id(), record.dealId(), record.snapshotId(),
                 record.status(), record.buyerLegalEntityId(), record.sellerLegalEntityId(), record.amountMinor(),
-                record.currency(), record.createdAt(), record.version(), 1, snapshot.serializedSnapshot(),
-                snapshot.contentHash());
+                record.currency(), record.createdAt(), record.version(), snapshot.snapshot().schemaVersion(),
+                snapshot.serializedSnapshot(), snapshot.contentHash());
     }
 
     private static void validateCreateTarget(RatificationSourcePorts.Target target,
@@ -144,6 +145,10 @@ class RatificationPackageCreateService {
                 || target.buyer() == null || target.seller() == null) throw new NotReady();
         if (request.amountMinor() < 1 || request.amountMinor() > RatificationPackage.MAX_SAFE_INTEGER
                 || request.currency() == null || !request.currency().matches("[A-Z]{3}")) throw new InvalidTerms();
+        if (request.disputeWindowDays() != null
+                && (request.disputeWindowDays() < 0 || request.disputeWindowDays() > 365)) {
+            throw new InvalidDisputeWindow();
+        }
     }
 
     private AuditRecord audit(OperationContext context, UUID packageId, String action,
@@ -167,6 +172,9 @@ class RatificationPackageCreateService {
             requestBody.put("expectedDealVersion", request.expectedDealVersion());
             requestBody.put("amountMinor", request.amountMinor());
             requestBody.put("currency", request.currency());
+            if (request.disputeWindowDays() != null) {
+                requestBody.put("disputeWindowDays", request.disputeWindowDays());
+            }
             return hasher.hash(json.writeValueAsString(requestBody));
         } catch (Exception exception) {
             throw new IllegalStateException("Cannot canonicalize ratification package create request", exception);
@@ -190,4 +198,5 @@ class RatificationPackageCreateService {
     static final class StateConflict extends RuntimeException { }
     static final class StaleDealVersion extends RuntimeException { }
     static final class InvalidTerms extends RuntimeException { }
+    static final class InvalidDisputeWindow extends RuntimeException { }
 }
