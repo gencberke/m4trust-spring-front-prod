@@ -472,7 +472,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
     onSuccess: () => {
       setReviewError(undefined);
       setFeedbackNotice(
-        "Teslimat tamamlandı — kapanış settlement adımında devam eder",
+        "Teslimat tamamlandı — kapanış için Kapanış bölümüne geçin",
       );
       refreshAfterMutation();
     },

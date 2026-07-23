@@ -44,6 +44,7 @@ import {
 import { DealCaseworkPanel } from "../features/casework/DealCaseworkPanel";
 import { DealInvitationManagement } from "../features/invitations/DealInvitationManagement";
 import { DealRatificationPanel } from "../features/ratification/DealRatificationPanel";
+import { DealSettlementPanel } from "../features/settlement/DealSettlementPanel";
 import { isInvalidLegalEntitySelection } from "../features/organization/organizationErrors";
 import type { AuthenticatedWorkspaceContext } from "./AuthenticatedLayout";
 import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
@@ -106,8 +107,10 @@ function lifecycleLabel(lifecycle: DealDetail["lifecycle"]): string {
 }
 
 function nextTask(deal: DealDetail): string {
-  if (deal.lifecycle === "SETTLEMENT") return "Ödeme sonucu bu aşamada salt okunur izlenir";
-  if (deal.lifecycle === "COMPLETED") return "Anlaşma tamamlandı";
+  if (deal.lifecycle === "SETTLEMENT") return "Kapanış işlemi izleniyor";
+  if (deal.lifecycle === "COMPLETED") {
+    return "Anlaşma kapatıldı (simüle kapanış tamamlandı)";
+  }
   if (deal.lifecycle === "CANCELLED") return "Anlaşma iptal edildi";
   if (deal.lifecycle === "ARCHIVED") return "Anlaşma arşivde";
   if (deal.availableActions.canCreateDocumentUploadIntent) return "Sözleşme belgesini ekleyin";
@@ -115,7 +118,12 @@ function nextTask(deal: DealDetail): string {
   if (deal.availableActions.canReviewExtraction) return "Çıkarımı manuel olarak inceleyin";
   if (deal.availableActions.canCreateRatificationPackage || deal.availableActions.canApproveRatification) return "Onay paketini gözden geçirin";
   if (deal.availableActions.canCreateFundingPlan || deal.availableActions.canInitiateFunding) return "Ödemeyi güvenceye alın";
-  if (deal.availableActions.canStartFulfillment || deal.availableActions.canUploadEvidence || deal.availableActions.canAcceptEvidence) return "Teslimat kanıtını yönetin";
+  if (deal.availableActions.canStartFulfillment || deal.availableActions.canUploadEvidence || deal.availableActions.canAcceptEvidence) {
+    return "Teslimat kanıtını yönetin";
+  }
+  if (deal.availableActions.canRequestRelease || deal.availableActions.canReconcileRelease) {
+    return "Kapanış adımını tamamlayın";
+  }
   return "Güncel durum sunucudan takip ediliyor";
 }
 
@@ -554,6 +562,16 @@ export function DealDetailPage() {
             <span className="status-badge" data-status={deal.status}>
               {lifecycleLabel(deal.lifecycle)}
             </span>
+            {deal.status === "COMPLETED" ? (
+              <span className="settlement-simulation-notice deal-header-simulation-notice" role="status">
+                Demo simülasyonu — gerçek para hareketi yok
+              </span>
+            ) : null}
+            {deal.fulfillment?.status === "COMPLETED" && deal.status === "ACTIVE" ? (
+              <span className="deal-closure-separation-note" role="status">
+                Teslimat tamamlandı; anlaşma henüz kapanmadı
+              </span>
+            ) : null}
             <span>{formatDate(deal.updatedAt)} tarihinde güncellendi</span>
           </div>
         </div>
@@ -839,6 +857,7 @@ export function DealDetailPage() {
               </section>
             ) : null}
         <DealFulfillmentPanel deal={deal} legalEntityId={selectedLegalEntityId} readOnly={settlementReadOnly} />
+        <DealSettlementPanel deal={deal} legalEntityId={selectedLegalEntityId} />
         {!settlementReadOnly ? <DealCaseworkPanel deal={deal} legalEntityId={selectedLegalEntityId} /> : null}
           </>
         ) : null}
