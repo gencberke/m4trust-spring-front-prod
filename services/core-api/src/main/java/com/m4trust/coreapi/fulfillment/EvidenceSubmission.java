@@ -27,6 +27,7 @@ final class EvidenceSubmission {
     private Instant acceptedAt;
     private Instant rejectedAt;
     private String rejectionReason;
+    private Instant cancelledAt;
     private long version;
 
     private EvidenceSubmission(UUID id, UUID dealId, UUID milestoneId, UUID fulfillmentId,
@@ -35,7 +36,7 @@ final class EvidenceSubmission {
             long clientSizeBytes, String clientSha256, Long verifiedSizeBytes,
             String verifiedSha256, Instant uploadExpiresAt, Instant createdAt,
             Instant submittedAt, Instant acceptedAt, Instant rejectedAt,
-            String rejectionReason, long version) {
+            String rejectionReason, Instant cancelledAt, long version) {
         this.id = Objects.requireNonNull(id);
         this.dealId = Objects.requireNonNull(dealId);
         this.milestoneId = Objects.requireNonNull(milestoneId);
@@ -56,6 +57,7 @@ final class EvidenceSubmission {
         this.acceptedAt = acceptedAt;
         this.rejectedAt = rejectedAt;
         this.rejectionReason = rejectionReason;
+        this.cancelledAt = cancelledAt;
         this.version = version;
         validate();
     }
@@ -67,7 +69,7 @@ final class EvidenceSubmission {
         return new EvidenceSubmission(id, dealId, milestoneId, fulfillmentId,
                 evidenceType, mediaType, fileName, EvidenceSubmissionStatus.PENDING_UPLOAD,
                 objectKey, null, clientSizeBytes, clientSha256, null, null,
-                uploadExpiresAt, createdAt, null, null, null, null, 0);
+                uploadExpiresAt, createdAt, null, null, null, null, null, 0);
     }
 
     static EvidenceSubmission rehydrate(EvidenceSubmissionRecord record) {
@@ -77,12 +79,30 @@ final class EvidenceSubmission {
                 record.clientSizeBytes(), record.clientSha256(), record.verifiedSizeBytes(),
                 record.verifiedSha256(), record.uploadExpiresAt(), record.createdAt(),
                 record.submittedAt(), record.acceptedAt(), record.rejectedAt(),
-                record.rejectionReason(), record.version());
+                record.rejectionReason(), record.cancelledAt(), record.version());
+    }
+
+    void markCancelled(Instant changedAt) {
+        if (status != EvidenceSubmissionStatus.PENDING_UPLOAD) {
+            throw new IllegalStateException("only PENDING_UPLOAD evidence can be cancelled");
+        }
+        if (cancelledAt != null) {
+            throw new IllegalStateException("evidence upload is already cancelled");
+        }
+        Instant nextChangedAt = Objects.requireNonNull(changedAt);
+        if (!nextChangedAt.isBefore(uploadExpiresAt)) {
+            throw new IllegalStateException("evidence upload has expired");
+        }
+        cancelledAt = nextChangedAt;
+        version++;
     }
 
     void markSubmitted(long verifiedSizeBytes, String verifiedSha256, String objectVersion, Instant changedAt) {
         if (status != EvidenceSubmissionStatus.PENDING_UPLOAD) {
             throw new IllegalStateException("evidence submission is no longer pending upload");
+        }
+        if (cancelledAt != null) {
+            throw new IllegalStateException("cancelled evidence upload cannot be finalized");
         }
         Instant nextChangedAt = Objects.requireNonNull(changedAt);
         if (!nextChangedAt.isBefore(uploadExpiresAt)) {
@@ -123,7 +143,7 @@ final class EvidenceSubmission {
                 evidenceType, mediaType, fileName, status, objectKey, objectVersion,
                 clientSizeBytes, clientSha256, verifiedSizeBytes, verifiedSha256,
                 uploadExpiresAt, createdAt, submittedAt, acceptedAt, rejectedAt,
-                rejectionReason, version);
+                rejectionReason, cancelledAt, version);
     }
 
     UUID id() { return id; }
@@ -146,6 +166,7 @@ final class EvidenceSubmission {
     Instant acceptedAt() { return acceptedAt; }
     Instant rejectedAt() { return rejectedAt; }
     String rejectionReason() { return rejectionReason; }
+    Instant cancelledAt() { return cancelledAt; }
     long version() { return version; }
 
     private void validate() {
@@ -157,7 +178,9 @@ final class EvidenceSubmission {
         if (finalized != (verifiedSizeBytes != null && verifiedSha256 != null
                 && objectVersion != null && submittedAt != null)
                 || (status == EvidenceSubmissionStatus.ACCEPTED) != (acceptedAt != null)
-                || (status == EvidenceSubmissionStatus.REJECTED) != (rejectedAt != null && rejectionReason != null)) {
+                || (status == EvidenceSubmissionStatus.REJECTED) != (rejectedAt != null && rejectionReason != null)
+                || (cancelledAt != null && status != EvidenceSubmissionStatus.PENDING_UPLOAD)
+                || (cancelledAt != null && !cancelledAt.isBefore(uploadExpiresAt))) {
             throw new IllegalArgumentException("invalid evidence submission state data");
         }
     }
@@ -182,6 +205,6 @@ final class EvidenceSubmission {
             long clientSizeBytes, String clientSha256, Long verifiedSizeBytes,
             String verifiedSha256, Instant uploadExpiresAt, Instant createdAt,
             Instant submittedAt, Instant acceptedAt, Instant rejectedAt,
-            String rejectionReason, long version) {
+            String rejectionReason, Instant cancelledAt, long version) {
     }
 }

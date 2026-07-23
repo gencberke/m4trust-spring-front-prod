@@ -26,6 +26,10 @@ record FinalizeEvidenceUploadRequest(
         @NotBlank(message = "sha256 is required") @Pattern(regexp = "^[a-f0-9]{64}$", message = "sha256 must be 64 lowercase hex characters") String sha256) {
 }
 
+record CancelEvidenceUploadRequest(
+        @Min(value = 0, message = "expectedEvidenceVersion must be non-negative") long expectedEvidenceVersion) {
+}
+
 record AcceptEvidenceRequest(
         @Min(value = 0, message = "expectedVersion must be non-negative") long expectedVersion,
         @Min(value = 0, message = "expectedEvidenceVersion must be non-negative") long expectedEvidenceVersion) {
@@ -74,8 +78,9 @@ sealed interface EvidenceSubmissionProjection permits PendingEvidenceSubmissionP
 record PendingEvidenceSubmissionProjection(UUID id, UUID dealId, UUID milestoneId,
         EvidenceType evidenceType, EvidenceMediaType mediaType, String fileName,
         EvidenceSubmissionStatus status, long clientSizeBytes, String clientSha256,
-        Instant expiresAt, Instant createdAt, EvidenceAvailableActions availableActions,
-        long version) implements EvidenceSubmissionProjection {
+        Instant expiresAt, Instant cancelledAt, Instant createdAt,
+        EvidenceAvailableActions availableActions, long version)
+        implements EvidenceSubmissionProjection {
 }
 
 record SubmittedEvidenceSubmissionProjection(UUID id, UUID dealId, UUID milestoneId,
@@ -119,5 +124,5 @@ record FulfillmentAvailableActions(boolean canStart, boolean canAccept, boolean 
 record MilestoneAvailableActions(boolean canUpload) {
 }
 
-record EvidenceAvailableActions(boolean canDownload) {
+record EvidenceAvailableActions(boolean canDownload, boolean canCancelUpload) {
 }

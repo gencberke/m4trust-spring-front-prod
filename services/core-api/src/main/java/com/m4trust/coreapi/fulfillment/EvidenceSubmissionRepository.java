@@ -27,8 +27,8 @@ class EvidenceSubmissionRepository {
                     media_type, file_name, status, object_key, object_version,
                     client_size_bytes, client_sha256, verified_size_bytes,
                     verified_sha256, upload_expires_at, created_at, submitted_at,
-                    accepted_at, rejected_at, rejection_reason, version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    accepted_at, rejected_at, rejection_reason, cancelled_at, version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, submission.id(), submission.dealId(), submission.milestoneId(),
                 submission.fulfillmentId(), submission.evidenceType().name(),
                 submission.mediaType().value(), submission.fileName(), submission.status().name(),
@@ -37,7 +37,8 @@ class EvidenceSubmissionRepository {
                 submission.verifiedSha256(), Timestamp.from(submission.uploadExpiresAt()),
                 Timestamp.from(submission.createdAt()), timestamp(submission.submittedAt()),
                 timestamp(submission.acceptedAt()), timestamp(submission.rejectedAt()),
-                submission.rejectionReason(), submission.version());
+                submission.rejectionReason(), timestamp(submission.cancelledAt()),
+                submission.version());
     }
 
     Optional<EvidenceSubmission.EvidenceSubmissionRecord> findById(UUID submissionId) {
@@ -113,13 +114,14 @@ class EvidenceSubmissionRepository {
                 UPDATE fulfillment_evidence_submission
                 SET status = ?, object_version = ?, verified_size_bytes = ?,
                     verified_sha256 = ?, submitted_at = ?, accepted_at = ?,
-                    rejected_at = ?, rejection_reason = ?, version = ?
+                    rejected_at = ?, rejection_reason = ?, cancelled_at = ?, version = ?
                 WHERE id = ? AND version = ?
                 """, submission.status().name(), submission.objectVersion(),
                 submission.verifiedSizeBytes(), submission.verifiedSha256(),
                 timestamp(submission.submittedAt()), timestamp(submission.acceptedAt()),
                 timestamp(submission.rejectedAt()), submission.rejectionReason(),
-                submission.version(), submission.id(), previousVersion) == 1;
+                timestamp(submission.cancelledAt()), submission.version(),
+                submission.id(), previousVersion) == 1;
     }
 
     private EvidenceSubmission.EvidenceSubmissionRecord mapSubmission(ResultSet resultSet, int rowNumber)
@@ -145,6 +147,7 @@ class EvidenceSubmissionRepository {
                 instant(resultSet, "accepted_at"),
                 instant(resultSet, "rejected_at"),
                 resultSet.getString("rejection_reason"),
+                instant(resultSet, "cancelled_at"),
                 resultSet.getLong("version"));
     }
 

@@ -79,6 +79,20 @@ class FulfillmentController {
                 request, uuid(idempotencyKey), uuid(correlationId));
     }
 
+    @PostMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload")
+    EvidenceSubmissionProjection cancelEvidenceUpload(
+            @ResolvedOperationContext(RequestedOperation.EVIDENCE_UPLOAD_CANCEL)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String evidenceSubmissionId,
+            @RequestHeader(value = "Idempotency-Key", required = false)
+            String idempotencyKey,
+            @Valid @RequestBody CancelEvidenceUploadRequest request,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        return service.cancelEvidenceUpload(context, uuid(dealId), uuid(evidenceSubmissionId),
+                request, uuid(idempotencyKey), uuid(correlationId));
+    }
+
     @PostMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link")
     EvidenceDownloadLink createEvidenceDownloadLink(
             @ResolvedOperationContext(RequestedOperation.EVIDENCE_DOWNLOAD_LINK_CREATE)
