@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Added Plan 18B-P1 additive ratified evidence-policy contract (ADR-011 §2.5
+  founder amendment 2026-07-23): closed `EvidencePolicy` (`REQUIRED` |
+  `NOT_REQUIRED`); discriminated `RatificationPackageSnapshotV3` requiring
+  `disputeWindowDays` + `evidencePolicy`; `CreateRatificationPackageRequest`
+  optional `evidencePolicy` with documented create combinations (neither → v1,
+  window only → v2, both → v3, policy without window → field-level 422);
+  required `evidencePolicy` on `DealFulfillmentSummary` and `FulfillmentDetail`;
+  optional `canAcceptWithoutEvidence` on Deal- and fulfillment-level available
+  actions (absent = false); and buyer-ADMIN
+  `POST /deals/{dealId}/fulfillment/accept-without-evidence` with
+  `AcceptWithoutEvidenceRequest` (`expectedDealVersion` +
+  `expectedFulfillmentVersion`), Idempotency-Key, session/CSRF, and stable
+  conflict codes `FULFILLMENT_EVIDENCE_POLICY_CONFLICT` /
+  `FULFILLMENT_EVIDENCE_PRESENT` (reusing `EvidenceReviewForbidden` for actor
+  failures). Validator closed sets and openapi-ahead Java enum tolerance updated.
+  No AI contract changes.
+
 - Added Plan 17 Phase B1 additive settlement/release contract surface (ADR-014 §2.3/§2.5):
   `GET /deals/{dealId}/settlement`, `POST /deals/{dealId}/settlement/release`,
   `GET /release-operations/{operationId}`, and

@@ -726,6 +726,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/fulfillment/accept-without-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept delivery without evidence for a NOT_REQUIRED fulfillment
+         * @description Buyer legal entity ADMIN-only action. Completes a started fulfillment whose effective evidencePolicy is NOT_REQUIRED without creating or accepting an EvidenceSubmission. Start and this no-file acceptance remain distinct explicit actions; start never auto-completes. The Deal remains ACTIVE; no payment release, settlement, payout, refund, provider call, or AI job is produced. Idempotency-Key is required. The request carries expectedDealVersion and expectedFulfillmentVersion; both are checked under lock. Invalid when the effective policy is REQUIRED, fulfillment is not started or already terminal, or any current/finalized evidence submission exists.
+         */
+        post: operations["acceptFulfillmentWithoutEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis": {
         parameters: {
             query?: never;
@@ -1804,8 +1824,31 @@ export interface components {
             /** @description Immutable contractual dispute window in whole UTC days after fulfillment completion before release becomes eligible. Inclusive 0..365 per founder amendment 2026-07-23; one day is an exact 24-hour UTC interval. */
             disputeWindowDays: number;
         };
-        /** @description Discriminated immutable ratification snapshot used as the sole contentHash input. V1 remains readable; v2 is produced when disputeWindowDays is supplied at package create. Both versions preserve RFC 8785 JCS canonicalization rules. */
-        RatificationPackageSnapshot: components["schemas"]["RatificationPackageSnapshotV1"] | components["schemas"]["RatificationPackageSnapshotV2"];
+        /** @description Schema version 3 of the sole contentHash input: identical to v2 plus the immutable contractual evidencePolicy field. Canonicalized with RFC 8785 JCS, encoded as UTF-8 bytes, then SHA-256 hashed to lowercase hexadecimal. It excludes package id/version/status/contentHash, approvals, approver or actor visibility, available actions, timestamps, audit, and all detail-wrapper metadata. v1/v2 serialized bytes and hashes remain unchanged. */
+        RatificationPackageSnapshotV3: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            schemaVersion: "3";
+            /**
+             * Format: uuid
+             * @description Lowercase canonical UUID string.
+             */
+            dealId: string;
+            dealReference: string;
+            dealTitle: string;
+            buyer: components["schemas"]["RatificationSnapshotParty"];
+            seller: components["schemas"]["RatificationSnapshotParty"];
+            ruleSet: components["schemas"]["RatificationSnapshotRuleSet"];
+            commercialTerms: components["schemas"]["RatificationCommercialTerms"];
+            document: components["schemas"]["RatificationSnapshotDocument"];
+            /** @description Immutable contractual dispute window in whole UTC days after fulfillment completion before release becomes eligible. Inclusive 0..365; one day is an exact 24-hour UTC interval. */
+            disputeWindowDays: number;
+            evidencePolicy: components["schemas"]["EvidencePolicy"];
+        };
+        /** @description Discriminated immutable ratification snapshot used as the sole contentHash input. V1 remains readable; v2 is produced when disputeWindowDays is supplied without evidencePolicy; v3 is produced when both disputeWindowDays and evidencePolicy are supplied. All versions preserve RFC 8785 JCS canonicalization rules. Effective evidence policy for v1/v2 is permanently REQUIRED. */
+        RatificationPackageSnapshot: components["schemas"]["RatificationPackageSnapshotV1"] | components["schemas"]["RatificationPackageSnapshotV2"] | components["schemas"]["RatificationPackageSnapshotV3"];
         RatificationApproval: {
             /** Format: uuid */
             legalEntityId: string;
@@ -1844,8 +1887,10 @@ export interface components {
         CreateRatificationPackageRequest: {
             expectedVersion: number;
             commercialTerms: components["schemas"]["RatificationCommercialTerms"];
-            /** @description Optional contractual dispute window in whole UTC days. When present, the server creates a schemaVersion=2 immutable snapshot; when absent, v1 is created. Immutable after package create. */
+            /** @description Optional contractual dispute window in whole UTC days. Combinations: neither disputeWindowDays nor evidencePolicy → schemaVersion 1 (effective evidence policy REQUIRED); disputeWindowDays only → schemaVersion 2 (effective REQUIRED); both disputeWindowDays and evidencePolicy → schemaVersion 3; evidencePolicy without disputeWindowDays → field-level 422 VALIDATION_FAILED (disputeWindowDays REQUIRED). Immutable after package create. */
             disputeWindowDays?: number;
+            /** @description Optional ratified evidence policy. Valid only together with disputeWindowDays (produces schemaVersion 3). Absent with disputeWindowDays alone produces v2; absent with neither field produces v1. Supplying evidencePolicy without disputeWindowDays is a field-level 422. */
+            evidencePolicy?: components["schemas"]["EvidencePolicy"];
         };
         RatificationPackageActionRequest: {
             expectedPackageVersion: number;
@@ -2079,6 +2124,8 @@ export interface components {
             canAcceptEvidence?: boolean;
             /** @description Optional actor-aware availability. True only for buyer entity ADMIN when the fulfillment has current SUBMITTED evidence awaiting review. Absent or unknown means false/read-only. */
             canRejectEvidence?: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when fulfillment is started, effective evidencePolicy is NOT_REQUIRED, no evidence submission exists, and no-file acceptance is allowed. Absent or unknown means false/read-only. */
+            canAcceptWithoutEvidence?: boolean;
             /** @description Optional actor-aware availability. True only for buyer or seller entity ADMIN when the Deal is ACTIVE, fulfillment exists in an eligible opening status, and no OPEN or UNDER_REVIEW case exists. Absent or unknown means false/read-only. */
             canOpenDispute?: boolean;
             /** @description Optional actor-aware availability. True only for buyer entity ADMIN when settlement is READY, release eligibility is satisfied, and no lifetime release operation exists. Absent or unknown means false/read-only. */
@@ -2181,6 +2228,11 @@ export interface components {
             headerName: "X-CSRF-TOKEN";
         };
         /**
+         * @description Closed ratified evidence policy. REQUIRED retains the seller-upload / buyer-ADMIN evidence review machine. NOT_REQUIRED permits buyer ADMIN no-file acceptance of a started fulfillment. v1/v2 packages resolve permanently to REQUIRED.
+         * @enum {string}
+         */
+        EvidencePolicy: "REQUIRED" | "NOT_REQUIRED";
+        /**
          * @description Closed V1 fulfillment state set. NOT_STARTED is the projection before the record exists; IN_PROGRESS, EVIDENCE_REQUIRED, REVIEW_REQUIRED, and COMPLETED are the active progression; CANCELLED is reserved for forward compatibility and is not reachable in Slice 12.
          * @enum {string}
          */
@@ -2239,6 +2291,18 @@ export interface components {
              */
             expectedEvidenceVersion: number;
         };
+        AcceptWithoutEvidenceRequest: {
+            /**
+             * Format: int64
+             * @description Current Deal optimistic-lock version observed by the client.
+             */
+            expectedDealVersion: number;
+            /**
+             * Format: int64
+             * @description Current fulfillment optimistic-lock version observed by the client.
+             */
+            expectedFulfillmentVersion: number;
+        };
         RejectEvidenceRequest: {
             /**
              * Format: int64
@@ -2268,6 +2332,8 @@ export interface components {
             canAccept: boolean;
             /** @description True only for the buyer entity ADMIN when current SUBMITTED evidence awaits review. */
             canReject: boolean;
+            /** @description Optional actor-aware availability. True only for buyer entity ADMIN when effective evidencePolicy is NOT_REQUIRED, fulfillment is started and non-terminal, and no evidence submission exists. Absent or unknown means false/read-only. */
+            canAcceptWithoutEvidence?: boolean;
         };
         MilestoneRuleReference: {
             /** @description Reference to a DELIVERY or QUALITY rule in the ratified package; not a contractual obligation itself. */
@@ -2543,6 +2609,8 @@ export interface components {
             fulfillmentId: string | null;
             /** @description Current evidence submission id awaiting review or already decided, or null when none. */
             currentEvidenceSubmissionId: string | null;
+            /** @description Effective evidence policy for this Deal's fulfillment. v1/v2 ratified packages resolve permanently to REQUIRED. */
+            evidencePolicy: components["schemas"]["EvidencePolicy"];
         };
         FulfillmentDetail: {
             /** Format: uuid */
@@ -2555,6 +2623,8 @@ export interface components {
              * @description Immutable ratification package id to which the fulfillment is bound.
              */
             sourcePackageId: string;
+            /** @description Effective immutable evidence policy copied from the source ratification package at start. v1/v2 packages resolve permanently to REQUIRED. */
+            evidencePolicy: components["schemas"]["EvidencePolicy"];
             milestone: components["schemas"]["FulfillmentMilestone"];
             /** @description Current evidence submission pointer, or null when none is current. */
             currentEvidence: components["schemas"]["EvidenceSubmission"] | null;
@@ -2757,7 +2827,7 @@ export interface components {
          * @description Closed catalog of stable public Problem Details codes. OpenAPI is the authority.
          * @enum {string}
          */
-        ApiErrorCode: "ACCESS_DENIED" | "AUTH_EMAIL_ALREADY_EXISTS" | "AUTH_INVALID_CREDENTIALS" | "AUTH_SESSION_EXPIRED" | "CASEWORK_NOT_FOUND_OR_HIDDEN" | "CSRF_TOKEN_INVALID" | "DEAL_ANALYSIS_REQUEST_FORBIDDEN" | "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS" | "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE" | "DEAL_DOCUMENT_MUTATION_FORBIDDEN" | "DEAL_DOCUMENT_NOT_FOUND" | "DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED" | "DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY" | "DEAL_INVITATION_FORBIDDEN" | "DEAL_INVITATION_NOT_FOUND" | "DEAL_INVITATION_PENDING_EXISTS" | "DEAL_INVITATION_STALE_VERSION" | "DEAL_INVITATION_STATE_CONFLICT" | "DEAL_MUTATION_FORBIDDEN" | "DEAL_NOT_FOUND" | "DEAL_REVIEW_ACCEPTANCE_FORBIDDEN" | "DEAL_STALE_VERSION" | "DEAL_STATE_CONFLICT" | "DISPUTE_ACKNOWLEDGE_FORBIDDEN" | "DISPUTE_ACTIVE_CASE_EXISTS" | "DISPUTE_COMMENT_FORBIDDEN" | "DISPUTE_NOT_FOUND_OR_HIDDEN" | "DISPUTE_OPEN_FORBIDDEN" | "DISPUTE_STALE_VERSION" | "DISPUTE_STATE_CONFLICT" | "DISPUTE_WITHDRAW_FORBIDDEN" | "DOCUMENT_DOWNLOAD_NOT_AVAILABLE" | "DOCUMENT_UPLOAD_EXPIRED" | "DOCUMENT_UPLOAD_STATE_CONFLICT" | "DOCUMENT_VERIFICATION_FAILED" | "EVIDENCE_ALREADY_SUBMITTED" | "EVIDENCE_DOWNLOAD_NOT_AVAILABLE" | "EVIDENCE_MILESTONE_CONFLICT" | "EVIDENCE_NOT_FOUND" | "EVIDENCE_REVIEW_FORBIDDEN" | "EVIDENCE_STALE_VERSION" | "EVIDENCE_STATE_CONFLICT" | "EVIDENCE_UPLOAD_EXPIRED" | "EVIDENCE_UPLOAD_FORBIDDEN" | "EVIDENCE_UPLOAD_STATE_CONFLICT" | "EVIDENCE_VERIFICATION_FAILED" | "FULFILLMENT_ALREADY_EXISTS" | "FULFILLMENT_COMPLETED" | "FULFILLMENT_NOT_FOUND" | "FULFILLMENT_STALE_VERSION" | "FULFILLMENT_START_FORBIDDEN" | "FULFILLMENT_STATE_CONFLICT" | "FUNDING_MUTATION_FORBIDDEN" | "FUNDING_PLAN_ALREADY_EXISTS" | "FUNDING_PLAN_NOT_FOUND" | "FUNDING_UNIT_ALREADY_FUNDED" | "FUNDING_UNIT_NOT_FOUND" | "FUNDING_UNIT_STALE_VERSION" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL_ERROR" | "LEGAL_ENTITY_ACCESS_DENIED" | "LEGAL_ENTITY_NOT_FOUND" | "MALFORMED_REQUEST" | "PAYMENT_OPERATION_IN_FLIGHT" | "PAYMENT_OPERATION_NOT_FOUND" | "PAYMENT_OPERATION_STALE_VERSION" | "PAYMENT_OPERATION_STATE_CONFLICT" | "RATE_LIMIT_EXCEEDED" | "RATIFICATION_APPROVAL_FORBIDDEN" | "RATIFICATION_NOT_READY" | "RATIFICATION_PACKAGE_CREATE_FORBIDDEN" | "RATIFICATION_PACKAGE_NOT_FOUND" | "RATIFICATION_PACKAGE_STATE_CONFLICT" | "RATIFICATION_STALE_PACKAGE" | "RELEASE_OPERATION_ALREADY_EXISTS" | "RELEASE_OPERATION_NOT_FOUND" | "RELEASE_OPERATION_STALE_VERSION" | "RELEASE_OUTCOME_UNKNOWN" | "RELEASE_RECONCILIATION_UNAVAILABLE" | "RULE_SET_VERSION_NOT_FOUND" | "SETTLEMENT_ACTIVE_DISPUTE" | "SETTLEMENT_ALREADY_TERMINAL" | "SETTLEMENT_CONTRACTUAL_WINDOW_MISSING" | "SETTLEMENT_DISPUTE_WINDOW_NOT_ELAPSED" | "SETTLEMENT_MUTATION_FORBIDDEN" | "SETTLEMENT_NOT_FOUND" | "SETTLEMENT_STALE_VERSION" | "VALIDATION_FAILED" | "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS" | "VIDEO_ANALYSIS_ALREADY_COMPLETED" | "VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE" | "VIDEO_ANALYSIS_REQUEST_FORBIDDEN";
+        ApiErrorCode: "ACCESS_DENIED" | "AUTH_EMAIL_ALREADY_EXISTS" | "AUTH_INVALID_CREDENTIALS" | "AUTH_SESSION_EXPIRED" | "CASEWORK_NOT_FOUND_OR_HIDDEN" | "CSRF_TOKEN_INVALID" | "DEAL_ANALYSIS_REQUEST_FORBIDDEN" | "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS" | "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE" | "DEAL_DOCUMENT_MUTATION_FORBIDDEN" | "DEAL_DOCUMENT_NOT_FOUND" | "DEAL_DOCUMENT_UPLOAD_NOT_ALLOWED" | "DEAL_INVITATION_ACCEPTED_BY_OTHER_ENTITY" | "DEAL_INVITATION_FORBIDDEN" | "DEAL_INVITATION_NOT_FOUND" | "DEAL_INVITATION_PENDING_EXISTS" | "DEAL_INVITATION_STALE_VERSION" | "DEAL_INVITATION_STATE_CONFLICT" | "DEAL_MUTATION_FORBIDDEN" | "DEAL_NOT_FOUND" | "DEAL_REVIEW_ACCEPTANCE_FORBIDDEN" | "DEAL_STALE_VERSION" | "DEAL_STATE_CONFLICT" | "DISPUTE_ACKNOWLEDGE_FORBIDDEN" | "DISPUTE_ACTIVE_CASE_EXISTS" | "DISPUTE_COMMENT_FORBIDDEN" | "DISPUTE_NOT_FOUND_OR_HIDDEN" | "DISPUTE_OPEN_FORBIDDEN" | "DISPUTE_STALE_VERSION" | "DISPUTE_STATE_CONFLICT" | "DISPUTE_WITHDRAW_FORBIDDEN" | "DOCUMENT_DOWNLOAD_NOT_AVAILABLE" | "DOCUMENT_UPLOAD_EXPIRED" | "DOCUMENT_UPLOAD_STATE_CONFLICT" | "DOCUMENT_VERIFICATION_FAILED" | "EVIDENCE_ALREADY_SUBMITTED" | "EVIDENCE_DOWNLOAD_NOT_AVAILABLE" | "EVIDENCE_MILESTONE_CONFLICT" | "EVIDENCE_NOT_FOUND" | "EVIDENCE_REVIEW_FORBIDDEN" | "EVIDENCE_STALE_VERSION" | "EVIDENCE_STATE_CONFLICT" | "EVIDENCE_UPLOAD_EXPIRED" | "EVIDENCE_UPLOAD_FORBIDDEN" | "EVIDENCE_UPLOAD_STATE_CONFLICT" | "EVIDENCE_VERIFICATION_FAILED" | "FULFILLMENT_ALREADY_EXISTS" | "FULFILLMENT_COMPLETED" | "FULFILLMENT_EVIDENCE_POLICY_CONFLICT" | "FULFILLMENT_EVIDENCE_PRESENT" | "FULFILLMENT_NOT_FOUND" | "FULFILLMENT_STALE_VERSION" | "FULFILLMENT_START_FORBIDDEN" | "FULFILLMENT_STATE_CONFLICT" | "FUNDING_MUTATION_FORBIDDEN" | "FUNDING_PLAN_ALREADY_EXISTS" | "FUNDING_PLAN_NOT_FOUND" | "FUNDING_UNIT_ALREADY_FUNDED" | "FUNDING_UNIT_NOT_FOUND" | "FUNDING_UNIT_STALE_VERSION" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL_ERROR" | "LEGAL_ENTITY_ACCESS_DENIED" | "LEGAL_ENTITY_NOT_FOUND" | "MALFORMED_REQUEST" | "PAYMENT_OPERATION_IN_FLIGHT" | "PAYMENT_OPERATION_NOT_FOUND" | "PAYMENT_OPERATION_STALE_VERSION" | "PAYMENT_OPERATION_STATE_CONFLICT" | "RATE_LIMIT_EXCEEDED" | "RATIFICATION_APPROVAL_FORBIDDEN" | "RATIFICATION_NOT_READY" | "RATIFICATION_PACKAGE_CREATE_FORBIDDEN" | "RATIFICATION_PACKAGE_NOT_FOUND" | "RATIFICATION_PACKAGE_STATE_CONFLICT" | "RATIFICATION_STALE_PACKAGE" | "RELEASE_OPERATION_ALREADY_EXISTS" | "RELEASE_OPERATION_NOT_FOUND" | "RELEASE_OPERATION_STALE_VERSION" | "RELEASE_OUTCOME_UNKNOWN" | "RELEASE_RECONCILIATION_UNAVAILABLE" | "RULE_SET_VERSION_NOT_FOUND" | "SETTLEMENT_ACTIVE_DISPUTE" | "SETTLEMENT_ALREADY_TERMINAL" | "SETTLEMENT_CONTRACTUAL_WINDOW_MISSING" | "SETTLEMENT_DISPUTE_WINDOW_NOT_ELAPSED" | "SETTLEMENT_MUTATION_FORBIDDEN" | "SETTLEMENT_NOT_FOUND" | "SETTLEMENT_STALE_VERSION" | "VALIDATION_FAILED" | "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS" | "VIDEO_ANALYSIS_ALREADY_COMPLETED" | "VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE" | "VIDEO_ANALYSIS_REQUEST_FORBIDDEN";
         /**
          * @description Closed catalog of stable public field-validation codes. OpenAPI is the authority.
          * @enum {string}
@@ -3324,6 +3394,15 @@ export interface components {
         };
         /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the supplied evidence submission expectedVersion is stale (EVIDENCE_STALE_VERSION), the submission is not the current SUBMITTED evidence awaiting review (EVIDENCE_STATE_CONFLICT), the fulfillment is already COMPLETED (FULFILLMENT_COMPLETED), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
         EvidenceReviewConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the supplied fulfillment expectedVersion is stale (FULFILLMENT_STALE_VERSION), the effective evidencePolicy is not NOT_REQUIRED (FULFILLMENT_EVIDENCE_POLICY_CONFLICT), the fulfillment is not in a started non-terminal state that accepts no-file completion (FULFILLMENT_STATE_CONFLICT), the fulfillment is already COMPLETED (FULFILLMENT_COMPLETED), any current or finalized evidence submission exists (FULFILLMENT_EVIDENCE_PRESENT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). Forbidden actor failures reuse EvidenceReviewForbidden (EVIDENCE_REVIEW_FORBIDDEN). */
+        AcceptWithoutEvidenceConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -4866,6 +4945,44 @@ export interface operations {
             403: components["responses"]["EvidenceReviewForbidden"];
             404: components["responses"]["EvidenceNotFoundOrHidden"];
             409: components["responses"]["EvidenceReviewConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    acceptFulfillmentWithoutEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptWithoutEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Fulfillment completed without evidence; idempotent replay returns the original or an equivalent FulfillmentDetail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FulfillmentDetail"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["EvidenceReviewForbidden"];
+            404: components["responses"]["FulfillmentNotFoundOrHidden"];
+            409: components["responses"]["AcceptWithoutEvidenceConflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };

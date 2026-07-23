@@ -1,0 +1,9 @@
+{
+  "expectedVersion": 3,
+  "commercialTerms": {
+    "amountMinor": 150000,
+    "currency": "TRY"
+  },
+  "disputeWindowDays": 14,
+  "evidencePolicy": "NOT_REQUIRED"
+}

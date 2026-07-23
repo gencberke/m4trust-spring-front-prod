@@ -320,6 +320,11 @@ EXPECTED_CORE_API_OPERATIONS = {
         "responses": {"200", "400", "401", "403", "404", "409", "422"},
         "security": [{"SessionCookie": [], "CsrfToken": []}],
     },
+    ("/deals/{dealId}/fulfillment/accept-without-evidence", "post"): {
+        "operationId": "acceptFulfillmentWithoutEvidence",
+        "responses": {"200", "400", "401", "403", "404", "409", "422"},
+        "security": [{"SessionCookie": [], "CsrfToken": []}],
+    },
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get"): {
         "operationId": "getVideoAnalysis",
         "responses": {"200", "400", "401", "403", "404"},
@@ -411,6 +416,7 @@ EXPECTED_CORE_REQUEST_SCHEMAS = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/finalize", "post"): "#/components/schemas/FinalizeEvidenceUploadRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post"): "#/components/schemas/AcceptEvidenceRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post"): "#/components/schemas/RejectEvidenceRequest",
+    ("/deals/{dealId}/fulfillment/accept-without-evidence", "post"): "#/components/schemas/AcceptWithoutEvidenceRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post"): "#/components/schemas/RequestVideoAnalysisRequest",
     ("/deals/{dealId}/disputes", "post"): "#/components/schemas/OpenDisputeRequest",
     ("/deals/{dealId}/disputes/{disputeId}/comments", "post"): "#/components/schemas/CreateDisputeCommentRequest",
@@ -467,6 +473,7 @@ EXPECTED_CORE_SUCCESS_SCHEMAS = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link", "post", "200"): "#/components/schemas/EvidenceDownloadLink",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/accept", "post", "200"): "#/components/schemas/AcceptedEvidenceSubmission",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "200"): "#/components/schemas/RejectedEvidenceSubmission",
+    ("/deals/{dealId}/fulfillment/accept-without-evidence", "post", "200"): "#/components/schemas/FulfillmentDetail",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "200"): "#/components/schemas/VideoAnalysisDetail",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "post", "202"): "#/components/schemas/VideoAnalysisDetail",
     ("/deals/{dealId}/disputes", "post", "201"): "#/components/schemas/DisputeDetail",
@@ -686,6 +693,9 @@ EXPECTED_CORE_ERROR_RESPONSES = {
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "403"): "EvidenceReviewForbidden",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "404"): "EvidenceNotFoundOrHidden",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/reject", "post", "409"): "EvidenceReviewConflict",
+    ("/deals/{dealId}/fulfillment/accept-without-evidence", "post", "403"): "EvidenceReviewForbidden",
+    ("/deals/{dealId}/fulfillment/accept-without-evidence", "post", "404"): "FulfillmentNotFoundOrHidden",
+    ("/deals/{dealId}/fulfillment/accept-without-evidence", "post", "409"): "AcceptWithoutEvidenceConflict",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "400"): "MalformedRequest",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "401"): "SessionRequired",
     ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get", "403"): "LegalEntityAccessDenied",
@@ -759,8 +769,11 @@ REMOVED_COMBINED_API_ERROR_CODES = {
     "DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN",
     "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN",
 }
-# Plan 17 B1: OpenAPI commits settlement/release codes before B2 Java enum sync.
-OPENAPI_AHEAD_OF_JAVA_API_ERROR_CODES: set[str] = set()
+# Plan 18B-P1: OpenAPI commits no-file-accept codes before Java enum sync.
+OPENAPI_AHEAD_OF_JAVA_API_ERROR_CODES: set[str] = {
+    "FULFILLMENT_EVIDENCE_POLICY_CONFLICT",
+    "FULFILLMENT_EVIDENCE_PRESENT",
+}
 
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
@@ -788,9 +801,9 @@ REQUIRED_CORE_API_SCHEMAS = {
     "PaymentOperationAvailableActions", "PaymentOperation", "FundingUnit", "FundingPlanDetail",
     "DealFundingSummary", "CreateFundingPlanRequest", "InitiatePaymentOperationRequest",
     "ReconcilePaymentOperationRequest",
-    "FulfillmentStatus", "EvidenceType", "EvidenceMediaType", "EvidenceSubmissionStatus",
+    "FulfillmentStatus", "EvidencePolicy", "EvidenceType", "EvidenceMediaType", "EvidenceSubmissionStatus",
     "StartFulfillmentRequest", "CreateEvidenceUploadIntentRequest", "FinalizeEvidenceUploadRequest",
-    "AcceptEvidenceRequest", "RejectEvidenceRequest",
+    "AcceptEvidenceRequest", "AcceptWithoutEvidenceRequest", "RejectEvidenceRequest",
     "EvidenceAvailableActions", "MilestoneAvailableActions", "FulfillmentAvailableActions",
     "MilestoneRuleReference", "FulfillmentMilestone",
     "PendingEvidenceSubmission", "SubmittedEvidenceSubmission", "AcceptedEvidenceSubmission",
@@ -811,7 +824,7 @@ REQUIRED_CORE_API_SCHEMAS = {
     "ReleaseOperationAvailableActions", "ReleaseOperationSummary", "ReleaseOperation",
     "SettlementDetail", "DealSettlementSummary", "RequestSettlementReleaseRequest",
     "ReconcileReleaseOperationRequest",
-    "RatificationPackageSnapshotV1", "RatificationPackageSnapshotV2",
+    "RatificationPackageSnapshotV1", "RatificationPackageSnapshotV2", "RatificationPackageSnapshotV3",
 }
 
 
@@ -1273,7 +1286,7 @@ def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[
             )
         elif only_openapi:
             print(
-                "PASS Core API ApiErrorCode exact-set with Plan 17 B1 openapi-ahead codes: "
+                "PASS Core API ApiErrorCode exact-set with Plan 18B-P1 openapi-ahead codes: "
                 + ",".join(only_openapi)
             )
     if java_field is None:
@@ -1513,6 +1526,7 @@ def validate_contract_documents(failures: list[str]) -> None:
             "canReviewExtraction", "canCreateRatificationPackage", "canApproveRatification", "canRejectRatification",
             "canCreateFundingPlan", "canInitiateFunding", "canReconcilePaymentOperation",
             "canStartFulfillment", "canUploadEvidence", "canAcceptEvidence", "canRejectEvidence",
+            "canAcceptWithoutEvidence",
             "canOpenDispute", "canRequestRelease", "canReconcileRelease",
         )
         if (set(actions.get("required", [])) != {"canUpdate", "canCancel", "canCreateInvitation", "canManageParties", "canCreateDocumentUploadIntent", "canRequestAnalysis"}
@@ -1592,6 +1606,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         ratification_snapshot = core_components.get("schemas", {}).get("RatificationPackageSnapshot", {})
         ratification_snapshot_v1 = core_components.get("schemas", {}).get("RatificationPackageSnapshotV1", {})
         ratification_snapshot_v2 = core_components.get("schemas", {}).get("RatificationPackageSnapshotV2", {})
+        ratification_snapshot_v3 = core_components.get("schemas", {}).get("RatificationPackageSnapshotV3", {})
         ratification_status = core_components.get("schemas", {}).get("RatificationPackageStatus", {})
         ratification_readiness = core_components.get("schemas", {}).get("RatificationReadiness", {})
         ratification_create = core_components.get("schemas", {}).get("CreateRatificationPackageRequest", {})
@@ -1604,8 +1619,10 @@ def validate_contract_documents(failures: list[str]) -> None:
         ratification_snapshot_document = core_components.get("schemas", {}).get("RatificationSnapshotDocument", {})
         ratification_conflict = core_components.get("responses", {}).get("RatificationPackageActionConflict", {})
         ratification_create_conflict = core_components.get("responses", {}).get("RatificationPackageCreateConflict", {})
+        evidence_policy = core_components.get("schemas", {}).get("EvidencePolicy", {})
         snapshot_v1_rules = ratification_snapshot_v1.get("properties", {}).get("ruleSet", {}).get("$ref")
         snapshot_v2_rules = ratification_snapshot_v2.get("properties", {}).get("ruleSet", {}).get("$ref")
+        snapshot_v3_rules = ratification_snapshot_v3.get("properties", {}).get("ruleSet", {}).get("$ref")
         ratification_closed_fields = {
             "RatificationCommercialTerms": {"amountMinor", "currency"},
             "RatificationSnapshotParty": {"legalEntityId", "legalName"},
@@ -1614,12 +1631,13 @@ def validate_contract_documents(failures: list[str]) -> None:
             "RatificationSnapshotDocument": {"documentId", "objectVersion", "sha256"},
             "RatificationPackageSnapshotV1": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
             "RatificationPackageSnapshotV2": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document", "disputeWindowDays"},
+            "RatificationPackageSnapshotV3": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document", "disputeWindowDays", "evidencePolicy"},
             "RatificationApproval": {"legalEntityId", "legalName", "status", "approvedAt", "approverUserId"},
             "RatificationPackageAvailableActions": {"canApprove", "canReject"},
             "RatificationPackageDetail": {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"},
             "RatificationPackageHistory": {"items"},
             "RatificationProjection": {"readiness", "currentPackage"},
-            "CreateRatificationPackageRequest": {"expectedVersion", "commercialTerms", "disputeWindowDays"},
+            "CreateRatificationPackageRequest": {"expectedVersion", "commercialTerms", "disputeWindowDays", "evidencePolicy"},
             "RatificationPackageActionRequest": {"expectedPackageVersion"},
         }
         ratification_required_fields = {
@@ -1630,6 +1648,7 @@ def validate_contract_documents(failures: list[str]) -> None:
             "RatificationSnapshotDocument": {"documentId", "objectVersion", "sha256"},
             "RatificationPackageSnapshotV1": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document"},
             "RatificationPackageSnapshotV2": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document", "disputeWindowDays"},
+            "RatificationPackageSnapshotV3": {"schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet", "commercialTerms", "document", "disputeWindowDays", "evidencePolicy"},
             "RatificationApproval": {"legalEntityId", "legalName", "status", "approvedAt", "approverUserId"},
             "RatificationPackageAvailableActions": {"canApprove", "canReject"},
             "RatificationPackageDetail": {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"},
@@ -1642,6 +1661,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         snapshot_discriminator = ratification_snapshot.get("discriminator", {})
         if (ratification_readiness.get("enum") != ["NOT_READY", "READY"]
                 or ratification_status.get("enum") != ["PENDING", "RATIFIED", "REJECTED", "SUPERSEDED"]
+                or evidence_policy.get("enum") != ["REQUIRED", "NOT_REQUIRED"]
                 or set(ratification_terms.get("required", [])) != {"amountMinor", "currency"}
                 or set(ratification_terms.get("properties", {})) != {"amountMinor", "currency"}
                 or ratification_terms.get("additionalProperties") is not False
@@ -1649,11 +1669,13 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or ratification_terms.get("properties", {}).get("amountMinor", {}).get("maximum") != 9007199254740991
                 or ratification_terms.get("properties", {}).get("currency", {}).get("pattern") != "^[A-Z]{3}$"
                 or set(ratification_create.get("required", [])) != {"expectedVersion", "commercialTerms"}
-                or set(ratification_create.get("properties", {})) != {"expectedVersion", "commercialTerms", "disputeWindowDays"}
+                or set(ratification_create.get("properties", {})) != {"expectedVersion", "commercialTerms", "disputeWindowDays", "evidencePolicy"}
                 or ratification_create.get("additionalProperties") is not False
                 or ratification_create.get("properties", {}).get("expectedVersion", {}).get("maximum") != 9007199254740991
                 or ratification_create.get("properties", {}).get("disputeWindowDays", {}).get("minimum") != 0
                 or ratification_create.get("properties", {}).get("disputeWindowDays", {}).get("maximum") != 365
+                or ratification_create.get("properties", {}).get("evidencePolicy", {}).get("$ref")
+                != "#/components/schemas/EvidencePolicy"
                 or set(ratification_action.get("required", [])) != {"expectedPackageVersion"}
                 or set(ratification_action.get("properties", {})) != {"expectedPackageVersion"}
                 or ratification_action.get("additionalProperties") is not False
@@ -1668,10 +1690,20 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or ratification_snapshot_v2.get("properties", {}).get("schemaVersion", {}).get("const") != 2
                 or ratification_snapshot_v2.get("properties", {}).get("disputeWindowDays", {}).get("minimum") != 0
                 or ratification_snapshot_v2.get("properties", {}).get("disputeWindowDays", {}).get("maximum") != 365
+                or set(ratification_snapshot_v3.get("required", [])) != ratification_required_fields["RatificationPackageSnapshotV3"]
+                or set(ratification_snapshot_v3.get("properties", {})) != ratification_closed_fields["RatificationPackageSnapshotV3"]
+                or ratification_snapshot_v3.get("additionalProperties") is not False
+                or ratification_snapshot_v3.get("properties", {}).get("schemaVersion", {}).get("const") != 3
+                or ratification_snapshot_v3.get("properties", {}).get("disputeWindowDays", {}).get("minimum") != 0
+                or ratification_snapshot_v3.get("properties", {}).get("disputeWindowDays", {}).get("maximum") != 365
+                or ratification_snapshot_v3.get("properties", {}).get("evidencePolicy", {}).get("$ref")
+                != "#/components/schemas/EvidencePolicy"
                 or snapshot_v1_rules != "#/components/schemas/RatificationSnapshotRuleSet"
                 or snapshot_v2_rules != "#/components/schemas/RatificationSnapshotRuleSet"
+                or snapshot_v3_rules != "#/components/schemas/RatificationSnapshotRuleSet"
                 or ratification_snapshot_v1.get("properties", {}).get("dealId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_v2.get("properties", {}).get("dealId", {}).get("pattern") != lowercase_uuid_pattern
+                or ratification_snapshot_v3.get("properties", {}).get("dealId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_party.get("properties", {}).get("legalEntityId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_rule_set.get("properties", {}).get("ruleSetVersionId", {}).get("pattern") != lowercase_uuid_pattern
                 or ratification_snapshot_document.get("properties", {}).get("documentId", {}).get("pattern") != lowercase_uuid_pattern
@@ -1681,11 +1713,17 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or "RFC 8785" not in ratification_snapshot_v1.get("description", "")
                 or "excludes" not in ratification_snapshot_v1.get("description", "")
                 or "RFC 8785" not in ratification_snapshot_v2.get("description", "")
+                or "RFC 8785" not in ratification_snapshot_v3.get("description", "")
                 or snapshot_discriminator.get("propertyName") != "schemaVersion"
                 or snapshot_discriminator.get("mapping", {}).get("1") != "#/components/schemas/RatificationPackageSnapshotV1"
                 or snapshot_discriminator.get("mapping", {}).get("2") != "#/components/schemas/RatificationPackageSnapshotV2"
+                or snapshot_discriminator.get("mapping", {}).get("3") != "#/components/schemas/RatificationPackageSnapshotV3"
                 or {ref.get("$ref") for ref in snapshot_one_of}
-                != {"#/components/schemas/RatificationPackageSnapshotV1", "#/components/schemas/RatificationPackageSnapshotV2"}
+                != {
+                    "#/components/schemas/RatificationPackageSnapshotV1",
+                    "#/components/schemas/RatificationPackageSnapshotV2",
+                    "#/components/schemas/RatificationPackageSnapshotV3",
+                }
                 or set(ratification_detail.get("required", [])) != {"id", "version", "status", "contentHash", "snapshot", "approvals", "availableActions", "createdAt"}
                 or ratification_detail.get("additionalProperties") is not False
                 or ratification_detail.get("properties", {}).get("contentHash", {}).get("pattern") != "^[a-f0-9]{64}$"
@@ -2141,6 +2179,11 @@ def validate_contract_documents(failures: list[str]) -> None:
                 "#/components/parameters/LegalEntityContext",
                 "#/components/parameters/IdempotencyKey",
             },
+            ("/deals/{dealId}/fulfillment/accept-without-evidence", "post"): {
+                "#/components/parameters/DealId",
+                "#/components/parameters/LegalEntityContext",
+                "#/components/parameters/IdempotencyKey",
+            },
             ("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis", "get"): {
                 "#/components/parameters/DealId",
                 "#/components/parameters/EvidenceSubmissionId",
@@ -2340,12 +2383,12 @@ def validate_contract_documents(failures: list[str]) -> None:
             "CreateEvidenceUploadIntentRequest": {"evidenceType", "mediaType", "fileName", "sizeBytes", "sha256"},
             "FinalizeEvidenceUploadRequest": {"sizeBytes", "sha256"},
             "AcceptEvidenceRequest": {"expectedVersion", "expectedEvidenceVersion"},
+            "AcceptWithoutEvidenceRequest": {"expectedDealVersion", "expectedFulfillmentVersion"},
             "RejectEvidenceRequest": {"expectedVersion", "expectedEvidenceVersion", "reason"},
             "EvidenceAvailableActions": {"canDownload"},
             "MilestoneAvailableActions": {"canUpload"},
-            "FulfillmentAvailableActions": {"canStart", "canAccept", "canReject"},
-            "DealFulfillmentSummary": {"status", "fulfillmentId", "currentEvidenceSubmissionId"},
-            "FulfillmentDetail": {"id", "dealId", "status", "sourcePackageId", "milestone", "currentEvidence", "history", "availableActions", "version", "createdAt", "updatedAt"},
+            "DealFulfillmentSummary": {"status", "fulfillmentId", "currentEvidenceSubmissionId", "evidencePolicy"},
+            "FulfillmentDetail": {"id", "dealId", "status", "sourcePackageId", "evidencePolicy", "milestone", "currentEvidence", "history", "availableActions", "version", "createdAt", "updatedAt"},
             "FulfillmentMilestone": {"id", "title", "description", "ruleReferences", "availableActions", "version"},
             "MilestoneRuleReference": {"ruleReference", "category"},
             "EvidenceUploadIntent": {"evidence", "uploadUrl", "uploadHeaders", "expiresAt"},
@@ -2357,6 +2400,23 @@ def validate_contract_documents(failures: list[str]) -> None:
                     or set(schema.get("properties", {})) != expected_fields
                     or set(schema.get("required", [])) != expected_fields):
                 failures.append(f"FAIL Core API Slice 12 {schema_name}: closed field set changed")
+        fulfillment_actions = core_components.get("schemas", {}).get("FulfillmentAvailableActions", {})
+        if (set(fulfillment_actions.get("required", [])) != {"canStart", "canAccept", "canReject"}
+                or set(fulfillment_actions.get("properties", {}))
+                != {"canStart", "canAccept", "canReject", "canAcceptWithoutEvidence"}
+                or fulfillment_actions.get("additionalProperties") is not False
+                or any(
+                    fulfillment_actions.get("properties", {}).get(name, {}).get("type") != "boolean"
+                    for name in ("canStart", "canAccept", "canReject", "canAcceptWithoutEvidence")
+                )):
+            failures.append("FAIL Core API Slice 12 FulfillmentAvailableActions: closed action set changed")
+        if (core_components.get("schemas", {}).get("DealFulfillmentSummary", {})
+                .get("properties", {}).get("evidencePolicy", {}).get("$ref")
+                != "#/components/schemas/EvidencePolicy"
+                or core_components.get("schemas", {}).get("FulfillmentDetail", {})
+                .get("properties", {}).get("evidencePolicy", {}).get("$ref")
+                != "#/components/schemas/EvidencePolicy"):
+            failures.append("FAIL Core API Slice 12 fulfillment: evidencePolicy must $ref EvidencePolicy")
         evidence_submission = core_components.get("schemas", {}).get("EvidenceSubmission", {})
         if (evidence_submission.get("discriminator", {}).get("propertyName") != "status"
                 or set(evidence_submission.get("discriminator", {}).get("mapping", {})) != {
@@ -2373,6 +2433,7 @@ def validate_contract_documents(failures: list[str]) -> None:
         fulfillment_start_conflict = core_components.get("responses", {}).get("FulfillmentStartConflict", {})
         evidence_finalize_conflict = core_components.get("responses", {}).get("EvidenceFinalizeConflict", {})
         evidence_review_conflict = core_components.get("responses", {}).get("EvidenceReviewConflict", {})
+        accept_without_evidence_conflict = core_components.get("responses", {}).get("AcceptWithoutEvidenceConflict", {})
         if ("DEAL_STALE_VERSION" not in fulfillment_start_conflict.get("description", "")
                 or "DEAL_STATE_CONFLICT" not in fulfillment_start_conflict.get("description", "")
                 or "FULFILLMENT_ALREADY_EXISTS" not in fulfillment_start_conflict.get("description", "")
@@ -2388,6 +2449,14 @@ def validate_contract_documents(failures: list[str]) -> None:
                 or "FULFILLMENT_COMPLETED" not in evidence_review_conflict.get("description", "")
                 or "IDEMPOTENCY_KEY_REUSED" not in evidence_review_conflict.get("description", "")):
             failures.append("FAIL Core API Slice 12 evidence review: stable conflict codes changed")
+        if ("DEAL_STALE_VERSION" not in accept_without_evidence_conflict.get("description", "")
+                or "FULFILLMENT_STALE_VERSION" not in accept_without_evidence_conflict.get("description", "")
+                or "FULFILLMENT_EVIDENCE_POLICY_CONFLICT" not in accept_without_evidence_conflict.get("description", "")
+                or "FULFILLMENT_EVIDENCE_PRESENT" not in accept_without_evidence_conflict.get("description", "")
+                or "FULFILLMENT_STATE_CONFLICT" not in accept_without_evidence_conflict.get("description", "")
+                or "FULFILLMENT_COMPLETED" not in accept_without_evidence_conflict.get("description", "")
+                or "IDEMPOTENCY_KEY_REUSED" not in accept_without_evidence_conflict.get("description", "")):
+            failures.append("FAIL Core API Plan 18B accept-without-evidence: stable conflict codes changed")
 
         video_analysis_status = core_components.get("schemas", {}).get("VideoAnalysisStatus", {})
         video_analysis_actions = core_components.get("schemas", {}).get("VideoAnalysisAvailableActions", {})

@@ -1486,6 +1486,48 @@ paths:
         '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
         '409': {$ref: '#/components/responses/EvidenceReviewConflict'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/fulfillment/accept-without-evidence:
+    post:
+      operationId: acceptFulfillmentWithoutEvidence
+      tags: [Fulfillment]
+      summary: Accept delivery without evidence for a NOT_REQUIRED fulfillment
+      description: >
+        Buyer legal entity ADMIN-only action. Completes a started fulfillment whose
+        effective evidencePolicy is NOT_REQUIRED without creating or accepting an
+        EvidenceSubmission. Start and this no-file acceptance remain distinct
+        explicit actions; start never auto-completes. The Deal remains ACTIVE; no
+        payment release, settlement, payout, refund, provider call, or AI job is
+        produced. Idempotency-Key is required. The request carries expectedDealVersion
+        and expectedFulfillmentVersion; both are checked under lock. Invalid when
+        the effective policy is REQUIRED, fulfillment is not started or already
+        terminal, or any current/finalized evidence submission exists.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptWithoutEvidenceRequest'
+      responses:
+        '200':
+          description: >
+            Fulfillment completed without evidence; idempotent replay returns the
+            original or an equivalent FulfillmentDetail.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FulfillmentDetail'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/EvidenceReviewForbidden'}
+        '404': {$ref: '#/components/responses/FulfillmentNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/AcceptWithoutEvidenceConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis:
     get:
       operationId: getVideoAnalysis
@@ -2329,6 +2371,14 @@ components:
         - CSRF_TOKEN_INVALID
         - EVIDENCE_REVIEW_FORBIDDEN
         - LEGAL_ENTITY_ACCESS_DENIED
+      AcceptWithoutEvidenceConflict:
+        - DEAL_STALE_VERSION
+        - FULFILLMENT_COMPLETED
+        - FULFILLMENT_EVIDENCE_POLICY_CONFLICT
+        - FULFILLMENT_EVIDENCE_PRESENT
+        - FULFILLMENT_STALE_VERSION
+        - FULFILLMENT_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
       EvidenceUploadConflict:
         - DEAL_STATE_CONFLICT
         - EVIDENCE_ALREADY_SUBMITTED
@@ -3229,6 +3279,21 @@ components:
         evidence awaiting review (EVIDENCE_STATE_CONFLICT), the fulfillment is
         already COMPLETED (FULFILLMENT_COMPLETED), or Idempotency-Key was reused for a
         different request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    AcceptWithoutEvidenceConflict:
+      description: >
+        The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the
+        supplied fulfillment expectedVersion is stale (FULFILLMENT_STALE_VERSION),
+        the effective evidencePolicy is not NOT_REQUIRED
+        (FULFILLMENT_EVIDENCE_POLICY_CONFLICT), the fulfillment is not in a started
+        non-terminal state that accepts no-file completion
+        (FULFILLMENT_STATE_CONFLICT), the fulfillment is already COMPLETED
+        (FULFILLMENT_COMPLETED), any current or finalized evidence submission
+        exists (FULFILLMENT_EVIDENCE_PRESENT), or Idempotency-Key was reused for a
+        different request (IDEMPOTENCY_KEY_REUSED). Forbidden actor failures reuse
+        EvidenceReviewForbidden (EVIDENCE_REVIEW_FORBIDDEN).
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/ProblemDetail'}
@@ -4736,19 +4801,54 @@ components:
             Immutable contractual dispute window in whole UTC days after fulfillment
             completion before release becomes eligible. Inclusive 0..365 per founder
             amendment 2026-07-23; one day is an exact 24-hour UTC interval.
+    RatificationPackageSnapshotV3:
+      type: object
+      additionalProperties: false
+      description: >
+        Schema version 3 of the sole contentHash input: identical to v2 plus the
+        immutable contractual evidencePolicy field. Canonicalized with RFC 8785 JCS,
+        encoded as UTF-8 bytes, then SHA-256 hashed to lowercase hexadecimal. It
+        excludes package id/version/status/contentHash, approvals, approver or actor
+        visibility, available actions, timestamps, audit, and all detail-wrapper
+        metadata. v1/v2 serialized bytes and hashes remain unchanged.
+      required: [schemaVersion, dealId, dealReference, dealTitle, buyer, seller, ruleSet, commercialTerms, document, disputeWindowDays, evidencePolicy]
+      properties:
+        schemaVersion: {type: integer, const: 3}
+        dealId: {type: string, format: uuid, pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', description: Lowercase canonical UUID string.}
+        dealReference: {type: string, minLength: 1, maxLength: 50}
+        dealTitle: {type: string, minLength: 1, maxLength: 200}
+        buyer: {$ref: '#/components/schemas/RatificationSnapshotParty'}
+        seller: {$ref: '#/components/schemas/RatificationSnapshotParty'}
+        ruleSet: {$ref: '#/components/schemas/RatificationSnapshotRuleSet'}
+        commercialTerms: {$ref: '#/components/schemas/RatificationCommercialTerms'}
+        document: {$ref: '#/components/schemas/RatificationSnapshotDocument'}
+        disputeWindowDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+          description: >
+            Immutable contractual dispute window in whole UTC days after fulfillment
+            completion before release becomes eligible. Inclusive 0..365; one day is
+            an exact 24-hour UTC interval.
+        evidencePolicy:
+          $ref: '#/components/schemas/EvidencePolicy'
     RatificationPackageSnapshot:
       description: >
         Discriminated immutable ratification snapshot used as the sole contentHash input.
-        V1 remains readable; v2 is produced when disputeWindowDays is supplied at
-        package create. Both versions preserve RFC 8785 JCS canonicalization rules.
+        V1 remains readable; v2 is produced when disputeWindowDays is supplied without
+        evidencePolicy; v3 is produced when both disputeWindowDays and evidencePolicy
+        are supplied. All versions preserve RFC 8785 JCS canonicalization rules.
+        Effective evidence policy for v1/v2 is permanently REQUIRED.
       oneOf:
         - $ref: '#/components/schemas/RatificationPackageSnapshotV1'
         - $ref: '#/components/schemas/RatificationPackageSnapshotV2'
+        - $ref: '#/components/schemas/RatificationPackageSnapshotV3'
       discriminator:
         propertyName: schemaVersion
         mapping:
           '1': '#/components/schemas/RatificationPackageSnapshotV1'
           '2': '#/components/schemas/RatificationPackageSnapshotV2'
+          '3': '#/components/schemas/RatificationPackageSnapshotV3'
     RatificationApproval:
       type: object
       additionalProperties: false
@@ -4826,9 +4926,21 @@ components:
           minimum: 0
           maximum: 365
           description: >
-            Optional contractual dispute window in whole UTC days. When present, the
-            server creates a schemaVersion=2 immutable snapshot; when absent, v1 is
-            created. Immutable after package create.
+            Optional contractual dispute window in whole UTC days. Combinations:
+            neither disputeWindowDays nor evidencePolicy → schemaVersion 1 (effective
+            evidence policy REQUIRED); disputeWindowDays only → schemaVersion 2
+            (effective REQUIRED); both disputeWindowDays and evidencePolicy →
+            schemaVersion 3; evidencePolicy without disputeWindowDays → field-level
+            422 VALIDATION_FAILED (disputeWindowDays REQUIRED). Immutable after
+            package create.
+        evidencePolicy:
+          $ref: '#/components/schemas/EvidencePolicy'
+          description: >
+            Optional ratified evidence policy. Valid only together with
+            disputeWindowDays (produces schemaVersion 3). Absent with
+            disputeWindowDays alone produces v2; absent with neither field produces
+            v1. Supplying evidencePolicy without disputeWindowDays is a field-level
+            422.
     RatificationPackageActionRequest:
       type: object
       additionalProperties: false
@@ -5370,6 +5482,13 @@ components:
             Optional actor-aware availability. True only for buyer entity ADMIN when
             the fulfillment has current SUBMITTED evidence awaiting review. Absent or
             unknown means false/read-only.
+        canAcceptWithoutEvidence:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for buyer entity ADMIN when
+            fulfillment is started, effective evidencePolicy is NOT_REQUIRED, no
+            evidence submission exists, and no-file acceptance is allowed. Absent or
+            unknown means false/read-only.
         canOpenDispute:
           type: boolean
           description: >
@@ -5652,6 +5771,14 @@ components:
         headerName:
           type: string
           const: X-CSRF-TOKEN
+    EvidencePolicy:
+      type: string
+      description: >
+        Closed ratified evidence policy. REQUIRED retains the seller-upload /
+        buyer-ADMIN evidence review machine. NOT_REQUIRED permits buyer ADMIN
+        no-file acceptance of a started fulfillment. v1/v2 packages resolve
+        permanently to REQUIRED.
+      enum: [REQUIRED, NOT_REQUIRED]
     FulfillmentStatus:
       type: string
       description: >
@@ -5740,6 +5867,21 @@ components:
           format: int64
           minimum: 0
           description: Current evidence submission optimistic-lock version observed by the client.
+    AcceptWithoutEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedDealVersion, expectedFulfillmentVersion]
+      properties:
+        expectedDealVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current Deal optimistic-lock version observed by the client.
+        expectedFulfillmentVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current fulfillment optimistic-lock version observed by the client.
     RejectEvidenceRequest:
       type: object
       additionalProperties: false
@@ -5790,6 +5932,13 @@ components:
         canReject:
           type: boolean
           description: True only for the buyer entity ADMIN when current SUBMITTED evidence awaits review.
+        canAcceptWithoutEvidence:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for buyer entity ADMIN when
+            effective evidencePolicy is NOT_REQUIRED, fulfillment is started and
+            non-terminal, and no evidence submission exists. Absent or unknown means
+            false/read-only.
     MilestoneRuleReference:
       type: object
       additionalProperties: false
@@ -6323,7 +6472,7 @@ components:
       type: object
       additionalProperties: false
       description: Optional backend-owned Deal fulfillment summary; independent of the full fulfillment detail.
-      required: [status, fulfillmentId, currentEvidenceSubmissionId]
+      required: [status, fulfillmentId, currentEvidenceSubmissionId, evidencePolicy]
       properties:
         status:
           $ref: '#/components/schemas/FulfillmentStatus'
@@ -6339,10 +6488,15 @@ components:
             - type: string
               format: uuid
             - type: 'null'
+        evidencePolicy:
+          $ref: '#/components/schemas/EvidencePolicy'
+          description: >
+            Effective evidence policy for this Deal's fulfillment. v1/v2 ratified
+            packages resolve permanently to REQUIRED.
     FulfillmentDetail:
       type: object
       additionalProperties: false
-      required: [id, dealId, status, sourcePackageId, milestone, currentEvidence, history, availableActions, version, createdAt, updatedAt]
+      required: [id, dealId, status, sourcePackageId, evidencePolicy, milestone, currentEvidence, history, availableActions, version, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -6356,6 +6510,11 @@ components:
           type: string
           format: uuid
           description: Immutable ratification package id to which the fulfillment is bound.
+        evidencePolicy:
+          $ref: '#/components/schemas/EvidencePolicy'
+          description: >
+            Effective immutable evidence policy copied from the source ratification
+            package at start. v1/v2 packages resolve permanently to REQUIRED.
         milestone:
           $ref: '#/components/schemas/FulfillmentMilestone'
         currentEvidence:
@@ -6908,6 +7067,8 @@ components:
         - EVIDENCE_VERIFICATION_FAILED
         - FULFILLMENT_ALREADY_EXISTS
         - FULFILLMENT_COMPLETED
+        - FULFILLMENT_EVIDENCE_POLICY_CONFLICT
+        - FULFILLMENT_EVIDENCE_PRESENT
         - FULFILLMENT_NOT_FOUND
         - FULFILLMENT_STALE_VERSION
         - FULFILLMENT_START_FORBIDDEN

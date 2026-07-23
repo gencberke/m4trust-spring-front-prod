@@ -133,6 +133,27 @@ anda yalnız bir current `SUBMITTED` evidence review bekleyebilir.
   akışlarının Deal-status okumasını aynı Deal lock sırasına almalı ve completion
   yarışını test etmelidir.
 
+**Founder amendment (2026-07-23) — Ratified evidence policy:**
+
+- Her ratified package'ın etkili bir evidence policy'si vardır:
+  `REQUIRED | NOT_REQUIRED`.
+- Schema v1 ve v2 package'lar kalıcı olarak `REQUIRED` yorumlanır; bu
+  compatibility'tir, yeni rıza icadı değildir. Orijinal seller upload /
+  buyer-ADMIN accept-reject actor modeli (§2.2) ve immutable evidence history
+  (§2.3) `REQUIRED` için değişmez.
+- Schema v3 package'lar immutable `evidencePolicy` taşır; policy değişikliği
+  yeni package/version ve yeniden ratification gerektirir.
+- `REQUIRED` mevcut evidence state machine'ini ve §2.5'teki file-backed accept
+  sınırını korur.
+- `NOT_REQUIRED` started fulfillment'da buyer legal entity `ADMIN`'in
+  EvidenceSubmission olmadan explicit no-file acceptance ile fulfillment'ı
+  `COMPLETED` yapmasına izin verir. Seller start ile no-file acceptance ayrı
+  explicit action'lardır; start otomatik completion üretmez.
+- No-file acceptance §2.5 completion sınırına tabidir: Deal `ACTIVE` kalır;
+  Deal COMPLETED, settlement, release, payout, refund, provider çağrısı veya
+  AI job üretmez. Actor modeli genişlemez: yalnız buyer `ADMIN`; seller
+  self-accept ve buyer `MEMBER` accept yoktur.
+
 ### 2.6 Contract, concurrency, transaction ve modül sınırı
 
 - Public Core API yüzeyi implementasyondan önce committed OpenAPI'de additive

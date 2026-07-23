@@ -1,24 +1,26 @@
 # Review Request
-Task: 18A-T01
+Task: 18B-T01
 Revision: 1
-Plan: docs/plan/ready/18a-deal-scoped-closure-workspace.md
-Phases: 18A-P1, 18A-P2
+Plan: docs/plan/ready/18b-ratified-evidence-policy.md
+Phases: 18B-P1
 Status: COMPLETED
 Branch: plan/fulfillment-closure-simplification
-Base: main@693add7
+Base: main@693add7 (+ 18A commit fc1bd09)
 Plan completion claim: NO
 
 ## Phase outcomes
-- 18A-P1 — DONE — DealLifecycleProjectionCalculator accepts fulfillment status; ACTIVE+FUNDED+fulfillment COMPLETED (no actor-visible dispute) emits SETTLEMENT; DealService detail/summary pass fulfillment summary; DealStatusTest assertions updated for SETTLEMENT / dispute priority / terminal win / fail-closed unknown status. Validation NOT_RUN per coordinator policy.
-- 18A-P2 — DONE — DealDetailPage sixth workspace area `closure`/`Kapanış`; stage mapping FULFILLMENT+DISPUTE→delivery, SETTLEMENT+COMPLETED→closure, CANCELLED+ARCHIVED→agreement; DealSettlementPanel only in closure; fulfillment success notice navigates locally to closure; terminal summary relocated. Validation NOT_RUN per coordinator policy.
+- 18A — DONE — already landed at fc1bd09 (Kapanış/SETTLEMENT lifecycle + UI); not reworked in this task.
+- 18B-P1 — DONE — ADR-011 dated evidence-policy amendment + ADR-INDEX/FORBIDDEN sync; OpenAPI EvidencePolicy, RatificationPackageSnapshotV3, CreateRatificationPackageRequest combinations, fulfillment evidencePolicy, canAcceptWithoutEvidence, POST accept-without-evidence + AcceptWithoutEvidenceConflict codes; validator closed sets; changelog; ratification example fixtures; generated frontend types.
+- 18B-P2+ — NOT_STARTED — out of this packet.
 
 ## Validation
-- Focused DealStatusTest / lifecycle assertions — NOT_RUN (coordinator policy for this task)
-- Frontend typecheck/build — NOT_RUN (coordinator policy for this task)
-- Contract/migration diff check — NOT_RUN here; implementer confirms no OpenAPI/migration edits in this change set
+- `npm run generate:api` — PASS (core-api.d.ts refreshed)
+- `python contracts/scripts/validate_contracts.py` — NOT_RUN — deferred to coordinator final gate
+- mvn/npm test/build — NOT_RUN (coordinator policy: skip until end)
 
 ## Decisions needed
 - None
 
 ## Deviation or risk
-- None material. Integration tests that assert FULFILLMENT for funded-but-not-completed deals remain valid; post-completion lifecycle expectations will need coordinator attention if any integration fixture completes fulfillment and still expects FULFILLMENT.
+- New ApiErrorCode values `FULFILLMENT_EVIDENCE_POLICY_CONFLICT` and `FULFILLMENT_EVIDENCE_PRESENT` are OpenAPI-ahead of Java via validator tolerance until 18B-P3 behavior wiring.
+- Required `evidencePolicy` on existing fulfillment summary/detail projections is an additive wire break for old clients that ignored unknown fields but assumed exact required sets; packet requires the field.
