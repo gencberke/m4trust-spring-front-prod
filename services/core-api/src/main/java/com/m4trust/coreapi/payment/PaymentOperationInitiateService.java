@@ -39,10 +39,11 @@ class PaymentOperationInitiateService {
     private final Clock clock;
     private final PaymentCanonicalHasher hasher;
     private final ObjectMapper json;
+    private final PaymentProviderModeResolver mode;
 
     PaymentOperationInitiateService(FundingSourcePorts.DealTarget deals, FundingRepository funding,
             IdempotencyService idempotency, AuditAppendPort audit, TransactionTemplate transactions, Clock clock,
-            PaymentCanonicalHasher hasher, ObjectMapper json) {
+            PaymentCanonicalHasher hasher, ObjectMapper json, PaymentProviderModeResolver mode) {
         this.deals = deals;
         this.funding = funding;
         this.idempotency = idempotency;
@@ -51,6 +52,7 @@ class PaymentOperationInitiateService {
         this.clock = clock;
         this.hasher = hasher;
         this.json = json;
+        this.mode = mode;
     }
 
     FundingReadDtos.PaymentOperationView initiate(OperationContext context, UUID fundingUnitId,
@@ -108,7 +110,7 @@ class PaymentOperationInitiateService {
                 FundingRepository.DispatchType.INITIATE, providerKey, unit.amountMinor(), unit.currency(), now));
         audit.append(auditRecord(context, operation.id(), "PAYMENT_OPERATION_INITIATED", correlationId, now));
         idempotency.recordResult(claim, new IdempotencyResultReference(IDEMPOTENCY_RESULT, operation.id()));
-        return FundingProjection.operation(operation.toRecord(), buyerAdmin);
+        return FundingProjection.operation(operation.toRecord(), buyerAdmin, mode.resolve());
     }
 
     private FundingReadDtos.PaymentOperationView replay(IdempotencyResultReference reference, boolean buyerAdmin) {
@@ -117,7 +119,7 @@ class PaymentOperationInitiateService {
         }
         FundingRepository.OperationLookup current = funding.findOperationById(reference.id())
                 .orElseThrow(() -> new IllegalStateException("Replayed payment operation is unavailable"));
-        return FundingProjection.operation(current.operation(), buyerAdmin);
+        return FundingProjection.operation(current.operation(), buyerAdmin, mode.resolve());
     }
 
     private AuditRecord auditRecord(OperationContext context, UUID operationId, String action, UUID correlationId,

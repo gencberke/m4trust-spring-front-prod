@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.m4trust.coreapi.payment.PaymentProviderMode;
 import com.m4trust.coreapi.payment.PaymentProviderPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -12,7 +13,10 @@ import org.springframework.stereotype.Component;
 /**
  * Provider-independent sandbox: simulates a held-funds provider entirely
  * in-process, never moves real money, and never claims M4Trust holds funds
- * (ADR-010 §2.2, §2.6). Active only under the {@code local-sandbox} profile.
+ * (ADR-010 §2.2, §2.6). Active under the {@code local-sandbox} profile or the
+ * separately named {@code staging-simulated} profile (2026-07-22
+ * simulation-only decision §2; ADR-014 §2.1) — never under {@code production}
+ * (see {@link SandboxPaymentProviderBootstrapGuard}).
  *
  * <p>Exactly one configured scenario is consumed per new provider key
  * (assigned the first time {@link #initiate} sees that key), then resolved
@@ -23,7 +27,7 @@ import org.springframework.stereotype.Component;
  * never-before-seen key always answers {@code NOT_FOUND} from queryStatus.
  */
 @Component
-@Profile("local-sandbox")
+@Profile({"local-sandbox", "staging-simulated"})
 class SandboxPaymentProviderAdapter implements PaymentProviderPort {
 
     private final SandboxPaymentProviderProperties properties;
@@ -48,6 +52,11 @@ class SandboxPaymentProviderAdapter implements PaymentProviderPort {
             return new ProviderResult(Outcome.NOT_FOUND, null);
         }
         return resolve(state);
+    }
+
+    @Override
+    public PaymentProviderMode mode() {
+        return PaymentProviderMode.DEMO_SIMULATED;
     }
 
     private ProviderResult resolve(SandboxOperationState state) {

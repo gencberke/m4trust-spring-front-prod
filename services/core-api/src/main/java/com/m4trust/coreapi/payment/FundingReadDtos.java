@@ -18,7 +18,8 @@ final class FundingReadDtos {
             long version,
             PaymentOperationAvailableActions availableActions,
             Instant createdAt,
-            Instant updatedAt) { }
+            Instant updatedAt,
+            PaymentProviderMode mode) { }
 
     record FundingUnitAvailableActions(boolean canInitiatePayment) { }
 
@@ -43,5 +44,6 @@ final class FundingReadDtos {
             long version,
             FundingUnitView fundingUnit,
             Instant createdAt,
-            Instant updatedAt) { }
+            Instant updatedAt,
+            PaymentProviderMode mode) { }
 }

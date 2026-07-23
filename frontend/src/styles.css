@@ -2832,6 +2832,21 @@ a:hover {
   font-size: 0.85rem;
 }
 
+.funding-simulation-notice {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0 0 18px;
+  padding: 8px 14px;
+  border: 1px solid #f0cf6b;
+  border-radius: 6px;
+  background: #fff5d9;
+  color: #745000;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 .funding-unit-actions {
   display: flex;
   flex-wrap: wrap;

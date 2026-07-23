@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 @Configuration(proxyBeanMethods = false)
-@Profile("local-sandbox")
+@Profile({"local-sandbox", "staging-simulated"})
 @EnableConfigurationProperties(SandboxPaymentProviderProperties.class)
 class SandboxPaymentConfiguration {
 }

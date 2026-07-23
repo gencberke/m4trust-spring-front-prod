@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added additive, optional, nullable `mode` field (new `PaymentSimulationMode`
+  schema, single member `DEMO_SIMULATED`) to `FundingPlanDetail` and
+  `PaymentOperation` responses per the 2026-07-22 simulation-only payment
+  decision §2 and ADR-014 §2.1 visible-mode labeling requirement. The field is
+  present only when the in-process demo simulator is the active payment
+  provider; null/absent remains the only non-simulated representation. Slice 11
+  required field sets are unchanged.
+
 - Removed unreleased ADR-017/018-only public ApiErrorCode catalog values that had
   no runtime endpoint or reusable response ownership yet:
   `AUTH_INVITATION_NOT_FOUND_OR_INVALID`, `AUTH_INVITATION_STATE_CONFLICT`,

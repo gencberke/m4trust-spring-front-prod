@@ -4562,6 +4562,15 @@ components:
         crash, or ambiguous response; it is never treated as failure and only
         query-first reconciliation resolves it to a definitive terminal state.
       enum: [CREATED, SUCCEEDED, DECLINED, UNCONFIRMED]
+    PaymentSimulationMode:
+      type: string
+      description: >
+        Visible simulated-mode label (2026-07-22 simulation-only decision §2;
+        ADR-014 §2.1). DEMO_SIMULATED is the only member until a separate,
+        future ADR introduces a real-provider production mode. It never claims
+        real money movement, custody, or provider-verified finality (ADR-014
+        §2.9).
+      enum: [DEMO_SIMULATED]
     FundingUnitAvailableActions:
       type: object
       additionalProperties: false
@@ -4622,6 +4631,15 @@ components:
           $ref: '#/components/schemas/UtcTimestamp'
         updatedAt:
           $ref: '#/components/schemas/UtcTimestamp'
+        mode:
+          description: >
+            DEMO_SIMULATED when the active payment provider is the in-process
+            demo simulator, or null when no simulator is active. Never
+            fabricated; null/absent is the only non-simulated representation
+            (2026-07-22 simulation-only decision §2; ADR-014 §2.1/§2.9).
+          anyOf:
+            - $ref: '#/components/schemas/PaymentSimulationMode'
+            - type: 'null'
     FundingUnit:
       type: object
       additionalProperties: false
@@ -4698,6 +4716,15 @@ components:
           $ref: '#/components/schemas/UtcTimestamp'
         updatedAt:
           $ref: '#/components/schemas/UtcTimestamp'
+        mode:
+          description: >
+            DEMO_SIMULATED when the active payment provider is the in-process
+            demo simulator, or null when no simulator is active. Never
+            fabricated; null/absent is the only non-simulated representation
+            (2026-07-22 simulation-only decision §2; ADR-014 §2.1/§2.9).
+          anyOf:
+            - $ref: '#/components/schemas/PaymentSimulationMode'
+            - type: 'null'
     DealFundingSummary:
       type: object
       additionalProperties: false

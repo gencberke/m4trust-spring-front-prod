@@ -399,9 +399,17 @@ function FundingPlanSection({
   const unit = plan.fundingUnit;
   const isRetry = unit.status === "FAILED";
   const reconciliationRequired = currentOperation?.reconciliationRequired === true;
+  const isSimulated =
+    plan.mode === "DEMO_SIMULATED" || currentOperation?.mode === "DEMO_SIMULATED";
 
   return (
     <div className="funding-plan-card">
+      {isSimulated ? (
+        <p className="funding-simulation-notice" role="status">
+          Demo simülasyonu — gerçek para hareketi yok
+        </p>
+      ) : null}
+
       <dl className="funding-summary-list">
         <div>
           <dt>Tutar</dt>
