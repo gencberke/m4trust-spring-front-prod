@@ -68,9 +68,7 @@ class SettlementEligibilityEvaluator {
         boolean settlementReady = dealActive && funded && fulfillmentCompleted && ratifiedV2
                 && windowElapsed && noActiveDispute && noOperation;
         SettlementStatus projected = projectedStatus(input.settlement(), settlementReady, input.operation());
-        boolean canRequest = buyerAdmin && settlementReady
-                && input.settlement() != null
-                && input.settlement().status() == SettlementStatus.READY;
+        boolean canRequest = buyerAdmin && settlementReady && input.settlement() != null;
         boolean canReconcile = buyerAdmin && input.operation() != null
                 && input.operation().status() == ReleaseOperationStatus.RECONCILIATION_REQUIRED
                 && input.settlement() != null

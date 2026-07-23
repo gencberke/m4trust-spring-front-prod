@@ -1,6 +1,13 @@
 -- Slice 14B: Demo-scoped simulated settlement and release foundation (ADR-014 §2.3/§2.6).
 -- Forward-only migration; V15-V22 remain frozen.
 
+-- Ratification v2 snapshots (disputeWindowDays) require schema_version=2 on the wrapper row (Plan 17 B1).
+ALTER TABLE ratification_package_snapshot
+    DROP CONSTRAINT IF EXISTS ratification_package_snapshot_schema_version_check;
+ALTER TABLE ratification_package_snapshot
+    ADD CONSTRAINT ratification_package_snapshot_schema_version_ck
+    CHECK (schema_version IN (1, 2));
+
 -- Immutable fulfillment completion instant required for dispute-window eligibility (ADR-014 §2.2).
 ALTER TABLE fulfillment ADD COLUMN completed_at TIMESTAMPTZ;
 

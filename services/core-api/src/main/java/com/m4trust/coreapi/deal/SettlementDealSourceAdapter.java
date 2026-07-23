@@ -53,10 +53,8 @@ class SettlementDealSourceAdapter implements SettlementSourcePorts.DealTarget {
         UUID ratifiedPackageId = null;
         UUID currentPackageId = deal.currentRatificationPackageId();
         if (currentPackageId != null) {
-            RatificationPackageProjectionPort.CurrentPackage current = ratificationProjections
-                    .findCurrentPackage(context, deal.id(), deal.status().name(), currentPackageId)
-                    .orElse(null);
-            if (current != null && "RATIFIED".equals(current.status())) {
+            String status = ratificationProjections.findPackageStatus(deal.id(), currentPackageId).orElse(null);
+            if ("RATIFIED".equals(status)) {
                 ratifiedPackageId = currentPackageId;
             }
         }

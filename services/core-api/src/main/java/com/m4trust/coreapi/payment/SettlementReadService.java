@@ -66,7 +66,7 @@ class SettlementReadService {
         input = new SettlementEligibilityEvaluator.Context(input.deal(), input.fulfillment(), input.ratification(),
                 input.fundingUnit(), input.activeDispute(), settlement, input.operation());
         SettlementEligibilityEvaluator.Evaluation evaluation = eligibility.evaluate(context, input);
-        refreshSettlementStatus(settlement, evaluation.projectedStatus());
+        settlement = refreshSettlementStatus(settlement, evaluation.projectedStatus());
         PaymentProviderMode providerMode = mode.resolve();
         SettlementProjection.requireNonNull(providerMode);
         boolean buyerAdmin = SettlementProjection.isBuyerAdmin(context, deal);
@@ -106,7 +106,8 @@ class SettlementReadService {
                 && mode.resolve() == PaymentProviderMode.DEMO_SIMULATED;
     }
 
-    private void refreshSettlementStatus(SettlementRepository.SettlementRecord record, SettlementStatus next) {
+    private SettlementRepository.SettlementRecord refreshSettlementStatus(
+            SettlementRepository.SettlementRecord record, SettlementStatus next) {
         Settlement settlement = Settlement.rehydrate(record);
         long previousVersion = settlement.version();
         settlement.refreshReadiness(next, clock.instant());
@@ -114,7 +115,9 @@ class SettlementReadService {
             if (!settlements.updateSettlement(settlement.toRecord(), previousVersion)) {
                 throw new SettlementExceptions.SettlementStaleVersion();
             }
+            return settlement.toRecord();
         }
+        return record;
     }
 
     private SettlementEligibilityEvaluator.Context loadContext(
