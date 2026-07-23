@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Added Plan 17 Phase B1 additive settlement/release contract surface (ADR-014 §2.3/§2.5):
+  `GET /deals/{dealId}/settlement`, `POST /deals/{dealId}/settlement/release`,
+  `GET /release-operations/{operationId}`, and
+  `POST /release-operations/{operationId}/reconcile` with `SettlementDetail`,
+  `ReleaseOperation`, backend-derived `canRequestRelease`/`canReconcileRelease`,
+  required `mode` (`DEMO_SIMULATED`) on settlement/release projections, optional
+  null-tolerant `DealDetail.settlement`, and closed Problem Details codes
+  `SETTLEMENT_CONTRACTUAL_WINDOW_MISSING`, `SETTLEMENT_DISPUTE_WINDOW_NOT_ELAPSED`,
+  `SETTLEMENT_ACTIVE_DISPUTE`, `SETTLEMENT_MUTATION_FORBIDDEN`, `SETTLEMENT_NOT_FOUND`,
+  `RELEASE_OPERATION_NOT_FOUND`, `SETTLEMENT_STALE_VERSION`,
+  `RELEASE_OPERATION_STALE_VERSION`, `RELEASE_OPERATION_ALREADY_EXISTS`,
+  `RELEASE_RECONCILIATION_UNAVAILABLE`, `RELEASE_OUTCOME_UNKNOWN`, and
+  `SETTLEMENT_ALREADY_TERMINAL` (reusing existing stale-version and idempotency codes).
+  Ratification create accepts optional `disputeWindowDays` `0..365` producing
+  discriminated `RatificationPackageSnapshotV2`; v1 remains readable. ADR-014 §2.2
+  amended to `0..365` with dated founder note. Validator adds Plan 17 closed sets and
+  temporary openapi-ahead Java enum tolerance until B2.
+
 - Added additive, optional, nullable `mode` field (new `PaymentSimulationMode`
   schema, single member `DEMO_SIMULATED`) to `FundingPlanDetail` and
   `PaymentOperation` responses per the 2026-07-22 simulation-only payment
