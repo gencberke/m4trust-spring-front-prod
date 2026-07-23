@@ -81,7 +81,8 @@ class SettlementEligibilityEvaluator {
         if (ratification == null || !"RATIFIED".equals(ratification.status())) {
             return null;
         }
-        if (ratification.schemaVersion() != 2 || ratification.disputeWindowDays() == null) {
+        if ((ratification.schemaVersion() != 2 && ratification.schemaVersion() != 3)
+                || ratification.disputeWindowDays() == null) {
             return null;
         }
         return ratification.disputeWindowDays();

@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.m4trust.coreapi.api.ApiErrorCode;
 import com.m4trust.coreapi.audit.AuditAppendPort;
 import com.m4trust.coreapi.idempotency.IdempotencyClaim;
 import com.m4trust.coreapi.idempotency.IdempotencyClaimStatus;
@@ -103,8 +104,8 @@ class FulfillmentServiceTest {
         OperationContext context = context(RequestedOperation.EVIDENCE_UPLOAD_INTENT_CREATE,
                 SELLER, LegalEntityRole.MEMBER);
         Fulfillment.FulfillmentRecord fulfillment = new Fulfillment.FulfillmentRecord(
-                UUID.randomUUID(), DEAL, TENANT, PACKAGE, FulfillmentStatus.IN_PROGRESS,
-                NOW, NOW, null, 0);
+                UUID.randomUUID(), DEAL, TENANT, PACKAGE, EvidencePolicy.REQUIRED,
+                FulfillmentStatus.IN_PROGRESS, NOW, NOW, null, 0);
         Milestone.MilestoneRecord milestone = new Milestone.MilestoneRecord(
                 UUID.randomUUID(), fulfillment.id(), DEAL, "Primary", null,
                 FulfillmentStatus.IN_PROGRESS, NOW, NOW, 0);
@@ -115,6 +116,7 @@ class FulfillmentServiceTest {
         when(milestoneRepository.findByFulfillmentIdForUpdate(fulfillment.id())).thenReturn(Optional.of(milestone));
         when(milestoneRepository.update(any(Milestone.MilestoneRecord.class), anyLong())).thenReturn(true);
         when(fulfillmentRepository.update(any(Fulfillment.FulfillmentRecord.class), anyLong())).thenReturn(true);
+        when(evidenceRepository.existsActivePendingByMilestoneId(any(), any())).thenReturn(false);
         when(storage.createDirectUpload(anyString(), anyString(), anyLong())).thenReturn(
                 new FulfillmentObjectStorage.DirectUpload(URI.create("https://s3/upload"),
                         Map.of("x-amz-meta-foo", "bar"), NOW.plusSeconds(60)));
@@ -126,6 +128,34 @@ class FulfillmentServiceTest {
         assertEquals("receipt.pdf", intent.evidence().fileName());
         assertEquals(EvidenceSubmissionStatus.PENDING_UPLOAD, intent.evidence().status());
         verify(evidenceRepository).insert(any(EvidenceSubmission.EvidenceSubmissionRecord.class));
+    }
+
+    @Test
+    void createUploadIntentRejectsActivePendingUnderLock() {
+        OperationContext context = context(RequestedOperation.EVIDENCE_UPLOAD_INTENT_CREATE,
+                SELLER, LegalEntityRole.MEMBER);
+        Fulfillment.FulfillmentRecord fulfillment = new Fulfillment.FulfillmentRecord(
+                UUID.randomUUID(), DEAL, TENANT, PACKAGE, EvidencePolicy.REQUIRED,
+                FulfillmentStatus.EVIDENCE_REQUIRED, NOW, NOW, null, 1);
+        Milestone.MilestoneRecord milestone = new Milestone.MilestoneRecord(
+                UUID.randomUUID(), fulfillment.id(), DEAL, "Primary", null,
+                FulfillmentStatus.EVIDENCE_REQUIRED, NOW, NOW, 1);
+        stubDeal(SELLER);
+        when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.of(fulfillment));
+        when(fulfillmentRepository.findByDealIdForUpdate(DEAL)).thenReturn(Optional.of(fulfillment));
+        when(milestoneRepository.findByFulfillmentId(fulfillment.id())).thenReturn(Optional.of(milestone));
+        when(milestoneRepository.findByFulfillmentIdForUpdate(fulfillment.id())).thenReturn(Optional.of(milestone));
+        when(evidenceRepository.existsActivePendingByMilestoneId(any(), any())).thenReturn(true);
+        when(storage.createDirectUpload(anyString(), anyString(), anyLong())).thenReturn(
+                new FulfillmentObjectStorage.DirectUpload(URI.create("https://s3/upload"),
+                        Map.of("x-amz-meta-foo", "bar"), NOW.plusSeconds(60)));
+
+        FulfillmentExceptions.Conflict conflict = assertThrows(FulfillmentExceptions.Conflict.class,
+                () -> service.createEvidenceUploadIntent(context, DEAL,
+                        new CreateEvidenceUploadIntentRequest("DELIVERY_NOTE", "application/pdf",
+                                "receipt.pdf", 1000L, "a".repeat(64)), UUID.randomUUID()));
+        assertEquals(ApiErrorCode.FULFILLMENT_STATE_CONFLICT, conflict.code());
+        verify(evidenceRepository, never()).insert(any());
     }
 
     @Test
@@ -170,7 +200,7 @@ class FulfillmentServiceTest {
         stubDeal(BUYER);
         when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.of(
                 new Fulfillment.FulfillmentRecord(UUID.randomUUID(), DEAL, TENANT, PACKAGE,
-                        FulfillmentStatus.REVIEW_REQUIRED, NOW, NOW, null, 0)));
+                        EvidencePolicy.REQUIRED, FulfillmentStatus.REVIEW_REQUIRED, NOW, NOW, null, 0)));
         when(evidenceRepository.findById(any())).thenReturn(Optional.empty());
 
         assertThrows(FulfillmentExceptions.EvidenceNotFound.class,
@@ -199,7 +229,8 @@ class FulfillmentServiceTest {
 
     private void stubDeal(UUID activeEntity) {
         FulfillmentSourcePorts.Target target = new FulfillmentSourcePorts.Target(
-                DEAL, TENANT, "ACTIVE", 5L, BUYER, SELLER, "FUNDED", PACKAGE, List.of());
+                DEAL, TENANT, "ACTIVE", 5L, BUYER, SELLER, "FUNDED", PACKAGE,
+                EvidencePolicy.REQUIRED, List.of());
         when(deals.findVisible(any(), any())).thenReturn(Optional.of(target));
         when(deals.lockVisibleForStart(any(), any())).thenReturn(Optional.of(target));
     }

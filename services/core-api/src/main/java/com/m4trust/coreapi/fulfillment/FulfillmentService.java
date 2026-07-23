@@ -32,13 +32,18 @@ class FulfillmentService {
 
     private static final String START_IDEMPOTENCY_OPERATION = "FULFILLMENT_START";
     private static final String START_IDEMPOTENCY_RESULT = "FULFILLMENT";
+    private static final String ACCEPT_WITHOUT_EVIDENCE_IDEMPOTENCY_OPERATION = "FULFILLMENT_ACCEPT_WITHOUT_EVIDENCE";
+    private static final String ACCEPT_WITHOUT_EVIDENCE_IDEMPOTENCY_RESULT = "FULFILLMENT";
     private static final String FINALIZE_IDEMPOTENCY_OPERATION = "EVIDENCE_UPLOAD_FINALIZE";
     private static final String FINALIZE_IDEMPOTENCY_RESULT = "SUBMITTED_EVIDENCE";
+    private static final String CANCEL_IDEMPOTENCY_OPERATION = "EVIDENCE_UPLOAD_CANCEL";
+    private static final String CANCEL_IDEMPOTENCY_RESULT = "CANCELLED_PENDING_EVIDENCE";
     private static final String ACCEPT_IDEMPOTENCY_OPERATION = "EVIDENCE_ACCEPT";
     private static final String ACCEPT_IDEMPOTENCY_RESULT = "ACCEPTED_EVIDENCE";
     private static final String REJECT_IDEMPOTENCY_OPERATION = "EVIDENCE_REJECT";
     private static final String REJECT_IDEMPOTENCY_RESULT = "REJECTED_EVIDENCE";
     private static final String AUDIT_SUBJECT = "FULFILLMENT";
+    private static final String AUDIT_ACCEPT_WITHOUT_EVIDENCE = "FULFILLMENT_ACCEPTED_WITHOUT_EVIDENCE";
 
     private final FulfillmentRepository fulfillmentRepository;
     private final MilestoneRepository milestoneRepository;
@@ -90,7 +95,7 @@ class FulfillmentService {
         if (preflight.version() != request.expectedVersion()) {
             throw conflict(ApiErrorCode.DEAL_STALE_VERSION);
         }
-        if (preflight.ratifiedPackageId() == null) {
+        if (preflight.ratifiedPackageId() == null || preflight.evidencePolicy() == null) {
             throw conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
         }
         return required(transactions.execute(status -> startInTransaction(context, dealId, request,
@@ -109,6 +114,9 @@ class FulfillmentService {
         if (target.version() != request.expectedVersion()) {
             throw conflict(ApiErrorCode.DEAL_STALE_VERSION);
         }
+        if (target.ratifiedPackageId() == null || target.evidencePolicy() == null) {
+            throw conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
+        }
         IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
         if (claim.isReplay()) {
             return replayFulfillment(context, claim.resultReference());
@@ -120,7 +128,7 @@ class FulfillmentService {
         UUID fulfillmentId = UUID.randomUUID();
         UUID milestoneId = UUID.randomUUID();
         Fulfillment fulfillment = Fulfillment.create(fulfillmentId, dealId, context.tenantId(),
-                target.ratifiedPackageId(), now);
+                target.ratifiedPackageId(), target.evidencePolicy(), now);
         Milestone milestone = Milestone.create(milestoneId, fulfillmentId, dealId,
                 milestoneTitle(target), milestoneDescription(target), now);
         List<Milestone.MilestoneRuleReferenceRecord> ruleReferenceRecords = target.ruleReferences().stream()
@@ -157,6 +165,7 @@ class FulfillmentService {
         requireUploadState(preflight);
         Fulfillment.FulfillmentRecord fulfillment = fulfillmentRepository.findByDealId(dealId)
                 .orElseThrow(() -> conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT));
+        requireEvidenceUploadAllowed(fulfillment.evidencePolicy());
         Milestone.MilestoneRecord milestone = milestoneRepository.findByFulfillmentId(fulfillment.id())
                 .orElseThrow(() -> conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT));
         if (milestone.status() != FulfillmentStatus.IN_PROGRESS
@@ -175,6 +184,7 @@ class FulfillmentService {
             requireUploadState(lockedTarget);
             Fulfillment.FulfillmentRecord lockedFulfillment = fulfillmentRepository.findByDealIdForUpdate(dealId)
                     .orElseThrow(() -> conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT));
+            requireEvidenceUploadAllowed(lockedFulfillment.evidencePolicy());
             Milestone.MilestoneRecord lockedMilestone =
                     milestoneRepository.findByFulfillmentIdForUpdate(lockedFulfillment.id())
                             .orElseThrow(() -> conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT));
@@ -182,6 +192,9 @@ class FulfillmentService {
                     && lockedMilestone.status() != FulfillmentStatus.EVIDENCE_REQUIRED) {
                 throw conflict(lockedMilestone.status() == FulfillmentStatus.REVIEW_REQUIRED
                         ? ApiErrorCode.EVIDENCE_ALREADY_SUBMITTED : ApiErrorCode.FULFILLMENT_STATE_CONFLICT);
+            }
+            if (evidenceRepository.existsActivePendingByMilestoneId(lockedMilestone.id(), now)) {
+                throw conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT);
             }
             Milestone milestoneAggregate = Milestone.rehydrate(lockedMilestone);
             Fulfillment fulfillmentAggregate = Fulfillment.rehydrate(lockedFulfillment);
@@ -206,9 +219,85 @@ class FulfillmentService {
                     context.authenticatedUserId(), context.activeLegalEntityId(),
                     AUDIT_SUBJECT, submission.id(), "EVIDENCE_UPLOAD_INTENT_CREATED",
                     correlationId, null, now));
-            return new EvidenceUploadIntent(toProjection(submission, false, now), directUpload.url().toString(),
+            return new EvidenceUploadIntent(toProjection(submission, false, true, now), directUpload.url().toString(),
                     directUpload.headers(), directUpload.expiresAt());
         }));
+    }
+
+    EvidenceSubmissionProjection cancelEvidenceUpload(OperationContext context, UUID dealId,
+            UUID submissionId, CancelEvidenceUploadRequest request, UUID idempotencyKey,
+            UUID correlationId) {
+        requireOperation(context, RequestedOperation.EVIDENCE_UPLOAD_CANCEL);
+        IdempotencyRequest idempotencyRequest = cancelIdempotencyRequest(context, submissionId,
+                request, idempotencyKey);
+        IdempotencyResultReference completed = idempotency.findCompleted(idempotencyRequest).orElse(null);
+        if (completed != null) {
+            return replayCancelled(completed);
+        }
+        FulfillmentSourcePorts.Target preflightDeal = deals.findVisible(context, dealId)
+                .orElseThrow(FulfillmentExceptions.DealNotFound::new);
+        requireSellerForUpload(context, preflightDeal);
+        requireUploadState(preflightDeal);
+        if (fulfillmentRepository.findByDealId(dealId).isEmpty()) {
+            throw new FulfillmentExceptions.FulfillmentNotFound();
+        }
+        EvidenceSubmission.EvidenceSubmissionRecord preflight = evidenceRepository.findById(submissionId)
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
+        if (!preflight.dealId().equals(dealId)) {
+            throw new FulfillmentExceptions.EvidenceNotFound();
+        }
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        return required(transactions.execute(status -> cancelInTransaction(context, dealId, submissionId,
+                request, idempotencyRequest, correlationId, now)));
+    }
+
+    private EvidenceSubmissionProjection cancelInTransaction(OperationContext context, UUID dealId,
+            UUID submissionId, CancelEvidenceUploadRequest request,
+            IdempotencyRequest idempotencyRequest, UUID correlationId, Instant now) {
+        FulfillmentSourcePorts.Target target = deals.lockVisibleForStart(context, dealId)
+                .orElseThrow(FulfillmentExceptions.DealNotFound::new);
+        requireSellerForUpload(context, target);
+        requireUploadState(target);
+        Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
+                .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_MILESTONE_CONFLICT));
+        Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
+                .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_MILESTONE_CONFLICT));
+        EvidenceSubmission.EvidenceSubmissionRecord current = evidenceRepository.findByIdForUpdate(submissionId)
+                .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
+        if (!current.dealId().equals(dealId) || !current.milestoneId().equals(milestoneRecord.id())) {
+            throw new FulfillmentExceptions.EvidenceNotFound();
+        }
+        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return replayCancelled(claim.resultReference());
+        }
+        EvidenceSubmission submission = EvidenceSubmission.rehydrate(current);
+        if (submission.status() != EvidenceSubmissionStatus.PENDING_UPLOAD) {
+            throw conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT);
+        }
+        if (submission.cancelledAt() != null) {
+            throw conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT);
+        }
+        if (!now.isBefore(submission.uploadExpiresAt())) {
+            throw conflict(ApiErrorCode.EVIDENCE_UPLOAD_EXPIRED);
+        }
+        if (submission.version() != request.expectedEvidenceVersion()) {
+            throw conflict(ApiErrorCode.EVIDENCE_STALE_VERSION);
+        }
+        long previousSubmissionVersion = submission.version();
+        try {
+            submission.markCancelled(now);
+        } catch (IllegalStateException exception) {
+            throw conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT);
+        }
+        if (!evidenceRepository.update(submission.toRecord(), previousSubmissionVersion)) {
+            throw conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT);
+        }
+        auditAppender.append(new AuditRecord(UUID.randomUUID(), context.tenantId(),
+                context.authenticatedUserId(), context.activeLegalEntityId(),
+                AUDIT_SUBJECT, submissionId, "EVIDENCE_UPLOAD_CANCELLED", correlationId, null, now));
+        idempotency.recordResult(claim, new IdempotencyResultReference(CANCEL_IDEMPOTENCY_RESULT, submissionId));
+        return toProjection(submission, false, false, now);
     }
 
     EvidenceSubmissionProjection finalizeEvidenceUpload(OperationContext context, UUID dealId,
@@ -225,9 +314,9 @@ class FulfillmentService {
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         requireSellerForUpload(context, preflightDeal);
         requireUploadState(preflightDeal);
-        if (fulfillmentRepository.findByDealId(dealId).isEmpty()) {
-            throw new FulfillmentExceptions.FulfillmentNotFound();
-        }
+        Fulfillment.FulfillmentRecord preflightFulfillment = fulfillmentRepository.findByDealId(dealId)
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
+        requireEvidenceUploadAllowed(preflightFulfillment.evidencePolicy());
         EvidenceSubmission.EvidenceSubmissionRecord preflight = evidenceRepository.findById(submissionId)
                 .orElseThrow(FulfillmentExceptions.EvidenceNotFound::new);
         if (!preflight.dealId().equals(dealId)) {
@@ -249,6 +338,7 @@ class FulfillmentService {
         requireUploadState(target);
         Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
                 .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_MILESTONE_CONFLICT));
+        requireEvidenceUploadAllowed(fulfillmentRecord.evidencePolicy());
         Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
                 .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_MILESTONE_CONFLICT));
         EvidenceSubmission.EvidenceSubmissionRecord current = evidenceRepository.findByIdForUpdate(submissionId)
@@ -262,6 +352,9 @@ class FulfillmentService {
         }
         EvidenceSubmission submission = EvidenceSubmission.rehydrate(current);
         if (submission.status() != EvidenceSubmissionStatus.PENDING_UPLOAD) {
+            throw conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT);
+        }
+        if (submission.cancelledAt() != null) {
             throw conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT);
         }
         if (!now.isBefore(submission.uploadExpiresAt())) {
@@ -302,7 +395,7 @@ class FulfillmentService {
                 context.authenticatedUserId(), context.activeLegalEntityId(),
                 AUDIT_SUBJECT, submissionId, "EVIDENCE_SUBMITTED", correlationId, null, now));
         idempotency.recordResult(claim, new IdempotencyResultReference(FINALIZE_IDEMPOTENCY_RESULT, submissionId));
-        return toProjection(submission, true, now);
+        return toProjection(submission, true, false, now);
     }
 
     EvidenceDownloadLink createDownloadLink(OperationContext context, UUID dealId, UUID submissionId) {
@@ -352,6 +445,80 @@ class FulfillmentService {
         return required(transactions.execute(status -> reviewInTransaction(context, dealId, submissionId,
                 request.expectedVersion(), request.expectedEvidenceVersion(), idempotencyRequest,
                 correlationId, false, request.reason())));
+    }
+
+    FulfillmentDetail acceptWithoutEvidence(OperationContext context, UUID dealId,
+            AcceptWithoutEvidenceRequest request, UUID idempotencyKey, UUID correlationId) {
+        requireOperation(context, RequestedOperation.FULFILLMENT_ACCEPT_WITHOUT_EVIDENCE);
+        IdempotencyRequest idempotencyRequest = acceptWithoutEvidenceIdempotencyRequest(
+                context, dealId, request, idempotencyKey);
+        IdempotencyResultReference completed = idempotency.findCompleted(idempotencyRequest).orElse(null);
+        if (completed != null) {
+            return replayFulfillment(context, completed);
+        }
+        return required(transactions.execute(status -> acceptWithoutEvidenceInTransaction(
+                context, dealId, request, idempotencyRequest, correlationId)));
+    }
+
+    private FulfillmentDetail acceptWithoutEvidenceInTransaction(OperationContext context, UUID dealId,
+            AcceptWithoutEvidenceRequest request, IdempotencyRequest idempotencyRequest,
+            UUID correlationId) {
+        FulfillmentSourcePorts.Target target = deals.lockVisibleForStart(context, dealId)
+                .orElseThrow(FulfillmentExceptions.DealNotFound::new);
+        requireBuyerAdmin(context, target);
+        Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
+        Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
+        // Claim/replay under Deal → fulfillment → milestone locks before terminal/
+        // state/version checks so a losing concurrent same-key retry replays
+        // instead of returning 409 FULFILLMENT_COMPLETED / STALE_VERSION.
+        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return replayFulfillment(context, claim.resultReference());
+        }
+        if (!"ACTIVE".equals(target.status()) || !"FUNDED".equals(target.fundingStatus())) {
+            throw conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
+        }
+        if (target.version() != request.expectedDealVersion()) {
+            throw conflict(ApiErrorCode.DEAL_STALE_VERSION);
+        }
+        if (fulfillmentRecord.status() == FulfillmentStatus.COMPLETED) {
+            throw conflict(ApiErrorCode.FULFILLMENT_COMPLETED);
+        }
+        if (fulfillmentRecord.evidencePolicy() != EvidencePolicy.NOT_REQUIRED) {
+            throw conflict(ApiErrorCode.FULFILLMENT_EVIDENCE_POLICY_CONFLICT);
+        }
+        if (fulfillmentRecord.status() != FulfillmentStatus.IN_PROGRESS) {
+            throw conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT);
+        }
+        if (fulfillmentRecord.version() != request.expectedFulfillmentVersion()) {
+            throw conflict(ApiErrorCode.FULFILLMENT_STALE_VERSION);
+        }
+        if (evidenceRepository.existsByFulfillmentId(fulfillmentRecord.id())) {
+            throw conflict(ApiErrorCode.FULFILLMENT_EVIDENCE_PRESENT);
+        }
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        Milestone milestone = Milestone.rehydrate(milestoneRecord);
+        long previousMilestoneVersion = milestoneRecord.version();
+        milestone.moveToCompleted(now);
+        if (!milestoneRepository.update(milestone.toRecord(), previousMilestoneVersion)) {
+            throw conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT);
+        }
+        Fulfillment fulfillment = Fulfillment.rehydrate(fulfillmentRecord);
+        long previousFulfillmentVersion = fulfillmentRecord.version();
+        fulfillment.moveToCompleted(now);
+        if (!fulfillmentRepository.update(fulfillment.toRecord(), previousFulfillmentVersion)) {
+            throw conflict(ApiErrorCode.FULFILLMENT_STALE_VERSION);
+        }
+        auditAppender.append(new AuditRecord(UUID.randomUUID(), context.tenantId(),
+                context.authenticatedUserId(), context.activeLegalEntityId(),
+                AUDIT_SUBJECT, fulfillment.id(), AUDIT_ACCEPT_WITHOUT_EVIDENCE, correlationId, null, now));
+        idempotency.recordResult(claim,
+                new IdempotencyResultReference(ACCEPT_WITHOUT_EVIDENCE_IDEMPOTENCY_RESULT, fulfillment.id()));
+        List<Milestone.MilestoneRuleReferenceRecord> ruleReferences =
+                milestoneRepository.findRuleReferencesByMilestoneId(milestone.id());
+        return toDetail(fulfillment, milestone, ruleReferences, target, context, now);
     }
 
     private EvidenceSubmissionProjection reviewInTransaction(OperationContext context, UUID dealId,
@@ -432,11 +599,12 @@ class FulfillmentService {
                 context.authenticatedUserId(), context.activeLegalEntityId(),
                 AUDIT_SUBJECT, submissionId, action, correlationId, null, now));
         idempotency.recordResult(claim, new IdempotencyResultReference(resultType, submissionId));
-        return toProjection(submission, true, now);
+        return toProjection(submission, true, false, now);
     }
 
     private FulfillmentDetail replayFulfillment(OperationContext context, IdempotencyResultReference reference) {
-        if (!START_IDEMPOTENCY_RESULT.equals(reference.type())) {
+        if (!START_IDEMPOTENCY_RESULT.equals(reference.type())
+                && !ACCEPT_WITHOUT_EVIDENCE_IDEMPOTENCY_RESULT.equals(reference.type())) {
             throw new IllegalStateException("Unexpected idempotency result type");
         }
         Fulfillment.FulfillmentRecord record = fulfillmentRepository.findById(reference.id())
@@ -454,7 +622,19 @@ class FulfillmentService {
                 .map(EvidenceSubmission::rehydrate)
                 .filter(result -> result.status() == EvidenceSubmissionStatus.SUBMITTED)
                 .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT));
-        return toProjection(submission, true, clock.instant());
+        return toProjection(submission, true, false, clock.instant());
+    }
+
+    private EvidenceSubmissionProjection replayCancelled(IdempotencyResultReference reference) {
+        if (!CANCEL_IDEMPOTENCY_RESULT.equals(reference.type())) {
+            throw new IllegalStateException("Unexpected idempotency result type");
+        }
+        EvidenceSubmission submission = evidenceRepository.findById(reference.id())
+                .map(EvidenceSubmission::rehydrate)
+                .filter(result -> result.status() == EvidenceSubmissionStatus.PENDING_UPLOAD
+                        && result.cancelledAt() != null)
+                .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_UPLOAD_STATE_CONFLICT));
+        return toProjection(submission, false, false, clock.instant());
     }
 
     private EvidenceSubmissionProjection replayAccepted(IdempotencyResultReference reference) {
@@ -465,7 +645,7 @@ class FulfillmentService {
                 .map(EvidenceSubmission::rehydrate)
                 .filter(result -> result.status() == EvidenceSubmissionStatus.ACCEPTED)
                 .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_STATE_CONFLICT));
-        return toProjection(submission, true, clock.instant());
+        return toProjection(submission, true, false, clock.instant());
     }
 
     private EvidenceSubmissionProjection replayRejected(IdempotencyResultReference reference) {
@@ -476,7 +656,7 @@ class FulfillmentService {
                 .map(EvidenceSubmission::rehydrate)
                 .filter(result -> result.status() == EvidenceSubmissionStatus.REJECTED)
                 .orElseThrow(() -> conflict(ApiErrorCode.EVIDENCE_STATE_CONFLICT));
-        return toProjection(submission, true, clock.instant());
+        return toProjection(submission, true, false, clock.instant());
     }
 
     private FulfillmentDetail toDetail(Fulfillment.FulfillmentRecord record,
@@ -498,13 +678,17 @@ class FulfillmentService {
                 evidenceRepository.findByMilestoneId(milestone.id());
         List<EvidenceSubmissionProjection> history = submissionRecords.stream()
                 .map(EvidenceSubmission::rehydrate)
-                .map(submission -> toProjection(submission, canDownload(context, submission), now))
+                .map(submission -> toProjection(submission,
+                        canDownload(context, submission),
+                        canCancelUpload(context, target, submission, now), now))
                 .toList();
         EvidenceSubmissionProjection current = submissionRecords.stream()
                 .map(EvidenceSubmission::rehydrate)
                 .filter(submission -> isCurrentEvidence(submission, now))
                 .findFirst()
-                .map(submission -> toProjection(submission, canDownload(context, submission), now))
+                .map(submission -> toProjection(submission,
+                        canDownload(context, submission),
+                        canCancelUpload(context, target, submission, now), now))
                 .orElse(null);
         boolean seller = context.activeLegalEntityId().equals(target.sellerLegalEntityId());
         boolean buyerAdmin = context.activeLegalEntityRole() == LegalEntityRole.ADMIN
@@ -513,10 +697,19 @@ class FulfillmentService {
         boolean canAccept = buyerAdmin && current != null
                 && current.status() == EvidenceSubmissionStatus.SUBMITTED;
         boolean canReject = canAccept;
-        boolean canUpload = seller && (milestone.status() == FulfillmentStatus.IN_PROGRESS
+        boolean requiredPolicy = fulfillment.evidencePolicy() == EvidencePolicy.REQUIRED;
+        boolean canUpload = seller && requiredPolicy
+                && (milestone.status() == FulfillmentStatus.IN_PROGRESS
                 || milestone.status() == FulfillmentStatus.EVIDENCE_REQUIRED)
                 && current == null;
-        FulfillmentAvailableActions fulfillmentActions = new FulfillmentAvailableActions(canStart, canAccept, canReject);
+        boolean canAcceptWithoutEvidence = buyerAdmin
+                && fulfillment.evidencePolicy() == EvidencePolicy.NOT_REQUIRED
+                && fulfillment.status() == FulfillmentStatus.IN_PROGRESS
+                && "ACTIVE".equals(target.status())
+                && "FUNDED".equals(target.fundingStatus())
+                && history.isEmpty();
+        FulfillmentAvailableActions fulfillmentActions = new FulfillmentAvailableActions(
+                canStart, canAccept, canReject, canAcceptWithoutEvidence);
         MilestoneAvailableActions milestoneActions = new MilestoneAvailableActions(canUpload);
         FulfillmentMilestoneProjection milestoneProjection = new FulfillmentMilestoneProjection(
                 milestone.id(), milestone.title(), milestone.description(),
@@ -525,8 +718,9 @@ class FulfillmentService {
                         .toList(),
                 milestoneActions, milestone.version());
         return new FulfillmentDetail(fulfillment.id(), fulfillment.dealId(), fulfillment.status(),
-                fulfillment.sourcePackageId(), milestoneProjection, current, history,
-                fulfillmentActions, fulfillment.version(), fulfillment.createdAt(), fulfillment.updatedAt());
+                fulfillment.sourcePackageId(), fulfillment.evidencePolicy(), milestoneProjection,
+                current, history, fulfillmentActions, fulfillment.version(), fulfillment.createdAt(),
+                fulfillment.updatedAt());
     }
 
     private boolean isCurrentEvidence(EvidenceSubmission submission, Instant now) {
@@ -534,19 +728,21 @@ class FulfillmentService {
             return true;
         }
         if (submission.status() == EvidenceSubmissionStatus.PENDING_UPLOAD) {
-            return now.isBefore(submission.uploadExpiresAt());
+            return submission.cancelledAt() == null && now.isBefore(submission.uploadExpiresAt());
         }
         return false;
     }
 
-    private EvidenceSubmissionProjection toProjection(EvidenceSubmission submission, boolean canDownload, Instant now) {
-        EvidenceAvailableActions actions = new EvidenceAvailableActions(canDownload);
+    private EvidenceSubmissionProjection toProjection(EvidenceSubmission submission,
+            boolean canDownload, boolean canCancelUpload, Instant now) {
+        EvidenceAvailableActions actions = new EvidenceAvailableActions(canDownload, canCancelUpload);
         return switch (submission.status()) {
             case PENDING_UPLOAD -> new PendingEvidenceSubmissionProjection(
                     submission.id(), submission.dealId(), submission.milestoneId(),
                     submission.evidenceType(), submission.mediaType(), submission.fileName(),
                     submission.status(), submission.clientSizeBytes(), submission.clientSha256(),
-                    submission.uploadExpiresAt(), submission.createdAt(), actions, submission.version());
+                    submission.uploadExpiresAt(), submission.cancelledAt(), submission.createdAt(),
+                    actions, submission.version());
             case SUBMITTED -> new SubmittedEvidenceSubmissionProjection(
                     submission.id(), submission.dealId(), submission.milestoneId(),
                     submission.evidenceType(), submission.mediaType(), submission.fileName(),
@@ -574,6 +770,14 @@ class FulfillmentService {
     private boolean canDownload(OperationContext context, EvidenceSubmission submission) {
         return submission.status() != EvidenceSubmissionStatus.PENDING_UPLOAD
                 && submission.objectVersion() != null;
+    }
+
+    private boolean canCancelUpload(OperationContext context, FulfillmentSourcePorts.Target target,
+            EvidenceSubmission submission, Instant now) {
+        return context.activeLegalEntityId().equals(target.sellerLegalEntityId())
+                && submission.status() == EvidenceSubmissionStatus.PENDING_UPLOAD
+                && submission.cancelledAt() == null
+                && now.isBefore(submission.uploadExpiresAt());
     }
 
     private String milestoneTitle(FulfillmentSourcePorts.Target target) {
@@ -607,6 +811,12 @@ class FulfillmentService {
     private void requireUploadState(FulfillmentSourcePorts.Target target) {
         if (!"ACTIVE".equals(target.status()) || !"FUNDED".equals(target.fundingStatus())) {
             throw conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
+        }
+    }
+
+    private void requireEvidenceUploadAllowed(EvidencePolicy evidencePolicy) {
+        if (evidencePolicy != EvidencePolicy.REQUIRED) {
+            throw conflict(ApiErrorCode.FULFILLMENT_EVIDENCE_POLICY_CONFLICT);
         }
     }
 
@@ -659,6 +869,16 @@ class FulfillmentService {
                 FINALIZE_IDEMPOTENCY_OPERATION, key, canonicalHash(canonicalRequest));
     }
 
+    private IdempotencyRequest cancelIdempotencyRequest(OperationContext context, UUID submissionId,
+            CancelEvidenceUploadRequest request, UUID key) {
+        Map<String, Object> canonicalRequest = new LinkedHashMap<>();
+        canonicalRequest.put("actorEntity", context.activeLegalEntityId().toString());
+        canonicalRequest.put("submissionId", submissionId.toString());
+        canonicalRequest.put("expectedEvidenceVersion", request.expectedEvidenceVersion());
+        return new IdempotencyRequest(context.authenticatedUserId(), context.tenantId(),
+                CANCEL_IDEMPOTENCY_OPERATION, key, canonicalHash(canonicalRequest));
+    }
+
     private IdempotencyRequest acceptIdempotencyRequest(OperationContext context, UUID submissionId,
             AcceptEvidenceRequest request, UUID key) {
         Map<String, Object> canonicalRequest = new LinkedHashMap<>();
@@ -668,6 +888,17 @@ class FulfillmentService {
         canonicalRequest.put("expectedEvidenceVersion", request.expectedEvidenceVersion());
         return new IdempotencyRequest(context.authenticatedUserId(), context.tenantId(),
                 ACCEPT_IDEMPOTENCY_OPERATION, key, canonicalHash(canonicalRequest));
+    }
+
+    private IdempotencyRequest acceptWithoutEvidenceIdempotencyRequest(OperationContext context,
+            UUID dealId, AcceptWithoutEvidenceRequest request, UUID key) {
+        Map<String, Object> canonicalRequest = new LinkedHashMap<>();
+        canonicalRequest.put("actorEntity", context.activeLegalEntityId().toString());
+        canonicalRequest.put("dealId", dealId.toString());
+        canonicalRequest.put("expectedDealVersion", request.expectedDealVersion());
+        canonicalRequest.put("expectedFulfillmentVersion", request.expectedFulfillmentVersion());
+        return new IdempotencyRequest(context.authenticatedUserId(), context.tenantId(),
+                ACCEPT_WITHOUT_EVIDENCE_IDEMPOTENCY_OPERATION, key, canonicalHash(canonicalRequest));
     }
 
     private IdempotencyRequest rejectIdempotencyRequest(OperationContext context, UUID submissionId,

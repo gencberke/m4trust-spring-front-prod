@@ -11,6 +11,7 @@ final class Fulfillment {
     private final UUID dealId;
     private final UUID tenantId;
     private final UUID sourcePackageId;
+    private final EvidencePolicy evidencePolicy;
     private FulfillmentStatus status;
     private Instant createdAt;
     private Instant updatedAt;
@@ -18,11 +19,13 @@ final class Fulfillment {
     private long version;
 
     private Fulfillment(UUID id, UUID dealId, UUID tenantId, UUID sourcePackageId,
-            FulfillmentStatus status, Instant createdAt, Instant updatedAt, Instant completedAt, long version) {
+            EvidencePolicy evidencePolicy, FulfillmentStatus status, Instant createdAt,
+            Instant updatedAt, Instant completedAt, long version) {
         this.id = Objects.requireNonNull(id);
         this.dealId = Objects.requireNonNull(dealId);
         this.tenantId = Objects.requireNonNull(tenantId);
         this.sourcePackageId = Objects.requireNonNull(sourcePackageId);
+        this.evidencePolicy = Objects.requireNonNull(evidencePolicy);
         this.status = Objects.requireNonNull(status);
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
@@ -31,14 +34,15 @@ final class Fulfillment {
         validate();
     }
 
-    static Fulfillment create(UUID id, UUID dealId, UUID tenantId, UUID sourcePackageId, Instant createdAt) {
-        return new Fulfillment(id, dealId, tenantId, sourcePackageId,
+    static Fulfillment create(UUID id, UUID dealId, UUID tenantId, UUID sourcePackageId,
+            EvidencePolicy evidencePolicy, Instant createdAt) {
+        return new Fulfillment(id, dealId, tenantId, sourcePackageId, evidencePolicy,
                 FulfillmentStatus.IN_PROGRESS, createdAt, createdAt, null, 0);
     }
 
     static Fulfillment rehydrate(FulfillmentRecord record) {
         return new Fulfillment(record.id(), record.dealId(), record.tenantId(),
-                record.sourcePackageId(), record.status(), record.createdAt(),
+                record.sourcePackageId(), record.evidencePolicy(), record.status(), record.createdAt(),
                 record.updatedAt(), record.completedAt(), record.version());
     }
 
@@ -78,7 +82,7 @@ final class Fulfillment {
     }
 
     FulfillmentRecord toRecord() {
-        return new FulfillmentRecord(id, dealId, tenantId, sourcePackageId,
+        return new FulfillmentRecord(id, dealId, tenantId, sourcePackageId, evidencePolicy,
                 status, createdAt, updatedAt, completedAt, version);
     }
 
@@ -86,6 +90,7 @@ final class Fulfillment {
     UUID dealId() { return dealId; }
     UUID tenantId() { return tenantId; }
     UUID sourcePackageId() { return sourcePackageId; }
+    EvidencePolicy evidencePolicy() { return evidencePolicy; }
     FulfillmentStatus status() { return status; }
     Instant createdAt() { return createdAt; }
     Instant updatedAt() { return updatedAt; }
@@ -100,7 +105,11 @@ final class Fulfillment {
 
     private void requireTransition(FulfillmentStatus next) {
         boolean allowed = switch (status) {
-            case IN_PROGRESS, EVIDENCE_REQUIRED -> next == FulfillmentStatus.EVIDENCE_REQUIRED
+            case IN_PROGRESS -> next == FulfillmentStatus.EVIDENCE_REQUIRED
+                    || next == FulfillmentStatus.REVIEW_REQUIRED
+                    || (next == FulfillmentStatus.COMPLETED
+                            && evidencePolicy == EvidencePolicy.NOT_REQUIRED);
+            case EVIDENCE_REQUIRED -> next == FulfillmentStatus.EVIDENCE_REQUIRED
                     || next == FulfillmentStatus.REVIEW_REQUIRED;
             case REVIEW_REQUIRED -> next == FulfillmentStatus.COMPLETED;
             default -> false;
@@ -120,6 +129,7 @@ final class Fulfillment {
     }
 
     public record FulfillmentRecord(UUID id, UUID dealId, UUID tenantId, UUID sourcePackageId,
-            FulfillmentStatus status, Instant createdAt, Instant updatedAt, Instant completedAt, long version) {
+            EvidencePolicy evidencePolicy, FulfillmentStatus status, Instant createdAt,
+            Instant updatedAt, Instant completedAt, long version) {
     }
 }

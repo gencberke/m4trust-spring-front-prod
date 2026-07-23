@@ -171,8 +171,8 @@ class VideoAnalysisRequestIntegrationTest {
         UUID fulfillmentId = UUID.randomUUID();
         UUID milestoneId = UUID.randomUUID();
         jdbc.update("""
-                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'REVIEW_REQUIRED', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, evidence_policy, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'REVIEW_REQUIRED', 'REQUIRED', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, fulfillmentId, dealId, tenantId, packageId);
         jdbc.update("""
                 INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at)
@@ -187,6 +187,49 @@ class VideoAnalysisRequestIntegrationTest {
                     2048, ?, 2048, ?, CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
                 """, evidenceId, dealId, milestoneId, fulfillmentId, SHA, SHA);
         evidenceVersion = 1L;
+    }
+
+    @Test
+    void photoJpegEvidenceRequestSucceedsAndStoresImageMediaType() throws Exception {
+        UUID photoEvidenceId = UUID.randomUUID();
+        UUID milestoneId = jdbc.queryForObject(
+                "SELECT milestone_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        UUID fulfillmentId = jdbc.queryForObject(
+                "SELECT fulfillment_id FROM fulfillment_evidence_submission WHERE id = ?", UUID.class, evidenceId);
+        // One SUBMITTED per milestone (partial unique index): reject the seeded VIDEO first.
+        jdbc.update("""
+                UPDATE fulfillment_evidence_submission
+                SET status = 'REJECTED', rejected_at = CURRENT_TIMESTAMP, rejection_reason = 'replaced',
+                    version = version + 1
+                WHERE id = ?
+                """, evidenceId);
+        jdbc.update("""
+                INSERT INTO fulfillment_evidence_submission (
+                    id, deal_id, milestone_id, fulfillment_id, evidence_type, media_type, file_name,
+                    status, object_key, object_version, client_size_bytes, client_sha256, verified_size_bytes,
+                    verified_sha256, upload_expires_at, created_at, submitted_at, version
+                ) VALUES (?, ?, ?, ?, 'PHOTO', 'image/jpeg', 'delivery.jpg', 'SUBMITTED', 'obj-key-photo',
+                    'version-1', 2048, ?, 2048, ?, CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP, 1)
+                """, photoEvidenceId, dealId, milestoneId, fulfillmentId, SHA, SHA);
+
+        mockMvc.perform(post(videoAnalysisPath(photoEvidenceId))
+                        .with(user(buyerAdminUserId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedEvidenceVersion\": 1}"))
+                .andExpect(status().isAccepted())
+                .andExpect(header().string("Location", videoAnalysisPath(photoEvidenceId)))
+                .andExpect(jsonPath("$.evidenceSubmissionId").value(photoEvidenceId.toString()))
+                .andExpect(jsonPath("$.status").value("QUEUED"));
+
+        assertEquals("image/jpeg", jdbc.queryForObject(
+                "SELECT input_media_type FROM fulfillment_video_analysis_job WHERE evidence_submission_id = ?",
+                String.class, photoEvidenceId));
+        assertEquals("PHOTO", jdbc.queryForObject(
+                "SELECT evidence_type FROM fulfillment_evidence_submission WHERE id = ?",
+                String.class, photoEvidenceId));
     }
 
     @Test

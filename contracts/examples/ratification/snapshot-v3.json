@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 3,
+  "dealId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "dealReference": "DEAL-18B-V3",
+  "dealTitle": "Ratification snapshot v3 example",
+  "buyer": {
+    "legalEntityId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "legalName": "Buyer Legal Entity A.S."
+  },
+  "seller": {
+    "legalEntityId": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "legalName": "Seller Legal Entity A.S."
+  },
+  "ruleSet": {
+    "ruleSetVersionId": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "version": 1,
+    "rules": [
+      {
+        "ruleReference": "DELIVERY-001",
+        "decision": "KEPT",
+        "category": "DELIVERY",
+        "title": "Delivery window",
+        "description": "Goods must arrive within the agreed window.",
+        "structuredValue": null,
+        "legalBasis": null,
+        "legalBasisProvenance": "EXTRACTED"
+      }
+    ]
+  },
+  "commercialTerms": {
+    "amountMinor": 150000,
+    "currency": "TRY"
+  },
+  "document": {
+    "documentId": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "objectVersion": "v1-object",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "disputeWindowDays": 14,
+  "evidencePolicy": "NOT_REQUIRED"
+}

@@ -70,12 +70,22 @@ class RatificationExceptionHandler {
 
     @ExceptionHandler(RatificationPackageCreateService.InvalidTerms.class)
     ResponseEntity<ProblemDetail> createInvalidTerms(HttpServletRequest request) {
-        return validation(request, "commercialTerms");
+        return validation(request, "commercialTerms", FieldErrorCode.INVALID, "The value is invalid.");
     }
 
     @ExceptionHandler(RatificationPackageCreateService.InvalidDisputeWindow.class)
     ResponseEntity<ProblemDetail> createInvalidDisputeWindow(HttpServletRequest request) {
-        return validation(request, "disputeWindowDays");
+        return validation(request, "disputeWindowDays", FieldErrorCode.INVALID, "The value is invalid.");
+    }
+
+    @ExceptionHandler(RatificationPackageCreateService.InvalidEvidencePolicy.class)
+    ResponseEntity<ProblemDetail> createInvalidEvidencePolicy(HttpServletRequest request) {
+        return validation(request, "evidencePolicy", FieldErrorCode.INVALID_ENUM, "The value is invalid.");
+    }
+
+    @ExceptionHandler(RatificationPackageCreateService.EvidencePolicyRequiresDisputeWindow.class)
+    ResponseEntity<ProblemDetail> createEvidencePolicyRequiresDisputeWindow(HttpServletRequest request) {
+        return validation(request, "disputeWindowDays", FieldErrorCode.REQUIRED, "This field is required.");
     }
 
     // --- Reads (non-disclosing package/deal-visibility 404) ---
@@ -125,12 +135,12 @@ class RatificationExceptionHandler {
                 "The Deal is no longer DRAFT.", ApiErrorCode.DEAL_STATE_CONFLICT);
     }
 
-    private ResponseEntity<ProblemDetail> validation(HttpServletRequest request, String field) {
+    private ResponseEntity<ProblemDetail> validation(HttpServletRequest request, String field,
+            FieldErrorCode code, String message) {
         ProblemDetail problem = response(request, HttpStatus.UNPROCESSABLE_ENTITY,
                 "validation-failed", "Validation failed",
                 "One or more fields are invalid.", ApiErrorCode.VALIDATION_FAILED).getBody();
-        problem.setProperty("errors", List.of(new FieldValidationError(field, FieldErrorCode.INVALID,
-                "The value is invalid.")));
+        problem.setProperty("errors", List.of(new FieldValidationError(field, code, message)));
         return ResponseEntity.unprocessableEntity().contentType(MediaType.APPLICATION_PROBLEM_JSON).body(problem);
     }
 

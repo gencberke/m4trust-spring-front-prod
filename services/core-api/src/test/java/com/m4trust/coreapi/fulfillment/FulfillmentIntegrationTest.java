@@ -254,7 +254,7 @@ class FulfillmentIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"))
                 .andExpect(jsonPath("$.evidence.expiresAt").exists())
-                .andExpect(jsonPath("$.evidence.length()").value(13))
+                .andExpect(jsonPath("$.evidence.length()").value(14))
                 .andReturn();
 
         String intentResponse = intentResult.getResponse().getContentAsString();
@@ -440,6 +440,152 @@ class FulfillmentIntegrationTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
+    @Test
+    void concurrentSameKeyAcceptWithoutEvidenceCompletesOnceAndReplays() throws Exception {
+        UUID dealId = createActiveFundedNotRequiredDeal();
+        startFulfillment(dealId, sellerAdmin);
+        UUID key = UUID.randomUUID();
+        String body = """
+                {"expectedDealVersion": 3, "expectedFulfillmentVersion": 0}
+                """;
+
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        AtomicInteger successCount = new AtomicInteger();
+        AtomicInteger failureCount = new AtomicInteger();
+
+        Future<?> first = executor.submit(() -> recordAcceptWithoutEvidenceOutcome(
+                dealId, key, body, start, successCount, failureCount));
+        Future<?> second = executor.submit(() -> recordAcceptWithoutEvidenceOutcome(
+                dealId, key, body, start, successCount, failureCount));
+        start.countDown();
+        first.get(20, TimeUnit.SECONDS);
+        second.get(20, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertEquals(2, successCount.get());
+        assertEquals(0, failureCount.get());
+        assertEquals(1L, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM fulfillment WHERE deal_id = ? AND status = 'COMPLETED'",
+                Long.class, dealId));
+        assertEquals(1L, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM http_idempotency_record WHERE operation = 'FULFILLMENT_ACCEPT_WITHOUT_EVIDENCE'",
+                Long.class));
+        Instant completedAt = jdbc.queryForObject(
+                "SELECT completed_at FROM fulfillment WHERE deal_id = ?", Instant.class, dealId);
+        assertTrue(completedAt != null);
+
+        mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment/accept-without-evidence")
+                        .with(user(buyerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
+    void activePendingBlocksReplacementUntilCancelledOrExpired() throws Exception {
+        UUID dealId = createActiveFundedDeal();
+        startFulfillment(dealId, sellerAdmin);
+
+        MvcResult first = mockMvc.perform(post("/api/v1/deals/" + dealId
+                        + "/fulfillment/evidence/upload-intents")
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String firstId = JsonPath.read(first.getResponse().getContentAsString(), "$.evidence.id");
+
+        mockMvc.perform(post("/api/v1/deals/" + dealId
+                        + "/fulfillment/evidence/upload-intents")
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadIntentRequest("INVOICE", "invoice.pdf", "application/pdf")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("FULFILLMENT_STATE_CONFLICT"));
+
+        mockMvc.perform(post("/api/v1/deals/" + dealId
+                        + "/fulfillment/evidence/" + firstId + "/cancel-upload")
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedEvidenceVersion\": 0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancelledAt").exists());
+
+        mockMvc.perform(post("/api/v1/deals/" + dealId
+                        + "/fulfillment/evidence/upload-intents")
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadIntentRequest("INVOICE", "invoice.pdf", "application/pdf")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"));
+
+        String secondId = jdbc.queryForObject("""
+                SELECT id::text FROM fulfillment_evidence_submission
+                WHERE deal_id = ? AND cancelled_at IS NULL AND status = 'PENDING_UPLOAD'
+                """, String.class, dealId);
+        jdbc.update("""
+                UPDATE fulfillment_evidence_submission
+                SET created_at = CURRENT_TIMESTAMP - INTERVAL '2 minutes',
+                    upload_expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute'
+                WHERE id = ?
+                """, UUID.fromString(secondId));
+
+        mockMvc.perform(post("/api/v1/deals/" + dealId
+                        + "/fulfillment/evidence/upload-intents")
+                        .with(user(sellerAdmin.userId.toString())).with(csrf())
+                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadIntentRequest("PHOTO", "photo.jpg", "image/jpeg")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"));
+
+        assertEquals(3L, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM fulfillment_evidence_submission WHERE deal_id = ?",
+                Long.class, dealId));
+        assertEquals(1L, jdbc.queryForObject("""
+                SELECT COUNT(*) FROM fulfillment_evidence_submission
+                WHERE deal_id = ? AND status = 'PENDING_UPLOAD'
+                  AND cancelled_at IS NULL AND upload_expires_at > CURRENT_TIMESTAMP
+                """, Long.class, dealId));
+    }
+
+    @Test
+    void concurrentUploadIntentsAllowOnlyOneActivePending() throws Exception {
+        UUID dealId = createActiveFundedDeal();
+        startFulfillment(dealId, sellerAdmin);
+
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        AtomicInteger createdCount = new AtomicInteger();
+        AtomicInteger conflictCount = new AtomicInteger();
+
+        Future<?> first = executor.submit(() -> recordUploadIntentOutcome(
+                dealId, start, createdCount, conflictCount));
+        Future<?> second = executor.submit(() -> recordUploadIntentOutcome(
+                dealId, start, createdCount, conflictCount));
+        start.countDown();
+        first.get(20, TimeUnit.SECONDS);
+        second.get(20, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertEquals(1, createdCount.get());
+        assertEquals(1, conflictCount.get());
+        assertEquals(1L, jdbc.queryForObject("""
+                SELECT COUNT(*) FROM fulfillment_evidence_submission
+                WHERE deal_id = ? AND status = 'PENDING_UPLOAD'
+                  AND cancelled_at IS NULL AND upload_expires_at > CURRENT_TIMESTAMP
+                """, Long.class, dealId));
+    }
+
     private String submitEvidence(UUID dealId, Principal seller, String evidenceType,
             String fileName, String mediaType) throws Exception {
         return submitEvidence(dealId, seller, evidenceType, fileName, mediaType, 12);
@@ -503,6 +649,66 @@ class FulfillmentIntegrationTest {
         }
     }
 
+    private void recordAcceptWithoutEvidenceOutcome(UUID dealId, UUID key, String body,
+            CountDownLatch start, AtomicInteger successCount, AtomicInteger failureCount) {
+        try {
+            start.await();
+            MvcResult result = mockMvc.perform(post("/api/v1/deals/" + dealId
+                            + "/fulfillment/accept-without-evidence")
+                            .with(user(buyerAdmin.userId.toString())).with(csrf())
+                            .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                            .header("Idempotency-Key", key)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andReturn();
+            if (result.getResponse().getStatus() == 200) {
+                successCount.incrementAndGet();
+                return;
+            }
+            failureCount.incrementAndGet();
+            throw new AssertionError("Unexpected accept-without-evidence status: "
+                    + result.getResponse().getStatus()
+                    + " body=" + result.getResponse().getContentAsString());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            failureCount.incrementAndGet();
+            throw new RuntimeException(exception);
+        } catch (RuntimeException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            failureCount.incrementAndGet();
+            throw new RuntimeException(exception);
+        }
+    }
+
+    private void recordUploadIntentOutcome(UUID dealId, CountDownLatch start,
+            AtomicInteger createdCount, AtomicInteger conflictCount) {
+        try {
+            start.await();
+            MvcResult result = mockMvc.perform(post("/api/v1/deals/" + dealId
+                            + "/fulfillment/evidence/upload-intents")
+                            .with(user(sellerAdmin.userId.toString())).with(csrf())
+                            .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
+                    .andReturn();
+            int status = result.getResponse().getStatus();
+            if (status == 201) {
+                createdCount.incrementAndGet();
+            } else if (status == 409) {
+                conflictCount.incrementAndGet();
+            } else {
+                throw new AssertionError("Unexpected upload-intent status: " + status
+                        + " body=" + result.getResponse().getContentAsString());
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(exception);
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
+    }
+
     private String uploadIntentRequest(String evidenceType, String fileName, String mediaType) {
         return uploadIntentRequest(evidenceType, fileName, mediaType, 12);
     }
@@ -520,16 +726,26 @@ class FulfillmentIntegrationTest {
     }
 
     private UUID createActiveFundedDeal() throws Exception {
-        UUID dealId = createActiveDeal();
+        UUID dealId = createActiveDeal(null);
+        seedFunding(dealId);
+        return dealId;
+    }
+
+    private UUID createActiveFundedNotRequiredDeal() throws Exception {
+        UUID dealId = createActiveDeal("NOT_REQUIRED");
         seedFunding(dealId);
         return dealId;
     }
 
     private UUID createActiveDealWithoutFunding() throws Exception {
-        return createActiveDeal();
+        return createActiveDeal(null);
     }
 
     private UUID createActiveDeal() throws Exception {
+        return createActiveDeal(null);
+    }
+
+    private UUID createActiveDeal(String evidencePolicy) throws Exception {
         MvcResult dealResult = mockMvc.perform(post("/api/v1/deals")
                         .with(user(buyerAdmin.userId.toString())).with(csrf())
                         .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
@@ -553,14 +769,17 @@ class FulfillmentIntegrationTest {
 
         seedAvailableDocumentAndRuleSetWithRules(dealId);
 
+        String policyFields = evidencePolicy == null
+                ? ""
+                : ", \"disputeWindowDays\": 7, \"evidencePolicy\": \"" + evidencePolicy + "\"";
         MvcResult created = mockMvc.perform(post("/api/v1/deals/" + dealId + "/ratification-packages")
                         .with(user(buyerAdmin.userId.toString())).with(csrf())
                         .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
                         .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"expectedVersion": 1, "commercialTerms": {"amountMinor": 5000, "currency": "TRY"}}
-                                """))
+                                {"expectedVersion": 1, "commercialTerms": {"amountMinor": 5000, "currency": "TRY"}%s}
+                                """.formatted(policyFields)))
                 .andExpect(status().isCreated())
                 .andReturn();
         UUID packageId = UUID.fromString(JsonPath.read(created.getResponse().getContentAsString(), "$.id"));

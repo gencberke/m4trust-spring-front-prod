@@ -79,6 +79,20 @@ class FulfillmentController {
                 request, uuid(idempotencyKey), uuid(correlationId));
     }
 
+    @PostMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload")
+    EvidenceSubmissionProjection cancelEvidenceUpload(
+            @ResolvedOperationContext(RequestedOperation.EVIDENCE_UPLOAD_CANCEL)
+            OperationContext context,
+            @PathVariable String dealId,
+            @PathVariable String evidenceSubmissionId,
+            @RequestHeader(value = "Idempotency-Key", required = false)
+            String idempotencyKey,
+            @Valid @RequestBody CancelEvidenceUploadRequest request,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        return service.cancelEvidenceUpload(context, uuid(dealId), uuid(evidenceSubmissionId),
+                request, uuid(idempotencyKey), uuid(correlationId));
+    }
+
     @PostMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link")
     EvidenceDownloadLink createEvidenceDownloadLink(
             @ResolvedOperationContext(RequestedOperation.EVIDENCE_DOWNLOAD_LINK_CREATE)
@@ -114,6 +128,19 @@ class FulfillmentController {
             @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
         return service.rejectEvidence(context, uuid(dealId), uuid(evidenceSubmissionId),
                 request, uuid(idempotencyKey), uuid(correlationId));
+    }
+
+    @PostMapping("/deals/{dealId}/fulfillment/accept-without-evidence")
+    FulfillmentDetail acceptWithoutEvidence(
+            @ResolvedOperationContext(RequestedOperation.FULFILLMENT_ACCEPT_WITHOUT_EVIDENCE)
+            OperationContext context,
+            @PathVariable String dealId,
+            @RequestHeader(value = "Idempotency-Key", required = false)
+            String idempotencyKey,
+            @Valid @RequestBody AcceptWithoutEvidenceRequest request,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        return service.acceptWithoutEvidence(context, uuid(dealId), request,
+                uuid(idempotencyKey), uuid(correlationId));
     }
 
     @GetMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis")

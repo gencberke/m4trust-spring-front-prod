@@ -27,8 +27,8 @@ class EvidenceSubmissionRepository {
                     media_type, file_name, status, object_key, object_version,
                     client_size_bytes, client_sha256, verified_size_bytes,
                     verified_sha256, upload_expires_at, created_at, submitted_at,
-                    accepted_at, rejected_at, rejection_reason, version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    accepted_at, rejected_at, rejection_reason, cancelled_at, version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, submission.id(), submission.dealId(), submission.milestoneId(),
                 submission.fulfillmentId(), submission.evidenceType().name(),
                 submission.mediaType().value(), submission.fileName(), submission.status().name(),
@@ -37,7 +37,8 @@ class EvidenceSubmissionRepository {
                 submission.verifiedSha256(), Timestamp.from(submission.uploadExpiresAt()),
                 Timestamp.from(submission.createdAt()), timestamp(submission.submittedAt()),
                 timestamp(submission.acceptedAt()), timestamp(submission.rejectedAt()),
-                submission.rejectionReason(), submission.version());
+                submission.rejectionReason(), timestamp(submission.cancelledAt()),
+                submission.version());
     }
 
     Optional<EvidenceSubmission.EvidenceSubmissionRecord> findById(UUID submissionId) {
@@ -56,6 +57,41 @@ class EvidenceSubmissionRepository {
                 WHERE milestone_id = ?
                 ORDER BY created_at DESC, id DESC
                 """, this::mapSubmission, milestoneId);
+    }
+
+    List<EvidenceSubmission.EvidenceSubmissionRecord> findByFulfillmentId(UUID fulfillmentId) {
+        return jdbcTemplate.query("""
+                SELECT * FROM fulfillment_evidence_submission
+                WHERE fulfillment_id = ?
+                ORDER BY created_at DESC, id DESC
+                """, this::mapSubmission, fulfillmentId);
+    }
+
+    boolean existsByFulfillmentId(UUID fulfillmentId) {
+        Boolean exists = jdbcTemplate.queryForObject("""
+                SELECT EXISTS(
+                    SELECT 1 FROM fulfillment_evidence_submission WHERE fulfillment_id = ?
+                )
+                """, Boolean.class, fulfillmentId);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    /**
+     * Active pending means status=PENDING_UPLOAD, cancelled_at IS NULL, and
+     * upload_expires_at > now. Evaluated with a bound timestamp parameter — no
+     * time-predicate index is required or invented.
+     */
+    boolean existsActivePendingByMilestoneId(UUID milestoneId, Instant now) {
+        Boolean exists = jdbcTemplate.queryForObject("""
+                SELECT EXISTS(
+                    SELECT 1 FROM fulfillment_evidence_submission
+                    WHERE milestone_id = ?
+                      AND status = 'PENDING_UPLOAD'
+                      AND cancelled_at IS NULL
+                      AND upload_expires_at > ?
+                )
+                """, Boolean.class, milestoneId, Timestamp.from(now));
+        return Boolean.TRUE.equals(exists);
     }
 
     Optional<EvidenceSubmission.EvidenceSubmissionRecord> findCurrentSubmittedByMilestoneId(UUID milestoneId) {
@@ -96,13 +132,14 @@ class EvidenceSubmissionRepository {
                 UPDATE fulfillment_evidence_submission
                 SET status = ?, object_version = ?, verified_size_bytes = ?,
                     verified_sha256 = ?, submitted_at = ?, accepted_at = ?,
-                    rejected_at = ?, rejection_reason = ?, version = ?
+                    rejected_at = ?, rejection_reason = ?, cancelled_at = ?, version = ?
                 WHERE id = ? AND version = ?
                 """, submission.status().name(), submission.objectVersion(),
                 submission.verifiedSizeBytes(), submission.verifiedSha256(),
                 timestamp(submission.submittedAt()), timestamp(submission.acceptedAt()),
                 timestamp(submission.rejectedAt()), submission.rejectionReason(),
-                submission.version(), submission.id(), previousVersion) == 1;
+                timestamp(submission.cancelledAt()), submission.version(),
+                submission.id(), previousVersion) == 1;
     }
 
     private EvidenceSubmission.EvidenceSubmissionRecord mapSubmission(ResultSet resultSet, int rowNumber)
@@ -128,6 +165,7 @@ class EvidenceSubmissionRepository {
                 instant(resultSet, "accepted_at"),
                 instant(resultSet, "rejected_at"),
                 resultSet.getString("rejection_reason"),
+                instant(resultSet, "cancelled_at"),
                 resultSet.getLong("version"));
     }
 

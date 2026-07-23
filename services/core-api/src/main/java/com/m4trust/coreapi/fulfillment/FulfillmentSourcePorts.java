@@ -28,6 +28,7 @@ public final class FulfillmentSourcePorts {
      * @param ratifiedPackageId The current RATIFIED package id, or null.
      * @param buyerLegalEntityId The Deal's buyer entity id.
      * @param sellerLegalEntityId The Deal's seller entity id.
+     * @param evidencePolicy Effective ratified evidence policy, or null when no ratified package.
      * @param ruleReferences DELIVERY/QUALITY rule references from the ratified package.
      */
     public record Target(
@@ -39,5 +40,6 @@ public final class FulfillmentSourcePorts {
             UUID sellerLegalEntityId,
             String fundingStatus,
             UUID ratifiedPackageId,
+            EvidencePolicy evidencePolicy,
             List<MilestoneRuleReference> ruleReferences) { }
 }

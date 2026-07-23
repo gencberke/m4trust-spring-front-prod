@@ -45,6 +45,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Ana aggregate'a `Transaction` adını vermek | ADR-003 §2, §31 |
 | Bütün yaşam döngüsünü tek dev status alanında tutmak | ADR-003 §8, §31 |
 | Generic soft delete (`deleted=true`) — açık domain durumları yerine | ADR-003 §7.2, §31 |
+| Pending evidence cancel'ı generic soft-delete/`deleted=true` veya DELETE endpoint olarak modellemek; cancelled pending'i restore/finalize etmek veya submitted history'yi gizlemek | ADR-011 §2.3 pending-cancellation amendment; ADR-003 §7.2, §31 |
 | Para/yüzde değerlerinde floating-point kullanmak | ADR-003 §21, §31; ADR-006 §28–29 |
 | Modüllerin birbirlerinin repository'lerini veya JPA entity'lerini doğrudan kullanması | ADR-003 §23, §31 |
 | Audit kaydını veya operation için tanımlanmış event/dispatch outbox kaydını business mutation'dan ayrı transaction'da yazmak | ADR-003 §24, §31; ADR-015 §2.2 |
@@ -64,11 +65,11 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Test sandbox/Moka emulator adapter'ını production profile'da açmak veya production API'ye scenario test-control alanı/yüzeyi eklemek; ADR-014'teki ayrı, scenario-controlsüz `DEMO_SIMULATED` service bu yasağı kaldırmaz | ADR-004 §19; ADR-010 §2.2, §2.6; ADR-014 §2.1 |
 | Demo akışını finansal `SETTLED`, gerçek ödeme, custody, payout veya provider finality olarak etiketlemek | ADR-014 §§2.1, 2.9 |
 | Query-verified `SIMULATED_SETTLED` olmadan release success veya Deal COMPLETED sonucu üretmek | ADR-014 §§2.3, 2.7–2.8 |
-| Participant/initiator görünürlüğünü fulfillment mutation yetkisi saymak; seller dışı actor'ın submit veya buyer ADMIN dışı actor'ın accept/reject yapması | ADR-009 §2.2; ADR-011 §2.2 |
+| Participant/initiator görünürlüğünü fulfillment mutation yetkisi saymak; seller dışı actor'ın submit veya buyer ADMIN dışı actor'ın accept/reject/no-file accept yapması | ADR-009 §2.2; ADR-011 §2.2, §2.5 amendment |
 | Accepted/rejected evidence object veya history kaydını overwrite etmek, silmek ya da replacement olarak mutation ile kullanmak | ADR-003 §22; ADR-011 §2.3–§2.4 |
 | ADR-022 controlled-demo istisnası dışında clean malware scan proof olmadan document/evidence finalize etmek, download link üretmek veya AI job açmak | ADR-018 §§2.4–2.5; ADR-022 §§2.1, 2.4 |
 | Client/application metadata'sını malware scan proof saymak veya GuardDuty scan tag'ini user-writeable bırakmak | ADR-018 §§2.2–2.3, 2.8 |
-| Fulfillment acceptance'tan otomatik Deal COMPLETED, settlement, release, payout, refund, provider çağrısı veya AI job üretmek | ADR-011 §2.5 |
+| Fulfillment acceptance'tan (file-backed veya `NOT_REQUIRED` no-file) otomatik Deal COMPLETED, settlement, release, payout, refund, provider çağrısı veya AI job üretmek; start action'ından otomatik completion üretmek | ADR-011 §2.5 |
 | Query edilen temel domain alanlarını (money, status, party, authorization) JSONB'ye gömmek | ADR-003 §27 |
 | Yalnız `tenantId` eşleşmesiyle Deal erişimi vermek (participant ilişkisi olmadan) | ADR-003 §5; ADR-008 §2.4 |
 | `deal.tenant_id` (veya çağıranın tenant'ı) eşleşmesini Deal görünürlük/erişim koşulu olarak kullanmak | ADR-008 §2.2, §4 |

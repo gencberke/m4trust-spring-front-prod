@@ -28,6 +28,7 @@ final class RatificationSnapshotAssembler {
     private static final Set<String> LEGAL_SOURCES = Set.of(
             "tbk-6098", "kvkk-6698", "odeme-hizmetleri-6493", "aml-5549",
             "odeme-hizmetleri-yonetmelik", "odeme-hizmetleri-tebligi");
+    private static final Set<String> EVIDENCE_POLICIES = Set.of("REQUIRED", "NOT_REQUIRED");
 
     private final ObjectMapper json;
     private final CanonicalSnapshotHasher hasher;
@@ -43,7 +44,7 @@ final class RatificationSnapshotAssembler {
             RatificationSourcePorts.RuleSet ruleSet,
             long amountMinor,
             String currency) {
-        return assemble(target, document, ruleSet, amountMinor, currency, null);
+        return assemble(target, document, ruleSet, amountMinor, currency, null, null);
     }
 
     Result assemble(
@@ -53,6 +54,17 @@ final class RatificationSnapshotAssembler {
             long amountMinor,
             String currency,
             Integer disputeWindowDays) {
+        return assemble(target, document, ruleSet, amountMinor, currency, disputeWindowDays, null);
+    }
+
+    Result assemble(
+            RatificationSourcePorts.Target target,
+            RatificationSourcePorts.Document document,
+            RatificationSourcePorts.RuleSet ruleSet,
+            long amountMinor,
+            String currency,
+            Integer disputeWindowDays,
+            String evidencePolicy) {
         if (amountMinor < 1 || amountMinor > MAX_SAFE_INTEGER || currency == null || !currency.matches("[A-Z]{3}")) {
             throw new IllegalArgumentException("Invalid exact commercial terms");
         }
@@ -81,10 +93,16 @@ final class RatificationSnapshotAssembler {
             }
         }
 
-        int schemaVersion = disputeWindowDays == null ? 1 : 2;
+        if (evidencePolicy != null && disputeWindowDays == null) {
+            throw new IllegalArgumentException("evidencePolicy requires disputeWindowDays");
+        }
         if (disputeWindowDays != null && (disputeWindowDays < 0 || disputeWindowDays > 365)) {
             throw new IllegalArgumentException("Invalid disputeWindowDays");
         }
+        if (evidencePolicy != null && !EVIDENCE_POLICIES.contains(evidencePolicy)) {
+            throw new IllegalArgumentException("Invalid evidencePolicy");
+        }
+        int schemaVersion = disputeWindowDays == null ? 1 : (evidencePolicy == null ? 2 : 3);
         Snapshot snapshot = new Snapshot(
                 schemaVersion,
                 uuid(target.dealId()),
@@ -95,7 +113,8 @@ final class RatificationSnapshotAssembler {
                 new RuleSet(uuid(ruleSet.ruleSetVersionId()), ruleSet.version(), rules.stream().map(this::rule).toList()),
                 new Terms(amountMinor, currency),
                 new Document(uuid(document.documentId()), document.objectVersion(), hex(document.sha256())),
-                disputeWindowDays);
+                disputeWindowDays,
+                evidencePolicy);
         try {
             String serialized = json.writeValueAsString(snapshot);
             return new Result(snapshot, serialized, hasher.hash(serialized));
@@ -271,7 +290,8 @@ final class RatificationSnapshotAssembler {
             RuleSet ruleSet,
             Terms commercialTerms,
             Document document,
-            @JsonInclude(JsonInclude.Include.NON_NULL) Integer disputeWindowDays) { }
+            @JsonInclude(JsonInclude.Include.NON_NULL) Integer disputeWindowDays,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String evidencePolicy) { }
 
     record Party(String legalEntityId, String legalName) { }
 

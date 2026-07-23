@@ -33,22 +33,29 @@ class SettlementEligibilityEvaluatorTest {
 
     @Test
     void windowZeroAllowsImmediateEligibility() {
-        assertTrue(evaluate(0).releaseEligible());
+        assertTrue(evaluate(2, 0).releaseEligible());
+        assertTrue(evaluate(3, 0).releaseEligible());
     }
 
     @Test
     void windowOneBlocksBeforeDeadline() {
-        assertFalse(evaluate(1).releaseEligible());
+        assertFalse(evaluate(2, 1).releaseEligible());
+        assertFalse(evaluate(3, 1).releaseEligible());
     }
 
-    private SettlementEligibilityEvaluator.Evaluation evaluate(int disputeWindowDays) {
+    @Test
+    void schemaVersionOneRemainsIneligible() {
+        assertFalse(evaluate(1, 0).releaseEligible());
+    }
+
+    private SettlementEligibilityEvaluator.Evaluation evaluate(int schemaVersion, int disputeWindowDays) {
         SettlementSourcePorts.DealSnapshot deal = new SettlementSourcePorts.DealSnapshot(
                 UUID.randomUUID(), UUID.randomUUID(), "ACTIVE", 1,
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         SettlementSourcePorts.FulfillmentSnapshot fulfillment = new SettlementSourcePorts.FulfillmentSnapshot(
                 UUID.randomUUID(), "COMPLETED", 1, COMPLETED);
         SettlementSourcePorts.RatificationSnapshot ratification = new SettlementSourcePorts.RatificationSnapshot(
-                2, "RATIFIED", disputeWindowDays);
+                schemaVersion, "RATIFIED", schemaVersion == 1 ? null : disputeWindowDays);
         FundingRepository.UnitRecord unit = new FundingRepository.UnitRecord(
                 UUID.randomUUID(), UUID.randomUUID(), 1, 1000, "TRY",
                 FundingUnitStatus.FUNDED, COMPLETED, COMPLETED, 0);

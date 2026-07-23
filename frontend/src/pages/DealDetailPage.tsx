@@ -58,7 +58,13 @@ function formatDate(value: string): string {
   return DATE_FORMATTER.format(new Date(value));
 }
 
-type WorkspaceArea = "agreement" | "review" | "approval" | "payment" | "delivery";
+type WorkspaceArea =
+  | "agreement"
+  | "review"
+  | "approval"
+  | "payment"
+  | "delivery"
+  | "closure";
 
 const WORKSPACE_AREAS: ReadonlyArray<{ id: WorkspaceArea; label: string }> = [
   { id: "agreement", label: "Anlaşma" },
@@ -66,6 +72,7 @@ const WORKSPACE_AREAS: ReadonlyArray<{ id: WorkspaceArea; label: string }> = [
   { id: "approval", label: "Onay" },
   { id: "payment", label: "Ödeme" },
   { id: "delivery", label: "Teslimat" },
+  { id: "closure", label: "Kapanış" },
 ];
 
 function workspaceAreaForLifecycle(lifecycle: DealDetail["lifecycle"]): WorkspaceArea {
@@ -78,12 +85,14 @@ function workspaceAreaForLifecycle(lifecycle: DealDetail["lifecycle"]): Workspac
     case "FUNDING":
       return "payment";
     case "FULFILLMENT":
-    case "SETTLEMENT":
     case "DISPUTE":
+      return "delivery";
+    case "SETTLEMENT":
     case "COMPLETED":
+      return "closure";
     case "CANCELLED":
     case "ARCHIVED":
-      return "delivery";
+      return "agreement";
     default:
       return "agreement";
   }
@@ -97,13 +106,33 @@ function lifecycleLabel(lifecycle: DealDetail["lifecycle"]): string {
     RATIFICATION: "Ticari onay",
     FUNDING: "Ödeme",
     FULFILLMENT: "Teslimat",
-    SETTLEMENT: "Sonuç izleme",
+    SETTLEMENT: "Kapanış",
     DISPUTE: "Uyuşmazlık",
     COMPLETED: "Tamamlandı",
     CANCELLED: "İptal edildi",
     ARCHIVED: "Arşivde",
   };
   return labels[lifecycle];
+}
+
+function TerminalStatePanel({
+  deal,
+  settlementReadOnly,
+}: {
+  deal: DealDetail;
+  settlementReadOnly: boolean;
+}) {
+  return (
+    <section className="workspace-panel terminal-state-panel" aria-labelledby="terminal-state-title">
+      <span className="section-kicker">Durum</span>
+      <h2 id="terminal-state-title">{nextTask(deal)}</h2>
+      <p>
+        {settlementReadOnly
+          ? "Bu aşamada yeni işlem başlatılamaz; mevcut kayıtlar yalnızca görüntülenir."
+          : "Bu anlaşma için yeni işlem sunulmuyor; mevcut kayıtlar aşağıda görüntülenir."}
+      </p>
+    </section>
+  );
 }
 
 function nextTask(deal: DealDetail): string {
@@ -118,6 +147,9 @@ function nextTask(deal: DealDetail): string {
   if (deal.availableActions.canReviewExtraction) return "Çıkarımı manuel olarak inceleyin";
   if (deal.availableActions.canCreateRatificationPackage || deal.availableActions.canApproveRatification) return "Onay paketini gözden geçirin";
   if (deal.availableActions.canCreateFundingPlan || deal.availableActions.canInitiateFunding) return "Ödemeyi güvenceye alın";
+  if (deal.availableActions.canAcceptWithoutEvidence) {
+    return "Teslimatı kanıtsız kabul edin";
+  }
   if (deal.availableActions.canStartFulfillment || deal.availableActions.canUploadEvidence || deal.availableActions.canAcceptEvidence) {
     return "Teslimat kanıtını yönetin";
   }
@@ -368,7 +400,9 @@ export function DealDetailPage() {
   });
   const invalidSelection = isInvalidLegalEntitySelection(detailQuery.error);
   const settlementReadOnly = detailQuery.data?.lifecycle === "SETTLEMENT";
-  const terminalLifecycle = ["SETTLEMENT", "COMPLETED", "CANCELLED", "ARCHIVED"]
+  const closureTerminalLifecycle = ["SETTLEMENT", "COMPLETED"]
+    .includes(detailQuery.data?.lifecycle ?? "");
+  const agreementTerminalLifecycle = ["CANCELLED", "ARCHIVED"]
     .includes(detailQuery.data?.lifecycle ?? "");
 
   useEffect(() => {
@@ -614,6 +648,9 @@ export function DealDetailPage() {
 
         {activeArea === "agreement" ? (
           <>
+        {agreementTerminalLifecycle ? (
+          <TerminalStatePanel deal={deal} settlementReadOnly={false} />
+        ) : null}
         <div className="agreement-stage-layout">
           <aside className="agreement-supporting-rail" aria-label="Anlaşma bilgileri">
         <dl className="deal-facts">
@@ -845,20 +882,22 @@ export function DealDetailPage() {
 
         {activeArea === "delivery" ? (
           <>
-            {terminalLifecycle ? (
-              <section className="workspace-panel terminal-state-panel" aria-labelledby="terminal-state-title">
-                <span className="section-kicker">Durum</span>
-                <h2 id="terminal-state-title">{nextTask(deal)}</h2>
-                <p>
-                  {settlementReadOnly
-                    ? "Bu aşamada yeni işlem başlatılamaz; mevcut kayıtlar yalnızca görüntülenir."
-                    : "Bu anlaşma için yeni işlem sunulmuyor; mevcut kayıtlar aşağıda görüntülenir."}
-                </p>
-              </section>
-            ) : null}
-        <DealFulfillmentPanel deal={deal} legalEntityId={selectedLegalEntityId} readOnly={settlementReadOnly} />
-        <DealSettlementPanel deal={deal} legalEntityId={selectedLegalEntityId} />
+        <DealFulfillmentPanel
+          deal={deal}
+          legalEntityId={selectedLegalEntityId}
+          readOnly={settlementReadOnly}
+          onNavigateToClosure={() => setActiveArea("closure")}
+        />
         {!settlementReadOnly ? <DealCaseworkPanel deal={deal} legalEntityId={selectedLegalEntityId} /> : null}
+          </>
+        ) : null}
+
+        {activeArea === "closure" ? (
+          <>
+            {closureTerminalLifecycle ? (
+              <TerminalStatePanel deal={deal} settlementReadOnly={settlementReadOnly} />
+            ) : null}
+            <DealSettlementPanel deal={deal} legalEntityId={selectedLegalEntityId} />
           </>
         ) : null}
       </div>

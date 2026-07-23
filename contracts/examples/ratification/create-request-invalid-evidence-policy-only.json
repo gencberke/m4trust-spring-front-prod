@@ -1,0 +1,15 @@
+{
+  "expectedVersion": 3,
+  "commercialTerms": {
+    "amountMinor": 150000,
+    "currency": "TRY"
+  },
+  "evidencePolicy": "REQUIRED",
+  "_expectedFailure": {
+    "httpStatus": 422,
+    "code": "VALIDATION_FAILED",
+    "field": "disputeWindowDays",
+    "fieldCode": "REQUIRED",
+    "reason": "evidencePolicy without disputeWindowDays is invalid"
+  }
+}

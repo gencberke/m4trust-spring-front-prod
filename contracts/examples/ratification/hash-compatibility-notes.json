@@ -1,0 +1,16 @@
+{
+  "purpose": "Plan 18B-P1 documentation fixture; not an AI event schema subject.",
+  "notes": [
+    "v1 and v2 RatificationPackageSnapshot serialized bytes and contentHash inputs must remain byte-identical to historical packages.",
+    "v3 adds evidencePolicy to the sole RFC 8785 JCS contentHash input; v1/v2 effective evidence policy is permanently REQUIRED without changing their bytes.",
+    "Committed deterministic golden gate: hash-compatibility-golden.json (exact canonicalJson bytes + SHA-256). Consumed by RatificationSnapshotAssemblerTest."
+  ],
+  "validCombinations": {
+    "createNeitherField": "schemaVersion 1",
+    "createDisputeWindowOnly": "schemaVersion 2",
+    "createBothFields": "schemaVersion 3"
+  },
+  "expectedInvalidCombinations": {
+    "createEvidencePolicyWithoutDisputeWindowDays": "field-level 422 VALIDATION_FAILED with disputeWindowDays REQUIRED"
+  }
+}

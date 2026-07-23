@@ -4,7 +4,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,11 +22,12 @@ class FulfillmentRepository {
     void insert(Fulfillment.FulfillmentRecord fulfillment) {
         jdbcTemplate.update("""
                 INSERT INTO fulfillment (
-                    id, deal_id, tenant_id, source_package_id, status,
+                    id, deal_id, tenant_id, source_package_id, status, evidence_policy,
                     version, created_at, updated_at, completed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, fulfillment.id(), fulfillment.dealId(), fulfillment.tenantId(),
                 fulfillment.sourcePackageId(), fulfillment.status().name(),
+                fulfillment.evidencePolicy().name(),
                 fulfillment.version(), Timestamp.from(fulfillment.createdAt()),
                 Timestamp.from(fulfillment.updatedAt()),
                 fulfillment.completedAt() == null ? null : Timestamp.from(fulfillment.completedAt()));
@@ -72,6 +72,7 @@ class FulfillmentRepository {
                 resultSet.getObject("deal_id", UUID.class),
                 resultSet.getObject("tenant_id", UUID.class),
                 resultSet.getObject("source_package_id", UUID.class),
+                EvidencePolicy.parse(resultSet.getString("evidence_policy")),
                 FulfillmentStatus.valueOf(resultSet.getString("status")),
                 resultSet.getTimestamp("created_at").toInstant(),
                 resultSet.getTimestamp("updated_at").toInstant(),
