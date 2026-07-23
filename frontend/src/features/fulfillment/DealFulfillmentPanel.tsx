@@ -6,6 +6,7 @@ import { dealDetailQueryKey } from "../deals/dealQueries";
 import {
   acceptEvidence,
   acceptFulfillmentWithoutEvidence,
+  cancelEvidenceUpload,
   createEvidenceDownloadLink,
   createEvidenceUploadIntent,
   finalizeEvidenceUpload,
@@ -89,8 +90,15 @@ function fulfillmentStatusLabel(status: string): string {
   return FULFILLMENT_STATUS_LABELS[status] ?? status;
 }
 
-function evidenceStatusLabel(status: string): string {
-  return EVIDENCE_STATUS_LABELS[status] ?? status;
+function evidenceStatusLabel(submission: EvidenceSubmission): string {
+  if (submission.status === "PENDING_UPLOAD" && submission.cancelledAt) {
+    return "Yükleme iptal edildi";
+  }
+  return EVIDENCE_STATUS_LABELS[submission.status] ?? submission.status;
+}
+
+function isCancelledPending(submission: EvidenceSubmission): boolean {
+  return submission.status === "PENDING_UPLOAD" && Boolean(submission.cancelledAt);
 }
 
 function evidenceTypeLabel(type: string): string {
@@ -103,6 +111,9 @@ function isVideoMp4Evidence(submission: EvidenceSubmission): boolean {
 
 /** Chronological event time for timeline ordering — backend status timestamps only. */
 function evidenceEventAt(submission: EvidenceSubmission): string {
+  if (submission.status === "PENDING_UPLOAD" && submission.cancelledAt) {
+    return submission.cancelledAt;
+  }
   if (submission.status === "ACCEPTED" && submission.acceptedAt) {
     return submission.acceptedAt;
   }
@@ -240,6 +251,7 @@ export function DealFulfillmentPanel({
   const queryClient = useQueryClient();
   const startKeyRef = useRef<string | undefined>(undefined);
   const finalizeKeyRef = useRef<string | undefined>(undefined);
+  const cancelKeyRef = useRef<string | undefined>(undefined);
   const reviewKeyRef = useRef<string | undefined>(undefined);
   const acceptWithoutEvidenceKeyRef = useRef<string | undefined>(undefined);
   const attemptIdRef = useRef(0);
@@ -281,6 +293,10 @@ export function DealFulfillmentPanel({
 
   function resetFinalizeKey() {
     finalizeKeyRef.current = freshIdempotencyKey();
+  }
+
+  function resetCancelKey() {
+    cancelKeyRef.current = freshIdempotencyKey();
   }
 
   function resetReviewKey() {
@@ -472,6 +488,35 @@ export function DealFulfillmentPanel({
     }
     resetFinalizeKey();
     void createIntentAndUpload(file, evidenceType, mediaType, sha256, attemptId);
+  }
+
+  async function handleCancelUpload() {
+    attemptIdRef.current += 1;
+    const intent = uploadState.intent;
+    if (intent?.evidence.availableActions.canCancelUpload) {
+      try {
+        resetCancelKey();
+        await cancelEvidenceUpload(
+          legalEntityId,
+          deal.id,
+          intent.evidence.id,
+          { expectedEvidenceVersion: intent.evidence.version },
+          cancelKeyRef.current!,
+        );
+        refreshAfterMutation();
+      } catch (error) {
+        if (shouldResetFulfillmentIdempotencyKey(error, "upload")) {
+          resetCancelKey();
+          refreshAfterMutation();
+        }
+        setUploadState((previous) => ({
+          ...previous,
+          errorMessage: getFulfillmentErrorMessage(error),
+        }));
+        return;
+      }
+    }
+    setUploadState({ stage: "idle" });
   }
 
   async function handleDownload(submission: EvidenceSubmission) {
@@ -816,7 +861,8 @@ export function DealFulfillmentPanel({
                   <button
                     type="button"
                     className="text-button"
-                    onClick={() => setUploadState({ stage: "idle" })}
+                    onClick={() => void handleCancelUpload()}
+                    disabled={isUploadBusy}
                   >
                     Vazgeç
                   </button>
@@ -899,6 +945,7 @@ export function DealFulfillmentPanel({
                     key={submission.id}
                     className="evidence-timeline-item"
                     data-status={submission.status}
+                    data-cancelled={isCancelledPending(submission) ? "true" : undefined}
                   >
                     <div className="evidence-timeline-meta">
                       <time dateTime={evidenceEventAt(submission)}>
@@ -907,8 +954,9 @@ export function DealFulfillmentPanel({
                       <span
                         className="evidence-status-badge"
                         data-status={submission.status}
+                        data-cancelled={isCancelledPending(submission) ? "true" : undefined}
                       >
-                        {evidenceStatusLabel(submission.status)}
+                        {evidenceStatusLabel(submission)}
                       </span>
                     </div>
                     <EvidenceSummary submission={submission} />
@@ -1000,7 +1048,7 @@ function EvidenceSummary({ submission }: { submission: EvidenceSubmission }) {
         </span>
       </div>
       <div className="evidence-meta">
-        <span>Durum: {evidenceStatusLabel(submission.status)}</span>
+        <span>Durum: {evidenceStatusLabel(submission)}</span>
         {" | "}
           <span>Dosya türü: {submission.mediaType}</span>
         {" | "}
@@ -1012,6 +1060,9 @@ function EvidenceSummary({ submission }: { submission: EvidenceSubmission }) {
         </span>
         {" | "}
         <span>Oluşturulma: {formatDate(submission.createdAt)}</span>
+        {submission.status === "PENDING_UPLOAD" && submission.cancelledAt && (
+          <span> | İptal: {formatDate(submission.cancelledAt)}</span>
+        )}
         {submission.status === "SUBMITTED" && submission.submittedAt && (
           <span> | Sunulma: {formatDate(submission.submittedAt)}</span>
         )}

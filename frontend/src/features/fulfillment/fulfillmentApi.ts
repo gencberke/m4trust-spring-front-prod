@@ -22,6 +22,8 @@ export type CreateEvidenceUploadIntentRequest =
   components["schemas"]["CreateEvidenceUploadIntentRequest"];
 export type FinalizeEvidenceUploadRequest =
   components["schemas"]["FinalizeEvidenceUploadRequest"];
+export type CancelEvidenceUploadRequest =
+  components["schemas"]["CancelEvidenceUploadRequest"];
 export type AcceptEvidenceRequest =
   components["schemas"]["AcceptEvidenceRequest"];
 export type AcceptWithoutEvidenceRequest =
@@ -78,6 +80,23 @@ export function finalizeEvidenceUpload(
 ): Promise<EvidenceSubmission> {
   return postJsonWithFreshCsrf<EvidenceSubmission>(
     `/deals/${dealId}/fulfillment/evidence/${evidenceSubmissionId}/finalize`,
+    request,
+    {
+      "X-M4Trust-Legal-Entity-Id": legalEntityId,
+      "Idempotency-Key": idempotencyKey,
+    },
+  );
+}
+
+export function cancelEvidenceUpload(
+  legalEntityId: string,
+  dealId: string,
+  evidenceSubmissionId: string,
+  request: CancelEvidenceUploadRequest,
+  idempotencyKey: string,
+): Promise<EvidenceSubmission> {
+  return postJsonWithFreshCsrf<EvidenceSubmission>(
+    `/deals/${dealId}/fulfillment/evidence/${evidenceSubmissionId}/cancel-upload`,
     request,
     {
       "X-M4Trust-Legal-Entity-Id": legalEntityId,

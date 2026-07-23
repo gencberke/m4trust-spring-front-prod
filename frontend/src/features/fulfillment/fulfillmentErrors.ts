@@ -101,6 +101,7 @@ export function shouldRefetchAfterUploadError(error: unknown): boolean {
       error.code === "EVIDENCE_UPLOAD_STATE_CONFLICT" ||
       error.code === "EVIDENCE_MILESTONE_CONFLICT" ||
       error.code === "EVIDENCE_VERIFICATION_FAILED" ||
+      error.code === "EVIDENCE_STALE_VERSION" ||
       error.code === "FULFILLMENT_STATE_CONFLICT")
   );
 }

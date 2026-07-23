@@ -3710,6 +3710,20 @@ a:hover {
   color: #8a5a12;
 }
 
+.evidence-status-badge[data-status="PENDING_UPLOAD"][data-cancelled="true"],
+.evidence-timeline-item[data-status="PENDING_UPLOAD"][data-cancelled="true"] {
+  opacity: 0.85;
+}
+
+.evidence-status-badge[data-status="PENDING_UPLOAD"][data-cancelled="true"] {
+  background: #f0f0f2;
+  color: #5c6370;
+}
+
+.evidence-timeline-item[data-status="PENDING_UPLOAD"][data-cancelled="true"] {
+  border-left-color: #b8bec8;
+}
+
 .fulfillment-status-badge[data-status="CANCELLED"],
 .evidence-status-badge[data-status="REJECTED"] {
   background: #fff0f1;
