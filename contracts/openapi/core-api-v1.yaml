@@ -2420,6 +2420,7 @@ components:
         - LEGAL_ENTITY_ACCESS_DENIED
       AcceptWithoutEvidenceConflict:
         - DEAL_STALE_VERSION
+        - DEAL_STATE_CONFLICT
         - FULFILLMENT_COMPLETED
         - FULFILLMENT_EVIDENCE_POLICY_CONFLICT
         - FULFILLMENT_EVIDENCE_PRESENT
@@ -3343,6 +3344,7 @@ components:
     AcceptWithoutEvidenceConflict:
       description: >
         The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the
+        Deal is not ACTIVE and FUNDED (DEAL_STATE_CONFLICT), the
         supplied fulfillment expectedVersion is stale (FULFILLMENT_STALE_VERSION),
         the effective evidencePolicy is not NOT_REQUIRED
         (FULFILLMENT_EVIDENCE_POLICY_CONFLICT), the fulfillment is not in a started

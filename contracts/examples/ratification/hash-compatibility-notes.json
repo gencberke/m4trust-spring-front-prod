@@ -3,7 +3,7 @@
   "notes": [
     "v1 and v2 RatificationPackageSnapshot serialized bytes and contentHash inputs must remain byte-identical to historical packages.",
     "v3 adds evidencePolicy to the sole RFC 8785 JCS contentHash input; v1/v2 effective evidence policy is permanently REQUIRED without changing their bytes.",
-    "Deterministic hash fixtures are not committed under contracts/ yet; backend Plan 18B-P2 owns canonical hash parity tests."
+    "Committed deterministic golden gate: hash-compatibility-golden.json (exact canonicalJson bytes + SHA-256). Consumed by RatificationSnapshotAssemblerTest."
   ],
   "validCombinations": {
     "createNeitherField": "schemaVersion 1",

@@ -27,9 +27,10 @@
   `POST /deals/{dealId}/fulfillment/accept-without-evidence` with
   `AcceptWithoutEvidenceRequest` (`expectedDealVersion` +
   `expectedFulfillmentVersion`), Idempotency-Key, session/CSRF, and stable
-  conflict codes `FULFILLMENT_EVIDENCE_POLICY_CONFLICT` /
+  conflict codes `DEAL_STATE_CONFLICT` /
+  `FULFILLMENT_EVIDENCE_POLICY_CONFLICT` /
   `FULFILLMENT_EVIDENCE_PRESENT` (reusing `EvidenceReviewForbidden` for actor
-  failures). Validator closed sets and openapi-ahead Java enum tolerance updated.
+  failures). Validator closed sets enforce strict Java/OpenAPI exact-set parity.
   No AI contract changes.
 
 - Added Plan 17 Phase B1 additive settlement/release contract surface (ADR-014 §2.3/§2.5):

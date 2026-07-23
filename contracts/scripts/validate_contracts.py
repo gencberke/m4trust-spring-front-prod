@@ -779,12 +779,6 @@ REMOVED_COMBINED_API_ERROR_CODES = {
     "DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN",
     "FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN",
 }
-# Plan 18B-P1: OpenAPI commits no-file-accept codes before Java enum sync.
-OPENAPI_AHEAD_OF_JAVA_API_ERROR_CODES: set[str] = {
-    "FULFILLMENT_EVIDENCE_POLICY_CONFLICT",
-    "FULFILLMENT_EVIDENCE_PRESENT",
-}
-
 REQUIRED_CORE_API_SCHEMAS = {
     "RegisterRequest", "LoginRequest", "PublicUser", "CurrentUser", "CsrfToken",
     "CreateLegalEntityRequest", "LegalEntity", "LegalEntityRole",
@@ -1288,18 +1282,11 @@ def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[
     elif java_api != set(api_values):
         only_java = sorted(java_api - set(api_values))
         only_openapi = sorted(set(api_values) - java_api)
-        unexpected_openapi = sorted(set(only_openapi) - OPENAPI_AHEAD_OF_JAVA_API_ERROR_CODES)
-        if unexpected_openapi or only_java:
-            local_failures.append(
-                "FAIL Core API ApiErrorCode exact-set mismatch"
-                + (f"; java-only={','.join(only_java)}" if only_java else "")
-                + (f"; openapi-only={','.join(unexpected_openapi)}" if unexpected_openapi else "")
-            )
-        elif only_openapi:
-            print(
-                "PASS Core API ApiErrorCode exact-set with Plan 18B-P1 openapi-ahead codes: "
-                + ",".join(only_openapi)
-            )
+        local_failures.append(
+            "FAIL Core API ApiErrorCode exact-set mismatch"
+            + (f"; java-only={','.join(only_java)}" if only_java else "")
+            + (f"; openapi-only={','.join(only_openapi)}" if only_openapi else "")
+        )
     if java_field is None:
         local_failures.append("FAIL Core API FieldErrorCode: Java enum source not found for exact-set check")
     elif java_field != set(field_values):

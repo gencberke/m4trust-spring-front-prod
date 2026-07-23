@@ -147,6 +147,9 @@ function nextTask(deal: DealDetail): string {
   if (deal.availableActions.canReviewExtraction) return "Çıkarımı manuel olarak inceleyin";
   if (deal.availableActions.canCreateRatificationPackage || deal.availableActions.canApproveRatification) return "Onay paketini gözden geçirin";
   if (deal.availableActions.canCreateFundingPlan || deal.availableActions.canInitiateFunding) return "Ödemeyi güvenceye alın";
+  if (deal.availableActions.canAcceptWithoutEvidence) {
+    return "Teslimatı kanıtsız kabul edin";
+  }
   if (deal.availableActions.canStartFulfillment || deal.availableActions.canUploadEvidence || deal.availableActions.canAcceptEvidence) {
     return "Teslimat kanıtını yönetin";
   }

@@ -3441,7 +3441,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
-        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the supplied fulfillment expectedVersion is stale (FULFILLMENT_STALE_VERSION), the effective evidencePolicy is not NOT_REQUIRED (FULFILLMENT_EVIDENCE_POLICY_CONFLICT), the fulfillment is not in a started non-terminal state that accepts no-file completion (FULFILLMENT_STATE_CONFLICT), the fulfillment is already COMPLETED (FULFILLMENT_COMPLETED), any current or finalized evidence submission exists (FULFILLMENT_EVIDENCE_PRESENT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). Forbidden actor failures reuse EvidenceReviewForbidden (EVIDENCE_REVIEW_FORBIDDEN). */
+        /** @description The supplied Deal expectedVersion is stale (DEAL_STALE_VERSION), the Deal is not ACTIVE and FUNDED (DEAL_STATE_CONFLICT), the supplied fulfillment expectedVersion is stale (FULFILLMENT_STALE_VERSION), the effective evidencePolicy is not NOT_REQUIRED (FULFILLMENT_EVIDENCE_POLICY_CONFLICT), the fulfillment is not in a started non-terminal state that accepts no-file completion (FULFILLMENT_STATE_CONFLICT), the fulfillment is already COMPLETED (FULFILLMENT_COMPLETED), any current or finalized evidence submission exists (FULFILLMENT_EVIDENCE_PRESENT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). Forbidden actor failures reuse EvidenceReviewForbidden (EVIDENCE_REVIEW_FORBIDDEN). */
         AcceptWithoutEvidenceConflict: {
             headers: {
                 [name: string]: unknown;

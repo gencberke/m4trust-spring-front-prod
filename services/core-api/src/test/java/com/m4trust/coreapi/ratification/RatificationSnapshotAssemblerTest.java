@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -17,9 +20,61 @@ class RatificationSnapshotAssemblerTest {
     private static final UUID DOCUMENT = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID RULE_SET = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
+    private static final UUID GOLDEN_DEAL = UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    private static final UUID GOLDEN_BUYER = UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    private static final UUID GOLDEN_SELLER = UUID.fromString("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+    private static final UUID GOLDEN_RULE_SET = UUID.fromString("dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+    private static final UUID GOLDEN_DOCUMENT = UUID.fromString("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
+    private static final UUID GOLDEN_TENANT = UUID.fromString("ffffffff-ffff-4fff-8fff-ffffffffffff");
+
     private final ObjectMapper json = new ObjectMapper();
     private final CanonicalSnapshotHasher hasher = new CanonicalSnapshotHasher();
     private final RatificationSnapshotAssembler assembler = new RatificationSnapshotAssembler(json, hasher);
+
+    @Test
+    void committedGoldenFixturesGateExactV1V2CanonicalBytesAndHashesAndDeterministicV3() throws Exception {
+        JsonNode golden = json.readTree(Files.readString(resolveGoldenFixture()));
+        JsonNode inputs = golden.get("inputs");
+        ObjectNode structuredValue = (ObjectNode) inputs.get("structuredValue").deepCopy();
+        var rule = new RatificationSourcePorts.Rule(
+                inputs.get("ruleReference").asText(),
+                inputs.get("ruleDecision").asText(),
+                inputs.get("ruleCategory").asText(),
+                inputs.get("ruleTitle").asText(),
+                inputs.get("ruleDescription").asText(),
+                structuredValue,
+                null,
+                inputs.get("legalBasisProvenance").asText());
+        var target = new RatificationSourcePorts.Target(
+                GOLDEN_DEAL, GOLDEN_TENANT, "DRAFT", 1,
+                inputs.get("dealReference").asText(), inputs.get("dealTitle").asText(), true,
+                new RatificationSourcePorts.Party(GOLDEN_BUYER, inputs.get("buyerLegalName").asText()),
+                new RatificationSourcePorts.Party(GOLDEN_SELLER, inputs.get("sellerLegalName").asText()),
+                GOLDEN_DOCUMENT, GOLDEN_RULE_SET, null);
+        var document = new RatificationSourcePorts.Document(
+                GOLDEN_DOCUMENT, GOLDEN_DEAL,
+                inputs.get("documentObjectVersion").asText(),
+                inputs.get("documentSha256").asText());
+        var rules = new RatificationSourcePorts.RuleSet(
+                GOLDEN_RULE_SET, GOLDEN_DEAL, inputs.get("ruleSetVersion").asLong(), List.of(rule));
+        long amountMinor = inputs.get("amountMinor").asLong();
+        String currency = inputs.get("currency").asText();
+        int disputeWindowDays = inputs.get("disputeWindowDays").asInt();
+
+        var v1 = assembler.assemble(target, document, rules, amountMinor, currency);
+        var v2 = assembler.assemble(target, document, rules, amountMinor, currency, disputeWindowDays);
+        var v3 = assembler.assemble(target, document, rules, amountMinor, currency, disputeWindowDays, "NOT_REQUIRED");
+        var v3Required = assembler.assemble(target, document, rules, amountMinor, currency, disputeWindowDays, "REQUIRED");
+
+        assertExactGolden("v1", golden.get("v1"), v1);
+        assertExactGolden("v2", golden.get("v2"), v2);
+        assertExactGolden("v3", golden.get("v3"), v3);
+
+        assertEquals(golden.at("/v3Required/contentHash").asText(), v3Required.contentHash());
+        assertFalse(v3.contentHash().equals(v3Required.contentHash()));
+        assertFalse(v3.contentHash().equals(v2.contentHash()));
+        assertFalse(v1.contentHash().equals(v2.contentHash()));
+    }
 
     @Test
     void absentDisputeWindowKeepsV1SnapshotShapeAndHash() throws Exception {
@@ -174,6 +229,29 @@ class RatificationSnapshotAssemblerTest {
         assertThrows(IllegalArgumentException.class, () -> assembler.assemble(wrongRulePointer, document(), rules(1, List.of(rule("r", textValue(), null))), 1, "TRY"));
         var wrongRuleDeal = new RatificationSourcePorts.RuleSet(RULE_SET, UUID.randomUUID(), 1, List.of(rule("r", textValue(), null)));
         assertThrows(IllegalArgumentException.class, () -> assembler.assemble(target(), document(), wrongRuleDeal, 1, "TRY"));
+    }
+
+    private void assertExactGolden(String label, JsonNode expected, RatificationSnapshotAssembler.Result actual)
+            throws Exception {
+        String expectedCanonical = expected.get("canonicalJson").asText();
+        String actualCanonical = hasher.canonicalize(actual.serializedSnapshot());
+        assertEquals(expectedCanonical, actualCanonical, label + " canonicalJson bytes");
+        assertEquals(expectedCanonical.getBytes(StandardCharsets.UTF_8).length,
+                expected.get("canonicalUtf8Length").asInt(), label + " committed length");
+        assertEquals(expected.get("contentHash").asText(), actual.contentHash(), label + " contentHash");
+        assertEquals(expected.get("schemaVersion").asInt(),
+                json.readTree(actual.serializedSnapshot()).get("schemaVersion").asInt(), label + " schemaVersion");
+    }
+
+    private static Path resolveGoldenFixture() {
+        Path cwd = Path.of("").toAbsolutePath();
+        for (Path dir = cwd; dir != null; dir = dir.getParent()) {
+            Path candidate = dir.resolve("contracts/examples/ratification/hash-compatibility-golden.json");
+            if (Files.isRegularFile(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("hash-compatibility-golden.json not found from " + cwd);
     }
 
     private void assertSnapshot(RatificationSourcePorts.Rule rule) {

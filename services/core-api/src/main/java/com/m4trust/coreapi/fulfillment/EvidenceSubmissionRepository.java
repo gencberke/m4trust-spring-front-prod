@@ -76,6 +76,24 @@ class EvidenceSubmissionRepository {
         return Boolean.TRUE.equals(exists);
     }
 
+    /**
+     * Active pending means status=PENDING_UPLOAD, cancelled_at IS NULL, and
+     * upload_expires_at > now. Evaluated with a bound timestamp parameter — no
+     * time-predicate index is required or invented.
+     */
+    boolean existsActivePendingByMilestoneId(UUID milestoneId, Instant now) {
+        Boolean exists = jdbcTemplate.queryForObject("""
+                SELECT EXISTS(
+                    SELECT 1 FROM fulfillment_evidence_submission
+                    WHERE milestone_id = ?
+                      AND status = 'PENDING_UPLOAD'
+                      AND cancelled_at IS NULL
+                      AND upload_expires_at > ?
+                )
+                """, Boolean.class, milestoneId, Timestamp.from(now));
+        return Boolean.TRUE.equals(exists);
+    }
+
     Optional<EvidenceSubmission.EvidenceSubmissionRecord> findCurrentSubmittedByMilestoneId(UUID milestoneId) {
         return jdbcTemplate.query("""
                 SELECT * FROM fulfillment_evidence_submission

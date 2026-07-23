@@ -193,6 +193,9 @@ class FulfillmentService {
                 throw conflict(lockedMilestone.status() == FulfillmentStatus.REVIEW_REQUIRED
                         ? ApiErrorCode.EVIDENCE_ALREADY_SUBMITTED : ApiErrorCode.FULFILLMENT_STATE_CONFLICT);
             }
+            if (evidenceRepository.existsActivePendingByMilestoneId(lockedMilestone.id(), now)) {
+                throw conflict(ApiErrorCode.FULFILLMENT_STATE_CONFLICT);
+            }
             Milestone milestoneAggregate = Milestone.rehydrate(lockedMilestone);
             Fulfillment fulfillmentAggregate = Fulfillment.rehydrate(lockedFulfillment);
             if (milestoneAggregate.status() == FulfillmentStatus.IN_PROGRESS) {
@@ -463,14 +466,23 @@ class FulfillmentService {
         FulfillmentSourcePorts.Target target = deals.lockVisibleForStart(context, dealId)
                 .orElseThrow(FulfillmentExceptions.DealNotFound::new);
         requireBuyerAdmin(context, target);
+        Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
+        Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
+                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
+        // Claim/replay under Deal → fulfillment → milestone locks before terminal/
+        // state/version checks so a losing concurrent same-key retry replays
+        // instead of returning 409 FULFILLMENT_COMPLETED / STALE_VERSION.
+        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
+        if (claim.isReplay()) {
+            return replayFulfillment(context, claim.resultReference());
+        }
         if (!"ACTIVE".equals(target.status()) || !"FUNDED".equals(target.fundingStatus())) {
             throw conflict(ApiErrorCode.DEAL_STATE_CONFLICT);
         }
         if (target.version() != request.expectedDealVersion()) {
             throw conflict(ApiErrorCode.DEAL_STALE_VERSION);
         }
-        Fulfillment.FulfillmentRecord fulfillmentRecord = fulfillmentRepository.findByDealIdForUpdate(dealId)
-                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
         if (fulfillmentRecord.status() == FulfillmentStatus.COMPLETED) {
             throw conflict(ApiErrorCode.FULFILLMENT_COMPLETED);
         }
@@ -483,16 +495,10 @@ class FulfillmentService {
         if (fulfillmentRecord.version() != request.expectedFulfillmentVersion()) {
             throw conflict(ApiErrorCode.FULFILLMENT_STALE_VERSION);
         }
-        Milestone.MilestoneRecord milestoneRecord = milestoneRepository.findByFulfillmentIdForUpdate(fulfillmentRecord.id())
-                .orElseThrow(FulfillmentExceptions.FulfillmentNotFound::new);
         if (evidenceRepository.existsByFulfillmentId(fulfillmentRecord.id())) {
             throw conflict(ApiErrorCode.FULFILLMENT_EVIDENCE_PRESENT);
         }
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-        IdempotencyClaim claim = idempotency.claim(idempotencyRequest);
-        if (claim.isReplay()) {
-            return replayFulfillment(context, claim.resultReference());
-        }
         Milestone milestone = Milestone.rehydrate(milestoneRecord);
         long previousMilestoneVersion = milestoneRecord.version();
         milestone.moveToCompleted(now);

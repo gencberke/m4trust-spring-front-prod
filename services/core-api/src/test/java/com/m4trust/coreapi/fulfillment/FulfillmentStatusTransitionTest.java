@@ -59,6 +59,26 @@ class FulfillmentStatusTransitionTest {
     }
 
     @Test
+    void requiredPolicyRejectsInProgressToCompleted() {
+        Fulfillment fulfillment = Fulfillment.create(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), EvidencePolicy.REQUIRED, NOW);
+        assertThrows(IllegalStateException.class, () -> fulfillment.moveToCompleted(NOW));
+        assertEquals(FulfillmentStatus.IN_PROGRESS, fulfillment.status());
+    }
+
+    @Test
+    void requiredPolicyStillCompletesFromReviewRequired() {
+        Fulfillment fulfillment = Fulfillment.create(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), EvidencePolicy.REQUIRED, NOW);
+        fulfillment.moveToEvidenceRequired(NOW);
+        fulfillment.moveToReviewRequired(NOW);
+        fulfillment.moveToCompleted(NOW);
+        assertEquals(FulfillmentStatus.COMPLETED, fulfillment.status());
+    }
+
+    @Test
     void cannotCompleteMilestoneFromEvidenceRequired() {
         Milestone milestone = Milestone.create(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),

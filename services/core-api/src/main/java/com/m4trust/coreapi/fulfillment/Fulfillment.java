@@ -107,7 +107,8 @@ final class Fulfillment {
         boolean allowed = switch (status) {
             case IN_PROGRESS -> next == FulfillmentStatus.EVIDENCE_REQUIRED
                     || next == FulfillmentStatus.REVIEW_REQUIRED
-                    || next == FulfillmentStatus.COMPLETED;
+                    || (next == FulfillmentStatus.COMPLETED
+                            && evidencePolicy == EvidencePolicy.NOT_REQUIRED);
             case EVIDENCE_REQUIRED -> next == FulfillmentStatus.EVIDENCE_REQUIRED
                     || next == FulfillmentStatus.REVIEW_REQUIRED;
             case REVIEW_REQUIRED -> next == FulfillmentStatus.COMPLETED;

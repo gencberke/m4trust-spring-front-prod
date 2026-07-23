@@ -57,7 +57,7 @@ public final class SettlementSourcePorts {
     }
 
     /**
-     * @param disputeWindowDays Present only for schemaVersion=2 ratified snapshots.
+     * @param disputeWindowDays Present for schemaVersion=2 or schemaVersion=3 ratified snapshots.
      */
     public record RatificationSnapshot(int schemaVersion, String status, Integer disputeWindowDays) { }
 

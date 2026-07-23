@@ -66,7 +66,7 @@ class FulfillmentMigrationIntegrationTest {
                 () -> milestone(otherFulfillmentId, f.dealId, "Cross Deal", "IN_PROGRESS", 0L),
                 "a milestone must belong to the same Deal as its fulfillment");
         assertThrows(DataAccessException.class,
-                () -> jdbc.update("INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at) VALUES (?, ?, ?, ?, 'INVALID', 'REQUIRED', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                () -> jdbc.update("INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at) VALUES (?, ?, ?, ?, 'INVALID', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                         UUID.randomUUID(), fulfillmentId, f.dealId, "Bad"),
                 "invalid milestone status is rejected");
 

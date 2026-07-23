@@ -101,6 +101,25 @@ function isCancelledPending(submission: EvidenceSubmission): boolean {
   return submission.status === "PENDING_UPLOAD" && Boolean(submission.cancelledAt);
 }
 
+/** Backend-projected only — never invent cancel eligibility from local status. */
+function canCancelEvidenceUpload(submission: EvidenceSubmission | undefined): boolean {
+  return submission?.availableActions.canCancelUpload === true;
+}
+
+/**
+ * Active pending cancel target from currentEvidence or history.
+ * Prefers currentEvidence when both expose canCancelUpload.
+ */
+function findCancellablePendingEvidence(
+  currentEvidence: EvidenceSubmission | null | undefined,
+  history: readonly EvidenceSubmission[] | undefined,
+): EvidenceSubmission | undefined {
+  if (canCancelEvidenceUpload(currentEvidence ?? undefined)) {
+    return currentEvidence!;
+  }
+  return history?.find((submission) => canCancelEvidenceUpload(submission));
+}
+
 function evidenceTypeLabel(type: string): string {
   return EVIDENCE_TYPE_LABELS[type] ?? type;
 }
@@ -252,6 +271,7 @@ export function DealFulfillmentPanel({
   const startKeyRef = useRef<string | undefined>(undefined);
   const finalizeKeyRef = useRef<string | undefined>(undefined);
   const cancelKeyRef = useRef<string | undefined>(undefined);
+  const cancelInFlightRef = useRef(false);
   const reviewKeyRef = useRef<string | undefined>(undefined);
   const acceptWithoutEvidenceKeyRef = useRef<string | undefined>(undefined);
   const attemptIdRef = useRef(0);
@@ -271,6 +291,7 @@ export function DealFulfillmentPanel({
   const [downloadingId, setDownloadingId] = useState<string>();
   const [rejectionReason, setRejectionReason] = useState("");
   const [reviewError, setReviewError] = useState<string>();
+  const [cancelError, setCancelError] = useState<string>();
 
   const isUploadBusy = BUSY_STAGES.includes(uploadState.stage);
 
@@ -293,6 +314,17 @@ export function DealFulfillmentPanel({
 
   function resetFinalizeKey() {
     finalizeKeyRef.current = freshIdempotencyKey();
+  }
+
+  function ensureCancelKey() {
+    if (!cancelKeyRef.current) {
+      cancelKeyRef.current = freshIdempotencyKey();
+    }
+    return cancelKeyRef.current;
+  }
+
+  function clearCancelKey() {
+    cancelKeyRef.current = undefined;
   }
 
   function resetCancelKey() {
@@ -490,33 +522,67 @@ export function DealFulfillmentPanel({
     void createIntentAndUpload(file, evidenceType, mediaType, sha256, attemptId);
   }
 
-  async function handleCancelUpload() {
-    attemptIdRef.current += 1;
-    const intent = uploadState.intent;
-    if (intent?.evidence.availableActions.canCancelUpload) {
-      try {
+  const cancelMutation = useMutation({
+    mutationFn: (evidence: EvidenceSubmission) =>
+      cancelEvidenceUpload(
+        legalEntityId,
+        deal.id,
+        evidence.id,
+        { expectedEvidenceVersion: evidence.version },
+        ensureCancelKey(),
+      ),
+    onSuccess: () => {
+      clearCancelKey();
+      setCancelError(undefined);
+      setUploadState({ stage: "idle" });
+      refreshAfterMutation();
+    },
+    onError: (error) => {
+      if (shouldResetFulfillmentIdempotencyKey(error, "upload")) {
         resetCancelKey();
-        await cancelEvidenceUpload(
-          legalEntityId,
-          deal.id,
-          intent.evidence.id,
-          { expectedEvidenceVersion: intent.evidence.version },
-          cancelKeyRef.current!,
-        );
         refreshAfterMutation();
-      } catch (error) {
-        if (shouldResetFulfillmentIdempotencyKey(error, "upload")) {
-          resetCancelKey();
-          refreshAfterMutation();
-        }
-        setUploadState((previous) => ({
-          ...previous,
-          errorMessage: getFulfillmentErrorMessage(error),
-        }));
-        return;
       }
+      const message = getFulfillmentErrorMessage(error);
+      setCancelError(message);
+      setUploadState((previous) =>
+        previous.stage === "failed"
+          ? { ...previous, errorMessage: message }
+          : previous,
+      );
+    },
+    onSettled: () => {
+      cancelInFlightRef.current = false;
+    },
+  });
+
+  /**
+   * Shared cancel path for in-memory failed upload and server-projected pending.
+   * Before an intent exists: local reset only. After intent: cancel API + stable key.
+   */
+  function handleCancelUpload() {
+    if (cancelInFlightRef.current || cancelMutation.isPending) {
+      return;
     }
-    setUploadState({ stage: "idle" });
+    attemptIdRef.current += 1;
+
+    const localEvidence = uploadState.intent?.evidence;
+    const serverCancellable = findCancellablePendingEvidence(
+      fulfillment?.currentEvidence,
+      fulfillment?.history,
+    );
+    const cancelTarget =
+      serverCancellable ??
+      (canCancelEvidenceUpload(localEvidence) ? localEvidence : undefined);
+
+    if (!cancelTarget) {
+      clearCancelKey();
+      setCancelError(undefined);
+      setUploadState({ stage: "idle" });
+      return;
+    }
+
+    cancelInFlightRef.current = true;
+    cancelMutation.mutate(cancelTarget);
   }
 
   async function handleDownload(submission: EvidenceSubmission) {
@@ -646,6 +712,12 @@ export function DealFulfillmentPanel({
       fulfillment?.availableActions.canAcceptWithoutEvidence === true);
   const evidencePolicy =
     fulfillment?.evidencePolicy ?? deal.fulfillment?.evidencePolicy;
+  const serverCancellablePending = !readOnly
+    ? findCancellablePendingEvidence(
+        fulfillment?.currentEvidence,
+        fulfillment?.history,
+      )
+    : undefined;
   const turnBanner = deriveTurnBanner({
     status: fulfillment?.status ?? (hasFulfillment ? undefined : "NOT_STARTED"),
     evidencePolicy,
@@ -658,7 +730,7 @@ export function DealFulfillmentPanel({
   const chronologicalHistory = fulfillment
     ? sortEvidenceChronologically(fulfillment.history)
     : [];
-
+  const isCancelPending = cancelMutation.isPending;
   if (fulfillmentQuery.isLoading) {
     return (
       <section className="panel" aria-live="polite">
@@ -799,6 +871,29 @@ export function DealFulfillmentPanel({
             </div>
           ) : null}
 
+          {serverCancellablePending && uploadState.stage === "idle" ? (
+            <div className="pending-upload-recovery">
+              {cancelError ? (
+                <p className="form-alert" role="alert">
+                  {cancelError}
+                </p>
+              ) : null}
+              <p>
+                Yarım kalmış bir yükleme var. Vazgeçerek iptal edip yeni bir
+                kanıt yükleyebilirsiniz.
+              </p>
+              <EvidenceSummary submission={serverCancellablePending} />
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleCancelUpload}
+                disabled={isCancelPending}
+              >
+                {isCancelPending ? "İptal ediliyor…" : "Vazgeç"}
+              </button>
+            </div>
+          ) : null}
+
           <div className="milestone-card">
             <h3>{fulfillment.milestone.title}</h3>
             {fulfillment.milestone.description && (
@@ -854,17 +949,17 @@ export function DealFulfillmentPanel({
                     type="button"
                     className="secondary-button"
                     onClick={handleRetry}
-                    disabled={isUploadBusy}
+                    disabled={isUploadBusy || isCancelPending}
                   >
                     Yeniden dene
                   </button>
                   <button
                     type="button"
                     className="text-button"
-                    onClick={() => void handleCancelUpload()}
-                    disabled={isUploadBusy}
+                    onClick={handleCancelUpload}
+                    disabled={isUploadBusy || isCancelPending}
                   >
-                    Vazgeç
+                    {isCancelPending ? "İptal ediliyor…" : "Vazgeç"}
                   </button>
                 </div>
               )}
