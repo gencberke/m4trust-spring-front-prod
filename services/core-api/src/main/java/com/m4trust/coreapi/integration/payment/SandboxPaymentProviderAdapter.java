@@ -59,6 +59,24 @@ class SandboxPaymentProviderAdapter implements PaymentProviderPort {
         return PaymentProviderMode.DEMO_SIMULATED;
     }
 
+    @Override
+    public ReleaseProviderResult initiateRelease(ProviderRequest request) {
+        SandboxOperationState state = releaseStates.computeIfAbsent(request.providerKey(),
+                key -> new SandboxOperationState(nextReleaseScenario(), "sandbox-release-" + key));
+        return resolveRelease(state);
+    }
+
+    @Override
+    public ReleaseProviderResult queryReleaseStatus(ProviderRequest request) {
+        SandboxOperationState state = releaseStates.get(request.providerKey());
+        if (state == null) {
+            return new ReleaseProviderResult(ReleaseOutcome.NOT_FOUND, null);
+        }
+        return resolveRelease(state);
+    }
+
+    private final Map<String, SandboxOperationState> releaseStates = new ConcurrentHashMap<>();
+
     private ProviderResult resolve(SandboxOperationState state) {
         return switch (state.scenario) {
             case SUCCESS -> new ProviderResult(Outcome.SUCCEEDED, state.providerReference);
@@ -67,6 +85,20 @@ class SandboxPaymentProviderAdapter implements PaymentProviderPort {
                     ? new ProviderResult(Outcome.UNCONFIRMED, null)
                     : new ProviderResult(Outcome.SUCCEEDED, state.providerReference);
         };
+    }
+
+    private ReleaseProviderResult resolveRelease(SandboxOperationState state) {
+        return switch (state.scenario) {
+            case SUCCESS -> new ReleaseProviderResult(ReleaseOutcome.SIMULATED_SETTLED, state.providerReference);
+            case DECLINE -> new ReleaseProviderResult(ReleaseOutcome.SIMULATED_DECLINED, state.providerReference);
+            case TIMEOUT_THEN_SUCCESS -> state.callCount.incrementAndGet() == 1
+                    ? new ReleaseProviderResult(ReleaseOutcome.UNCONFIRMED, null)
+                    : new ReleaseProviderResult(ReleaseOutcome.SIMULATED_SETTLED, state.providerReference);
+        };
+    }
+
+    private SandboxScenario nextReleaseScenario() {
+        return nextScenario();
     }
 
     private SandboxScenario nextScenario() {

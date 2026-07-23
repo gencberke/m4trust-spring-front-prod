@@ -155,6 +155,11 @@ class DealRepository {
                 .stream().findFirst();
     }
 
+    Optional<DealRecord> findById(UUID dealId) {
+        return jdbcTemplate.query(SELECT_DEAL + " WHERE deal.id = ?", this::mapDeal, dealId)
+                .stream().findFirst();
+    }
+
     void setCurrentRuleSet(UUID dealId, UUID ruleSetVersionId, Instant changedAt) {
         if (jdbcTemplate.update("""
                 UPDATE deal SET current_rule_set_version_id = ?, updated_at = ?, version = version + 1
@@ -371,6 +376,24 @@ class DealRepository {
                 legalEntityId,
                 legalEntityId,
                 legalEntityTenantId) == 1;
+    }
+
+    boolean completeDeal(UUID dealId, DealStatus expectedStatus, DealStatus nextStatus,
+            long expectedVersion, Instant updatedAt) {
+        return jdbcTemplate.update("""
+                UPDATE deal
+                SET deal_status = ?,
+                    updated_at = ?,
+                    version = version + 1
+                WHERE id = ?
+                  AND deal_status = ?
+                  AND version = ?
+                """,
+                nextStatus.name(),
+                Timestamp.from(updatedAt),
+                dealId,
+                expectedStatus.name(),
+                expectedVersion) == 1;
     }
 
     private DealRecord mapDeal(

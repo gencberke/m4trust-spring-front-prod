@@ -38,6 +38,23 @@ public interface PaymentProviderPort {
         return null;
     }
 
+    /**
+     * Initiates a simulated release for the given fixed provider key. Never
+     * called from within a database transaction (ADR-014 §2.6).
+     */
+    default ReleaseProviderResult initiateRelease(ProviderRequest request) {
+        return null;
+    }
+
+    /**
+     * Queries the provider for the definitive simulated release outcome keyed by
+     * the same provider key. Returns {@link ReleaseOutcome#NOT_FOUND} only when
+     * the provider has no record of the key.
+     */
+    default ReleaseProviderResult queryReleaseStatus(ProviderRequest request) {
+        return null;
+    }
+
     record ProviderRequest(String providerKey, long amountMinor, String currency) {
         public ProviderRequest {
             Objects.requireNonNull(providerKey, "providerKey must not be null");
@@ -54,6 +71,16 @@ public interface PaymentProviderPort {
     enum Outcome {
         SUCCEEDED,
         DECLINED,
+        UNCONFIRMED,
+        NOT_FOUND
+    }
+
+    record ReleaseProviderResult(ReleaseOutcome outcome, String providerReference) {
+    }
+
+    enum ReleaseOutcome {
+        SIMULATED_SETTLED,
+        SIMULATED_DECLINED,
         UNCONFIRMED,
         NOT_FOUND
     }

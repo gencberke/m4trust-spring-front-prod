@@ -14,10 +14,11 @@ final class Fulfillment {
     private FulfillmentStatus status;
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant completedAt;
     private long version;
 
     private Fulfillment(UUID id, UUID dealId, UUID tenantId, UUID sourcePackageId,
-            FulfillmentStatus status, Instant createdAt, Instant updatedAt, long version) {
+            FulfillmentStatus status, Instant createdAt, Instant updatedAt, Instant completedAt, long version) {
         this.id = Objects.requireNonNull(id);
         this.dealId = Objects.requireNonNull(dealId);
         this.tenantId = Objects.requireNonNull(tenantId);
@@ -25,19 +26,20 @@ final class Fulfillment {
         this.status = Objects.requireNonNull(status);
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.completedAt = completedAt;
         this.version = version;
         validate();
     }
 
     static Fulfillment create(UUID id, UUID dealId, UUID tenantId, UUID sourcePackageId, Instant createdAt) {
         return new Fulfillment(id, dealId, tenantId, sourcePackageId,
-                FulfillmentStatus.IN_PROGRESS, createdAt, createdAt, 0);
+                FulfillmentStatus.IN_PROGRESS, createdAt, createdAt, null, 0);
     }
 
     static Fulfillment rehydrate(FulfillmentRecord record) {
         return new Fulfillment(record.id(), record.dealId(), record.tenantId(),
                 record.sourcePackageId(), record.status(), record.createdAt(),
-                record.updatedAt(), record.version());
+                record.updatedAt(), record.completedAt(), record.version());
     }
 
     void moveToEvidenceRequired(Instant changedAt) {
@@ -60,7 +62,8 @@ final class Fulfillment {
         requireMutable();
         requireTransition(FulfillmentStatus.COMPLETED);
         status = FulfillmentStatus.COMPLETED;
-        updatedAt = Objects.requireNonNull(changedAt);
+        completedAt = Objects.requireNonNull(changedAt);
+        updatedAt = completedAt;
         version++;
     }
 
@@ -76,7 +79,7 @@ final class Fulfillment {
 
     FulfillmentRecord toRecord() {
         return new FulfillmentRecord(id, dealId, tenantId, sourcePackageId,
-                status, createdAt, updatedAt, version);
+                status, createdAt, updatedAt, completedAt, version);
     }
 
     UUID id() { return id; }
@@ -86,6 +89,7 @@ final class Fulfillment {
     FulfillmentStatus status() { return status; }
     Instant createdAt() { return createdAt; }
     Instant updatedAt() { return updatedAt; }
+    Instant completedAt() { return completedAt; }
     long version() { return version; }
 
     private void requireMutable() {
@@ -116,6 +120,6 @@ final class Fulfillment {
     }
 
     public record FulfillmentRecord(UUID id, UUID dealId, UUID tenantId, UUID sourcePackageId,
-            FulfillmentStatus status, Instant createdAt, Instant updatedAt, long version) {
+            FulfillmentStatus status, Instant createdAt, Instant updatedAt, Instant completedAt, long version) {
     }
 }

@@ -104,7 +104,7 @@ class FulfillmentServiceTest {
                 SELLER, LegalEntityRole.MEMBER);
         Fulfillment.FulfillmentRecord fulfillment = new Fulfillment.FulfillmentRecord(
                 UUID.randomUUID(), DEAL, TENANT, PACKAGE, FulfillmentStatus.IN_PROGRESS,
-                NOW, NOW, 0);
+                NOW, NOW, null, 0);
         Milestone.MilestoneRecord milestone = new Milestone.MilestoneRecord(
                 UUID.randomUUID(), fulfillment.id(), DEAL, "Primary", null,
                 FulfillmentStatus.IN_PROGRESS, NOW, NOW, 0);
@@ -170,7 +170,7 @@ class FulfillmentServiceTest {
         stubDeal(BUYER);
         when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.of(
                 new Fulfillment.FulfillmentRecord(UUID.randomUUID(), DEAL, TENANT, PACKAGE,
-                        FulfillmentStatus.REVIEW_REQUIRED, NOW, NOW, 0)));
+                        FulfillmentStatus.REVIEW_REQUIRED, NOW, NOW, null, 0)));
         when(evidenceRepository.findById(any())).thenReturn(Optional.empty());
 
         assertThrows(FulfillmentExceptions.EvidenceNotFound.class,
