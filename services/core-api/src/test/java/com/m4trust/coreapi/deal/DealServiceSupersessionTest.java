@@ -116,7 +116,7 @@ class DealServiceSupersessionTest {
         stubFundingProjection();
         when(policy.availableActions(any(), eq(context))).thenReturn(new DealAvailableActions(
                 true, true, true, true, true, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false));
+                false, false, false, false, false, false, false, false));
         when(policy.isInitiator(any(), eq(context))).thenReturn(true);
         when(repository.updateParties(any(), any(), any(), any(Long.class),
                 any(), any(), any())).thenReturn(true);
@@ -160,7 +160,7 @@ class DealServiceSupersessionTest {
         stubFundingProjection();
         when(policy.availableActions(any(), eq(context))).thenReturn(new DealAvailableActions(
                 true, true, true, true, true, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false));
+                false, false, false, false, false, false, false, false));
         when(policy.isInitiator(any(), eq(context))).thenReturn(true);
     }
 
@@ -186,7 +186,7 @@ class DealServiceSupersessionTest {
                                 new RatificationPackageProjectionPort.RuleSet(UUID.randomUUID().toString(), 1, List.of()),
                                 new RatificationPackageProjectionPort.Terms(1, "TRY"),
                                 new RatificationPackageProjectionPort.Document(UUID.randomUUID().toString(), "v1", "a".repeat(64)),
-                                null),
+                                null, null),
                         List.of(),
                         new RatificationPackageProjectionPort.AvailableActions(false, false),
                         NOW)));

@@ -116,6 +116,19 @@ class FulfillmentController {
                 request, uuid(idempotencyKey), uuid(correlationId));
     }
 
+    @PostMapping("/deals/{dealId}/fulfillment/accept-without-evidence")
+    FulfillmentDetail acceptWithoutEvidence(
+            @ResolvedOperationContext(RequestedOperation.FULFILLMENT_ACCEPT_WITHOUT_EVIDENCE)
+            OperationContext context,
+            @PathVariable String dealId,
+            @RequestHeader(value = "Idempotency-Key", required = false)
+            String idempotencyKey,
+            @Valid @RequestBody AcceptWithoutEvidenceRequest request,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
+        return service.acceptWithoutEvidence(context, uuid(dealId), request,
+                uuid(idempotencyKey), uuid(correlationId));
+    }
+
     @GetMapping("/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis")
     VideoAnalysisDetail getVideoAnalysis(
             @ResolvedOperationContext(RequestedOperation.VIDEO_ANALYSIS_READ)

@@ -1,6 +1,5 @@
 package com.m4trust.coreapi.fulfillment;
 
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -15,6 +14,8 @@ public interface FulfillmentProjectionPort {
     record Summary(
             FulfillmentStatus status,
             UUID fulfillmentId,
-            UUID currentEvidenceSubmissionId) {
+            UUID currentEvidenceSubmissionId,
+            EvidencePolicy evidencePolicy,
+            boolean hasEvidenceSubmission) {
     }
 }

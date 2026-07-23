@@ -47,6 +47,29 @@ class RatificationSnapshotAssemblerTest {
     }
 
     @Test
+    void bothWindowAndEvidencePolicyProduceV3WithDistinctHashes() throws Exception {
+        var required = assembleWithPolicy(7, "REQUIRED", rule("r", textValue(), null));
+        var notRequired = assembleWithPolicy(7, "NOT_REQUIRED", rule("r", textValue(), null));
+        var v2 = assembleWithWindow(7, rule("r", textValue(), null));
+        JsonNode requiredRoot = json.readTree(required.serializedSnapshot());
+        assertEquals(3, requiredRoot.get("schemaVersion").asInt());
+        assertEquals(7, requiredRoot.get("disputeWindowDays").asInt());
+        assertEquals("REQUIRED", requiredRoot.get("evidencePolicy").asText());
+        assertEquals(Set.of("schemaVersion", "dealId", "dealReference", "dealTitle", "buyer", "seller", "ruleSet",
+                "commercialTerms", "document", "disputeWindowDays", "evidencePolicy"), names(requiredRoot));
+        assertFalse(required.contentHash().equals(notRequired.contentHash()));
+        assertFalse(required.contentHash().equals(v2.contentHash()));
+        assertEquals(required.contentHash(), hasher.hash(required.serializedSnapshot()));
+    }
+
+    @Test
+    void evidencePolicyWithoutDisputeWindowIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> assembler.assemble(target(), document(), rules(1, List.of(rule("r", textValue(), null))),
+                        123, "TRY", null, "REQUIRED"));
+    }
+
+    @Test
     void rejectsOutOfRangeDisputeWindowDays() {
         assertThrows(IllegalArgumentException.class, () -> assembleWithWindow(-1, rule("r", textValue(), null)));
         assertThrows(IllegalArgumentException.class, () -> assembleWithWindow(366, rule("r", textValue(), null)));
@@ -164,6 +187,12 @@ class RatificationSnapshotAssemblerTest {
     private RatificationSnapshotAssembler.Result assembleWithWindow(
             int disputeWindowDays, RatificationSourcePorts.Rule... rules) {
         return assembler.assemble(target(), document(), rules(1, List.of(rules)), 123, "TRY", disputeWindowDays);
+    }
+
+    private RatificationSnapshotAssembler.Result assembleWithPolicy(
+            int disputeWindowDays, String evidencePolicy, RatificationSourcePorts.Rule... rules) {
+        return assembler.assemble(target(), document(), rules(1, List.of(rules)), 123, "TRY",
+                disputeWindowDays, evidencePolicy);
     }
 
     private Set<String> names(JsonNode node) {

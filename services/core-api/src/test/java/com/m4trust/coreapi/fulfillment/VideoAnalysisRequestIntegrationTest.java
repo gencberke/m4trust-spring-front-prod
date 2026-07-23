@@ -171,8 +171,8 @@ class VideoAnalysisRequestIntegrationTest {
         UUID fulfillmentId = UUID.randomUUID();
         UUID milestoneId = UUID.randomUUID();
         jdbc.update("""
-                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'REVIEW_REQUIRED', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, evidence_policy, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'REVIEW_REQUIRED', 'REQUIRED', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, fulfillmentId, dealId, tenantId, packageId);
         jdbc.update("""
                 INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at)

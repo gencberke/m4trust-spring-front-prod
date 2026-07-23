@@ -103,8 +103,8 @@ class FulfillmentServiceTest {
         OperationContext context = context(RequestedOperation.EVIDENCE_UPLOAD_INTENT_CREATE,
                 SELLER, LegalEntityRole.MEMBER);
         Fulfillment.FulfillmentRecord fulfillment = new Fulfillment.FulfillmentRecord(
-                UUID.randomUUID(), DEAL, TENANT, PACKAGE, FulfillmentStatus.IN_PROGRESS,
-                NOW, NOW, null, 0);
+                UUID.randomUUID(), DEAL, TENANT, PACKAGE, EvidencePolicy.REQUIRED,
+                FulfillmentStatus.IN_PROGRESS, NOW, NOW, null, 0);
         Milestone.MilestoneRecord milestone = new Milestone.MilestoneRecord(
                 UUID.randomUUID(), fulfillment.id(), DEAL, "Primary", null,
                 FulfillmentStatus.IN_PROGRESS, NOW, NOW, 0);
@@ -170,7 +170,7 @@ class FulfillmentServiceTest {
         stubDeal(BUYER);
         when(fulfillmentRepository.findByDealId(DEAL)).thenReturn(Optional.of(
                 new Fulfillment.FulfillmentRecord(UUID.randomUUID(), DEAL, TENANT, PACKAGE,
-                        FulfillmentStatus.REVIEW_REQUIRED, NOW, NOW, null, 0)));
+                        EvidencePolicy.REQUIRED, FulfillmentStatus.REVIEW_REQUIRED, NOW, NOW, null, 0)));
         when(evidenceRepository.findById(any())).thenReturn(Optional.empty());
 
         assertThrows(FulfillmentExceptions.EvidenceNotFound.class,
@@ -199,7 +199,8 @@ class FulfillmentServiceTest {
 
     private void stubDeal(UUID activeEntity) {
         FulfillmentSourcePorts.Target target = new FulfillmentSourcePorts.Target(
-                DEAL, TENANT, "ACTIVE", 5L, BUYER, SELLER, "FUNDED", PACKAGE, List.of());
+                DEAL, TENANT, "ACTIVE", 5L, BUYER, SELLER, "FUNDED", PACKAGE,
+                EvidencePolicy.REQUIRED, List.of());
         when(deals.findVisible(any(), any())).thenReturn(Optional.of(target));
         when(deals.lockVisibleForStart(any(), any())).thenReturn(Optional.of(target));
     }

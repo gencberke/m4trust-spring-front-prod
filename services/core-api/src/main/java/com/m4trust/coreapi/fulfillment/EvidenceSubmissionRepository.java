@@ -58,6 +58,23 @@ class EvidenceSubmissionRepository {
                 """, this::mapSubmission, milestoneId);
     }
 
+    List<EvidenceSubmission.EvidenceSubmissionRecord> findByFulfillmentId(UUID fulfillmentId) {
+        return jdbcTemplate.query("""
+                SELECT * FROM fulfillment_evidence_submission
+                WHERE fulfillment_id = ?
+                ORDER BY created_at DESC, id DESC
+                """, this::mapSubmission, fulfillmentId);
+    }
+
+    boolean existsByFulfillmentId(UUID fulfillmentId) {
+        Boolean exists = jdbcTemplate.queryForObject("""
+                SELECT EXISTS(
+                    SELECT 1 FROM fulfillment_evidence_submission WHERE fulfillment_id = ?
+                )
+                """, Boolean.class, fulfillmentId);
+        return Boolean.TRUE.equals(exists);
+    }
+
     Optional<EvidenceSubmission.EvidenceSubmissionRecord> findCurrentSubmittedByMilestoneId(UUID milestoneId) {
         return jdbcTemplate.query("""
                 SELECT * FROM fulfillment_evidence_submission

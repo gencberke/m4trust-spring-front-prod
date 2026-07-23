@@ -31,6 +31,11 @@ record AcceptEvidenceRequest(
         @Min(value = 0, message = "expectedEvidenceVersion must be non-negative") long expectedEvidenceVersion) {
 }
 
+record AcceptWithoutEvidenceRequest(
+        @Min(value = 0, message = "expectedDealVersion must be non-negative") long expectedDealVersion,
+        @Min(value = 0, message = "expectedFulfillmentVersion must be non-negative") long expectedFulfillmentVersion) {
+}
+
 record RejectEvidenceRequest(
         @Min(value = 0, message = "expectedVersion must be non-negative") long expectedVersion,
         @Min(value = 0, message = "expectedEvidenceVersion must be non-negative") long expectedEvidenceVersion,
@@ -38,7 +43,8 @@ record RejectEvidenceRequest(
 }
 
 record FulfillmentDetail(UUID id, UUID dealId, FulfillmentStatus status, UUID sourcePackageId,
-        FulfillmentMilestoneProjection milestone, EvidenceSubmissionProjection currentEvidence,
+        EvidencePolicy evidencePolicy, FulfillmentMilestoneProjection milestone,
+        EvidenceSubmissionProjection currentEvidence,
         List<EvidenceSubmissionProjection> history, FulfillmentAvailableActions availableActions,
         long version, Instant createdAt, Instant updatedAt) {
 }
@@ -106,7 +112,8 @@ record EvidenceDownloadLink(UUID evidenceSubmissionId, String objectVersion,
         String downloadUrl, Instant expiresAt) {
 }
 
-record FulfillmentAvailableActions(boolean canStart, boolean canAccept, boolean canReject) {
+record FulfillmentAvailableActions(boolean canStart, boolean canAccept, boolean canReject,
+        boolean canAcceptWithoutEvidence) {
 }
 
 record MilestoneAvailableActions(boolean canUpload) {

@@ -45,7 +45,7 @@ class FulfillmentMigrationIntegrationTest {
                 () -> fulfillment(f.dealId, f.tenant, packageId, "NOT_STARTED", 0L),
                 "only one fulfillment row per deal is allowed");
         assertThrows(DataAccessException.class,
-                () -> jdbc.update("INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, version, created_at, updated_at) VALUES (?, ?, ?, ?, 'INVALID', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                () -> jdbc.update("INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, evidence_policy, version, created_at, updated_at) VALUES (?, ?, ?, ?, 'INVALID', 'REQUIRED', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                         UUID.randomUUID(), f.otherDealId, f.tenant, packageId),
                 "invalid fulfillment status is rejected");
         assertThrows(DataAccessException.class,
@@ -66,7 +66,7 @@ class FulfillmentMigrationIntegrationTest {
                 () -> milestone(otherFulfillmentId, f.dealId, "Cross Deal", "IN_PROGRESS", 0L),
                 "a milestone must belong to the same Deal as its fulfillment");
         assertThrows(DataAccessException.class,
-                () -> jdbc.update("INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at) VALUES (?, ?, ?, ?, 'INVALID', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                () -> jdbc.update("INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at) VALUES (?, ?, ?, ?, 'INVALID', 'REQUIRED', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                         UUID.randomUUID(), fulfillmentId, f.dealId, "Bad"),
                 "invalid milestone status is rejected");
 
@@ -126,8 +126,8 @@ class FulfillmentMigrationIntegrationTest {
     private static UUID fulfillment(UUID dealId, UUID tenantId, UUID sourcePackageId, String status, long version) {
         UUID id = UUID.randomUUID();
         jdbc.update("""
-                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, evidence_policy, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'REQUIRED', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, id, dealId, tenantId, sourcePackageId, status, version);
         return id;
     }

@@ -5,4 +5,5 @@ record CreateRatificationPackageRequest(
         long expectedDealVersion,
         long amountMinor,
         String currency,
-        Integer disputeWindowDays) { }
+        Integer disputeWindowDays,
+        String evidencePolicy) { }

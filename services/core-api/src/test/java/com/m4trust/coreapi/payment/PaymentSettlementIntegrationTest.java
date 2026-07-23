@@ -368,8 +368,8 @@ class PaymentSettlementIntegrationTest {
         UUID milestoneId = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO fulfillment (
-                    id, deal_id, tenant_id, source_package_id, status, version, created_at, updated_at, completed_at
-                ) VALUES (?, ?, ?, ?, 'COMPLETED', 0, ?, ?, ?)
+                    id, deal_id, tenant_id, source_package_id, status, evidence_policy, version, created_at, updated_at, completed_at
+                ) VALUES (?, ?, ?, ?, 'COMPLETED', 'REQUIRED', 0, ?, ?, ?)
                 """, fulfillmentId, dealId, buyerAdmin.tenantId, packageId,
                 java.sql.Timestamp.from(completedAt), java.sql.Timestamp.from(completedAt),
                 java.sql.Timestamp.from(completedAt));

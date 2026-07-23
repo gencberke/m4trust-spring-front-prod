@@ -26,7 +26,9 @@ class FulfillmentProjectionService implements FulfillmentProjectionPort {
                             .findCurrentSubmittedByFulfillmentId(record.id())
                             .map(EvidenceSubmission.EvidenceSubmissionRecord::id)
                             .orElse(null);
-                    return new Summary(record.status(), record.id(), currentId);
+                    boolean hasEvidence = evidenceRepository.existsByFulfillmentId(record.id());
+                    return new Summary(record.status(), record.id(), currentId,
+                            record.evidencePolicy(), hasEvidence);
                 })
                 .orElse(null);
     }

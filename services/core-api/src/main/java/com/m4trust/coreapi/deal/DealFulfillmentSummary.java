@@ -5,5 +5,6 @@ import java.util.UUID;
 record DealFulfillmentSummary(
         String status,
         UUID fulfillmentId,
-        UUID currentEvidenceSubmissionId) {
+        UUID currentEvidenceSubmissionId,
+        String evidencePolicy) {
 }

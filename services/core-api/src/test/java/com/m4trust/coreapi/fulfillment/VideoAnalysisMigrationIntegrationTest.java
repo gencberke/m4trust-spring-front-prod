@@ -176,8 +176,8 @@ class VideoAnalysisMigrationIntegrationTest {
     private static UUID fulfillment(UUID dealId, UUID tenantId, UUID sourcePackageId, String status, long version) {
         UUID id = UUID.randomUUID();
         jdbc.update("""
-                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, evidence_policy, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'REQUIRED', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, id, dealId, tenantId, sourcePackageId, status, version);
         return id;
     }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.m4trust.coreapi.fulfillment.EvidencePolicy;
 import com.m4trust.coreapi.fulfillment.FulfillmentSourcePorts;
 import com.m4trust.coreapi.fulfillment.MilestoneRuleReference;
 import com.m4trust.coreapi.organization.OperationContext;
@@ -50,24 +51,36 @@ class FulfillmentDealSourceAdapter implements FulfillmentSourcePorts.DealTarget 
     private FulfillmentSourcePorts.Target target(OperationContext context, Deal deal) {
         FundingProjectionPort.Summary fundingSummary = fundingProjections.summarize(
                 deal.id(), deal.status() == DealStatus.ACTIVE, false);
-        List<MilestoneRuleReference> ruleReferences = ruleReferences(context, deal);
+        RatifiedPackageProjection ratified = ratifiedPackage(context, deal);
         return new FulfillmentSourcePorts.Target(deal.id(), deal.toRecord().tenantId(),
                 deal.status().name(), deal.version(), deal.buyerLegalEntityId(),
                 deal.sellerLegalEntityId(), fundingSummary.fundingStatus(),
-                deal.currentRatificationPackageId(), ruleReferences);
+                deal.currentRatificationPackageId(), ratified.evidencePolicy(), ratified.ruleReferences());
     }
 
-    private List<MilestoneRuleReference> ruleReferences(OperationContext context, Deal deal) {
+    private RatifiedPackageProjection ratifiedPackage(OperationContext context, Deal deal) {
         UUID currentPackageId = deal.currentRatificationPackageId();
         if (currentPackageId == null) {
-            return List.of();
+            return RatifiedPackageProjection.empty();
         }
         return ratificationProjections.findCurrentPackage(context, deal.id(), deal.status().name(), currentPackageId)
                 .filter(current -> "RATIFIED".equals(current.status()))
-                .map(current -> current.snapshot().ruleSet().rules().stream()
-                        .filter(rule -> "DELIVERY".equals(rule.category()) || "QUALITY".equals(rule.category()))
-                        .map(rule -> new MilestoneRuleReference(rule.ruleReference(), rule.category()))
-                        .toList())
-                .orElse(List.of());
+                .map(current -> {
+                    EvidencePolicy policy = EvidencePolicy.effectiveFromSnapshot(
+                            current.snapshot().schemaVersion(), current.snapshot().evidencePolicy());
+                    List<MilestoneRuleReference> refs = current.snapshot().ruleSet().rules().stream()
+                            .filter(rule -> "DELIVERY".equals(rule.category()) || "QUALITY".equals(rule.category()))
+                            .map(rule -> new MilestoneRuleReference(rule.ruleReference(), rule.category()))
+                            .toList();
+                    return new RatifiedPackageProjection(policy, refs);
+                })
+                .orElse(RatifiedPackageProjection.empty());
+    }
+
+    private record RatifiedPackageProjection(EvidencePolicy evidencePolicy,
+            List<MilestoneRuleReference> ruleReferences) {
+        static RatifiedPackageProjection empty() {
+            return new RatifiedPackageProjection(null, List.of());
+        }
     }
 }

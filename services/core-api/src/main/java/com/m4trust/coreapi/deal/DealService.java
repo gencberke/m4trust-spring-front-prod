@@ -350,7 +350,8 @@ class DealService {
         return new DealFulfillmentSummary(
                 summary.status() == null ? null : summary.status().name(),
                 summary.fulfillmentId(),
-                summary.currentEvidenceSubmissionId());
+                summary.currentEvidenceSubmissionId(),
+                summary.evidencePolicy() == null ? null : summary.evidencePolicy().name());
     }
 
     /**
@@ -418,7 +419,7 @@ class DealService {
                 base.canCreateFundingPlan(), base.canInitiateFunding(),
                 base.canReconcilePaymentOperation(), base.canStartFulfillment(),
                 base.canUploadEvidence(), base.canAcceptEvidence(), base.canRejectEvidence(),
-                canOpenDispute, false, false);
+                base.canAcceptWithoutEvidence(), canOpenDispute, false, false);
     }
 
     private DealAvailableActions actionsWithAnalysis(Deal deal,
@@ -453,7 +454,9 @@ class DealService {
         boolean canUploadEvidence = isActive
                 && deal.sellerLegalEntityId() != null
                 && context.activeLegalEntityId().equals(deal.sellerLegalEntityId())
-                && ("IN_PROGRESS".equals(fulfillmentStatus) || "EVIDENCE_REQUIRED".equals(fulfillmentStatus));
+                && ("IN_PROGRESS".equals(fulfillmentStatus) || "EVIDENCE_REQUIRED".equals(fulfillmentStatus))
+                && fulfillmentSummary != null
+                && fulfillmentSummary.evidencePolicy() == com.m4trust.coreapi.fulfillment.EvidencePolicy.REQUIRED;
         boolean canAcceptEvidence = isActive
                 && context.activeLegalEntityRole() == com.m4trust.coreapi.organization.LegalEntityRole.ADMIN
                 && deal.buyerLegalEntityId() != null
@@ -461,6 +464,14 @@ class DealService {
                 && "REVIEW_REQUIRED".equals(fulfillmentStatus)
                 && fulfillmentSummary.currentEvidenceSubmissionId() != null;
         boolean canRejectEvidence = canAcceptEvidence;
+        boolean canAcceptWithoutEvidence = isActive && isFunded
+                && context.activeLegalEntityRole() == com.m4trust.coreapi.organization.LegalEntityRole.ADMIN
+                && deal.buyerLegalEntityId() != null
+                && context.activeLegalEntityId().equals(deal.buyerLegalEntityId())
+                && fulfillmentSummary != null
+                && fulfillmentSummary.evidencePolicy() == com.m4trust.coreapi.fulfillment.EvidencePolicy.NOT_REQUIRED
+                && fulfillmentSummary.status() == com.m4trust.coreapi.fulfillment.FulfillmentStatus.IN_PROGRESS
+                && !fulfillmentSummary.hasEvidenceSubmission();
         return new DealAvailableActions(base.canUpdate(), base.canCancel(),
                 base.canCreateInvitation(), base.canManageParties(),
                 base.canCreateDocumentUploadIntent(), allowed,
@@ -472,6 +483,7 @@ class DealService {
                 fundingSummary.canCreateFundingPlan(), fundingSummary.canInitiateFunding(),
                 fundingSummary.canReconcilePaymentOperation(),
                 canStartFulfillment, canUploadEvidence, canAcceptEvidence, canRejectEvidence,
+                canAcceptWithoutEvidence,
                 caseworkSummary.canOpenDispute(), settlementSummary.canRequestRelease(),
                 settlementSummary.canReconcileRelease());
     }

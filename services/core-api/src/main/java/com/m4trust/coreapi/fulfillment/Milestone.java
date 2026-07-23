@@ -92,7 +92,10 @@ final class Milestone {
 
     private void requireTransition(FulfillmentStatus next) {
         boolean allowed = switch (status) {
-            case IN_PROGRESS, EVIDENCE_REQUIRED -> next == FulfillmentStatus.EVIDENCE_REQUIRED
+            case IN_PROGRESS -> next == FulfillmentStatus.EVIDENCE_REQUIRED
+                    || next == FulfillmentStatus.REVIEW_REQUIRED
+                    || next == FulfillmentStatus.COMPLETED;
+            case EVIDENCE_REQUIRED -> next == FulfillmentStatus.EVIDENCE_REQUIRED
                     || next == FulfillmentStatus.REVIEW_REQUIRED;
             case REVIEW_REQUIRED -> next == FulfillmentStatus.COMPLETED;
             default -> false;
