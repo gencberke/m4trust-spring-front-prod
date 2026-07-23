@@ -124,8 +124,12 @@ function evidenceTypeLabel(type: string): string {
   return EVIDENCE_TYPE_LABELS[type] ?? type;
 }
 
-function isVideoMp4Evidence(submission: EvidenceSubmission): boolean {
-  return submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4";
+function isAnalysisEligibleEvidence(submission: EvidenceSubmission): boolean {
+  if (submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4") {
+    return true;
+  }
+  return submission.evidenceType === "PHOTO"
+    && (submission.mediaType === "image/jpeg" || submission.mediaType === "image/png");
 }
 
 /** Chronological event time for timeline ordering — backend status timestamps only. */
@@ -970,7 +974,7 @@ export function DealFulfillmentPanel({
             <div className="current-evidence">
               <h4>Mevcut teslimat kanıtı</h4>
               <EvidenceSummary submission={currentEvidence} />
-              {isVideoMp4Evidence(currentEvidence) && (
+              {isAnalysisEligibleEvidence(currentEvidence) && (
                 <EvidenceVideoAnalysisPanel
                   legalEntityId={legalEntityId}
                   dealId={deal.id}
@@ -1055,7 +1059,7 @@ export function DealFulfillmentPanel({
                       </span>
                     </div>
                     <EvidenceSummary submission={submission} />
-                    {isVideoMp4Evidence(submission)
+                    {isAnalysisEligibleEvidence(submission)
                       && submission.id !== currentEvidence?.id && (
                       <EvidenceVideoAnalysisPanel
                         legalEntityId={legalEntityId}

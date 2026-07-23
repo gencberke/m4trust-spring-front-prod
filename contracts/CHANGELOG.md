@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Expanded Slice 13 video analysis textual eligibility (ADR-012 amendment
+  2026-07-23): GET/POST descriptions and conflict text now document finalized
+  VIDEO MP4 or PHOTO JPEG/PNG evidence as eligible subjects; schema shape and
+  response fields are unchanged.
+
 - Added Plan 18C-P1 pending evidence cancel-upload contract (ADR-011 §2.3
   pending-cancellation amendment): seller ADMIN/MEMBER
   `POST /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload`

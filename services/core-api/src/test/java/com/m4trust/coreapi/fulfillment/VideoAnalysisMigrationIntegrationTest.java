@@ -17,7 +17,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** Exercises the V21 video-analysis database boundary after a complete V1..V21 Flyway migration. */
+/** Exercises the V21+ video-analysis database boundary after a complete V1..V27 Flyway migration. */
 @Testcontainers
 class VideoAnalysisMigrationIntegrationTest {
 
@@ -36,6 +36,42 @@ class VideoAnalysisMigrationIntegrationTest {
                 .migrate();
         jdbc = new JdbcTemplate(new DriverManagerDataSource(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
+    }
+
+    @Test
+    void acceptsPhotoMediaTypesInJobInputCheck() {
+        Fixture fixture = fixture();
+        UUID fulfillmentId = fulfillment(fixture.dealId(), fixture.tenant(), UUID.randomUUID(), "REVIEW_REQUIRED", 0L);
+        UUID milestoneId = milestone(fulfillmentId, fixture.dealId(), "Primary", "REVIEW_REQUIRED", 0L);
+        String sha256 = "e".repeat(64);
+        UUID evidenceId = photoEvidence(UUID.randomUUID(), fixture.dealId(), milestoneId, fulfillmentId,
+                "SUBMITTED", sha256, 1L, "image/jpeg");
+
+        UUID jpegJobId = UUID.randomUUID();
+        assertDoesNotThrow(() -> queuedJobWithMediaType(jpegJobId, fixture.tenant(), fixture.dealId(),
+                fulfillmentId, milestoneId, evidenceId, sha256, null, "image/jpeg"),
+                "photo media type should satisfy input_media_type check: image/jpeg");
+
+        markFailed(jpegJobId);
+        UUID pngJobId = UUID.randomUUID();
+        assertDoesNotThrow(() -> queuedJobWithMediaType(pngJobId, fixture.tenant(), fixture.dealId(),
+                fulfillmentId, milestoneId, evidenceId, sha256, jpegJobId, "image/png"),
+                "photo media type should satisfy input_media_type check: image/png");
+    }
+
+    @Test
+    void rejectsUnsupportedMediaTypeInJobInputCheck() {
+        Fixture fixture = fixture();
+        UUID fulfillmentId = fulfillment(fixture.dealId(), fixture.tenant(), UUID.randomUUID(), "REVIEW_REQUIRED", 0L);
+        UUID milestoneId = milestone(fulfillmentId, fixture.dealId(), "Primary", "REVIEW_REQUIRED", 0L);
+        String sha256 = "f".repeat(64);
+        UUID evidenceId = videoEvidence(UUID.randomUUID(), fixture.dealId(), milestoneId, fulfillmentId,
+                "SUBMITTED", sha256, 1L);
+
+        assertThrows(DataAccessException.class,
+                () -> queuedJobWithMediaType(UUID.randomUUID(), fixture.tenant(), fixture.dealId(), fulfillmentId,
+                        milestoneId, evidenceId, sha256, null, "application/pdf"),
+                "unsupported input media types must fail the CHECK constraint");
     }
 
     @Test
@@ -154,14 +190,26 @@ class VideoAnalysisMigrationIntegrationTest {
 
     private static UUID queuedJob(UUID jobId, UUID tenantId, UUID dealId, UUID fulfillmentId,
             UUID milestoneId, UUID evidenceId, String sha256, UUID predecessorJobId) {
+        return queuedJobWithMediaType(jobId, tenantId, dealId, fulfillmentId, milestoneId, evidenceId, sha256,
+                predecessorJobId, "video/mp4");
+    }
+
+    private static UUID queuedJobWithMediaType(UUID jobId, UUID tenantId, UUID dealId, UUID fulfillmentId,
+            UUID milestoneId, UUID evidenceId, String sha256, UUID predecessorJobId, String mediaType) {
+        String fileName = switch (mediaType) {
+            case "image/jpeg" -> "delivery.jpg";
+            case "image/png" -> "delivery.png";
+            default -> "delivery.mp4";
+        };
         jdbc.update("""
                 INSERT INTO fulfillment_video_analysis_job (
                     id, tenant_id, deal_id, fulfillment_id, milestone_id, evidence_submission_id,
                     object_version, input_sha256, input_size_bytes, input_media_type, input_file_name,
                     status, predecessor_job_id, requested_at, version
-                ) VALUES (?, ?, ?, ?, ?, ?, 'version-1', ?, 2048, 'video/mp4', 'delivery.mp4',
+                ) VALUES (?, ?, ?, ?, ?, ?, 'version-1', ?, 2048, ?, ?,
                     'QUEUED', ?, CURRENT_TIMESTAMP, 0)
-                """, jobId, tenantId, dealId, fulfillmentId, milestoneId, evidenceId, sha256, predecessorJobId);
+                """, jobId, tenantId, dealId, fulfillmentId, milestoneId, evidenceId, sha256, mediaType, fileName,
+                predecessorJobId);
         return jobId;
     }
 
@@ -188,6 +236,36 @@ class VideoAnalysisMigrationIntegrationTest {
                 INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, id, fulfillmentId, dealId, title, status, version);
+        return id;
+    }
+
+    private static UUID photoEvidence(UUID id, UUID dealId, UUID milestoneId, UUID fulfillmentId,
+            String status, String sha256, long version, String mediaType) {
+        String fileName = switch (mediaType) {
+            case "image/jpeg" -> "delivery.jpg";
+            case "image/png" -> "delivery.png";
+            default -> "delivery.jpg";
+        };
+        jdbc.update("""
+                INSERT INTO fulfillment_evidence_submission (
+                    id, deal_id, milestone_id, fulfillment_id, evidence_type, media_type, file_name,
+                    status, object_key, object_version, client_size_bytes, client_sha256, verified_size_bytes,
+                    verified_sha256, upload_expires_at, created_at, submitted_at, accepted_at,
+                    rejected_at, rejection_reason, version
+                ) VALUES (?, ?, ?, ?, 'PHOTO', ?, ?, ?, 'obj-key',
+                    CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN 'version-1' ELSE NULL END,
+                    2048, ?,
+                    CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN 2048 ELSE NULL END,
+                    CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN ? ELSE NULL END,
+                    CURRENT_TIMESTAMP + INTERVAL '1 hour', CURRENT_TIMESTAMP,
+                    CASE WHEN ? IN ('SUBMITTED', 'ACCEPTED', 'REJECTED') THEN CURRENT_TIMESTAMP ELSE NULL END,
+                    CASE WHEN ? = 'ACCEPTED' THEN CURRENT_TIMESTAMP ELSE NULL END,
+                    CASE WHEN ? = 'REJECTED' THEN CURRENT_TIMESTAMP ELSE NULL END,
+                    CASE WHEN ? = 'REJECTED' THEN 'reason' ELSE NULL END,
+                    ?)
+                """,
+                id, dealId, milestoneId, fulfillmentId, mediaType, fileName, status, status, sha256,
+                status, status, sha256, status, status, status, status, version);
         return id;
     }
 

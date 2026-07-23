@@ -1,30 +1,31 @@
 # Review Request
-Task: 18C-T02
-Revision: 2
+Task: PLAN18-PHOTO-INTEGRATION
+Revision: 1
 Plan: docs/plan/ready/18-fulfillment-and-closure-simplification.md
-Phases: post-implementation review remediation for 18B and 18C
+Phases: 18A, 18B, 18C, review remediation and PHOTO analysis input integration
 Status: COMPLETED
 Branch: plan/fulfillment-closure-simplification
-Base: plan/fulfillment-closure-simplification@36c7289
+Base: main@693add7 + feat/video-analysis-photo-input@af977b6
 Plan completion claim: NO
 
 ## Phase outcomes
-- 18C-P1 — DONE — contract committed at b789032
-- 18C-P2 — DONE — cancelEvidenceUpload backend (e54b66c), migration
-  integration-renumbered to V27
-- 18C-P3 — DONE — Vazgeç wired to cancel-upload API (36c7289)
-- Review remediation — DONE — same-key no-file replay, active-pending
-  cardinality, policy-owned aggregate completion, refresh-safe cancel UX,
-  committed v1/v2/v3 hash goldens, strict contract error parity and
-  false-green migration assertion corrected
+- 18A — DONE — SETTLEMENT lifecycle and separate Kapanış workspace
+- 18B — DONE — v3 evidencePolicy, no-file acceptance and compatibility goldens
+- 18C — DONE — V27 pending cancellation behavior and refresh-safe Vazgeç UX
+- Review remediation — DONE — same-key replay, active-pending cardinality,
+  policy-owned completion, strict contract parity and migration assertion fix
+- PHOTO analysis — DONE — strict VIDEO/MP4 or PHOTO/JPEG|PNG Spring, DB and
+  frontend eligibility with ADR/OpenAPI synchronization
+- Integration — DONE — semantic conflicts resolved; migrations ordered
+  V24–V27 and combined focused validation passed
 
 ## Validation
-- Contract validator — PASS
-- `FulfillmentStatusTransitionTest,FulfillmentServiceTest,FulfillmentIntegrationTest,`
-  `RatificationSnapshotAssemblerTest,CanonicalSnapshotHasherTest,`
-  `FulfillmentMigrationIntegrationTest` — PASS (47 tests)
-- Frontend `npm run typecheck` — PASS
+- Combined contract validator — PASS
+- Combined focused backend set — PASS (66 tests)
+- Frontend typecheck — PASS
 - `git diff --check` — PASS
+- Combined migration order — V24 photo, V25 ratification v3, V26 evidence
+  policy, V27 pending cancellation
 
 ## Decisions needed
 - None
@@ -32,6 +33,6 @@ Plan completion claim: NO
 ## Deviation or risk
 - Formal browser acceptance remains planner/user-owned and is not run here.
 - Plan 17 B5 staging acceptance remains separate.
-- Integration migration order is reserved for
-  `feat/video-analysis-photo-input@af977b6`: photo input V24, ratification v3
-  V25, fulfillment policy V26 and pending cancellation V27.
+- Production build/full suite are not run under the coordinator test policy.
+- Railway deployment branch/environment isolation remains an external deploy
+  decision; this integration does not push or deploy.
