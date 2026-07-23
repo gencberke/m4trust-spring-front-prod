@@ -161,9 +161,13 @@ production secret'ları, production object-storage provider seçimi, gerçek
 payment provider ve provider credential/3DS kurulumu ayrı ve ertelenmiş
 çalışmalardır.
 
-Slice 13 Video Analysis, yalnız Slice 12'nin immutable video evidence
-version'ını subject olarak kullanabilir. Video sonucu advisory kalır ve §2.5
-manual acceptance sınırını aşamaz.
+Slice 13 Video Analysis, yalnız Slice 12'nin immutable VIDEO MP4 veya PHOTO
+JPEG/PNG evidence version'ını subject olarak kullanabilir. Video sonucu advisory
+kalır ve §2.5 manual acceptance sınırını aşamaz.
+
+**Amendment (2026-07-23):** Slice 13 subject, immutable VIDEO MP4 veya PHOTO
+JPEG/PNG evidence version'ını kapsar; PHOTO tek kare OBJECT_COUNT analizi
+olarak ele alınır. Advisory-only ve manual acceptance sınırları değişmez.
 
 Dispute, casework, mutual ACTIVE cancellation, settlement ve release ayrı
 insan-onaylı plan/ADR gerektirir.

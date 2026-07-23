@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Expanded Slice 13 video analysis textual eligibility (ADR-012 amendment 2026-07-23):
+  GET/POST descriptions and conflict text now document finalized VIDEO MP4 or PHOTO
+  JPEG/PNG evidence as eligible subjects; schema shape and response fields are
+  unchanged.
+
 - Added Plan 17 Phase B1 additive settlement/release contract surface (ADR-014 §2.3/§2.5):
   `GET /deals/{dealId}/settlement`, `POST /deals/{dealId}/settlement/release`,
   `GET /release-operations/{operationId}`, and

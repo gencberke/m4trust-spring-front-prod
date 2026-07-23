@@ -735,13 +735,13 @@ export interface paths {
         };
         /**
          * Get the per-evidence video analysis projection
-         * @description Returns the backend-derived video analysis projection for a finalized VIDEO MP4 evidence submission to every Deal participant. Observations, anomalies, confidence, warnings, and advisoryOutcome are advisory only; they never approve or reject evidence, complete fulfillment, change the Deal, open a dispute, or release money. When no job exists for eligible evidence, status is NOT_REQUESTED. PENDING uploads, non-video evidence, and other ineligible resources remain non-disclosing 404s. The projection never exposes storage identifiers, presigned URLs, event payloads, provider metadata, or raw video content.
+         * @description Returns the backend-derived video analysis projection for a finalized VIDEO MP4 or PHOTO JPEG/PNG evidence submission to every Deal participant. Observations, anomalies, confidence, warnings, and advisoryOutcome are advisory only; they never approve or reject evidence, complete fulfillment, change the Deal, open a dispute, or release money. When no job exists for eligible evidence, status is NOT_REQUESTED. PENDING uploads, ineligible evidence type/media pairings, and other ineligible resources remain non-disclosing 404s. The projection never exposes storage identifiers, presigned URLs, event payloads, provider metadata, or raw video content.
          */
         get: operations["getVideoAnalysis"];
         put?: never;
         /**
          * Request asynchronous advisory video analysis for finalized evidence
-         * @description Buyer legal entity ADMIN-only explicit action. Idempotency-Key is required: retrying this same canonical request with the same key returns the original accepted projection, while key reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. The request carries only expectedEvidenceVersion; Spring derives all AI input from the verified evidence record and never waits for RabbitMQ, storage download, or AI processing. The backend re-authorizes buyer ADMIN authority, current SUBMITTED VIDEO MP4 eligibility, fulfillment REVIEW_REQUIRED state, and absence of active or completed jobs even when canRequest was previously true. Manual buyer accept/reject remains independent and authoritative.
+         * @description Buyer legal entity ADMIN-only explicit action. Idempotency-Key is required: retrying this same canonical request with the same key returns the original accepted projection, while key reuse for a different request returns 409 IDEMPOTENCY_KEY_REUSED. The request carries only expectedEvidenceVersion; Spring derives all AI input from the verified evidence record and never waits for RabbitMQ, storage download, or AI processing. The backend re-authorizes buyer ADMIN authority, current SUBMITTED VIDEO MP4 or PHOTO JPEG/PNG eligibility, fulfillment REVIEW_REQUIRED state, and absence of active or completed jobs even when canRequest was previously true. Manual buyer accept/reject remains independent and authoritative.
          */
         post: operations["requestVideoAnalysis"];
         delete?: never;
@@ -3340,7 +3340,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetail"];
             };
         };
-        /** @description The evidence is not the current SUBMITTED VIDEO MP4 evidence while fulfillment is REVIEW_REQUIRED, manual review has already decided, or the resource is otherwise ineligible (VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE); the supplied expectedEvidenceVersion is stale (EVIDENCE_STALE_VERSION); a queued job already exists (VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS); a successful result already exists (VIDEO_ANALYSIS_ALREADY_COMPLETED); or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
+        /** @description The evidence is not the current SUBMITTED VIDEO MP4 or PHOTO JPEG/PNG evidence while fulfillment is REVIEW_REQUIRED, manual review has already decided, or the resource is otherwise ineligible (VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE); the supplied expectedEvidenceVersion is stale (EVIDENCE_STALE_VERSION); a queued job already exists (VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS); a successful result already exists (VIDEO_ANALYSIS_ALREADY_COMPLETED); or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
         VideoAnalysisRequestConflict: {
             headers: {
                 [name: string]: unknown;
