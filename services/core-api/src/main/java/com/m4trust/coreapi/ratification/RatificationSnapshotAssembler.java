@@ -11,11 +11,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
-/** Pure V1 snapshot assembler: only this closed value is passed to the JCS hasher. */
+/** Pure snapshot assembler: only this closed value is passed to the JCS hasher. */
 @Component
 final class RatificationSnapshotAssembler {
     static final long MAX_SAFE_INTEGER = 9007199254740991L;
@@ -42,6 +43,16 @@ final class RatificationSnapshotAssembler {
             RatificationSourcePorts.RuleSet ruleSet,
             long amountMinor,
             String currency) {
+        return assemble(target, document, ruleSet, amountMinor, currency, null);
+    }
+
+    Result assemble(
+            RatificationSourcePorts.Target target,
+            RatificationSourcePorts.Document document,
+            RatificationSourcePorts.RuleSet ruleSet,
+            long amountMinor,
+            String currency,
+            Integer disputeWindowDays) {
         if (amountMinor < 1 || amountMinor > MAX_SAFE_INTEGER || currency == null || !currency.matches("[A-Z]{3}")) {
             throw new IllegalArgumentException("Invalid exact commercial terms");
         }
@@ -70,8 +81,12 @@ final class RatificationSnapshotAssembler {
             }
         }
 
+        int schemaVersion = disputeWindowDays == null ? 1 : 2;
+        if (disputeWindowDays != null && (disputeWindowDays < 0 || disputeWindowDays > 365)) {
+            throw new IllegalArgumentException("Invalid disputeWindowDays");
+        }
         Snapshot snapshot = new Snapshot(
-                1,
+                schemaVersion,
                 uuid(target.dealId()),
                 target.reference(),
                 target.title(),
@@ -79,7 +94,8 @@ final class RatificationSnapshotAssembler {
                 party(target.seller()),
                 new RuleSet(uuid(ruleSet.ruleSetVersionId()), ruleSet.version(), rules.stream().map(this::rule).toList()),
                 new Terms(amountMinor, currency),
-                new Document(uuid(document.documentId()), document.objectVersion(), hex(document.sha256())));
+                new Document(uuid(document.documentId()), document.objectVersion(), hex(document.sha256())),
+                disputeWindowDays);
         try {
             String serialized = json.writeValueAsString(snapshot);
             return new Result(snapshot, serialized, hasher.hash(serialized));
@@ -254,7 +270,8 @@ final class RatificationSnapshotAssembler {
             Party seller,
             RuleSet ruleSet,
             Terms commercialTerms,
-            Document document) { }
+            Document document,
+            @JsonInclude(JsonInclude.Include.NON_NULL) Integer disputeWindowDays) { }
 
     record Party(String legalEntityId, String legalName) { }
 

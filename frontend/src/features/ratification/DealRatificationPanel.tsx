@@ -24,6 +24,13 @@ import {
 import { ratificationPackageHistoryQueryKey, ratificationPackageHistoryQueryOptions } from "./ratificationQueries";
 
 type StructuredValue = components["schemas"]["RuleSetStructuredValue"];
+type RatificationPackageSnapshotV2 = components["schemas"]["RatificationPackageSnapshotV2"];
+
+function isSnapshotV2(
+  snapshot: RatificationPackageDetail["snapshot"],
+): snapshot is RatificationPackageSnapshotV2 {
+  return snapshot.schemaVersion === "2";
+}
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
   dateStyle: "long",
@@ -153,12 +160,21 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
   }
 
   const createMutation = useMutation({
-    mutationFn: (commercialTerms: RatificationCommercialTerms) => {
+    mutationFn: (payload: {
+      commercialTerms: RatificationCommercialTerms;
+      disputeWindowDays?: number;
+    }) => {
       createKeyRef.current ??= crypto.randomUUID();
       return createRatificationPackage(
         legalEntityId,
         deal.id,
-        { expectedVersion: deal.version, commercialTerms },
+        {
+          expectedVersion: deal.version,
+          commercialTerms: payload.commercialTerms,
+          ...(payload.disputeWindowDays !== undefined
+            ? { disputeWindowDays: payload.disputeWindowDays }
+            : {}),
+        },
         createKeyRef.current,
       );
     },
@@ -326,9 +342,9 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
           suggestionsLoading={ruleSetVersionQuery.isPending && Boolean(ruleSetSummary)}
           pending={createMutation.isPending}
           error={createMutation.error}
-          onSubmit={(commercialTerms) => {
+          onSubmit={(commercialTerms, disputeWindowDays) => {
             setNotice(undefined);
-            createMutation.mutate(commercialTerms);
+            createMutation.mutate({ commercialTerms, disputeWindowDays });
           }}
         />
       ) : null}
@@ -384,6 +400,16 @@ function CurrentPackage({
         <div>
           <dt>Satıcı</dt>
           <dd>{snapshot.seller.legalName}</dd>
+        </div>
+        <div>
+          <dt>İtiraz penceresi</dt>
+          <dd>
+            {isSnapshotV2(snapshot) ? (
+              <>{snapshot.disputeWindowDays} gün</>
+            ) : (
+              <span className="muted-copy">Kapanışa uygun değil (eski şema)</span>
+            )}
+          </dd>
         </div>
         <div>
           <dt>Sözleşme bedeli</dt>
@@ -553,14 +579,16 @@ function CreatePackageForm({
   suggestionsLoading: boolean;
   pending: boolean;
   error: unknown;
-  onSubmit: (terms: RatificationCommercialTerms) => void;
+  onSubmit: (terms: RatificationCommercialTerms, disputeWindowDays?: number) => void;
 }) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("");
+  const [disputeWindowDays, setDisputeWindowDays] = useState("");
   const [clientError, setClientError] = useState<string>();
   const fieldErrors: RatificationFieldError = getRatificationFieldErrors(error);
   const amountError = clientError ?? fieldErrors["commercialTerms.amountMinor"];
   const currencyError = fieldErrors["commercialTerms.currency"];
+  const disputeWindowError = fieldErrors.disputeWindowDays;
 
   function applySuggestion(suggestion: MoneySuggestion) {
     setAmount(decimalFromMinor(suggestion.amountMinor));
@@ -580,8 +608,21 @@ function CreatePackageForm({
       setClientError("Para birimi 3 harfli ISO 4217 kodu olmalıdır (ör. TRY, USD).");
       return;
     }
+    const trimmedWindow = disputeWindowDays.trim();
+    let parsedWindow: number | undefined;
+    if (trimmedWindow.length > 0) {
+      if (!/^\d+$/.test(trimmedWindow)) {
+        setClientError("İtiraz penceresi tam sayı olmalıdır (0–365).");
+        return;
+      }
+      parsedWindow = Number(trimmedWindow);
+      if (parsedWindow < 0 || parsedWindow > 365) {
+        setClientError("İtiraz penceresi 0 ile 365 gün arasında olmalıdır.");
+        return;
+      }
+    }
     setClientError(undefined);
-    onSubmit({ amountMinor, currency: normalizedCurrency });
+    onSubmit({ amountMinor, currency: normalizedCurrency }, parsedWindow);
   }
 
   return (
@@ -663,6 +704,27 @@ function CreatePackageForm({
             aria-invalid={Boolean(currencyError)}
           />
           {currencyError ? <span className="field-error">{currencyError}</span> : null}
+        </div>
+        <div className="field-group">
+          <label htmlFor="ratification-dispute-window">İtiraz penceresi (gün, isteğe bağlı)</label>
+          <input
+            id="ratification-dispute-window"
+            type="number"
+            min={0}
+            max={365}
+            step={1}
+            value={disputeWindowDays}
+            onChange={(event) => {
+              setDisputeWindowDays(event.target.value);
+              setClientError(undefined);
+            }}
+            placeholder="ör. 7"
+            aria-invalid={Boolean(disputeWindowError)}
+          />
+          <span className="field-hint">
+            0 = itiraz penceresi yok; kabulden hemen sonra kapanış mümkün
+          </span>
+          {disputeWindowError ? <span className="field-error">{disputeWindowError}</span> : null}
         </div>
         <button className="primary-button" type="submit" disabled={pending || !ready}>
           {pending ? "Hazırlanıyor…" : "Tutarı teyit et ve onaya sun"}

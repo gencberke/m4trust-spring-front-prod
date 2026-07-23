@@ -73,6 +73,11 @@ class RatificationExceptionHandler {
         return validation(request, "commercialTerms");
     }
 
+    @ExceptionHandler(RatificationPackageCreateService.InvalidDisputeWindow.class)
+    ResponseEntity<ProblemDetail> createInvalidDisputeWindow(HttpServletRequest request) {
+        return validation(request, "disputeWindowDays");
+    }
+
     // --- Reads (non-disclosing package/deal-visibility 404) ---
 
     @ExceptionHandler(RatificationPackageReadService.PackageNotFound.class)

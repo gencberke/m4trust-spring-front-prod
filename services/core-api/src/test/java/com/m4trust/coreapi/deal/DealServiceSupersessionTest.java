@@ -185,7 +185,8 @@ class DealServiceSupersessionTest {
                                 new RatificationPackageProjectionPort.Party(SELLER.toString(), "Seller"),
                                 new RatificationPackageProjectionPort.RuleSet(UUID.randomUUID().toString(), 1, List.of()),
                                 new RatificationPackageProjectionPort.Terms(1, "TRY"),
-                                new RatificationPackageProjectionPort.Document(UUID.randomUUID().toString(), "v1", "a".repeat(64))),
+                                new RatificationPackageProjectionPort.Document(UUID.randomUUID().toString(), "v1", "a".repeat(64)),
+                                null),
                         List.of(),
                         new RatificationPackageProjectionPort.AvailableActions(false, false),
                         NOW)));

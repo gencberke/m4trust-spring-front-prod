@@ -44,7 +44,7 @@ class RatificationRepositoryIntegrationTest {
     @BeforeEach
     void setUp() {
         jdbc.execute("""
-                TRUNCATE TABLE dispute_comment, dispute_evidence_snapshot, dispute_case, fulfillment_video_analysis_result, fulfillment_video_analysis_job, fulfillment_evidence_submission, fulfillment_milestone_rule_reference, fulfillment_milestone, fulfillment, payment_dispatch, payment_operation, funding_unit, funding_plan,
+                TRUNCATE TABLE dispute_comment, dispute_evidence_snapshot, dispute_case, fulfillment_video_analysis_result, fulfillment_video_analysis_job, fulfillment_evidence_submission, fulfillment_milestone_rule_reference, fulfillment_milestone, fulfillment, release_dispatch, release_operation, settlement, payment_dispatch, payment_operation, funding_unit, funding_plan,
                     ratification_package_approval, ratification_package,
                     ratification_package_snapshot, contract_intelligence_rule_set_version,
                     contract_intelligence_extraction_result_version, contract_intelligence_analysis_job,

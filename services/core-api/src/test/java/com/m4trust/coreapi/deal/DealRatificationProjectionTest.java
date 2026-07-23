@@ -212,7 +212,8 @@ class DealRatificationProjectionTest {
                         new RatificationPackageProjectionPort.Party(SELLER.toString(), "Seller"),
                         new RatificationPackageProjectionPort.RuleSet(RULE_SET.toString(), 1, List.of()),
                         new RatificationPackageProjectionPort.Terms(1, "TRY"),
-                        new RatificationPackageProjectionPort.Document(DOCUMENT.toString(), "v1", "a".repeat(64))),
+                        new RatificationPackageProjectionPort.Document(DOCUMENT.toString(), "v1", "a".repeat(64)),
+                        null),
                 List.of(),
                 new RatificationPackageProjectionPort.AvailableActions(canApprove, canReject),
                 NOW);

@@ -71,7 +71,8 @@ class RatificationPackageProjectionService implements RatificationPackageProject
                         new Document(
                                 snapshot.document().documentId(),
                                 snapshot.document().objectVersion(),
-                                snapshot.document().sha256())),
+                                snapshot.document().sha256()),
+                        snapshot.disputeWindowDays()),
                 detail.approvals().stream()
                         .map(approval -> new Approval(approval.legalEntityId(), approval.legalName(),
                                 approval.status(), approval.approvedAt(), approval.approverUserId()))

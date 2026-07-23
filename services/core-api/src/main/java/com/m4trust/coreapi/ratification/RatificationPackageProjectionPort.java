@@ -34,7 +34,8 @@ public interface RatificationPackageProjectionPort {
     }
 
     record Snapshot(int schemaVersion, String dealId, String dealReference, String dealTitle,
-            Party buyer, Party seller, RuleSet ruleSet, Terms commercialTerms, Document document) {
+            Party buyer, Party seller, RuleSet ruleSet, Terms commercialTerms, Document document,
+            Integer disputeWindowDays) {
     }
 
     record Party(String legalEntityId, String legalName) {

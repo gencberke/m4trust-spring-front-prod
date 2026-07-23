@@ -20,7 +20,11 @@ record CreateRatificationPackageHttpRequest(
 
         @NotNull(message = "Commercial terms are required.")
         @Valid
-        CommercialTerms commercialTerms) {
+        CommercialTerms commercialTerms,
+
+        @Min(value = 0, message = "disputeWindowDays must be between 0 and 365.")
+        @Max(value = 365, message = "disputeWindowDays must be between 0 and 365.")
+        Integer disputeWindowDays) {
 
     record CommercialTerms(
             @NotNull(message = "amountMinor is required.")
