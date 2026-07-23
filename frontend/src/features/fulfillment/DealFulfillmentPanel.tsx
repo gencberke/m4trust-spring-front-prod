@@ -8,14 +8,12 @@ import {
   createEvidenceDownloadLink,
   createEvidenceUploadIntent,
   finalizeEvidenceUpload,
-  getFulfillment,
   rejectEvidence,
   startFulfillment,
   type EvidenceMediaType,
   type EvidenceSubmission,
   type EvidenceType,
   type EvidenceUploadIntent,
-  type FulfillmentDetail,
 } from "./fulfillmentApi";
 import {
   getFulfillmentErrorMessage,
@@ -101,6 +99,70 @@ function isVideoMp4Evidence(submission: EvidenceSubmission): boolean {
   return submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4";
 }
 
+/** Chronological event time for timeline ordering — backend status timestamps only. */
+function evidenceEventAt(submission: EvidenceSubmission): string {
+  if (submission.status === "ACCEPTED" && submission.acceptedAt) {
+    return submission.acceptedAt;
+  }
+  if (submission.status === "REJECTED" && submission.rejectedAt) {
+    return submission.rejectedAt;
+  }
+  if (submission.status === "SUBMITTED" && submission.submittedAt) {
+    return submission.submittedAt;
+  }
+  return submission.createdAt;
+}
+
+function sortEvidenceChronologically(
+  history: readonly EvidenceSubmission[],
+): EvidenceSubmission[] {
+  return [...history].sort((left, right) => {
+    const delta =
+      new Date(evidenceEventAt(left)).getTime() -
+      new Date(evidenceEventAt(right)).getTime();
+    if (delta !== 0) {
+      return delta;
+    }
+    return left.id.localeCompare(right.id);
+  });
+}
+
+/**
+ * Whose-turn copy derived only from backend availableActions + status.
+ * Frontend invents no eligibility rule.
+ */
+function deriveTurnBanner(input: {
+  status: string | undefined;
+  canStart: boolean;
+  canUpload: boolean;
+  canAccept: boolean;
+  canReject: boolean;
+}): string | undefined {
+  const { status, canStart, canUpload, canAccept, canReject } = input;
+  if (!status || status === "COMPLETED" || status === "CANCELLED") {
+    return undefined;
+  }
+  if (canStart) {
+    return "Sıra sizde: teslimatı başlatın";
+  }
+  if (canUpload) {
+    return "Sıra sizde: teslimat kanıtı yükleyin";
+  }
+  if (canAccept || canReject) {
+    return "Sıra sizde: kanıtı inceleyin";
+  }
+  if (status === "REVIEW_REQUIRED") {
+    return "Sıra karşı tarafta: alıcı kanıtı inceliyor";
+  }
+  if (status === "EVIDENCE_REQUIRED" || status === "IN_PROGRESS") {
+    return "Sıra karşı tarafta: satıcı kanıt yüklüyor";
+  }
+  if (status === "NOT_STARTED") {
+    return "Sıra karşı tarafta: satıcı teslimatı başlatacak";
+  }
+  return undefined;
+}
+
 type UploadStage =
   | "idle"
   | "hashing"
@@ -161,6 +223,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
   const fulfillment = fulfillmentQuery.data;
 
   const [notice, setNotice] = useState<string>();
+  const [feedbackNotice, setFeedbackNotice] = useState<string>();
   const [uploadState, setUploadState] = useState<UploadState>({ stage: "idle" });
   const [downloadError, setDownloadError] = useState<string>();
   const [downloadingId, setDownloadingId] = useState<string>();
@@ -204,6 +267,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
       ),
     onSuccess: () => {
       setNotice(undefined);
+      setFeedbackNotice(undefined);
       refreshAfterMutation();
     },
     onError: (error) => {
@@ -230,6 +294,9 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
       ),
     onSuccess: () => {
       setUploadState({ stage: "done" });
+      setFeedbackNotice(
+        "Kanıt gönderildi — alıcının incelemesi bekleniyor",
+      );
       refreshAfterMutation();
     },
     onError: (error) => {
@@ -404,6 +471,9 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
       ),
     onSuccess: () => {
       setReviewError(undefined);
+      setFeedbackNotice(
+        "Teslimat tamamlandı — kapanış settlement adımında devam eder",
+      );
       refreshAfterMutation();
     },
     onError: (error) => {
@@ -431,6 +501,9 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
     onSuccess: () => {
       setReviewError(undefined);
       setRejectionReason("");
+      setFeedbackNotice(
+        "Kanıt reddedildi — satıcının yerine yeni bir yükleme yapması bekleniyor",
+      );
       refreshAfterMutation();
     },
     onError: (error) => {
@@ -461,6 +534,16 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
   const canUpload = !readOnly && (fulfillment?.milestone.availableActions.canUpload ?? false);
   const canAccept = !readOnly && deal.availableActions.canAcceptEvidence;
   const canReject = !readOnly && deal.availableActions.canRejectEvidence;
+  const turnBanner = deriveTurnBanner({
+    status: fulfillment?.status ?? (hasFulfillment ? undefined : "NOT_STARTED"),
+    canStart: Boolean(canStart),
+    canUpload: Boolean(canUpload),
+    canAccept: Boolean(canAccept),
+    canReject: Boolean(canReject),
+  });
+  const chronologicalHistory = fulfillment
+    ? sortEvidenceChronologically(fulfillment.history)
+    : [];
 
   if (fulfillmentQuery.isLoading) {
     return (
@@ -475,7 +558,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
     return (
       <section className="panel" aria-live="polite">
         <h2>Teslimat</h2>
-        <p className="error-text" role="alert">
+        <p className="form-alert" role="alert">
           {getFulfillmentErrorMessage(fulfillmentQuery.error)}
         </p>
         <button
@@ -496,8 +579,20 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
   const currentEvidence = fulfillment?.currentEvidence;
 
   return (
-    <section className="panel" aria-live="polite">
+    <section className="panel fulfillment-panel" aria-live="polite">
       <h2>Teslimat</h2>
+
+      {turnBanner ? (
+        <p className="fulfillment-turn-banner" role="status">
+          {turnBanner}
+        </p>
+      ) : null}
+
+      {feedbackNotice ? (
+        <p className="success-notice fulfillment-feedback" role="status">
+          {feedbackNotice}
+        </p>
+      ) : null}
 
       {readOnly ? (
         <p className="muted-copy">Bu aşama salt okunurdur; teslimat geçmişi aşağıda korunur.</p>
@@ -507,7 +602,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
         <div className="fulfillment-start">
           <p>Teslimat henüz başlatılmadı.</p>
           {notice && (
-            <p className="error-text" role="alert">
+            <p className="form-alert" role="alert">
               {notice}
             </p>
           )}
@@ -533,7 +628,12 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
         <div className="fulfillment-detail">
           <div className="fulfillment-status">
             <strong>Durum:</strong>{" "}
-            {fulfillmentStatusLabel(fulfillment.status)}
+            <span
+              className="fulfillment-status-badge"
+              data-status={fulfillment.status}
+            >
+              {fulfillmentStatusLabel(fulfillment.status)}
+            </span>
           </div>
 
           <div className="milestone-card">
@@ -578,13 +678,13 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
                 <p>Yükleme sonlandırılıyor…</p>
               )}
               {uploadState.stage === "done" && (
-                <p className="success-text">
-                  Teslimat kanıtı yüklendi ve incelemeye gönderildi.
+                <p className="success-notice" role="status">
+                  Kanıt gönderildi — alıcının incelemesi bekleniyor
                 </p>
               )}
               {uploadState.stage === "failed" && (
                 <div className="upload-failure" role="alert">
-                  <p className="error-text">
+                  <p className="form-alert">
                     {uploadState.errorMessage ?? "Yükleme başarısız oldu."}
                   </p>
                   <button
@@ -623,7 +723,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
               {canAccept && (
                 <div className="review-actions">
                   {reviewError && (
-                    <p className="error-text" role="alert">
+                    <p className="form-alert" role="alert">
                       {reviewError}
                     </p>
                   )}
@@ -667,17 +767,32 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
             </div>
           )}
 
-          {fulfillment.history.length > 0 && (
+          {chronologicalHistory.length > 0 && (
             <div className="evidence-history">
               <h4>Teslimat kanıtı geçmişi</h4>
               {downloadError && (
-                <p className="error-text" role="alert">
+                <p className="form-alert" role="alert">
                   {downloadError}
                 </p>
               )}
-              <ul>
-                {fulfillment.history.map((submission) => (
-                  <li key={submission.id}>
+              <ol className="evidence-timeline">
+                {chronologicalHistory.map((submission) => (
+                  <li
+                    key={submission.id}
+                    className="evidence-timeline-item"
+                    data-status={submission.status}
+                  >
+                    <div className="evidence-timeline-meta">
+                      <time dateTime={evidenceEventAt(submission)}>
+                        {formatDate(evidenceEventAt(submission))}
+                      </time>
+                      <span
+                        className="evidence-status-badge"
+                        data-status={submission.status}
+                      >
+                        {evidenceStatusLabel(submission.status)}
+                      </span>
+                    </div>
                     <EvidenceSummary submission={submission} />
                     {isVideoMp4Evidence(submission)
                       && submission.id !== currentEvidence?.id && (
@@ -703,7 +818,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
                     )}
                   </li>
                 ))}
-              </ul>
+              </ol>
             </div>
           )}
         </div>

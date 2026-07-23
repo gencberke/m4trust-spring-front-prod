@@ -37,6 +37,10 @@ import {
 import { DealDocumentManagement } from "../features/documents/DealDocumentManagement";
 import { DealFundingPanel } from "../features/funding/DealFundingPanel";
 import { DealFulfillmentPanel } from "../features/fulfillment/DealFulfillmentPanel";
+import {
+  FULFILLMENT_LIVE_POLL_STATUSES,
+  FULFILLMENT_POLL_INTERVAL_MS,
+} from "../features/fulfillment/fulfillmentQueries";
 import { DealCaseworkPanel } from "../features/casework/DealCaseworkPanel";
 import { DealInvitationManagement } from "../features/invitations/DealInvitationManagement";
 import { DealRatificationPanel } from "../features/ratification/DealRatificationPanel";
@@ -345,9 +349,15 @@ export function DealDetailPage() {
   const [updateNotice, setUpdateNotice] = useState<string>();
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
   const [activeArea, setActiveArea] = useState<WorkspaceArea>("agreement");
-  const detailQuery = useQuery(
-    dealDetailQueryOptions(selectedLegalEntityId, dealId),
-  );
+  const detailQuery = useQuery({
+    ...dealDetailQueryOptions(selectedLegalEntityId, dealId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.fulfillment?.status;
+      return status && FULFILLMENT_LIVE_POLL_STATUSES.has(status)
+        ? FULFILLMENT_POLL_INTERVAL_MS
+        : false;
+    },
+  });
   const invalidSelection = isInvalidLegalEntitySelection(detailQuery.error);
   const settlementReadOnly = detailQuery.data?.lifecycle === "SETTLEMENT";
   const terminalLifecycle = ["SETTLEMENT", "COMPLETED", "CANCELLED", "ARCHIVED"]

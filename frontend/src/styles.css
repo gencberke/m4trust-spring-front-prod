@@ -3459,3 +3459,103 @@ a:hover {
   .agreement-supporting-rail { order: 2; min-width: 0; }
   .agreement-stage-main { order: 1; min-width: 0; }
 }
+
+/* Plan 17 Phase A — living fulfillment panel */
+.fulfillment-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.fulfillment-turn-banner {
+  margin: 0;
+  padding: 13px 15px;
+  border: 1px solid rgb(28 74 160 / 22%);
+  border-radius: 5px;
+  background: var(--color-notice);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.fulfillment-feedback {
+  margin: 0;
+}
+
+.fulfillment-status-badge,
+.evidence-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #eef2f7;
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.fulfillment-status-badge[data-status="COMPLETED"],
+.evidence-status-badge[data-status="ACCEPTED"] {
+  background: #e8f5ed;
+  color: #17663a;
+}
+
+.fulfillment-status-badge[data-status="REVIEW_REQUIRED"],
+.evidence-status-badge[data-status="SUBMITTED"] {
+  background: var(--color-notice);
+  color: #1c4aa0;
+}
+
+.fulfillment-status-badge[data-status="EVIDENCE_REQUIRED"],
+.fulfillment-status-badge[data-status="IN_PROGRESS"],
+.evidence-status-badge[data-status="PENDING_UPLOAD"] {
+  background: #fff7e8;
+  color: #8a5a12;
+}
+
+.fulfillment-status-badge[data-status="CANCELLED"],
+.evidence-status-badge[data-status="REJECTED"] {
+  background: #fff0f1;
+  color: #8d2632;
+}
+
+.evidence-timeline {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence-timeline-item {
+  position: relative;
+  padding: 14px 16px 14px 22px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  border-left: 3px solid #96a2b4;
+  background: #ffffff;
+}
+
+.evidence-timeline-item[data-status="ACCEPTED"] {
+  border-left-color: #17663a;
+}
+
+.evidence-timeline-item[data-status="SUBMITTED"] {
+  border-left-color: #1c4aa0;
+}
+
+.evidence-timeline-item[data-status="REJECTED"] {
+  border-left-color: #8d2632;
+}
+
+.evidence-timeline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 10px;
+  color: var(--color-copy);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
