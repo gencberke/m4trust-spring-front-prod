@@ -18,8 +18,8 @@ Plan completion claim: NO
 ## Validation
 - Phase A–B4 focused gates — PASS (see prior revision notes)
 - `npm run typecheck` + `npm run build` (B4 re-verify) — PASS
-- Repository-wide suite before B5 — see final commit notes / PR
-- V23 settlement FK fix: integration-test TRUNCATE lists now include `release_dispatch`, `release_operation`, `settlement` before `payment_dispatch` / `funding_unit` (19 test classes patched; ratification/settlement tests already had the fix)
+- Repository-wide suite before B5 — PASS: `validate_contracts.py`; `mvn verify` 406 tests / 0 failures (`9402189`); frontend typecheck+build PASS
+- V23 settlement FK fix: integration-test TRUNCATE lists include `release_dispatch`, `release_operation`, `settlement` (19 classes; `9402189`)
 
 ## Decisions needed
 - None
