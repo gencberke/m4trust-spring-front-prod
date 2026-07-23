@@ -5,12 +5,14 @@ import type { DealDetail } from "../deals/dealApi";
 import { dealDetailQueryKey } from "../deals/dealQueries";
 import {
   acceptEvidence,
+  acceptFulfillmentWithoutEvidence,
   createEvidenceDownloadLink,
   createEvidenceUploadIntent,
   finalizeEvidenceUpload,
   rejectEvidence,
   startFulfillment,
   type EvidenceMediaType,
+  type EvidencePolicy,
   type EvidenceSubmission,
   type EvidenceType,
   type EvidenceUploadIntent,
@@ -127,23 +129,41 @@ function sortEvidenceChronologically(
   });
 }
 
+const EVIDENCE_POLICY_LABELS: Record<EvidencePolicy, string> = {
+  REQUIRED: "Kanıt gerekli",
+  NOT_REQUIRED: "Kanıt gerekli değil",
+};
+
 /**
  * Whose-turn copy derived only from backend availableActions + status.
  * Frontend invents no eligibility rule.
  */
 function deriveTurnBanner(input: {
   status: string | undefined;
+  evidencePolicy: EvidencePolicy | undefined;
   canStart: boolean;
   canUpload: boolean;
   canAccept: boolean;
   canReject: boolean;
+  canAcceptWithoutEvidence: boolean;
 }): string | undefined {
-  const { status, canStart, canUpload, canAccept, canReject } = input;
+  const {
+    status,
+    evidencePolicy,
+    canStart,
+    canUpload,
+    canAccept,
+    canReject,
+    canAcceptWithoutEvidence,
+  } = input;
   if (!status || status === "COMPLETED" || status === "CANCELLED") {
     return undefined;
   }
   if (canStart) {
     return "Sıra sizde: teslimatı başlatın";
+  }
+  if (canAcceptWithoutEvidence) {
+    return "Sıra sizde: teslimatı kanıtsız kabul edin";
   }
   if (canUpload) {
     return "Sıra sizde: teslimat kanıtı yükleyin";
@@ -153,6 +173,9 @@ function deriveTurnBanner(input: {
   }
   if (status === "REVIEW_REQUIRED") {
     return "Sıra karşı tarafta: alıcı kanıtı inceliyor";
+  }
+  if (evidencePolicy === "NOT_REQUIRED" && status === "IN_PROGRESS") {
+    return "Alıcı onayını bekliyor: teslimat kanıtsız kabul edilecek";
   }
   if (status === "EVIDENCE_REQUIRED" || status === "IN_PROGRESS") {
     return "Sıra karşı tarafta: satıcı kanıt yüklüyor";
@@ -218,6 +241,7 @@ export function DealFulfillmentPanel({
   const startKeyRef = useRef<string | undefined>(undefined);
   const finalizeKeyRef = useRef<string | undefined>(undefined);
   const reviewKeyRef = useRef<string | undefined>(undefined);
+  const acceptWithoutEvidenceKeyRef = useRef<string | undefined>(undefined);
   const attemptIdRef = useRef(0);
 
   const fulfillmentId = deal.fulfillment?.fulfillmentId;
@@ -261,6 +285,10 @@ export function DealFulfillmentPanel({
 
   function resetReviewKey() {
     reviewKeyRef.current = freshIdempotencyKey();
+  }
+
+  function resetAcceptWithoutEvidenceKey() {
+    acceptWithoutEvidenceKeyRef.current = freshIdempotencyKey();
   }
 
   const startMutation = useMutation({
@@ -536,16 +564,51 @@ export function DealFulfillmentPanel({
     rejectMutation.mutate({ evidence, reason });
   }
 
+  const acceptWithoutEvidenceMutation = useMutation({
+    mutationFn: () =>
+      acceptFulfillmentWithoutEvidence(
+        legalEntityId,
+        deal.id,
+        {
+          expectedDealVersion: deal.version,
+          expectedFulfillmentVersion: fulfillment!.version,
+        },
+        acceptWithoutEvidenceKeyRef.current!,
+      ),
+    onSuccess: () => {
+      setReviewError(undefined);
+      setFeedbackNotice(
+        "Teslimat kanıtsız kabul edildi — kapanış için Kapanış bölümüne geçin",
+      );
+      refreshAfterMutation();
+    },
+    onError: (error) => {
+      if (shouldResetFulfillmentIdempotencyKey(error, "acceptWithoutEvidence")) {
+        resetAcceptWithoutEvidenceKey();
+        refreshAfterMutation();
+      }
+      setReviewError(getFulfillmentErrorMessage(error));
+    },
+  });
+
   const canStart = !readOnly && deal.availableActions.canStartFulfillment;
   const canUpload = !readOnly && (fulfillment?.milestone.availableActions.canUpload ?? false);
   const canAccept = !readOnly && deal.availableActions.canAcceptEvidence;
   const canReject = !readOnly && deal.availableActions.canRejectEvidence;
+  const canAcceptWithoutEvidence =
+    !readOnly &&
+    (deal.availableActions.canAcceptWithoutEvidence === true ||
+      fulfillment?.availableActions.canAcceptWithoutEvidence === true);
+  const evidencePolicy =
+    fulfillment?.evidencePolicy ?? deal.fulfillment?.evidencePolicy;
   const turnBanner = deriveTurnBanner({
     status: fulfillment?.status ?? (hasFulfillment ? undefined : "NOT_STARTED"),
+    evidencePolicy,
     canStart: Boolean(canStart),
     canUpload: Boolean(canUpload),
     canAccept: Boolean(canAccept),
     canReject: Boolean(canReject),
+    canAcceptWithoutEvidence: Boolean(canAcceptWithoutEvidence),
   });
   const chronologicalHistory = fulfillment
     ? sortEvidenceChronologically(fulfillment.history)
@@ -651,6 +714,45 @@ export function DealFulfillmentPanel({
               {fulfillmentStatusLabel(fulfillment.status)}
             </span>
           </div>
+
+          {fulfillment.evidencePolicy ? (
+            <p className="muted-copy">
+              Kanıt politikası:{" "}
+              {EVIDENCE_POLICY_LABELS[fulfillment.evidencePolicy]}
+            </p>
+          ) : null}
+
+          {fulfillment.evidencePolicy === "NOT_REQUIRED" &&
+          fulfillment.status === "IN_PROGRESS" &&
+          !canAcceptWithoutEvidence ? (
+            <p className="muted-copy">
+              Bu teslimatta dosya yüklenmez; alıcı kuruluş yöneticisinin kanıtsız
+              onayı bekleniyor.
+            </p>
+          ) : null}
+
+          {canAcceptWithoutEvidence ? (
+            <div className="fulfillment-accept-without-evidence">
+              {reviewError ? (
+                <p className="form-alert" role="alert">
+                  {reviewError}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  resetAcceptWithoutEvidenceKey();
+                  acceptWithoutEvidenceMutation.mutate();
+                }}
+                disabled={acceptWithoutEvidenceMutation.isPending}
+              >
+                {acceptWithoutEvidenceMutation.isPending
+                  ? "Kabul ediliyor…"
+                  : "Teslimatı kanıtsız kabul et"}
+              </button>
+            </div>
+          ) : null}
 
           <div className="milestone-card">
             <h3>{fulfillment.milestone.title}</h3>

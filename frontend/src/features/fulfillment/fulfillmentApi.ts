@@ -24,8 +24,11 @@ export type FinalizeEvidenceUploadRequest =
   components["schemas"]["FinalizeEvidenceUploadRequest"];
 export type AcceptEvidenceRequest =
   components["schemas"]["AcceptEvidenceRequest"];
+export type AcceptWithoutEvidenceRequest =
+  components["schemas"]["AcceptWithoutEvidenceRequest"];
 export type RejectEvidenceRequest =
   components["schemas"]["RejectEvidenceRequest"];
+export type EvidencePolicy = components["schemas"]["EvidencePolicy"];
 
 export function startFulfillment(
   legalEntityId: string,
@@ -120,6 +123,22 @@ export function rejectEvidence(
 ): Promise<EvidenceSubmission> {
   return postJsonWithFreshCsrf<EvidenceSubmission>(
     `/deals/${dealId}/fulfillment/evidence/${evidenceSubmissionId}/reject`,
+    request,
+    {
+      "X-M4Trust-Legal-Entity-Id": legalEntityId,
+      "Idempotency-Key": idempotencyKey,
+    },
+  );
+}
+
+export function acceptFulfillmentWithoutEvidence(
+  legalEntityId: string,
+  dealId: string,
+  request: AcceptWithoutEvidenceRequest,
+  idempotencyKey: string,
+): Promise<FulfillmentDetail> {
+  return postJsonWithFreshCsrf<FulfillmentDetail>(
+    `/deals/${dealId}/fulfillment/accept-without-evidence`,
     request,
     {
       "X-M4Trust-Legal-Entity-Id": legalEntityId,

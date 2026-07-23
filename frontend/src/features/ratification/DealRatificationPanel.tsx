@@ -25,12 +25,37 @@ import { ratificationPackageHistoryQueryKey, ratificationPackageHistoryQueryOpti
 
 type StructuredValue = components["schemas"]["RuleSetStructuredValue"];
 type RatificationPackageSnapshotV2 = components["schemas"]["RatificationPackageSnapshotV2"];
+type RatificationPackageSnapshotV3 = components["schemas"]["RatificationPackageSnapshotV3"];
+type EvidencePolicy = components["schemas"]["EvidencePolicy"];
 
 function isSnapshotV2(
   snapshot: RatificationPackageDetail["snapshot"],
 ): snapshot is RatificationPackageSnapshotV2 {
   return snapshot.schemaVersion === "2";
 }
+
+function isSnapshotV3(
+  snapshot: RatificationPackageDetail["snapshot"],
+): snapshot is RatificationPackageSnapshotV3 {
+  return snapshot.schemaVersion === "3";
+}
+
+function hasDisputeWindow(
+  snapshot: RatificationPackageDetail["snapshot"],
+): snapshot is RatificationPackageSnapshotV2 | RatificationPackageSnapshotV3 {
+  return isSnapshotV2(snapshot) || isSnapshotV3(snapshot);
+}
+
+function effectiveEvidencePolicy(
+  snapshot: RatificationPackageDetail["snapshot"],
+): EvidencePolicy {
+  return isSnapshotV3(snapshot) ? snapshot.evidencePolicy : "REQUIRED";
+}
+
+const EVIDENCE_POLICY_LABELS: Record<EvidencePolicy, string> = {
+  REQUIRED: "Kanıt gerekli",
+  NOT_REQUIRED: "Kanıt gerekli değil",
+};
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
   dateStyle: "long",
@@ -162,7 +187,8 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
   const createMutation = useMutation({
     mutationFn: (payload: {
       commercialTerms: RatificationCommercialTerms;
-      disputeWindowDays?: number;
+      disputeWindowDays: number;
+      evidencePolicy: EvidencePolicy;
     }) => {
       createKeyRef.current ??= crypto.randomUUID();
       return createRatificationPackage(
@@ -171,9 +197,8 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
         {
           expectedVersion: deal.version,
           commercialTerms: payload.commercialTerms,
-          ...(payload.disputeWindowDays !== undefined
-            ? { disputeWindowDays: payload.disputeWindowDays }
-            : {}),
+          disputeWindowDays: payload.disputeWindowDays,
+          evidencePolicy: payload.evidencePolicy,
         },
         createKeyRef.current,
       );
@@ -342,9 +367,9 @@ export function DealRatificationPanel({ deal, legalEntityId }: Props) {
           suggestionsLoading={ruleSetVersionQuery.isPending && Boolean(ruleSetSummary)}
           pending={createMutation.isPending}
           error={createMutation.error}
-          onSubmit={(commercialTerms, disputeWindowDays) => {
+          onSubmit={(commercialTerms, disputeWindowDays, evidencePolicy) => {
             setNotice(undefined);
-            createMutation.mutate({ commercialTerms, disputeWindowDays });
+            createMutation.mutate({ commercialTerms, disputeWindowDays, evidencePolicy });
           }}
         />
       ) : null}
@@ -404,12 +429,16 @@ function CurrentPackage({
         <div>
           <dt>İtiraz penceresi</dt>
           <dd>
-            {isSnapshotV2(snapshot) ? (
+            {hasDisputeWindow(snapshot) ? (
               <>{snapshot.disputeWindowDays} gün</>
             ) : (
               <span className="muted-copy">Kapanışa uygun değil (eski şema)</span>
             )}
           </dd>
+        </div>
+        <div>
+          <dt>Teslimat kanıtı politikası</dt>
+          <dd>{EVIDENCE_POLICY_LABELS[effectiveEvidencePolicy(snapshot)]}</dd>
         </div>
         <div>
           <dt>Sözleşme bedeli</dt>
@@ -579,16 +608,22 @@ function CreatePackageForm({
   suggestionsLoading: boolean;
   pending: boolean;
   error: unknown;
-  onSubmit: (terms: RatificationCommercialTerms, disputeWindowDays?: number) => void;
+  onSubmit: (
+    terms: RatificationCommercialTerms,
+    disputeWindowDays: number,
+    evidencePolicy: EvidencePolicy,
+  ) => void;
 }) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("");
   const [disputeWindowDays, setDisputeWindowDays] = useState("");
+  const [evidencePolicy, setEvidencePolicy] = useState<EvidencePolicy>("REQUIRED");
   const [clientError, setClientError] = useState<string>();
   const fieldErrors: RatificationFieldError = getRatificationFieldErrors(error);
   const amountError = clientError ?? fieldErrors["commercialTerms.amountMinor"];
   const currencyError = fieldErrors["commercialTerms.currency"];
   const disputeWindowError = fieldErrors.disputeWindowDays;
+  const evidencePolicyError = fieldErrors.evidencePolicy;
 
   function applySuggestion(suggestion: MoneySuggestion) {
     setAmount(decimalFromMinor(suggestion.amountMinor));
@@ -609,20 +644,21 @@ function CreatePackageForm({
       return;
     }
     const trimmedWindow = disputeWindowDays.trim();
-    let parsedWindow: number | undefined;
-    if (trimmedWindow.length > 0) {
-      if (!/^\d+$/.test(trimmedWindow)) {
-        setClientError("İtiraz penceresi tam sayı olmalıdır (0–365).");
-        return;
-      }
-      parsedWindow = Number(trimmedWindow);
-      if (parsedWindow < 0 || parsedWindow > 365) {
-        setClientError("İtiraz penceresi 0 ile 365 gün arasında olmalıdır.");
-        return;
-      }
+    if (!/^\d+$/.test(trimmedWindow)) {
+      setClientError("İtiraz penceresi zorunludur ve tam sayı olmalıdır (0–365).");
+      return;
+    }
+    const parsedWindow = Number(trimmedWindow);
+    if (parsedWindow < 0 || parsedWindow > 365) {
+      setClientError("İtiraz penceresi 0 ile 365 gün arasında olmalıdır.");
+      return;
     }
     setClientError(undefined);
-    onSubmit({ amountMinor, currency: normalizedCurrency }, parsedWindow);
+    onSubmit(
+      { amountMinor, currency: normalizedCurrency },
+      parsedWindow,
+      evidencePolicy,
+    );
   }
 
   return (
@@ -706,13 +742,14 @@ function CreatePackageForm({
           {currencyError ? <span className="field-error">{currencyError}</span> : null}
         </div>
         <div className="field-group">
-          <label htmlFor="ratification-dispute-window">İtiraz penceresi (gün, isteğe bağlı)</label>
+          <label htmlFor="ratification-dispute-window">İtiraz penceresi (gün)</label>
           <input
             id="ratification-dispute-window"
             type="number"
             min={0}
             max={365}
             step={1}
+            required
             value={disputeWindowDays}
             onChange={(event) => {
               setDisputeWindowDays(event.target.value);
@@ -725,6 +762,27 @@ function CreatePackageForm({
             0 = itiraz penceresi yok; kabulden hemen sonra kapanış mümkün
           </span>
           {disputeWindowError ? <span className="field-error">{disputeWindowError}</span> : null}
+        </div>
+        <div className="field-group">
+          <label htmlFor="ratification-evidence-policy">Teslimat kanıtı politikası</label>
+          <select
+            id="ratification-evidence-policy"
+            value={evidencePolicy}
+            required
+            onChange={(event) => {
+              setEvidencePolicy(event.target.value as EvidencePolicy);
+              setClientError(undefined);
+            }}
+            aria-invalid={Boolean(evidencePolicyError)}
+          >
+            <option value="REQUIRED">Kanıt gerekli</option>
+            <option value="NOT_REQUIRED">Kanıt gerekli değil</option>
+          </select>
+          <span className="field-hint">
+            Onaylandıktan sonra değişmez; kanıt gerekmeyen anlaşmalarda alıcı yönetici
+            teslimatı dosyasız kabul eder.
+          </span>
+          {evidencePolicyError ? <span className="field-error">{evidencePolicyError}</span> : null}
         </div>
         <button className="primary-button" type="submit" disabled={pending || !ready}>
           {pending ? "Hazırlanıyor…" : "Tutarı teyit et ve onaya sun"}
@@ -779,7 +837,9 @@ function PackageHistory({
                   {item.snapshot.commercialTerms.currency}
                 </strong>
                 <span>
-                  {formatDate(item.createdAt)} · <HexValue value={item.contentHash} label="hash" />
+                  {formatDate(item.createdAt)} ·{" "}
+                  {EVIDENCE_POLICY_LABELS[effectiveEvidencePolicy(item.snapshot)]} ·{" "}
+                  <HexValue value={item.contentHash} label="hash" />
                 </span>
               </div>
               <span className="ratification-status-badge" data-status={item.status}>

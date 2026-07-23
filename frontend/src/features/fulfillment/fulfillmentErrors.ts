@@ -45,6 +45,12 @@ export function getFulfillmentErrorMessage(error: unknown): string {
       return "İstenen teslimat kanıtı bulunamadı veya bu anlaşma için görünür değil.";
     case "FULFILLMENT_COMPLETED":
       return "Teslimat süreci zaten tamamlanmış.";
+    case "FULFILLMENT_STALE_VERSION":
+      return "Teslimat başka bir işlemle değişti. Güncel durum yenilendi; lütfen tekrar deneyin.";
+    case "FULFILLMENT_EVIDENCE_POLICY_CONFLICT":
+      return "Bu teslimat için kanıt politikası bu işleme izin vermiyor.";
+    case "FULFILLMENT_EVIDENCE_PRESENT":
+      return "Bu teslimatta zaten bir kanıt kaydı var; kanıtsız kabul yapılamaz.";
     case "EVIDENCE_UPLOAD_FORBIDDEN":
       return "Teslimat kanıtı yüklemeye yalnızca satıcı kuruluş yetkilidir.";
     case "EVIDENCE_ALREADY_SUBMITTED":
@@ -106,13 +112,17 @@ export function shouldRefetchAfterReviewError(error: unknown): boolean {
       error.code === "EVIDENCE_STALE_VERSION" ||
       error.code === "DEAL_STATE_CONFLICT" ||
       error.code === "EVIDENCE_STATE_CONFLICT" ||
-      error.code === "FULFILLMENT_COMPLETED")
+      error.code === "FULFILLMENT_COMPLETED" ||
+      error.code === "FULFILLMENT_STALE_VERSION" ||
+      error.code === "FULFILLMENT_STATE_CONFLICT" ||
+      error.code === "FULFILLMENT_EVIDENCE_POLICY_CONFLICT" ||
+      error.code === "FULFILLMENT_EVIDENCE_PRESENT")
   );
 }
 
 export function shouldResetFulfillmentIdempotencyKey(
   error: unknown,
-  kind: "start" | "upload" | "review",
+  kind: "start" | "upload" | "review" | "acceptWithoutEvidence",
 ): boolean {
   if (!(error instanceof ApiError)) return false;
   if (error.code === "IDEMPOTENCY_KEY_REUSED") return true;
