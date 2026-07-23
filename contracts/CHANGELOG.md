@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Added Plan 18C-P1 pending evidence cancel-upload contract (ADR-011 §2.3
+  pending-cancellation amendment): seller ADMIN/MEMBER
+  `POST /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload`
+  with `CancelEvidenceUploadRequest` (`expectedEvidenceVersion`), required
+  Idempotency-Key, session/CSRF; nullable `PendingEvidenceSubmission.cancelledAt`;
+  optional `EvidenceAvailableActions.canCancelUpload` (absent = false); reusable
+  `EvidenceCancelUploadConflict` documenting
+  `EVIDENCE_UPLOAD_EXPIRED` / `EVIDENCE_UPLOAD_STATE_CONFLICT` /
+  `EVIDENCE_STALE_VERSION` / `IDEMPOTENCY_KEY_REUSED` (reusing
+  EvidenceUploadForbidden / EvidenceNotFoundOrHidden for actor/hidden failures).
+  No DELETE endpoint and no new finalized evidence status enum. Validator closed
+  sets updated.
+
 - Added Plan 18B-P1 additive ratified evidence-policy contract (ADR-011 §2.5
   founder amendment 2026-07-23): closed `EvidencePolicy` (`REQUIRED` |
   `NOT_REQUIRED`); discriminated `RatificationPackageSnapshotV3` requiring

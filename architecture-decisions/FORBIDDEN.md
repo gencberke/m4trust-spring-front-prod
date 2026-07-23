@@ -45,6 +45,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | Ana aggregate'a `Transaction` adını vermek | ADR-003 §2, §31 |
 | Bütün yaşam döngüsünü tek dev status alanında tutmak | ADR-003 §8, §31 |
 | Generic soft delete (`deleted=true`) — açık domain durumları yerine | ADR-003 §7.2, §31 |
+| Pending evidence cancel'ı generic soft-delete/`deleted=true` veya DELETE endpoint olarak modellemek; cancelled pending'i restore/finalize etmek veya submitted history'yi gizlemek | ADR-011 §2.3 pending-cancellation amendment; ADR-003 §7.2, §31 |
 | Para/yüzde değerlerinde floating-point kullanmak | ADR-003 §21, §31; ADR-006 §28–29 |
 | Modüllerin birbirlerinin repository'lerini veya JPA entity'lerini doğrudan kullanması | ADR-003 §23, §31 |
 | Audit kaydını veya operation için tanımlanmış event/dispatch outbox kaydını business mutation'dan ayrı transaction'da yazmak | ADR-003 §24, §31; ADR-015 §2.2 |

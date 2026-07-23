@@ -666,6 +666,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel an unfinished pending evidence upload intent
+         * @description Seller legal entity ADMIN or MEMBER action. Cancels a current, unexpired, uncancelled PENDING_UPLOAD intent by writing non-null cancelledAt while leaving the row readable in history. The cancelled intent is never currentEvidence and cannot be restored or finalized. No object-storage delete or external call occurs. Status enum is unchanged; there is no DELETE endpoint. Idempotency-Key is required: the same key with the same canonical request replays the original cancelled projection; reuse with a different request returns 409 IDEMPOTENCY_KEY_REUSED. The request carries expectedEvidenceVersion, checked under lock with Deal/fulfillment/milestone /pending evidence locking consistent with finalize.
+         */
+        post: operations["cancelEvidenceUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link": {
         parameters: {
             query?: never;
@@ -2279,6 +2299,13 @@ export interface components {
             sizeBytes: number;
             sha256: components["schemas"]["Sha256"];
         };
+        CancelEvidenceUploadRequest: {
+            /**
+             * Format: int64
+             * @description Current evidence submission optimistic-lock version observed by the client.
+             */
+            expectedEvidenceVersion: number;
+        };
         AcceptEvidenceRequest: {
             /**
              * Format: int64
@@ -2320,6 +2347,8 @@ export interface components {
         EvidenceAvailableActions: {
             /** @description True only when the active legal entity is a Deal participant and the immutable version is available. */
             canDownload: boolean;
+            /** @description Optional actor-aware availability. True only for the seller entity ADMIN/MEMBER while this projection is an active (unexpired, uncancelled) PENDING_UPLOAD. Absent or unknown means false/read-only. */
+            canCancelUpload?: boolean;
         };
         MilestoneAvailableActions: {
             /** @description True only for the seller entity ADMIN/MEMBER while the milestone accepts new evidence. */
@@ -2372,6 +2401,8 @@ export interface components {
             clientSizeBytes: number;
             clientSha256: components["schemas"]["Sha256"];
             expiresAt: components["schemas"]["UtcTimestamp"];
+            /** @description Null while the pending upload intent is active. Non-null marks the explicit terminal cancelled intent state; the row remains readable in history, is never currentEvidence, and cannot be finalized. */
+            cancelledAt?: components["schemas"]["UtcTimestamp"] | null;
             createdAt: components["schemas"]["UtcTimestamp"];
             availableActions: components["schemas"]["EvidenceAvailableActions"];
             /** Format: int64 */
@@ -3367,6 +3398,15 @@ export interface components {
         };
         /** @description The pending upload expired (EVIDENCE_UPLOAD_EXPIRED), is no longer pending (EVIDENCE_UPLOAD_STATE_CONFLICT), verified storage size or SHA-256 differs from the canonical client request (EVIDENCE_VERIFICATION_FAILED), the milestone is not awaiting this submission (EVIDENCE_MILESTONE_CONFLICT), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). */
         EvidenceFinalizeConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetail"];
+            };
+        };
+        /** @description The pending upload expired (EVIDENCE_UPLOAD_EXPIRED), is already cancelled or not an active PENDING_UPLOAD / was finalized (EVIDENCE_UPLOAD_STATE_CONFLICT), the supplied expectedEvidenceVersion is stale (EVIDENCE_STALE_VERSION), or Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED). Hidden resources reuse EvidenceNotFoundOrHidden; forbidden actors reuse EvidenceUploadForbidden. */
+        EvidenceCancelUploadConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -4832,6 +4872,46 @@ export interface operations {
             403: components["responses"]["EvidenceUploadForbidden"];
             404: components["responses"]["EvidenceNotFoundOrHidden"];
             409: components["responses"]["EvidenceFinalizeConflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    cancelEvidenceUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Client-selected legal entity context. This header is neither an authentication credential nor proof of authorization. It is verified server-side against membership and, for Deal operations, participation. On a legal entity detail path it must equal the legalEntityId path parameter. Missing, malformed, or mismatched values produce LEGAL_ENTITY_ACCESS_DENIED. */
+                "X-M4Trust-Legal-Entity-Id": components["parameters"]["LegalEntityContext"];
+                /** @description UUID key supplied by the client for one idempotent operation. Keep the same key when retrying the same canonical request; never use it for a different request. A different request with an already-used key returns 409 IDEMPOTENCY_KEY_REUSED. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Public UUID of the requested Deal. */
+                dealId: components["parameters"]["DealId"];
+                /** @description Public UUID of an EvidenceSubmission for a Deal fulfillment milestone. */
+                evidenceSubmissionId: components["parameters"]["EvidenceSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelEvidenceUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Pending upload cancelled; same-key replay returns this original result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingEvidenceSubmission"];
+                };
+            };
+            400: components["responses"]["MalformedRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["EvidenceUploadForbidden"];
+            404: components["responses"]["EvidenceNotFoundOrHidden"];
+            409: components["responses"]["EvidenceCancelUploadConflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };

@@ -57,7 +57,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Ratification commercial terms | `amountMinor` + `currency`, explicit teyit, dedicated immutable snapshot, RFC 8785 hash | ADR-010 §2.1 |
 | Funding V1 | ACTIVE Deal, tek plan/unit, buyer ADMIN, sandbox/polling-first, async `202 + Location` | ADR-010 §2.2–§2.5 |
 | Unknown payment | Failure veya yeni charge değil; aynı operation için reconciliation | ADR-003 §21; ADR-010 §2.3–§2.4 |
-| Fulfillment V1 | `ACTIVE + FUNDED`, tek fulfillment/primary milestone; seller ADMIN/MEMBER submit, buyer ADMIN review; ratified `REQUIRED`/`NOT_REQUIRED` evidence policy (v1/v2 → `REQUIRED`) | ADR-011 §2.1–§2.3, §2.5 amendment |
+| Fulfillment V1 | `ACTIVE + FUNDED`, tek fulfillment/primary milestone; seller ADMIN/MEMBER submit, buyer ADMIN review; ratified `REQUIRED`/`NOT_REQUIRED` evidence policy (v1/v2 → `REQUIRED`); unfinished `PENDING_UPLOAD` cancel via non-null `cancelledAt` (not generic soft-delete) | ADR-011 §2.1–§2.3, §2.5 amendment |
 | Fulfillment completion | Manual buyer ADMIN kararı (file accept veya `NOT_REQUIRED` no-file accept); Deal ACTIVE kalır, release/settlement/provider side effect yok; start otomatik complete etmez | ADR-011 §2.5 |
 | Video Analysis V1 | Current finalized VIDEO/MP4 için buyer ADMIN explicit request/retry; participant read; sonuç advisory-only | ADR-012 §2.1–§2.5 |
 | Dispute/Casework V1 | ACTIVE + started fulfillment; buyer/seller ADMIN open, party users read/comment, counterparty ADMIN acknowledge, opener ADMIN withdraw | ADR-013 §2.1–§2.3 |

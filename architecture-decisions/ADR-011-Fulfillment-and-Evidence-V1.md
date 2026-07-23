@@ -97,6 +97,23 @@ silinmez ve overwrite edilmez. Reject sonrasında replacement yeni submission
 ID'si ve yeni immutable object version ile gelir. Bir milestone üzerinde aynı
 anda yalnız bir current `SUBMITTED` evidence review bekleyebilir.
 
+**Founder amendment (2026-07-23) — Pending upload cancellation:**
+
+- Unfinished `PENDING_UPLOAD` is an incomplete upload intent, not accepted or
+  rejected business evidence. Seller legal-entity `ADMIN`/`MEMBER` may cancel a
+  current, unexpired, uncancelled pending intent via an explicit domain action.
+- Non-null `cancelledAt` on `PENDING_UPLOAD` is the explicit terminal state of
+  that upload intent. It is **not** ADR-003’s forbidden generic soft-delete
+  (`deleted=true`): the row remains readable in history, cannot be restored or
+  finalized, and no submitted/accepted/rejected evidence is hidden or deleted.
+- Cancelled pending evidence never appears as `currentEvidence`. Status enum
+  stays unchanged; no DELETE endpoint and no new finalized evidence status.
+- Cancellation writes `cancelledAt`, optimistic version, audit and HTTP
+  idempotency atomically; no object-storage delete or external call runs in the
+  cancellation transaction. One fresh upload intent may follow immediately.
+- Finalize rechecks `cancelledAt IS NULL` under lock so a cancel/finalize race
+  has exactly one winner.
+
 ### 2.4 Evidence object ve history bütünlüğü
 
 - Başlangıç evidence türleri `DELIVERY_NOTE`, `INVOICE`, `VIDEO`, `PHOTO`,
@@ -110,8 +127,8 @@ anda yalnız bir current `SUBMITTED` evidence review bekleyebilir.
   storage-adapter tarafından doğrulanan size, checksum ve immutable object
   version'a dayanır.
 - Bucket private, object key tahmin edilemez ve download link kısa ömürlüdür.
-- Pending/expired intent current evidence olamaz. Physical orphan cleanup V1
-  acceptance koşulu değildir.
+- Pending/expired/cancelled intent current evidence olamaz. Physical orphan
+  cleanup V1 acceptance koşulu değildir.
 - Evidence metadata'sı Spring/PostgreSQL'in, binary içerik object storage'ın
   sorumluluğundadır. Document aggregate'i evidence için yeniden kullanılmaz.
 

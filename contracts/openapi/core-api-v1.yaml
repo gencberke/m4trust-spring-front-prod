@@ -1379,6 +1379,48 @@ paths:
         '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
         '409': {$ref: '#/components/responses/EvidenceFinalizeConflict'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
+  /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload:
+    post:
+      operationId: cancelEvidenceUpload
+      tags: [Fulfillment]
+      summary: Cancel an unfinished pending evidence upload intent
+      description: >
+        Seller legal entity ADMIN or MEMBER action. Cancels a current, unexpired,
+        uncancelled PENDING_UPLOAD intent by writing non-null cancelledAt while
+        leaving the row readable in history. The cancelled intent is never
+        currentEvidence and cannot be restored or finalized. No object-storage
+        delete or external call occurs. Status enum is unchanged; there is no
+        DELETE endpoint. Idempotency-Key is required: the same key with the same
+        canonical request replays the original cancelled projection; reuse with a
+        different request returns 409 IDEMPOTENCY_KEY_REUSED. The request carries
+        expectedEvidenceVersion, checked under lock with Deal/fulfillment/milestone
+        /pending evidence locking consistent with finalize.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/DealId'
+        - $ref: '#/components/parameters/EvidenceSubmissionId'
+        - $ref: '#/components/parameters/LegalEntityContext'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelEvidenceUploadRequest'
+      responses:
+        '200':
+          description: Pending upload cancelled; same-key replay returns this original result.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PendingEvidenceSubmission'}
+        '400': {$ref: '#/components/responses/MalformedRequest'}
+        '401': {$ref: '#/components/responses/SessionRequired'}
+        '403': {$ref: '#/components/responses/EvidenceUploadForbidden'}
+        '404': {$ref: '#/components/responses/EvidenceNotFoundOrHidden'}
+        '409': {$ref: '#/components/responses/EvidenceCancelUploadConflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/download-link:
     post:
       operationId: createEvidenceDownloadLink
@@ -2356,6 +2398,11 @@ components:
         - EVIDENCE_UPLOAD_STATE_CONFLICT
         - EVIDENCE_VERIFICATION_FAILED
         - IDEMPOTENCY_KEY_REUSED
+      EvidenceCancelUploadConflict:
+        - EVIDENCE_STALE_VERSION
+        - EVIDENCE_UPLOAD_EXPIRED
+        - EVIDENCE_UPLOAD_STATE_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
       EvidenceNotFoundOrHidden:
         - DEAL_NOT_FOUND
         - EVIDENCE_NOT_FOUND
@@ -3249,6 +3296,17 @@ components:
         from the canonical client request (EVIDENCE_VERIFICATION_FAILED), the
         milestone is not awaiting this submission (EVIDENCE_MILESTONE_CONFLICT), or
         Idempotency-Key was reused for a different request (IDEMPOTENCY_KEY_REUSED).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetail'}
+    EvidenceCancelUploadConflict:
+      description: >
+        The pending upload expired (EVIDENCE_UPLOAD_EXPIRED), is already cancelled
+        or not an active PENDING_UPLOAD / was finalized
+        (EVIDENCE_UPLOAD_STATE_CONFLICT), the supplied expectedEvidenceVersion is
+        stale (EVIDENCE_STALE_VERSION), or Idempotency-Key was reused for a
+        different request (IDEMPOTENCY_KEY_REUSED). Hidden resources reuse
+        EvidenceNotFoundOrHidden; forbidden actors reuse EvidenceUploadForbidden.
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/ProblemDetail'}
@@ -5852,6 +5910,16 @@ components:
           description: Subject to the active server-configured upload limit.
         sha256:
           $ref: '#/components/schemas/Sha256'
+    CancelEvidenceUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedEvidenceVersion]
+      properties:
+        expectedEvidenceVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current evidence submission optimistic-lock version observed by the client.
     AcceptEvidenceRequest:
       type: object
       additionalProperties: false
@@ -5910,6 +5978,12 @@ components:
         canDownload:
           type: boolean
           description: True only when the active legal entity is a Deal participant and the immutable version is available.
+        canCancelUpload:
+          type: boolean
+          description: >
+            Optional actor-aware availability. True only for the seller entity
+            ADMIN/MEMBER while this projection is an active (unexpired, uncancelled)
+            PENDING_UPLOAD. Absent or unknown means false/read-only.
     MilestoneAvailableActions:
       type: object
       additionalProperties: false
@@ -6010,6 +6084,14 @@ components:
           $ref: '#/components/schemas/Sha256'
         expiresAt:
           $ref: '#/components/schemas/UtcTimestamp'
+        cancelledAt:
+          anyOf:
+            - $ref: '#/components/schemas/UtcTimestamp'
+            - type: 'null'
+          description: >
+            Null while the pending upload intent is active. Non-null marks the
+            explicit terminal cancelled intent state; the row remains readable in
+            history, is never currentEvidence, and cannot be finalized.
         createdAt:
           $ref: '#/components/schemas/UtcTimestamp'
         availableActions:
