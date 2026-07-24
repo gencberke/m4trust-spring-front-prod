@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-23
+Last updated: 2026-07-24
 
 ## Phase
 
@@ -140,7 +140,18 @@ P6 is independently accepted for the same exact source SHA. Production Web, Core
 PostgreSQL and versioned private MinIO are live in the existing Railway production
 environment; the resulting controlled-demo state is `RAILWAY_DEMO_READY`. Evidence
 is in `docs/plan/done/review/15p6-implementation-review-handoff.md`.
-Slice 14B remains planning-only.
+Plan 17 Living Fulfillment Experience and Demo-Scoped Simulated Settlement is
+accepted under `docs/plan/done/`. Living fulfillment UI, demo-scoped simulated
+settlement/release, dispute-window eligibility and staging-simulated funding
+merged at `main@693add7`.
+
+Plan 18 Fulfillment and Closure Simplification (18a–18c) is accepted under
+`docs/plan/done/`. Separate `Kapanış` workspace with `SETTLEMENT` lifecycle,
+ratified `evidencePolicy` (schema v3), pending-evidence cancellation and
+PHOTO/JPEG|PNG analysis eligibility merged at `main@47f3d2a`.
+
+Slice 14B planning draft remains reference-only for capabilities not already
+landed by Plan 17/18.
 
 ## Accepted foundations
 
@@ -166,7 +177,11 @@ Slice 14B remains planning-only.
 - Slice 13 Video Analysis is accepted under `docs/plan/done/`.
 - Slice 14A Dispute and Casework Foundation is accepted under
   `docs/plan/done/`.
-- V15–V22 migrations are frozen accepted history; future database changes use
+- Plan 17 Living Fulfillment Experience and Demo-Scoped Simulated Settlement
+  is accepted under `docs/plan/done/`.
+- Plan 18 Fulfillment and Closure Simplification and child plans 18a–18c are
+  accepted under `docs/plan/done/`.
+- V15–V27 migrations are frozen accepted history; future database changes use
   new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
   public OpenAPI foundation exist under `contracts/`.
@@ -194,7 +209,10 @@ Slice 14B remains planning-only.
   document/video terminal routing, immutable canonical advisory history,
   dispute casework with immutable opening evidence/video snapshots,
   party-only authorization and disclosure, append-only comments, explicit
-  acknowledgement/withdrawal, actor-aware lifecycle projection,
+  acknowledgement/withdrawal, actor-aware lifecycle projection including
+  post-completion `SETTLEMENT`, demo-scoped simulated settlement/release with
+  query-first recovery, ratified `evidencePolicy`, pending-evidence
+  cancellation, PHOTO/JPEG|PNG evidence analysis eligibility,
   append-only audit,
   centralized legal-entity authorization, Problem Details, structured logging,
   health probes, and module-cycle checks.
@@ -211,10 +229,13 @@ Slice 14B remains planning-only.
   participants), ratification package creation/approve/reject/history and
   actor-aware funding/payment/reconciliation panels, and a fulfillment panel
   for seller start, direct evidence upload/finalize, history/download, buyer
-  accept/reject, replacement, and terminal state, plus current and historical
-  VIDEO/MP4 advisory analysis panels with queued polling, safe failure/retry,
-  observations/anomalies/warnings, and backend-derived action availability,
-  plus a generated-type-driven party-only dispute panel for open/history,
+  accept/reject, replacement, and terminal state, a distinct `Kapanış` closure
+  workspace with settlement summary and simulated release action, ratified
+  evidence-policy-aware fulfillment UI, plus current and historical VIDEO/MP4
+  and PHOTO/JPEG|PNG advisory analysis panels with queued polling, safe
+  failure/retry, observations/anomalies/warnings, and backend-derived action
+  availability, plus a generated-type-driven party-only dispute panel for
+  open/history,
   snapshot, comment, acknowledge, withdraw, stale recovery and evidence access,
   session-expiry handling, and logout against the real Core API.
 - `infra/` and `scripts/`: local PostgreSQL, RabbitMQ, and MinIO Compose services
@@ -309,33 +330,37 @@ Slice 14B remains planning-only.
 - Production AI capability remains owned and accepted separately by the AI team;
   Slice 15 may report shared-contract compatibility but cannot select or change
   providers, models, workers, images or AI deployment.
-- Slice 14B settlement/release implementation and every later capability in the
-  post-fix roadmap.
+- Broad-production settlement/release, real payment provider behavior, and every
+  later capability in the post-fix roadmap not already accepted via Plan 17/18.
+- Slice 14B planning draft remains non-authorizing reference material.
 
 ## Active work
 
-Slice 15 Railway Demo Reconciliation and Deployment is accepted and archived under
-`docs/plan/done/`. The existing Railway production environment is
-`RAILWAY_DEMO_READY` for exact
-`main@23a4428ad76a5fdcf694dbca83104aca389e826d`. This is not broad-production or
-AI-readiness acceptance. Live fulfillment-evidence smoke remains a no-seed/no-bypass
-deferred risk until an authorized public `ACTIVE + FUNDED` creation path exists.
-Slice 14B and the R2–R7 capability roadmap have no implementation authority.
+No plan in `docs/plan/ready/` currently authorizes implementation. Plan 17 and
+Plan 18 (including 18a–18c) are accepted on `main@47f3d2a`; simulated
+settlement, `Kapanış` closure, `evidencePolicy`, pending-evidence cancellation
+and PHOTO analysis are on `main`. Slice 15 Railway Demo Reconciliation remains
+accepted under `docs/plan/done/`; the controlled-demo deployment posture
+(`RAILWAY_DEMO_READY`) is the accepted production-environment label until a new
+deployment plan updates it. That label is not broad-production or AI-readiness
+acceptance. Slice 14B planning draft and the R2–R7 capability roadmap have no
+implementation authority beyond what Plan 17/18 already landed.
 
 ## Known blockers
 
 No controlled-demo deployment blocker remains. The unavailable native backups and
-accepted first-demo data-loss risk remain recorded under ADR-022 §2.7. Deferred live
-evidence smoke is not a blocker under the 2026-07-23 accepted reconciliation.
-Broad production remains explicitly out of scope.
+accepted first-demo data-loss risk remain recorded under ADR-022 §2.7. Broad
+production remains explicitly out of scope.
 AI-enabled readiness additionally requires compatible evidence from the AI owner;
 its absence cannot be repaired by the main implementer.
 No open 14A/Slice 13 browser acceptance debt remains.
 
 ## Next likely capability
 
-No next implementation slice is authorized. Any move beyond `RAILWAY_DEMO_READY`,
-including broad-production hardening or Slice 14B, requires a new accepted plan.
+No next implementation slice is authorized. Any move beyond the accepted
+`main@47f3d2a` demo scope—including broad-production hardening, real provider
+integration or net-new roadmap slices—requires a new accepted plan in
+`docs/plan/ready/`.
 
 ## Update rule
 

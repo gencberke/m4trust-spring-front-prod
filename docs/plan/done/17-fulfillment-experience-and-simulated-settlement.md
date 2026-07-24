@@ -1,7 +1,9 @@
 # Plan 17 — Living Fulfillment Experience and Demo-Scoped Simulated Settlement
 
-- Status: ready — approved by founder/user on 2026-07-23 (chat directive:
-  "teslimat sekmesini işlevsel ve yaşayan hale getirelim … 14B … planı yaz").
+- Status: done — accepted on main 2026-07-24. Implementation merged at
+  `main@693add7` (Plan 17 A–B4: living fulfillment and simulated settlement).
+  Founder approval recorded 2026-07-23; implementation is on `main`. Plan body
+  preserved for history; no further implementation authority.
 - Baseline: `main@d3a820d` (staging-simulated funding enablement merged; Railway
   staging runs this SHA with profiles `staging,staging-simulated`, payment
   dispatch relay enabled; Railway production remains on `23a4428` with payment

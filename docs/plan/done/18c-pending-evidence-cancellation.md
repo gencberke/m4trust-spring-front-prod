@@ -1,6 +1,8 @@
 # Plan 18C — Pending Evidence Cancellation
 
-- Status: ready — approved as a child of Plan 18 on 2026-07-23.
+- Status: done — accepted on main 2026-07-24. Implementation merged at
+  `main@47f3d2a` (Plan 18 integration). Child of Plan 18; no further
+  implementation authority.
 - Baseline: Plan 18B accepted implementation base.
 - Parent: `18-fulfillment-and-closure-simplification.md`.
 - Scope type: narrow recovery improvement for unfinished upload intents; true

@@ -1,6 +1,8 @@
 # Plan 18A — Deal-Scoped Closure Workspace
 
-- Status: ready — approved as a child of Plan 18 on 2026-07-23.
+- Status: done — accepted on main 2026-07-24. Implementation merged at
+  `main@47f3d2a` (Plan 18 integration). Child of Plan 18; no further
+  implementation authority.
 - Baseline: `main@693add7`.
 - Parent: `18-fulfillment-and-closure-simplification.md`.
 - Scope type: narrow UI/UX reorganization plus authoritative lifecycle

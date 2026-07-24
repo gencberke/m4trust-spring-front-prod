@@ -1,8 +1,9 @@
 # Plan 18 — Fulfillment and Closure Simplification
 
-- Status: ready — founder/user approved on 2026-07-23 through the explicit
-  request to write the minimum-complexity master/sub-plans under `ready/` and
-  the recorded questionnaire decisions below.
+- Status: done — accepted on main 2026-07-24. Implementation merged at
+  `main@47f3d2a` (Plan 18 and PHOTO analysis integration). Child plans 18a–18c
+  included. Founder approval recorded 2026-07-23; implementation is on `main`.
+  Plan body preserved for history; no further implementation authority.
 - Baseline: `main@693add7` (`Plan 17 A–B4` merged; its B5 staging acceptance is
   still a separate prerequisite/debt and is not silently claimed here).
 - Child plans:
