@@ -1,3 +1,5 @@
+> **Not project state.** Gate register and planning evidence only; authoritative accepted state is `docs/plan/CURRENT.md` and `docs/plan/ready|done/`.
+
 # Slice 14B Settlement and Release — Readiness Charter
 
 - Status: active gate register — decision/evidence work only

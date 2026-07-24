@@ -1,3 +1,5 @@
+> **Not project state.** This file is a gated portfolio planning draft only. Authoritative accepted state is `docs/plan/CURRENT.md` and `docs/plan/ready|done/`. Do not treat this document as implementation authority.
+
 # Slice 16+ — Post-Fix Capability Roadmap
 
 - Status: `planning` — gated portfolio plan; not implementation-authorizing
