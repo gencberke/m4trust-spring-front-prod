@@ -55,9 +55,25 @@ Money uses integer `amountMinor` plus an ISO-style three-letter currency code. P
 
 ## Validate locally
 
-From the repository root:
+From the repository root.
+
+**macOS and Linux (recommended — PEP 668 safe):**
+
+```bash
+python3 -m venv contracts/.venv
+source contracts/.venv/bin/activate
+pip install -r contracts/requirements.txt
+python contracts/scripts/validate_contracts.py
+```
+
+Reactivate later with `source contracts/.venv/bin/activate`. Optional repo-root wrapper:
+`./scripts/validate-contracts.sh`.
+
+**Windows (PowerShell):**
 
 ```powershell
+python -m venv contracts\.venv
+contracts\.venv\Scripts\Activate.ps1
 python -m pip install -r contracts/requirements.txt
 python contracts/scripts/validate_contracts.py
 ```

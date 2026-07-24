@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "npm run generate:api && tsc --noEmit",
+    "typecheck:fast": "tsc --noEmit",
     "build": "npm run generate:api && tsc --noEmit && vite build",
     "preview": "vite preview",
     "generate:api": "openapi-typescript ../contracts/openapi/core-api-v1.yaml -o src/generated/core-api.d.ts"
