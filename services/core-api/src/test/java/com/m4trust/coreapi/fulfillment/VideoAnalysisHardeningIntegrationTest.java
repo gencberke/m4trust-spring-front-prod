@@ -347,7 +347,7 @@ class VideoAnalysisHardeningIntegrationTest {
                         .content("{\"expectedEvidenceVersion\": " + evidenceVersion + "}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE"));
-        assertActiveFulfillmentLifecycle();
+        assertActiveSettlementLifecycle();
         assertEquals(0, count("integration_outbox_event"));
     }
 
@@ -389,7 +389,7 @@ class VideoAnalysisHardeningIntegrationTest {
         assertEquals(1, jobCountForEvidence());
         assertEquals("ACCEPTED", evidenceStatus());
         assertEquals("QUEUED", jobStatus(jobId));
-        assertActiveFulfillmentLifecycle();
+        assertActiveSettlementLifecycle();
     }
 
     @Test
@@ -632,12 +632,20 @@ class VideoAnalysisHardeningIntegrationTest {
     }
 
     private void assertActiveFulfillmentLifecycle() throws Exception {
+        assertActiveDealLifecycle("FULFILLMENT");
+    }
+
+    private void assertActiveSettlementLifecycle() throws Exception {
+        assertActiveDealLifecycle("SETTLEMENT");
+    }
+
+    private void assertActiveDealLifecycle(String lifecycle) throws Exception {
         mockMvc.perform(get("/api/v1/deals/" + dealId)
                         .with(user(buyerAdminUserId.toString()))
                         .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"));
+                .andExpect(jsonPath("$.lifecycle").value(lifecycle));
     }
 
     private String uploadIntentRequest() {
