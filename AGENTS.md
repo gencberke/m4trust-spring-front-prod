@@ -8,6 +8,16 @@ accepted ADRs.
 - Speak with the user in Turkish.
 - Task packets and implementer reports are written in English.
 
+## Start here
+
+Cold-start discovery — read these before role-specific files:
+
+- Local bootstrap: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- Light validation map: [`docs/VALIDATION.md`](docs/VALIDATION.md)
+- Project state: [`docs/plan/CURRENT.md`](docs/plan/CURRENT.md)
+- Plan workflow: [`docs/plan/README.md`](docs/plan/README.md)
+- ADRs: [`architecture-decisions/ADR-INDEX.md`](architecture-decisions/ADR-INDEX.md) and [`architecture-decisions/FORBIDDEN.md`](architecture-decisions/FORBIDDEN.md)
+
 ## Read by role
 
 Planner:
