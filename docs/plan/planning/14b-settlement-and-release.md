@@ -1,3 +1,5 @@
+> **Not project state.** This planning draft predates accepted Plan 17 simulated settlement (`docs/plan/done/17-fulfillment-experience-and-simulated-settlement.md`). Authoritative accepted state is `docs/plan/CURRENT.md` and `docs/plan/ready|done/`. Do not treat this document as implementation authority.
+
 # Slice 14B — Settlement and Release
 
 - Status: planning — post-production-fix gated work; not implementation-authorizing

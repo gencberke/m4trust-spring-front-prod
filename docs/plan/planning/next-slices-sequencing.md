@@ -1,3 +1,5 @@
+> **Proje durumu değildir.** Bu dosya Slice 11 sonrası sıralama kararının tarihsel kaydıdır; simulation-only gate (`docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`) ve kabul edilmiş Plan 17 ile yol haritası çerçevesi güncellenmiştir. Otoritatif kabul edilmiş durum `docs/plan/CURRENT.md` ve `docs/plan/ready|done/` altındadır. Bu belgeyi uygulama otoritesi olarak kullanmayın.
+
 # Slice 11 Sonrası İçerik Sıralaması
 
 - Durum: accepted sequencing decision — 20 Temmuz 2026

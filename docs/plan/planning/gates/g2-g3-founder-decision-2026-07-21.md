@@ -1,3 +1,5 @@
+> **Not project state.** Historical gate decision record only; authoritative accepted state is `docs/plan/CURRENT.md` and `docs/plan/ready|done/`.
+
 # G2/G3 Founder Decision Record — 21 July 2026
 
 - Status: `ACCEPTED`

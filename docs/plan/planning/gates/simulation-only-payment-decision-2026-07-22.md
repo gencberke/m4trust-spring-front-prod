@@ -1,3 +1,5 @@
+> **Not project state.** Founder decision input for ADR-014/14B planning; accepted Plan 17 in `docs/plan/done/` is authoritative for settlement implementation. Current project state: `docs/plan/CURRENT.md` and `docs/plan/ready|done/`.
+
 # Simulation-Only Payment and Release Founder Decision — 22 July 2026
 
 - Status: `ACCEPTED`

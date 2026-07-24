@@ -1,3 +1,5 @@
+> **Not project state.** This runbook is a historical planning/execution guide; accepted Plan 17/18 in `docs/plan/done/` supersede its actionable roadmap framing. Authoritative accepted state is `docs/plan/CURRENT.md` and `docs/plan/ready|done/`. Do not treat this document as implementation authority.
+
 # Planner Runbook — Settlement and Release Roadmap
 
 - Status: active planning/execution guide; not accepted project state
