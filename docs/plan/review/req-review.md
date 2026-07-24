@@ -1,12 +1,12 @@
 # Review Request
 Task: PLAN18-PHOTO-INTEGRATION
 Revision: 1
-Plan: docs/plan/ready/18-fulfillment-and-closure-simplification.md
+Plan: docs/plan/done/18-fulfillment-and-closure-simplification.md
 Phases: 18A, 18B, 18C, review remediation and PHOTO analysis input integration
-Status: COMPLETED
+Status: ARCHIVED — merged to main@47f3d2a on 2026-07-24
 Branch: plan/fulfillment-closure-simplification
 Base: main@693add7 + feat/video-analysis-photo-input@af977b6
-Plan completion claim: NO
+Plan completion claim: YES — Plan 18 and children archived under docs/plan/done/
 
 ## Phase outcomes
 - 18A — DONE — SETTLEMENT lifecycle and separate Kapanış workspace
