@@ -1,3 +1,5 @@
+> **Not project state.** This file is informational handoff only. Authoritative accepted state is `docs/plan/CURRENT.md` and `docs/plan/ready|done/`. Do not treat this document as implementation authority.
+
 # AI Integration Observations — Non-Authoritative Handoff
 
 - Status: `informational`

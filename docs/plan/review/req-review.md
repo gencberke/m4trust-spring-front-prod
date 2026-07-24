@@ -1,36 +1,38 @@
 # Review Request
-Task: 17-T01
-Revision: 3
-Plan: docs/plan/ready/17-fulfillment-experience-and-simulated-settlement.md
-Phases: A, B1, B2, B3, B4 (B5 planner-owned; not assigned)
-Status: COMPLETED
-Branch: feat/plan17-fulfillment-settlement
-Base: main@846c16c
-Plan completion claim: NO
+Task: PLAN18-PHOTO-INTEGRATION
+Revision: 1
+Plan: docs/plan/done/18-fulfillment-and-closure-simplification.md
+Phases: 18A, 18B, 18C, review remediation and PHOTO analysis input integration
+Status: ARCHIVED — merged to main@47f3d2a on 2026-07-24
+Branch: plan/fulfillment-closure-simplification
+Base: main@693add7 + feat/video-analysis-photo-input@af977b6
+Plan completion claim: YES — Plan 18 and children archived under docs/plan/done/
 
 ## Phase outcomes
-- A — DONE — living fulfillment: 5s poll, turn banner, feedback, timeline; typecheck+build PASS (`c881019`)
-- B1 — DONE — additive settlement/release OpenAPI, ratification v2 disputeWindowDays 0..365, ADR-014 §2.2 amendment, validator closed sets, generated types; validate_contracts + tsc PASS (`3e550dd`)
-- B2 — DONE — V23 settlement/release migration, payment domain, sandbox release, HTTP, DealDetail projection, focused unit+integration tests PASS (`893b7ec`, `a4bd800`)
-- B3 — DONE — ratification v2 create/read + frontend form/detail; focused tests + typecheck PASS (`66a9426`)
-- B4 — DONE — Kapanış settlement UI with simulated labeling and closure separation; typecheck+build PASS (`b6510a5`)
+- 18A — DONE — SETTLEMENT lifecycle and separate Kapanış workspace
+- 18B — DONE — v3 evidencePolicy, no-file acceptance and compatibility goldens
+- 18C — DONE — V27 pending cancellation behavior and refresh-safe Vazgeç UX
+- Review remediation — DONE — same-key replay, active-pending cardinality,
+  policy-owned completion, strict contract parity and migration assertion fix
+- PHOTO analysis — DONE — strict VIDEO/MP4 or PHOTO/JPEG|PNG Spring, DB and
+  frontend eligibility with ADR/OpenAPI synchronization
+- Integration — DONE — semantic conflicts resolved; migrations ordered
+  V24–V27 and combined focused validation passed
 
 ## Validation
-- Phase A–B4 focused gates — PASS (see prior revision notes)
-- `npm run typecheck` + `npm run build` (B4 re-verify) — PASS
-- Repository-wide suite before B5 — PASS: `validate_contracts.py`; `mvn verify` 406 tests / 0 failures (`9402189`); frontend typecheck+build PASS
-- V23 settlement FK fix: integration-test TRUNCATE lists include `release_dispatch`, `release_operation`, `settlement` (19 classes; `9402189`)
+- Combined contract validator — PASS
+- Combined focused backend set — PASS (66 tests)
+- Frontend typecheck — PASS
+- `git diff --check` — PASS
+- Combined migration order — V24 photo, V25 ratification v3, V26 evidence
+  policy, V27 pending cancellation
 
 ## Decisions needed
 - None
 
 ## Deviation or risk
-- None for implementer-assigned phases A–B4. B5 staging deploy/acceptance remains planner-owned.
-
-## B4 copy checklist (Plan §0.3 / B4)
-- [x] Mandatory label: "Demo simülasyonu — gerçek para hareketi yok"
-- [x] Terminal SIMULATED_SETTLED → "Kapanış (simüle) tamamlandı"
-- [x] Deal COMPLETED distinct from fulfillment COMPLETED
-- [x] No paid/settled/funds-transferred wording; no provider logo
-- [x] Fulfillment accept → "Teslimat tamamlandı — kapanış için Kapanış bölümüne geçin"
-- [x] Server `releaseEligibleAt`; actions from backend only
+- Formal browser acceptance remains planner/user-owned and is not run here.
+- Plan 17 B5 staging acceptance remains separate.
+- Production build/full suite are not run under the coordinator test policy.
+- Railway deployment branch/environment isolation remains an external deploy
+  decision; this integration does not push or deploy.

@@ -23,7 +23,7 @@ class VideoAnalysisEvidenceInputService implements VideoAnalysisEvidenceInputPor
     public Optional<VerifiedSnapshot> findVerifiedSnapshot(UUID evidenceSubmissionId) {
         return evidenceRepository.findById(evidenceSubmissionId)
                 .filter(this::hasVerifiedMetadata)
-                .filter(this::isVideoMp4)
+                .filter(this::isSupportedAnalysisInput)
                 .map(this::toSnapshot);
     }
 
@@ -41,9 +41,13 @@ class VideoAnalysisEvidenceInputService implements VideoAnalysisEvidenceInputPor
         };
     }
 
-    private boolean isVideoMp4(EvidenceSubmission.EvidenceSubmissionRecord submission) {
-        return submission.evidenceType() == EvidenceType.VIDEO
-                && submission.mediaType() == EvidenceMediaType.VIDEO_MP4;
+    private boolean isSupportedAnalysisInput(EvidenceSubmission.EvidenceSubmissionRecord submission) {
+        return switch (submission.evidenceType()) {
+            case VIDEO -> submission.mediaType() == EvidenceMediaType.VIDEO_MP4;
+            case PHOTO -> submission.mediaType() == EvidenceMediaType.IMAGE_JPEG
+                    || submission.mediaType() == EvidenceMediaType.IMAGE_PNG;
+            default -> false;
+        };
     }
 
     private VerifiedSnapshot toSnapshot(EvidenceSubmission.EvidenceSubmissionRecord submission) {

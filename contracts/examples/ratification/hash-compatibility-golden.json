@@ -1,0 +1,54 @@
+{
+  "purpose": "Plan 18B committed deterministic golden gate for RatificationPackageSnapshot contentHash compatibility. Not an AI event schema subject.",
+  "algorithm": "Assembler Jackson serialization → RFC 8785 JCS → UTF-8 SHA-256 lowercase hex. Assert exact canonicalJson bytes and contentHash; do not self-hash generated output.",
+  "inputs": {
+    "dealId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "tenantId": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    "buyerLegalEntityId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "buyerLegalName": "Buyer Legal Entity A.S.",
+    "sellerLegalEntityId": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "sellerLegalName": "Seller Legal Entity A.S.",
+    "ruleSetVersionId": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "documentId": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "dealReference": "DL-18B-GOLDEN",
+    "dealTitle": "Golden ratification snapshot",
+    "ruleSetVersion": 1,
+    "ruleReference": "DELIVERY-001",
+    "ruleDecision": "KEPT",
+    "ruleCategory": "DELIVERY",
+    "ruleTitle": "Delivery window",
+    "ruleDescription": "Goods must arrive within the agreed window.",
+    "structuredValue": {"type": "TEXT", "value": "x"},
+    "legalBasis": null,
+    "legalBasisProvenance": "EXTRACTED",
+    "amountMinor": 150000,
+    "currency": "TRY",
+    "documentObjectVersion": "v1-object",
+    "documentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "disputeWindowDays": 14
+  },
+  "v1": {
+    "schemaVersion": 1,
+    "canonicalJson": "{\"buyer\":{\"legalEntityId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"legalName\":\"Buyer Legal Entity A.S.\"},\"commercialTerms\":{\"amountMinor\":150000,\"currency\":\"TRY\"},\"dealId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"dealReference\":\"DL-18B-GOLDEN\",\"dealTitle\":\"Golden ratification snapshot\",\"document\":{\"documentId\":\"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee\",\"objectVersion\":\"v1-object\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"ruleSet\":{\"ruleSetVersionId\":\"dddddddd-dddd-4ddd-8ddd-dddddddddddd\",\"rules\":[{\"category\":\"DELIVERY\",\"decision\":\"KEPT\",\"description\":\"Goods must arrive within the agreed window.\",\"legalBasis\":null,\"legalBasisProvenance\":\"EXTRACTED\",\"ruleReference\":\"DELIVERY-001\",\"structuredValue\":{\"type\":\"TEXT\",\"value\":\"x\"},\"title\":\"Delivery window\"}],\"version\":1},\"schemaVersion\":1,\"seller\":{\"legalEntityId\":\"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\"legalName\":\"Seller Legal Entity A.S.\"}}",
+    "contentHash": "91d3d1024566ff5ea7b6db21fdacf77e5236e2dae428523f07f1c029213a74f7",
+    "canonicalUtf8Length": 927
+  },
+  "v2": {
+    "schemaVersion": 2,
+    "canonicalJson": "{\"buyer\":{\"legalEntityId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"legalName\":\"Buyer Legal Entity A.S.\"},\"commercialTerms\":{\"amountMinor\":150000,\"currency\":\"TRY\"},\"dealId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"dealReference\":\"DL-18B-GOLDEN\",\"dealTitle\":\"Golden ratification snapshot\",\"disputeWindowDays\":14,\"document\":{\"documentId\":\"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee\",\"objectVersion\":\"v1-object\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"ruleSet\":{\"ruleSetVersionId\":\"dddddddd-dddd-4ddd-8ddd-dddddddddddd\",\"rules\":[{\"category\":\"DELIVERY\",\"decision\":\"KEPT\",\"description\":\"Goods must arrive within the agreed window.\",\"legalBasis\":null,\"legalBasisProvenance\":\"EXTRACTED\",\"ruleReference\":\"DELIVERY-001\",\"structuredValue\":{\"type\":\"TEXT\",\"value\":\"x\"},\"title\":\"Delivery window\"}],\"version\":1},\"schemaVersion\":2,\"seller\":{\"legalEntityId\":\"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\"legalName\":\"Seller Legal Entity A.S.\"}}",
+    "contentHash": "7a1cbdb0db570a5ea7561633d34473d3c8b44ceb6922328185ffdb1492820d35",
+    "canonicalUtf8Length": 950
+  },
+  "v3": {
+    "schemaVersion": 3,
+    "evidencePolicy": "NOT_REQUIRED",
+    "canonicalJson": "{\"buyer\":{\"legalEntityId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"legalName\":\"Buyer Legal Entity A.S.\"},\"commercialTerms\":{\"amountMinor\":150000,\"currency\":\"TRY\"},\"dealId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"dealReference\":\"DL-18B-GOLDEN\",\"dealTitle\":\"Golden ratification snapshot\",\"disputeWindowDays\":14,\"document\":{\"documentId\":\"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee\",\"objectVersion\":\"v1-object\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"evidencePolicy\":\"NOT_REQUIRED\",\"ruleSet\":{\"ruleSetVersionId\":\"dddddddd-dddd-4ddd-8ddd-dddddddddddd\",\"rules\":[{\"category\":\"DELIVERY\",\"decision\":\"KEPT\",\"description\":\"Goods must arrive within the agreed window.\",\"legalBasis\":null,\"legalBasisProvenance\":\"EXTRACTED\",\"ruleReference\":\"DELIVERY-001\",\"structuredValue\":{\"type\":\"TEXT\",\"value\":\"x\"},\"title\":\"Delivery window\"}],\"version\":1},\"schemaVersion\":3,\"seller\":{\"legalEntityId\":\"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\"legalName\":\"Seller Legal Entity A.S.\"}}",
+    "contentHash": "809348aa982ad56135c7cba93b841f5ebea3655da03824a0fe58cfea48938fc0",
+    "canonicalUtf8Length": 982
+  },
+  "v3Required": {
+    "schemaVersion": 3,
+    "evidencePolicy": "REQUIRED",
+    "contentHash": "ffe9820d85111d4ccfdc1a329f1358c2e2c75dd1a7c426b79df8dfd9f511e53f"
+  }
+}

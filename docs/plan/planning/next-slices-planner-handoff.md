@@ -1,3 +1,5 @@
+> **Proje durumu değildir.** Bu dosya 14A/14B sonrası planlama aktarım taslağıdır; kabul edilmiş Plan 17 (simulated settlement) ile yol haritası çerçevesi güncellenmiştir. Otoritatif kabul edilmiş durum `docs/plan/CURRENT.md` ve `docs/plan/ready|done/` altındadır. Bu belgeyi uygulama otoritesi olarak kullanmayın.
+
 # Planner Handoff — Settlement/Release Roadmap
 
 Hazırlanma tarihi: 21 Temmuz 2026

@@ -57,9 +57,9 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | Ratification commercial terms | `amountMinor` + `currency`, explicit teyit, dedicated immutable snapshot, RFC 8785 hash | ADR-010 §2.1 |
 | Funding V1 | ACTIVE Deal, tek plan/unit, buyer ADMIN, sandbox/polling-first, async `202 + Location` | ADR-010 §2.2–§2.5 |
 | Unknown payment | Failure veya yeni charge değil; aynı operation için reconciliation | ADR-003 §21; ADR-010 §2.3–§2.4 |
-| Fulfillment V1 | `ACTIVE + FUNDED`, tek fulfillment/primary milestone; seller ADMIN/MEMBER submit, buyer ADMIN review | ADR-011 §2.1–§2.3 |
-| Fulfillment completion | Manual buyer ADMIN kararı; Deal ACTIVE kalır, release/settlement/provider side effect yok | ADR-011 §2.5 |
-| Video Analysis V1 | Current finalized VIDEO/MP4 için buyer ADMIN explicit request/retry; participant read; sonuç advisory-only | ADR-012 §2.1–§2.5 |
+| Fulfillment V1 | `ACTIVE + FUNDED`, tek fulfillment/primary milestone; seller ADMIN/MEMBER submit, buyer ADMIN review; ratified `REQUIRED`/`NOT_REQUIRED` evidence policy (v1/v2 → `REQUIRED`); unfinished `PENDING_UPLOAD` cancel via non-null `cancelledAt` (not generic soft-delete) | ADR-011 §2.1–§2.3, §2.5 amendment |
+| Fulfillment completion | Manual buyer ADMIN kararı (file accept veya `NOT_REQUIRED` no-file accept); Deal ACTIVE kalır, release/settlement/provider side effect yok; start otomatik complete etmez | ADR-011 §2.5 |
+| Video Analysis V1 | Current finalized VIDEO/MP4 veya PHOTO JPEG/PNG için buyer ADMIN explicit request/retry; participant read; sonuç advisory-only | ADR-012 §2.1–§2.5 |
 | Dispute/Casework V1 | ACTIVE + started fulfillment; buyer/seller ADMIN open, party users read/comment, counterparty ADMIN acknowledge, opener ADMIN withdraw | ADR-013 §2.1–§2.3 |
 | Dispute disclosure | Yalnız buyer/seller; diğer participant casework ve actor-aware DISPUTE lifecycle'ını göremez | ADR-013 §2.3, §2.8 |
 | Transaction | Mutation + audit aynı transaction; accepted operation event/dispatch tanımlıyorsa outbox da aynı transaction | ADR-003 §24; ADR-015 §2.2 |
@@ -137,7 +137,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | account invitation / password reset / Postmark | ADR-017; ADR-022 | Controlled demo mevcut auth'u korur; invite/reset/Postmark broad-production hardening'e ertelenmiştir |
 | malware / quarantine / GuardDuty | ADR-018; ADR-022 | Controlled demo scan iddiası taşımaz ve yalnız demo verisi kullanır; broad production clean gate ertelenmiştir |
 | AI provider / model / worker internals | ADR-019 §§2.1–2.2 | AI owner kararıdır; main ekip yalnız shared-contract uyumu ve Spring boundary'sini yönetir, öneri/uyumsuzluk raporlar |
-| fulfillment / evidence | ADR-003 §13, §22; ADR-011; ADR-022 §2.10 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review; Railway canlı smoke yalnız meşru `ACTIVE + FUNDED` yolu varsa, seed/bypass yok |
+| fulfillment / evidence | ADR-003 §13, §22; ADR-011; ADR-022 §2.10 | Tek milestone V1, direct-storage evidence, seller submit + buyer ADMIN manual review (veya ratified `NOT_REQUIRED` no-file accept); Railway canlı smoke yalnız meşru `ACTIVE + FUNDED` yolu varsa, seed/bypass yok |
 | video analysis V1 | ADR-002 §9–§10; ADR-003 §22; ADR-012 | Evidence-bound job/result history; buyer ADMIN request, participant read, advisory-only |
 | object storage | ADR-001 §6; ADR-007 §14; ADR-018; ADR-022 | Controlled demo: Railway MinIO, private/versioned bucket ve presigned exact-version; broad production scan gate ertelenmiştir |
 | document upload | ADR-001 §6; ADR-006 §49–50 | Spring upload binary proxy'si değil |

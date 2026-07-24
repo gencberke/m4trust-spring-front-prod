@@ -104,7 +104,8 @@ class RatificationPackageReadService {
             RatificationRepository.PackageRecord packageRecord) {
         try {
             Integer storedSchemaVersion = packageRecord.snapshotSchemaVersion();
-            if (storedSchemaVersion == null || (storedSchemaVersion != 1 && storedSchemaVersion != 2)
+            if (storedSchemaVersion == null
+                    || (storedSchemaVersion != 1 && storedSchemaVersion != 2 && storedSchemaVersion != 3)
                     || !packageRecord.contentHash().matches("[a-f0-9]{64}")) {
                 throw corruption();
             }
@@ -117,13 +118,25 @@ class RatificationPackageReadService {
                 throw corruption();
             }
             if (storedSchemaVersion == 1) {
-                if (snapshot.disputeWindowDays() != null) {
+                if (snapshot.disputeWindowDays() != null || snapshot.evidencePolicy() != null) {
                     throw corruption();
                 }
-            } else if (snapshot.disputeWindowDays() == null
-                    || snapshot.disputeWindowDays() < 0
-                    || snapshot.disputeWindowDays() > 365) {
-                throw corruption();
+            } else if (storedSchemaVersion == 2) {
+                if (snapshot.disputeWindowDays() == null
+                        || snapshot.disputeWindowDays() < 0
+                        || snapshot.disputeWindowDays() > 365
+                        || snapshot.evidencePolicy() != null) {
+                    throw corruption();
+                }
+            } else {
+                if (snapshot.disputeWindowDays() == null
+                        || snapshot.disputeWindowDays() < 0
+                        || snapshot.disputeWindowDays() > 365
+                        || snapshot.evidencePolicy() == null
+                        || (!"REQUIRED".equals(snapshot.evidencePolicy())
+                                && !"NOT_REQUIRED".equals(snapshot.evidencePolicy()))) {
+                    throw corruption();
+                }
             }
             return snapshot;
         } catch (Exception exception) {

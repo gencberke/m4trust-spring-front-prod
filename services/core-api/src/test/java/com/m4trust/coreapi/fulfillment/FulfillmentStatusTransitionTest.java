@@ -16,7 +16,7 @@ class FulfillmentStatusTransitionTest {
     void fulfillmentTransitionsToReviewRequiredAndBackToEvidenceRequired() {
         Fulfillment fulfillment = Fulfillment.create(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), NOW);
+                UUID.randomUUID(), EvidencePolicy.REQUIRED, NOW);
         assertEquals(FulfillmentStatus.IN_PROGRESS, fulfillment.status());
         fulfillment.moveToEvidenceRequired(NOW);
         fulfillment.moveToReviewRequired(NOW);
@@ -29,7 +29,7 @@ class FulfillmentStatusTransitionTest {
     void milestoneAcceptMovesEverythingToCompleted() {
         Fulfillment fulfillment = Fulfillment.create(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), NOW);
+                UUID.randomUUID(), EvidencePolicy.REQUIRED, NOW);
         Milestone milestone = Milestone.create(
                 UUID.randomUUID(), fulfillment.id(), fulfillment.dealId(),
                 "Primary", null, NOW);
@@ -44,10 +44,46 @@ class FulfillmentStatusTransitionTest {
     }
 
     @Test
-    void cannotCompleteMilestoneFromInProgress() {
+    void notRequiredPathCompletesFromInProgress() {
+        Fulfillment fulfillment = Fulfillment.create(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), EvidencePolicy.NOT_REQUIRED, NOW);
+        Milestone milestone = Milestone.create(
+                UUID.randomUUID(), fulfillment.id(), fulfillment.dealId(),
+                "Primary", null, NOW);
+        milestone.moveToCompleted(NOW);
+        fulfillment.moveToCompleted(NOW);
+        assertEquals(FulfillmentStatus.COMPLETED, fulfillment.status());
+        assertEquals(FulfillmentStatus.COMPLETED, milestone.status());
+        assertEquals(NOW, fulfillment.completedAt());
+    }
+
+    @Test
+    void requiredPolicyRejectsInProgressToCompleted() {
+        Fulfillment fulfillment = Fulfillment.create(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), EvidencePolicy.REQUIRED, NOW);
+        assertThrows(IllegalStateException.class, () -> fulfillment.moveToCompleted(NOW));
+        assertEquals(FulfillmentStatus.IN_PROGRESS, fulfillment.status());
+    }
+
+    @Test
+    void requiredPolicyStillCompletesFromReviewRequired() {
+        Fulfillment fulfillment = Fulfillment.create(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), EvidencePolicy.REQUIRED, NOW);
+        fulfillment.moveToEvidenceRequired(NOW);
+        fulfillment.moveToReviewRequired(NOW);
+        fulfillment.moveToCompleted(NOW);
+        assertEquals(FulfillmentStatus.COMPLETED, fulfillment.status());
+    }
+
+    @Test
+    void cannotCompleteMilestoneFromEvidenceRequired() {
         Milestone milestone = Milestone.create(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 "Primary", null, NOW);
+        milestone.moveToEvidenceRequired(NOW);
         assertThrows(IllegalStateException.class,
                 () -> milestone.moveToCompleted(NOW));
     }

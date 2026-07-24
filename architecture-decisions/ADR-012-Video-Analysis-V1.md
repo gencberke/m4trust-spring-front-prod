@@ -45,7 +45,8 @@ frontend behavior. They must be accepted before implementation starts.
 - V1 video analysis is an explicit user action. Evidence finalize never creates
   an AI job automatically.
 - The sole subject is a Slice 12 `EvidenceSubmission` whose immutable finalized
-  metadata has both `evidenceType = VIDEO` and `mediaType = video/mp4`.
+  metadata is either `evidenceType = VIDEO` with `mediaType = video/mp4`, or
+  `evidenceType = PHOTO` with `mediaType = image/jpeg` or `image/png`.
 - A new request is eligible only while that submission is the milestone's
   current `SUBMITTED` evidence and fulfillment is `REVIEW_REQUIRED`.
 - Client input never supplies object identity, object version, hash, size,
@@ -185,9 +186,14 @@ work remain outside this decision.
 This ADR may move to `Accepted` only when human review approves:
 
 1. buyer `ADMIN` as the sole request/retry actor;
-2. explicit request on current `SUBMITTED` VIDEO/MP4 evidence only;
+2. explicit request on current `SUBMITTED` VIDEO/MP4 or PHOTO/JPEG|PNG evidence only;
 3. one active job, immutable result history, and new-job retry after failure;
 4. no separate review/casework item and no gating of manual accept/reject;
 5. the no-change mapping to the committed video-analysis v1 contracts; and
 6. the fulfillment ownership, transaction, lock-order, and no-side-effect
    boundaries above.
+
+**Amendment (2026-07-23):** PHOTO evidence with `image/jpeg` or `image/png` is
+accepted as a single-frame analysis input with the same OBJECT_COUNT advisory
+semantics as VIDEO/MP4. No side-effect, actor, job-cardinality, or messaging
+contract changes. The AI worker owner already supports JPEG/PNG for this path.

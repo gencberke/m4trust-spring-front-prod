@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 /**
  * Wire shape of {@code CreateRatificationPackageRequest} (OpenAPI). Initiator
@@ -24,7 +25,11 @@ record CreateRatificationPackageHttpRequest(
 
         @Min(value = 0, message = "disputeWindowDays must be between 0 and 365.")
         @Max(value = 365, message = "disputeWindowDays must be between 0 and 365.")
-        Integer disputeWindowDays) {
+        Integer disputeWindowDays,
+
+        @Size(max = 32, message = "evidencePolicy is invalid.")
+        @Pattern(regexp = "REQUIRED|NOT_REQUIRED", message = "evidencePolicy must be REQUIRED or NOT_REQUIRED.")
+        String evidencePolicy) {
 
     record CommercialTerms(
             @NotNull(message = "amountMinor is required.")

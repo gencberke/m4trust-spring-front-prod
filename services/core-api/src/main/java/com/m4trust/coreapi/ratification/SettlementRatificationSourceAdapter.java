@@ -11,7 +11,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Settlement-owned ratification read boundary that accepts schema v2 snapshots
+ * Settlement-owned ratification read boundary that accepts schema v2/v3 snapshots
  * with disputeWindowDays without weakening the dedicated package read path.
  */
 @Service
@@ -40,7 +40,7 @@ class SettlementRatificationSourceAdapter implements SettlementSourcePorts.Ratif
             try {
                 JsonNode raw = json.readTree(record.canonicalSnapshot());
                 int schemaVersion = raw.path("schemaVersion").asInt(0);
-                if (schemaVersion == 2 && raw.hasNonNull("disputeWindowDays")) {
+                if ((schemaVersion == 2 || schemaVersion == 3) && raw.hasNonNull("disputeWindowDays")) {
                     disputeWindowDays = raw.get("disputeWindowDays").asInt();
                 }
                 return new SettlementSourcePorts.RatificationSnapshot(schemaVersion, record.status().name(),

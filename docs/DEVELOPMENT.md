@@ -1,7 +1,9 @@
 # Yerel geliştirme rehberi
 
-Bu rehber mevcut monorepo yerleşimini ve Windows/PowerShell başlangıç sırasını
-özetler. Ayrıntılı yapılandırma için ilgili bileşenin kendi rehberini kullanın.
+Bu rehber mevcut monorepo yerleşimini ve yerel başlangıç sırasını özetler.
+Komut örnekleri **bash/zsh** (macOS/Linux) ve **PowerShell** (Windows) için
+verilir; rehber yalnız Windows'a özel değildir. Ayrıntılı yapılandırma için
+ilgili bileşenin kendi rehberini kullanın.
 
 ## Monorepo yerleşimi
 
@@ -25,47 +27,84 @@ Bileşen rehberleri:
 - [Contract'lar](../contracts/README.md)
 - [Mock AI Worker](../tools/mock-ai-worker/README.md)
 - [Moka HTTP Emulator](../tools/moka-emulator/README.md)
-- [Tamamlanmış Slice 0 planı](plan/done/00-platform-foundation.md)
-- [Tamamlanmış Slice 1 planı](plan/done/01-authentication.md)
-- [Tamamlanmış Slice 2 planı](plan/done/02-organization-and-membership.md)
-- [Tamamlanmış Slice 3 planı](plan/done/03-deal-creation-and-listing.md)
-- [Tamamlanmış Slice 3.9 hardening planı](plan/done/03.9-hardening-and-decisions.md)
-- [Tamamlanmış Slice 4 planı](plan/done/04-deal-invitations-and-participation.md)
-- [Tamamlanmış Slice 5 planı](plan/done/05-deal-parties-and-activation.md)
-- [Tamamlanmış Slice 6 planı](plan/done/06-document-upload.md)
-- [Tamamlanmış Slice 8 planı](plan/done/08-ai-document-extraction.md)
-- [Tamamlanmış Slice 7 staging planı](plan/done/07-staging-deployment.md)
-- [Tamamlanmış Slice 9 manual review planı](plan/done/09-manual-review-and-ruleset.md)
-- [Tamamlanmış Slice 10 ratification planı](plan/done/10-ratification.md)
-- [Tamamlanmış Slice 11 funding foundation planı](plan/done/11-funding-and-payment.md)
-- [Tamamlanmış Slice 11B-A Moka provider foundation planı](plan/done/11b-a-moka-provider-foundation.md)
-- [Tamamlanmış Slice 12 fulfillment planı](plan/done/12-fulfillment-and-evidence.md)
-- [Tamamlanmış Slice 13 video analysis planı](plan/done/13-video-analysis.md)
-- [Tamamlanmış Slice 14A dispute/casework planı](plan/done/14a-dispute-and-casework-foundation.md)
-- [Superseded Slice 11B-B gerçek Moka/G1 taslağı](plan/planning/11b-b-moka-staging-and-g1.md)
-- [Planlanan Slice 14B settlement/release planı](plan/planning/14b-settlement-and-release.md)
-- [Kabul edilmiş simulation-only payment/release kararı](plan/planning/gates/simulation-only-payment-decision-2026-07-22.md)
+- [Tamamlanmış slice planları](plan/done/) ve [planlama notları](plan/planning/)
+
+## Hızlı başlangıç
+
+Repository kökünden bash/zsh:
+
+```bash
+./scripts/dev-up.sh
+```
+
+PowerShell kullanıcıları aynı Compose komutunu doğrudan çalıştırabilir; ayrıntılar
+[Yerel altyapı](../infra/README.md) rehberindedir.
 
 ## Slice 8 yerel analiz akışı
 
 PostgreSQL, RabbitMQ, MinIO ve local-only Mock AI Worker'ı repository kökünden
 başlatın:
 
-```powershell
-docker compose --project-name m4trust-local --file .\infra\compose.yaml --profile mock-ai up --detach --build --wait
+```bash
+docker compose --project-name m4trust-local --file infra/compose.yaml --profile mock-ai up --detach --build
 ```
 
-Core API'yi ayrı bir terminalde çalıştırın:
+```powershell
+docker compose --project-name m4trust-local --file .\infra\compose.yaml --profile mock-ai up --detach --build
+```
+
+`docker compose ... --wait` kullanmayın veya çıkış koduna güvenmeyin:
+`minio-bootstrap` tek seferlik bir container olduğu için `--wait` sıfır dışı
+çıkabilir; asıl doğrulama `docker compose ps` ile postgres, rabbitmq ve minio
+servislerinin **healthy** olduğunu görmektir:
+
+```bash
+docker compose --project-name m4trust-local --file infra/compose.yaml ps
+```
+
+Core API'yi ayrı bir terminalde çalıştırın. Yerel geliştirmede `./mvnw clean
+spring-boot:run` tercih edin; eski `target/` derlemesi `ClassNotFoundException`
+riski taşır.
+
+Temel yerel profil (`local`):
+
+```bash
+cd services/core-api
+SPRING_PROFILES_ACTIVE=local ./mvnw clean spring-boot:run
+```
 
 ```powershell
 Set-Location .\services\core-api
 $env:SPRING_PROFILES_ACTIVE = "local"
-.\mvnw.cmd spring-boot:run
+.\mvnw.cmd clean spring-boot:run
 ```
 
-Frontend'i ayrı bir terminalde çalıştırın:
+Funding/settlement demo veya simulated payment davranışı gerektiğinde
+`local-sandbox` profilini ekleyin:
+
+```bash
+SPRING_PROFILES_ACTIVE=local,local-sandbox ./mvnw clean spring-boot:run
+```
 
 ```powershell
+$env:SPRING_PROFILES_ACTIVE = "local,local-sandbox"
+.\mvnw.cmd clean spring-boot:run
+```
+
+Frontend'i ayrı bir terminalde çalıştırın. Önce `frontend/.env.example`
+dosyasını `frontend/.env` olarak kopyalayın ve [Frontend rehberindeki](../frontend/README.md)
+`CORE_API_PROXY_TARGET` değerini ayarlayın (varsayılan: `http://127.0.0.1:8080`).
+
+```bash
+cp frontend/.env.example frontend/.env
+cd frontend
+npm ci
+npm run generate:api
+npm run dev
+```
+
+```powershell
+Copy-Item .\frontend\.env.example .\frontend\.env
 Set-Location .\frontend
 npm ci
 npm run generate:api
@@ -78,6 +117,20 @@ başarı, retryable failure ve duplicate senaryoları ile yerel presigned-downlo
 köprüsünün ayrıntıları [Mock AI Worker rehberindedir](../tools/mock-ai-worker/README.md).
 
 Slice 8 doğrulama komutları:
+
+```bash
+python contracts/scripts/validate_contracts.py
+
+cd services/core-api
+./mvnw verify
+
+cd ../../frontend
+npm run typecheck
+npm run build
+
+cd ..
+PYTHONPATH=tools/mock-ai-worker/src python -m pytest tools/mock-ai-worker/tests
+```
 
 ```powershell
 python contracts/scripts/validate_contracts.py

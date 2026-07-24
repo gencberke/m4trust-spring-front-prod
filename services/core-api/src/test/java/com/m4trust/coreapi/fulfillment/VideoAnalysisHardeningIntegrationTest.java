@@ -173,8 +173,8 @@ class VideoAnalysisHardeningIntegrationTest {
         seedDeal(dealId, buyerAdminEntityId, sellerAdminEntityId, packageId, "DL-0000000001");
         seedFunding(dealId, packageId);
         jdbc.update("""
-                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'REVIEW_REQUIRED', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO fulfillment (id, deal_id, tenant_id, source_package_id, status, evidence_policy, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'REVIEW_REQUIRED', 'REQUIRED', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, fulfillmentId, dealId, tenantId, packageId);
         jdbc.update("""
                 INSERT INTO fulfillment_milestone (id, fulfillment_id, deal_id, title, status, version, created_at, updated_at)
@@ -347,7 +347,7 @@ class VideoAnalysisHardeningIntegrationTest {
                         .content("{\"expectedEvidenceVersion\": " + evidenceVersion + "}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE"));
-        assertActiveFulfillmentLifecycle();
+        assertActiveSettlementLifecycle();
         assertEquals(0, count("integration_outbox_event"));
     }
 
@@ -389,7 +389,7 @@ class VideoAnalysisHardeningIntegrationTest {
         assertEquals(1, jobCountForEvidence());
         assertEquals("ACCEPTED", evidenceStatus());
         assertEquals("QUEUED", jobStatus(jobId));
-        assertActiveFulfillmentLifecycle();
+        assertActiveSettlementLifecycle();
     }
 
     @Test
@@ -632,12 +632,20 @@ class VideoAnalysisHardeningIntegrationTest {
     }
 
     private void assertActiveFulfillmentLifecycle() throws Exception {
+        assertActiveDealLifecycle("FULFILLMENT");
+    }
+
+    private void assertActiveSettlementLifecycle() throws Exception {
+        assertActiveDealLifecycle("SETTLEMENT");
+    }
+
+    private void assertActiveDealLifecycle(String lifecycle) throws Exception {
         mockMvc.perform(get("/api/v1/deals/" + dealId)
                         .with(user(buyerAdminUserId.toString()))
                         .header(LEGAL_ENTITY_HEADER, buyerAdminEntityId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"));
+                .andExpect(jsonPath("$.lifecycle").value(lifecycle));
     }
 
     private String uploadIntentRequest() {

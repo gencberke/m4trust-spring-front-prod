@@ -5,12 +5,15 @@ import type { DealDetail } from "../deals/dealApi";
 import { dealDetailQueryKey } from "../deals/dealQueries";
 import {
   acceptEvidence,
+  acceptFulfillmentWithoutEvidence,
+  cancelEvidenceUpload,
   createEvidenceDownloadLink,
   createEvidenceUploadIntent,
   finalizeEvidenceUpload,
   rejectEvidence,
   startFulfillment,
   type EvidenceMediaType,
+  type EvidencePolicy,
   type EvidenceSubmission,
   type EvidenceType,
   type EvidenceUploadIntent,
@@ -87,20 +90,53 @@ function fulfillmentStatusLabel(status: string): string {
   return FULFILLMENT_STATUS_LABELS[status] ?? status;
 }
 
-function evidenceStatusLabel(status: string): string {
-  return EVIDENCE_STATUS_LABELS[status] ?? status;
+function evidenceStatusLabel(submission: EvidenceSubmission): string {
+  if (submission.status === "PENDING_UPLOAD" && submission.cancelledAt) {
+    return "Yükleme iptal edildi";
+  }
+  return EVIDENCE_STATUS_LABELS[submission.status] ?? submission.status;
+}
+
+function isCancelledPending(submission: EvidenceSubmission): boolean {
+  return submission.status === "PENDING_UPLOAD" && Boolean(submission.cancelledAt);
+}
+
+/** Backend-projected only — never invent cancel eligibility from local status. */
+function canCancelEvidenceUpload(submission: EvidenceSubmission | undefined): boolean {
+  return submission?.availableActions.canCancelUpload === true;
+}
+
+/**
+ * Active pending cancel target from currentEvidence or history.
+ * Prefers currentEvidence when both expose canCancelUpload.
+ */
+function findCancellablePendingEvidence(
+  currentEvidence: EvidenceSubmission | null | undefined,
+  history: readonly EvidenceSubmission[] | undefined,
+): EvidenceSubmission | undefined {
+  if (canCancelEvidenceUpload(currentEvidence ?? undefined)) {
+    return currentEvidence!;
+  }
+  return history?.find((submission) => canCancelEvidenceUpload(submission));
 }
 
 function evidenceTypeLabel(type: string): string {
   return EVIDENCE_TYPE_LABELS[type] ?? type;
 }
 
-function isVideoMp4Evidence(submission: EvidenceSubmission): boolean {
-  return submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4";
+function isAnalysisEligibleEvidence(submission: EvidenceSubmission): boolean {
+  if (submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4") {
+    return true;
+  }
+  return submission.evidenceType === "PHOTO"
+    && (submission.mediaType === "image/jpeg" || submission.mediaType === "image/png");
 }
 
 /** Chronological event time for timeline ordering — backend status timestamps only. */
 function evidenceEventAt(submission: EvidenceSubmission): string {
+  if (submission.status === "PENDING_UPLOAD" && submission.cancelledAt) {
+    return submission.cancelledAt;
+  }
   if (submission.status === "ACCEPTED" && submission.acceptedAt) {
     return submission.acceptedAt;
   }
@@ -127,23 +163,41 @@ function sortEvidenceChronologically(
   });
 }
 
+const EVIDENCE_POLICY_LABELS: Record<EvidencePolicy, string> = {
+  REQUIRED: "Kanıt gerekli",
+  NOT_REQUIRED: "Kanıt gerekli değil",
+};
+
 /**
  * Whose-turn copy derived only from backend availableActions + status.
  * Frontend invents no eligibility rule.
  */
 function deriveTurnBanner(input: {
   status: string | undefined;
+  evidencePolicy: EvidencePolicy | undefined;
   canStart: boolean;
   canUpload: boolean;
   canAccept: boolean;
   canReject: boolean;
+  canAcceptWithoutEvidence: boolean;
 }): string | undefined {
-  const { status, canStart, canUpload, canAccept, canReject } = input;
+  const {
+    status,
+    evidencePolicy,
+    canStart,
+    canUpload,
+    canAccept,
+    canReject,
+    canAcceptWithoutEvidence,
+  } = input;
   if (!status || status === "COMPLETED" || status === "CANCELLED") {
     return undefined;
   }
   if (canStart) {
     return "Sıra sizde: teslimatı başlatın";
+  }
+  if (canAcceptWithoutEvidence) {
+    return "Sıra sizde: teslimatı kanıtsız kabul edin";
   }
   if (canUpload) {
     return "Sıra sizde: teslimat kanıtı yükleyin";
@@ -153,6 +207,9 @@ function deriveTurnBanner(input: {
   }
   if (status === "REVIEW_REQUIRED") {
     return "Sıra karşı tarafta: alıcı kanıtı inceliyor";
+  }
+  if (evidencePolicy === "NOT_REQUIRED" && status === "IN_PROGRESS") {
+    return "Alıcı onayını bekliyor: teslimat kanıtsız kabul edilecek";
   }
   if (status === "EVIDENCE_REQUIRED" || status === "IN_PROGRESS") {
     return "Sıra karşı tarafta: satıcı kanıt yüklüyor";
@@ -205,13 +262,22 @@ interface Props {
   deal: DealDetail;
   legalEntityId: string;
   readOnly?: boolean;
+  onNavigateToClosure?: () => void;
 }
 
-export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: Props) {
+export function DealFulfillmentPanel({
+  deal,
+  legalEntityId,
+  readOnly = false,
+  onNavigateToClosure,
+}: Props) {
   const queryClient = useQueryClient();
   const startKeyRef = useRef<string | undefined>(undefined);
   const finalizeKeyRef = useRef<string | undefined>(undefined);
+  const cancelKeyRef = useRef<string | undefined>(undefined);
+  const cancelInFlightRef = useRef(false);
   const reviewKeyRef = useRef<string | undefined>(undefined);
+  const acceptWithoutEvidenceKeyRef = useRef<string | undefined>(undefined);
   const attemptIdRef = useRef(0);
 
   const fulfillmentId = deal.fulfillment?.fulfillmentId;
@@ -229,6 +295,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
   const [downloadingId, setDownloadingId] = useState<string>();
   const [rejectionReason, setRejectionReason] = useState("");
   const [reviewError, setReviewError] = useState<string>();
+  const [cancelError, setCancelError] = useState<string>();
 
   const isUploadBusy = BUSY_STAGES.includes(uploadState.stage);
 
@@ -253,8 +320,27 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
     finalizeKeyRef.current = freshIdempotencyKey();
   }
 
+  function ensureCancelKey() {
+    if (!cancelKeyRef.current) {
+      cancelKeyRef.current = freshIdempotencyKey();
+    }
+    return cancelKeyRef.current;
+  }
+
+  function clearCancelKey() {
+    cancelKeyRef.current = undefined;
+  }
+
+  function resetCancelKey() {
+    cancelKeyRef.current = freshIdempotencyKey();
+  }
+
   function resetReviewKey() {
     reviewKeyRef.current = freshIdempotencyKey();
+  }
+
+  function resetAcceptWithoutEvidenceKey() {
+    acceptWithoutEvidenceKeyRef.current = freshIdempotencyKey();
   }
 
   const startMutation = useMutation({
@@ -440,6 +526,69 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
     void createIntentAndUpload(file, evidenceType, mediaType, sha256, attemptId);
   }
 
+  const cancelMutation = useMutation({
+    mutationFn: (evidence: EvidenceSubmission) =>
+      cancelEvidenceUpload(
+        legalEntityId,
+        deal.id,
+        evidence.id,
+        { expectedEvidenceVersion: evidence.version },
+        ensureCancelKey(),
+      ),
+    onSuccess: () => {
+      clearCancelKey();
+      setCancelError(undefined);
+      setUploadState({ stage: "idle" });
+      refreshAfterMutation();
+    },
+    onError: (error) => {
+      if (shouldResetFulfillmentIdempotencyKey(error, "upload")) {
+        resetCancelKey();
+        refreshAfterMutation();
+      }
+      const message = getFulfillmentErrorMessage(error);
+      setCancelError(message);
+      setUploadState((previous) =>
+        previous.stage === "failed"
+          ? { ...previous, errorMessage: message }
+          : previous,
+      );
+    },
+    onSettled: () => {
+      cancelInFlightRef.current = false;
+    },
+  });
+
+  /**
+   * Shared cancel path for in-memory failed upload and server-projected pending.
+   * Before an intent exists: local reset only. After intent: cancel API + stable key.
+   */
+  function handleCancelUpload() {
+    if (cancelInFlightRef.current || cancelMutation.isPending) {
+      return;
+    }
+    attemptIdRef.current += 1;
+
+    const localEvidence = uploadState.intent?.evidence;
+    const serverCancellable = findCancellablePendingEvidence(
+      fulfillment?.currentEvidence,
+      fulfillment?.history,
+    );
+    const cancelTarget =
+      serverCancellable ??
+      (canCancelEvidenceUpload(localEvidence) ? localEvidence : undefined);
+
+    if (!cancelTarget) {
+      clearCancelKey();
+      setCancelError(undefined);
+      setUploadState({ stage: "idle" });
+      return;
+    }
+
+    cancelInFlightRef.current = true;
+    cancelMutation.mutate(cancelTarget);
+  }
+
   async function handleDownload(submission: EvidenceSubmission) {
     setDownloadError(undefined);
     setDownloadingId(submission.id);
@@ -530,21 +679,62 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
     rejectMutation.mutate({ evidence, reason });
   }
 
+  const acceptWithoutEvidenceMutation = useMutation({
+    mutationFn: () =>
+      acceptFulfillmentWithoutEvidence(
+        legalEntityId,
+        deal.id,
+        {
+          expectedDealVersion: deal.version,
+          expectedFulfillmentVersion: fulfillment!.version,
+        },
+        acceptWithoutEvidenceKeyRef.current!,
+      ),
+    onSuccess: () => {
+      setReviewError(undefined);
+      setFeedbackNotice(
+        "Teslimat kanıtsız kabul edildi — kapanış için Kapanış bölümüne geçin",
+      );
+      refreshAfterMutation();
+    },
+    onError: (error) => {
+      if (shouldResetFulfillmentIdempotencyKey(error, "acceptWithoutEvidence")) {
+        resetAcceptWithoutEvidenceKey();
+        refreshAfterMutation();
+      }
+      setReviewError(getFulfillmentErrorMessage(error));
+    },
+  });
+
   const canStart = !readOnly && deal.availableActions.canStartFulfillment;
   const canUpload = !readOnly && (fulfillment?.milestone.availableActions.canUpload ?? false);
   const canAccept = !readOnly && deal.availableActions.canAcceptEvidence;
   const canReject = !readOnly && deal.availableActions.canRejectEvidence;
+  const canAcceptWithoutEvidence =
+    !readOnly &&
+    (deal.availableActions.canAcceptWithoutEvidence === true ||
+      fulfillment?.availableActions.canAcceptWithoutEvidence === true);
+  const evidencePolicy =
+    fulfillment?.evidencePolicy ?? deal.fulfillment?.evidencePolicy;
+  const serverCancellablePending = !readOnly
+    ? findCancellablePendingEvidence(
+        fulfillment?.currentEvidence,
+        fulfillment?.history,
+      )
+    : undefined;
   const turnBanner = deriveTurnBanner({
     status: fulfillment?.status ?? (hasFulfillment ? undefined : "NOT_STARTED"),
+    evidencePolicy,
     canStart: Boolean(canStart),
     canUpload: Boolean(canUpload),
     canAccept: Boolean(canAccept),
     canReject: Boolean(canReject),
+    canAcceptWithoutEvidence: Boolean(canAcceptWithoutEvidence),
   });
   const chronologicalHistory = fulfillment
     ? sortEvidenceChronologically(fulfillment.history)
     : [];
-
+  const isCancelPending = cancelMutation.isPending;
   if (fulfillmentQuery.isLoading) {
     return (
       <section className="panel" aria-live="polite">
@@ -590,7 +780,17 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
 
       {feedbackNotice ? (
         <p className="success-notice fulfillment-feedback" role="status">
-          {feedbackNotice}
+          {onNavigateToClosure ? (
+            <button
+              type="button"
+              className="text-button fulfillment-closure-nav"
+              onClick={onNavigateToClosure}
+            >
+              {feedbackNotice}
+            </button>
+          ) : (
+            feedbackNotice
+          )}
         </p>
       ) : null}
 
@@ -635,6 +835,68 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
               {fulfillmentStatusLabel(fulfillment.status)}
             </span>
           </div>
+
+          {fulfillment.evidencePolicy ? (
+            <p className="muted-copy">
+              Kanıt politikası:{" "}
+              {EVIDENCE_POLICY_LABELS[fulfillment.evidencePolicy]}
+            </p>
+          ) : null}
+
+          {fulfillment.evidencePolicy === "NOT_REQUIRED" &&
+          fulfillment.status === "IN_PROGRESS" &&
+          !canAcceptWithoutEvidence ? (
+            <p className="muted-copy">
+              Bu teslimatta dosya yüklenmez; alıcı kuruluş yöneticisinin kanıtsız
+              onayı bekleniyor.
+            </p>
+          ) : null}
+
+          {canAcceptWithoutEvidence ? (
+            <div className="fulfillment-accept-without-evidence">
+              {reviewError ? (
+                <p className="form-alert" role="alert">
+                  {reviewError}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  resetAcceptWithoutEvidenceKey();
+                  acceptWithoutEvidenceMutation.mutate();
+                }}
+                disabled={acceptWithoutEvidenceMutation.isPending}
+              >
+                {acceptWithoutEvidenceMutation.isPending
+                  ? "Kabul ediliyor…"
+                  : "Teslimatı kanıtsız kabul et"}
+              </button>
+            </div>
+          ) : null}
+
+          {serverCancellablePending && uploadState.stage === "idle" ? (
+            <div className="pending-upload-recovery">
+              {cancelError ? (
+                <p className="form-alert" role="alert">
+                  {cancelError}
+                </p>
+              ) : null}
+              <p>
+                Yarım kalmış bir yükleme var. Vazgeçerek iptal edip yeni bir
+                kanıt yükleyebilirsiniz.
+              </p>
+              <EvidenceSummary submission={serverCancellablePending} />
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleCancelUpload}
+                disabled={isCancelPending}
+              >
+                {isCancelPending ? "İptal ediliyor…" : "Vazgeç"}
+              </button>
+            </div>
+          ) : null}
 
           <div className="milestone-card">
             <h3>{fulfillment.milestone.title}</h3>
@@ -691,16 +953,17 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
                     type="button"
                     className="secondary-button"
                     onClick={handleRetry}
-                    disabled={isUploadBusy}
+                    disabled={isUploadBusy || isCancelPending}
                   >
                     Yeniden dene
                   </button>
                   <button
                     type="button"
                     className="text-button"
-                    onClick={() => setUploadState({ stage: "idle" })}
+                    onClick={handleCancelUpload}
+                    disabled={isUploadBusy || isCancelPending}
                   >
-                    Vazgeç
+                    {isCancelPending ? "İptal ediliyor…" : "Vazgeç"}
                   </button>
                 </div>
               )}
@@ -711,7 +974,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
             <div className="current-evidence">
               <h4>Mevcut teslimat kanıtı</h4>
               <EvidenceSummary submission={currentEvidence} />
-              {isVideoMp4Evidence(currentEvidence) && (
+              {isAnalysisEligibleEvidence(currentEvidence) && (
                 <EvidenceVideoAnalysisPanel
                   legalEntityId={legalEntityId}
                   dealId={deal.id}
@@ -781,6 +1044,7 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
                     key={submission.id}
                     className="evidence-timeline-item"
                     data-status={submission.status}
+                    data-cancelled={isCancelledPending(submission) ? "true" : undefined}
                   >
                     <div className="evidence-timeline-meta">
                       <time dateTime={evidenceEventAt(submission)}>
@@ -789,12 +1053,13 @@ export function DealFulfillmentPanel({ deal, legalEntityId, readOnly = false }: 
                       <span
                         className="evidence-status-badge"
                         data-status={submission.status}
+                        data-cancelled={isCancelledPending(submission) ? "true" : undefined}
                       >
-                        {evidenceStatusLabel(submission.status)}
+                        {evidenceStatusLabel(submission)}
                       </span>
                     </div>
                     <EvidenceSummary submission={submission} />
-                    {isVideoMp4Evidence(submission)
+                    {isAnalysisEligibleEvidence(submission)
                       && submission.id !== currentEvidence?.id && (
                       <EvidenceVideoAnalysisPanel
                         legalEntityId={legalEntityId}
@@ -882,7 +1147,7 @@ function EvidenceSummary({ submission }: { submission: EvidenceSubmission }) {
         </span>
       </div>
       <div className="evidence-meta">
-        <span>Durum: {evidenceStatusLabel(submission.status)}</span>
+        <span>Durum: {evidenceStatusLabel(submission)}</span>
         {" | "}
           <span>Dosya türü: {submission.mediaType}</span>
         {" | "}
@@ -894,6 +1159,9 @@ function EvidenceSummary({ submission }: { submission: EvidenceSubmission }) {
         </span>
         {" | "}
         <span>Oluşturulma: {formatDate(submission.createdAt)}</span>
+        {submission.status === "PENDING_UPLOAD" && submission.cancelledAt && (
+          <span> | İptal: {formatDate(submission.cancelledAt)}</span>
+        )}
         {submission.status === "SUBMITTED" && submission.submittedAt && (
           <span> | Sunulma: {formatDate(submission.submittedAt)}</span>
         )}

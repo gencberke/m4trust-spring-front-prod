@@ -87,7 +87,8 @@ class RatificationPackageCreateService {
         RatificationSourcePorts.RuleSet ruleSet = ruleSets.find(target.currentRuleSetId())
                 .orElseThrow(NotReady::new);
         RatificationSnapshotAssembler.Result snapshot = assembler.assemble(target, document, ruleSet,
-                request.amountMinor(), request.currency(), request.disputeWindowDays());
+                request.amountMinor(), request.currency(), request.disputeWindowDays(),
+                request.evidencePolicy());
         if (current != null && current.status() == RatificationPackageStatus.PENDING
                 && current.contentHash().equals(snapshot.contentHash())) {
             idempotency.recordResult(claim, new IdempotencyResultReference(IDEMPOTENCY_RESULT, current.id()));
@@ -145,9 +146,17 @@ class RatificationPackageCreateService {
                 || target.buyer() == null || target.seller() == null) throw new NotReady();
         if (request.amountMinor() < 1 || request.amountMinor() > RatificationPackage.MAX_SAFE_INTEGER
                 || request.currency() == null || !request.currency().matches("[A-Z]{3}")) throw new InvalidTerms();
+        if (request.evidencePolicy() != null && request.disputeWindowDays() == null) {
+            throw new EvidencePolicyRequiresDisputeWindow();
+        }
         if (request.disputeWindowDays() != null
                 && (request.disputeWindowDays() < 0 || request.disputeWindowDays() > 365)) {
             throw new InvalidDisputeWindow();
+        }
+        if (request.evidencePolicy() != null
+                && !"REQUIRED".equals(request.evidencePolicy())
+                && !"NOT_REQUIRED".equals(request.evidencePolicy())) {
+            throw new InvalidEvidencePolicy();
         }
     }
 
@@ -175,6 +184,9 @@ class RatificationPackageCreateService {
             if (request.disputeWindowDays() != null) {
                 requestBody.put("disputeWindowDays", request.disputeWindowDays());
             }
+            if (request.evidencePolicy() != null) {
+                requestBody.put("evidencePolicy", request.evidencePolicy());
+            }
             return hasher.hash(json.writeValueAsString(requestBody));
         } catch (Exception exception) {
             throw new IllegalStateException("Cannot canonicalize ratification package create request", exception);
@@ -199,4 +211,6 @@ class RatificationPackageCreateService {
     static final class StaleDealVersion extends RuntimeException { }
     static final class InvalidTerms extends RuntimeException { }
     static final class InvalidDisputeWindow extends RuntimeException { }
+    static final class InvalidEvidencePolicy extends RuntimeException { }
+    static final class EvidencePolicyRequiresDisputeWindow extends RuntimeException { }
 }

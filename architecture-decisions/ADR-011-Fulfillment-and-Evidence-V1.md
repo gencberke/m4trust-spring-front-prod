@@ -97,6 +97,23 @@ silinmez ve overwrite edilmez. Reject sonrasında replacement yeni submission
 ID'si ve yeni immutable object version ile gelir. Bir milestone üzerinde aynı
 anda yalnız bir current `SUBMITTED` evidence review bekleyebilir.
 
+**Founder amendment (2026-07-23) — Pending upload cancellation:**
+
+- Unfinished `PENDING_UPLOAD` is an incomplete upload intent, not accepted or
+  rejected business evidence. Seller legal-entity `ADMIN`/`MEMBER` may cancel a
+  current, unexpired, uncancelled pending intent via an explicit domain action.
+- Non-null `cancelledAt` on `PENDING_UPLOAD` is the explicit terminal state of
+  that upload intent. It is **not** ADR-003’s forbidden generic soft-delete
+  (`deleted=true`): the row remains readable in history, cannot be restored or
+  finalized, and no submitted/accepted/rejected evidence is hidden or deleted.
+- Cancelled pending evidence never appears as `currentEvidence`. Status enum
+  stays unchanged; no DELETE endpoint and no new finalized evidence status.
+- Cancellation writes `cancelledAt`, optimistic version, audit and HTTP
+  idempotency atomically; no object-storage delete or external call runs in the
+  cancellation transaction. One fresh upload intent may follow immediately.
+- Finalize rechecks `cancelledAt IS NULL` under lock so a cancel/finalize race
+  has exactly one winner.
+
 ### 2.4 Evidence object ve history bütünlüğü
 
 - Başlangıç evidence türleri `DELIVERY_NOTE`, `INVOICE`, `VIDEO`, `PHOTO`,
@@ -110,8 +127,8 @@ anda yalnız bir current `SUBMITTED` evidence review bekleyebilir.
   storage-adapter tarafından doğrulanan size, checksum ve immutable object
   version'a dayanır.
 - Bucket private, object key tahmin edilemez ve download link kısa ömürlüdür.
-- Pending/expired intent current evidence olamaz. Physical orphan cleanup V1
-  acceptance koşulu değildir.
+- Pending/expired/cancelled intent current evidence olamaz. Physical orphan
+  cleanup V1 acceptance koşulu değildir.
 - Evidence metadata'sı Spring/PostgreSQL'in, binary içerik object storage'ın
   sorumluluğundadır. Document aggregate'i evidence için yeniden kullanılmaz.
 
@@ -132,6 +149,27 @@ anda yalnız bir current `SUBMITTED` evidence review bekleyebilir.
 - Deal `COMPLETE` mutation'ını açan sonraki plan, payment initiate/reconcile
   akışlarının Deal-status okumasını aynı Deal lock sırasına almalı ve completion
   yarışını test etmelidir.
+
+**Founder amendment (2026-07-23) — Ratified evidence policy:**
+
+- Her ratified package'ın etkili bir evidence policy'si vardır:
+  `REQUIRED | NOT_REQUIRED`.
+- Schema v1 ve v2 package'lar kalıcı olarak `REQUIRED` yorumlanır; bu
+  compatibility'tir, yeni rıza icadı değildir. Orijinal seller upload /
+  buyer-ADMIN accept-reject actor modeli (§2.2) ve immutable evidence history
+  (§2.3) `REQUIRED` için değişmez.
+- Schema v3 package'lar immutable `evidencePolicy` taşır; policy değişikliği
+  yeni package/version ve yeniden ratification gerektirir.
+- `REQUIRED` mevcut evidence state machine'ini ve §2.5'teki file-backed accept
+  sınırını korur.
+- `NOT_REQUIRED` started fulfillment'da buyer legal entity `ADMIN`'in
+  EvidenceSubmission olmadan explicit no-file acceptance ile fulfillment'ı
+  `COMPLETED` yapmasına izin verir. Seller start ile no-file acceptance ayrı
+  explicit action'lardır; start otomatik completion üretmez.
+- No-file acceptance §2.5 completion sınırına tabidir: Deal `ACTIVE` kalır;
+  Deal COMPLETED, settlement, release, payout, refund, provider çağrısı veya
+  AI job üretmez. Actor modeli genişlemez: yalnız buyer `ADMIN`; seller
+  self-accept ve buyer `MEMBER` accept yoktur.
 
 ### 2.6 Contract, concurrency, transaction ve modül sınırı
 
@@ -161,9 +199,13 @@ production secret'ları, production object-storage provider seçimi, gerçek
 payment provider ve provider credential/3DS kurulumu ayrı ve ertelenmiş
 çalışmalardır.
 
-Slice 13 Video Analysis, yalnız Slice 12'nin immutable video evidence
-version'ını subject olarak kullanabilir. Video sonucu advisory kalır ve §2.5
-manual acceptance sınırını aşamaz.
+Slice 13 Video Analysis, yalnız Slice 12'nin immutable VIDEO MP4 veya PHOTO
+JPEG/PNG evidence version'ını subject olarak kullanabilir. Video sonucu advisory
+kalır ve §2.5 manual acceptance sınırını aşamaz.
+
+**Amendment (2026-07-23):** Slice 13 subject, immutable VIDEO MP4 veya PHOTO
+JPEG/PNG evidence version'ını kapsar; PHOTO tek kare OBJECT_COUNT analizi
+olarak ele alınır. Advisory-only ve manual acceptance sınırları değişmez.
 
 Dispute, casework, mutual ACTIVE cancellation, settlement ve release ayrı
 insan-onaylı plan/ADR gerektirir.

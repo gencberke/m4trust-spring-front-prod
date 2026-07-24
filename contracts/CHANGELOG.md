@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+- Expanded Slice 13 video analysis textual eligibility (ADR-012 amendment
+  2026-07-23): GET/POST descriptions and conflict text now document finalized
+  VIDEO MP4 or PHOTO JPEG/PNG evidence as eligible subjects; schema shape and
+  response fields are unchanged.
+
+- Added Plan 18C-P1 pending evidence cancel-upload contract (ADR-011 §2.3
+  pending-cancellation amendment): seller ADMIN/MEMBER
+  `POST /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload`
+  with `CancelEvidenceUploadRequest` (`expectedEvidenceVersion`), required
+  Idempotency-Key, session/CSRF; nullable `PendingEvidenceSubmission.cancelledAt`;
+  optional `EvidenceAvailableActions.canCancelUpload` (absent = false); reusable
+  `EvidenceCancelUploadConflict` documenting
+  `EVIDENCE_UPLOAD_EXPIRED` / `EVIDENCE_UPLOAD_STATE_CONFLICT` /
+  `EVIDENCE_STALE_VERSION` / `IDEMPOTENCY_KEY_REUSED` (reusing
+  EvidenceUploadForbidden / EvidenceNotFoundOrHidden for actor/hidden failures).
+  No DELETE endpoint and no new finalized evidence status enum. Validator closed
+  sets updated.
+
+- Added Plan 18B-P1 additive ratified evidence-policy contract (ADR-011 §2.5
+  founder amendment 2026-07-23): closed `EvidencePolicy` (`REQUIRED` |
+  `NOT_REQUIRED`); discriminated `RatificationPackageSnapshotV3` requiring
+  `disputeWindowDays` + `evidencePolicy`; `CreateRatificationPackageRequest`
+  optional `evidencePolicy` with documented create combinations (neither → v1,
+  window only → v2, both → v3, policy without window → field-level 422);
+  required `evidencePolicy` on `DealFulfillmentSummary` and `FulfillmentDetail`;
+  optional `canAcceptWithoutEvidence` on Deal- and fulfillment-level available
+  actions (absent = false); and buyer-ADMIN
+  `POST /deals/{dealId}/fulfillment/accept-without-evidence` with
+  `AcceptWithoutEvidenceRequest` (`expectedDealVersion` +
+  `expectedFulfillmentVersion`), Idempotency-Key, session/CSRF, and stable
+  conflict codes `DEAL_STATE_CONFLICT` /
+  `FULFILLMENT_EVIDENCE_POLICY_CONFLICT` /
+  `FULFILLMENT_EVIDENCE_PRESENT` (reusing `EvidenceReviewForbidden` for actor
+  failures). Validator closed sets enforce strict Java/OpenAPI exact-set parity.
+  No AI contract changes.
+
 - Added Plan 17 Phase B1 additive settlement/release contract surface (ADR-014 §2.3/§2.5):
   `GET /deals/{dealId}/settlement`, `POST /deals/{dealId}/settlement/release`,
   `GET /release-operations/{operationId}`, and
