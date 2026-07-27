@@ -17,7 +17,7 @@ Railway üzerinde `RAILWAY_DEMO_READY` etiketli kontrollü demo runtime'ı.
 Ürün ve fikir devam ediyor. Yarış temposunda biriken **yapısal borç** önce
 kapatılıyor; ürün yönü kararları ondan sonra alınacak.
 
-## Şu an: repo toparlama (devam ediyor)
+## Repo toparlama (Faz 0–4 ve audit tamamlandı)
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -27,7 +27,7 @@ kapatılıyor; ürün yönü kararları ondan sonra alınacak.
 | 3 | Frontend yapı: `pages`/`features` sınırı, büyük panel/component bölünmesi, CSS Modules, barrel import'lar | ✅ |
 | 4 | Backend modül içi `api/domain/infra` katmanlaması, Spotless + JaCoCo (%85 satır) | ✅ |
 | 5 | Test kapsamı ve ADR revizyonu turu | ⏳ (kapsam tanımlanmadı) |
-| Audit düzeltme (A–E) | FIX-PLAN bulguları: CI gate'leri, ESLint/ArchUnit, doküman senkronu, tek commit | 🔄 |
+| Audit düzeltme (A–E) | FIX-PLAN bulguları: CI gate'leri, ESLint/ArchUnit, doküman senkronu, tek commit | ✅ |
 
 Gerekçe ve ayrıntı: bu turun audit bulguları aşağıdaki "Bilinen boşluklar"
 bölümünde özetlenmiştir.
