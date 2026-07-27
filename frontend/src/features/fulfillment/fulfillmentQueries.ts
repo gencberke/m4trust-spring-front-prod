@@ -30,8 +30,7 @@ export function fulfillmentDetailQueryOptions(
       legalEntityId ?? "unselected",
       dealId ?? "missing",
     ),
-    queryFn: ({ signal }) =>
-      getFulfillment(legalEntityId!, dealId!, signal),
+    queryFn: ({ signal }) => getFulfillment(legalEntityId!, dealId!, signal),
     enabled: Boolean(legalEntityId && dealId) && enabled,
     refetchInterval: (query) => {
       const status = query.state.data?.status;

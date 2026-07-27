@@ -1,0 +1,11 @@
+package com.m4trust.coreapi.contractintelligence.domain;
+
+public enum AnalysisJobStatus {
+  NOT_REQUESTED,
+  QUEUED,
+  PROCESSING,
+  REVIEW_REQUIRED,
+  ACCEPTED,
+  FAILED,
+  SUPERSEDED
+}

@@ -15,8 +15,7 @@ const FAILURE_MESSAGES: Readonly<Record<string, string>> = {
     "Belgenin biçimi analiz hizmeti tarafından desteklenmiyor.",
   UNSUPPORTED_SCHEMA_VERSION:
     "Analiz hizmeti gereken sonuç biçimini desteklemiyor. Lütfen daha sonra yeniden deneyin.",
-  FILE_TOO_LARGE:
-    "Belge analiz hizmetinin boyut sınırını aşıyor.",
+  FILE_TOO_LARGE: "Belge analiz hizmetinin boyut sınırını aşıyor.",
   ENCRYPTED_DOCUMENT_UNSUPPORTED:
     "Şifrelenmiş belgeler analiz edilemiyor. Şifresiz bir belge sürümü yükleyin.",
   CORRUPTED_FILE:
@@ -36,8 +35,10 @@ const FAILURE_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 export function getAnalysisFailureMessage(code: string): string {
-  return FAILURE_MESSAGES[code]
-    ?? "Belge analizi teknik bir nedenle tamamlanamadı. Hata ayrıntıları güvenli biçimde gizlendi.";
+  return (
+    FAILURE_MESSAGES[code] ??
+    "Belge analizi teknik bir nedenle tamamlanamadı. Hata ayrıntıları güvenli biçimde gizlendi."
+  );
 }
 
 export function getAnalysisReadErrorMessage(error: unknown): string {
@@ -77,10 +78,13 @@ export function getAnalysisRequestErrorMessage(error: unknown): string {
   }
 }
 
-export function shouldRefetchAfterAnalysisRequestError(error: unknown): boolean {
-  return error instanceof ApiError && (
-    error.code === "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS"
-    || error.code === "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE"
-    || error.code === "DEAL_STATE_CONFLICT"
+export function shouldRefetchAfterAnalysisRequestError(
+  error: unknown,
+): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.code === "DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS" ||
+      error.code === "DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE" ||
+      error.code === "DEAL_STATE_CONFLICT")
   );
 }

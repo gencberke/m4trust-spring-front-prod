@@ -33,12 +33,7 @@ export function videoAnalysisQueryOptions(
       evidenceSubmissionId ?? "missing",
     ),
     queryFn: ({ signal }) =>
-      getVideoAnalysis(
-        legalEntityId!,
-        dealId!,
-        evidenceSubmissionId!,
-        signal,
-      ),
+      getVideoAnalysis(legalEntityId!, dealId!, evidenceSubmissionId!, signal),
     enabled: Boolean(legalEntityId && dealId && evidenceSubmissionId),
     refetchInterval: (query) =>
       query.state.data?.status === QUEUED_STATUS

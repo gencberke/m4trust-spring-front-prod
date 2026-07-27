@@ -1,23 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  NavLink,
-  Outlet,
-  useNavigate,
-  useOutletContext,
-} from "react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { NavLink, Outlet, useOutletContext } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import styles from "./AuthenticatedLayout.module.css";
 
-import { logout, type CurrentUser } from "../features/auth/authApi";
-import { getAuthErrorMessage } from "../features/auth/authErrors";
-import { CURRENT_USER_QUERY_KEY } from "../features/auth/useCurrentUser";
-import type { LegalEntityMembership } from "../features/organization/organizationApi";
-import { legalEntityMembershipsQueryOptions } from "../features/organization/organizationQueries";
 import {
-  clearActiveSelectionUser,
+  getAuthErrorMessage,
+  type CurrentUser,
+  useLogout,
+} from "../features/auth";
+import {
   clearSelectedLegalEntityId,
+  legalEntityMembershipsQueryOptions,
+  type LegalEntityMembership,
   readSelectedLegalEntityId,
   saveSelectedLegalEntityId,
-} from "../features/organization/legalEntitySelection";
+} from "../features/organization";
 
 export interface AuthenticatedWorkspaceContext {
   user: CurrentUser;
@@ -47,7 +44,7 @@ function EntitySwitcher({
   onChange,
 }: EntitySwitcherProps) {
   return (
-    <label className="entity-switcher">
+    <label className={styles.entitySwitcher}>
       <span>Aktif kuruluş</span>
       <select
         value={selectedLegalEntityId ?? ""}
@@ -70,8 +67,6 @@ function EntitySwitcher({
 
 export function AuthenticatedLayout() {
   const user = useOutletContext<CurrentUser>();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [selectedLegalEntityId, setSelectedLegalEntityId] = useState<
     string | undefined
   >(readSelectedLegalEntityId);
@@ -85,6 +80,12 @@ export function AuthenticatedLayout() {
     membershipsQuery.isSuccess &&
     Boolean(selectedLegalEntityId) &&
     !selectedMembership;
+  const activeLegalEntityId = missingSelectedMembership
+    ? undefined
+    : selectedLegalEntityId;
+  const activeSelectionNotice = missingSelectedMembership
+    ? "Önceki kuruluş seçiminiz artık üyelikleriniz arasında değil ve temizlendi."
+    : selectionNotice;
 
   const clearInvalidSelection = useCallback(() => {
     clearSelectedLegalEntityId();
@@ -99,10 +100,6 @@ export function AuthenticatedLayout() {
       return;
     }
     clearSelectedLegalEntityId();
-    setSelectedLegalEntityId(undefined);
-    setSelectionNotice(
-      "Önceki kuruluş seçiminiz artık üyelikleriniz arasında değil ve temizlendi.",
-    );
   }, [missingSelectedMembership]);
 
   function selectLegalEntity(legalEntityId: string | undefined) {
@@ -115,23 +112,7 @@ export function AuthenticatedLayout() {
     }
   }
 
-  async function clearVerifiedSession() {
-    clearActiveSelectionUser();
-    navigate("/login", { replace: true, state: { reason: "logged-out" } });
-    await queryClient.cancelQueries();
-    queryClient.removeQueries({ queryKey: ["organization"] });
-    queryClient.removeQueries({ queryKey: ["deals"] });
-    queryClient.removeQueries({ queryKey: ["deal-invitations"] });
-    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
-  }
-
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onMutate: async () => {
-      await queryClient.cancelQueries();
-    },
-    onSuccess: clearVerifiedSession,
-  });
+  const logoutMutation = useLogout();
 
   const context: AuthenticatedWorkspaceContext = {
     user,
@@ -139,9 +120,9 @@ export function AuthenticatedLayout() {
     membershipsPending: membershipsQuery.isPending,
     membershipsError: membershipsQuery.error,
     membershipsFetching: membershipsQuery.isFetching,
-    selectedLegalEntityId,
+    selectedLegalEntityId: activeLegalEntityId,
     selectedMembership,
-    selectionNotice,
+    selectionNotice: activeSelectionNotice,
     selectLegalEntity,
     clearInvalidSelection,
     refetchMemberships: () => {
@@ -150,24 +131,30 @@ export function AuthenticatedLayout() {
   };
 
   return (
-    <div className="app-shell authenticated-shell">
-      <header className="site-header authenticated-header workspace-header">
-        <NavLink className="brand brand-link" to="/app" aria-label="M4Trust ana çalışma alanı">
+    <div className={`app-shell ${styles.authenticatedShell}`}>
+      <header
+        className={`site-header ${styles.authenticatedHeader} ${styles.workspaceHeader}`}
+      >
+        <NavLink
+          className="brand brand-link"
+          to="/app"
+          aria-label="M4Trust ana çalışma alanı"
+        >
           M4Trust
         </NavLink>
         <EntitySwitcher
           memberships={memberships}
-          selectedLegalEntityId={selectedLegalEntityId}
+          selectedLegalEntityId={activeLegalEntityId}
           disabled={membershipsQuery.isPending || memberships.length === 0}
           onChange={selectLegalEntity}
         />
-        <div className="account-actions">
-          <div className="account-summary" aria-label="Aktif hesap">
+        <div className={styles.accountActions}>
+          <div className={styles.accountSummary} aria-label="Aktif hesap">
             <span>{user.displayName}</span>
             <span>{user.email}</span>
           </div>
           <button
-            className="text-button"
+            className={`text-button ${styles.logoutButton}`}
             type="button"
             onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
@@ -175,14 +162,14 @@ export function AuthenticatedLayout() {
             {logoutMutation.isPending ? "Çıkılıyor…" : "Çıkış"}
           </button>
         </div>
-        <nav className="workspace-nav" aria-label="Çalışma alanı">
+        <nav className={styles.workspaceNav} aria-label="Çalışma alanı">
           <NavLink to="/app/deals">Anlaşmalar</NavLink>
           <NavLink to="/app/invitations">Davetler</NavLink>
         </nav>
       </header>
 
       {logoutMutation.isError ? (
-        <div className="layout-alert">
+        <div className={styles.layoutAlert}>
           <p className="form-alert" role="alert">
             {getAuthErrorMessage(logoutMutation.error, "logout")}
           </p>
@@ -193,7 +180,8 @@ export function AuthenticatedLayout() {
 
       <footer className="site-footer">
         <p>
-          Aktif kuruluş seçiminiz için tüm yetkiler sunucu tarafından doğrulanır.
+          Aktif kuruluş seçiminiz için tüm yetkiler sunucu tarafından
+          doğrulanır.
         </p>
       </footer>
     </div>

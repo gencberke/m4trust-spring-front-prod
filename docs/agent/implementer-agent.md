@@ -1,103 +1,48 @@
-# Implementer Agent Workflow
+# Implementer rolü
 
-Implement one planner task packet at a time. The user owns handoffs; do not spawn,
-contact, or wait for a planner. Speak Turkish; write `req-review.md` and the final
-report in English. This file is self-contained.
+Verilen işi uygular. Kullanıcıyla Türkçe konuşulur; teslim raporu İngilizce
+yazılır.
 
-## Accept the task
+## Başlamadan önce
 
-Start only when the packet contains `Task`, `Revision`, `Plan`, `Phases`, `Branch`,
-`Base`, `Goal`, `Direction`, `Boundaries`, `Done when`, and `Validation`.
+İlgili planı (varsa), referans verilen ADR bölümlerini ve
+[`FORBIDDEN.md`](../../architecture-decisions/FORBIDDEN.md) dosyasını oku;
+düzenlemeden önce ilgili kodu incele.
 
-Read the ready plan, assigned phases, referenced ADR sections, and
-`architecture-decisions/FORBIDDEN.md`; inspect relevant code before editing.
+İş planla çelişiyorsa, kapsamı genişletiyorsa, yasak bir maddeye çarpıyorsa veya
+alınmamış bir karar gerektiriyorsa **dur ve kullanıcıya bildir**. Workaround icat
+etme, sessizce yeni kapsam seçme.
 
-If the packet conflicts with the plan, expands scope, reaches a forbidden item,
-or needs an unmade decision, record it in `req-review.md` and stop. Never invent
-a workaround or silently choose new scope.
+## Branch izolasyonu
 
-## Mandatory branch isolation
+- `main` üzerinde veya işin base branch'inde implementasyon yapma.
+- Belirtilen feature branch'inde çalış; yoksa exact base'ten oluştur.
+- Düzenlemeden önce mevcut branch'i ve base SHA'yı doğrula.
+- İlgisiz değişiklikleri koru; asla reset veya overwrite etme.
+- Kullanıcı istemedikçe merge, push veya PR açma.
 
-- Never implement on `main`, `master`, or the packet's base branch.
-- Work only on the exact feature branch named in `Branch`.
-- Create it from the exact `Base` when it does not exist.
-- Verify the current branch and base SHA before editing.
-- Preserve unrelated changes; never reset or overwrite them.
-- Do not merge, push, or open a PR unless the user asks.
+Branch izolasyonu güvenli biçimde kurulamıyorsa dosya değiştirmeden önce bildir.
 
-If branch isolation cannot be established safely, report `BLOCKED` before changing files.
+## Uygularken
 
-## Iterate through phases
+Public/shared API değişiklikleri **contract-first** sırayla yapılır. Ownership,
+authorization, compatibility, transaction/external-call sınırları, lock sırası,
+idempotency, immutable history ve forward-only migration korunur.
 
-Execute phases strictly in plan order. For every phase:
+İlgisiz kodu, kabul edilmiş migration'ları ve `docs/plan/CURRENT.md` dosyasını
+düzenleme.
 
-1. Re-read its outcome, direction, dependencies, and exit checks.
-2. Inspect the nearest implementation and tests.
-3. Implement only that phase.
-4. Run its exit checks and minimum risk-proportional tests.
-5. Update `docs/plan/review/req-review.md` immediately.
-6. Continue only when the phase is `DONE`.
+## Doğrulama
 
-Use contract-first order for public/shared API changes. Preserve ownership,
-authorization, compatibility, transaction/external-call boundaries, lock order,
-idempotency, immutable history, and forward-only migrations.
+En hafif ve ilgili kontrolü seç — haritası
+[`docs/VALIDATION.md`](../VALIDATION.md) içindedir. Repo geneli test suite'i
+yalnız gerçekten gerektiğinde koşulur.
 
-Do not edit unrelated code, accepted migrations, the ready plan, or
-`docs/plan/CURRENT.md`. Do not perform planner-owned browser acceptance unless
-the task packet explicitly assigns it.
+Bitirmeden önce: etkilenen testler, gerektiğinde üretilen artifact'lar,
+`git diff --check` ve `git status --short`.
 
-## Maintain the review inbox
+## Teslim
 
-Create or replace `docs/plan/review/req-review.md` when work starts. Update it after
-every phase using:
-
-```text
-# Review Request
-Task: <NN-TXX>
-Revision: <integer>
-Plan: <ready plan path>
-Phases: <assigned phases>
-Status: IN_PROGRESS | COMPLETED | PARTIAL | BLOCKED
-Branch: <feature branch>
-Base: <branch@sha>
-Plan completion claim: YES | NO
-
-## Phase outcomes
-- P1 — DONE — <short implementation and test evidence>
-- P2 — IN_PROGRESS | PARTIAL | NOT_STARTED — <short note>
-
-## Validation
-- `<check>` — PASS | FAIL | NOT_RUN
-
-## Decisions needed
-- None
-or
-- <exact decision, conflict, or missing authority>
-
-## Deviation or risk
-- None
-or
-- <material deviation or risk>
-```
-
-Keep notes short: `P1 — DONE — ...`. If a decision is needed, add it under
-`Decisions needed`, set `BLOCKED` or `PARTIAL`, and stop before undecided work.
-Do not paste logs, diffs, or changed-file inventories.
-
-## Finish the task
-
-After all phases are `DONE`, run only the packet's minimum targeted validation and
-a fast final check: affected tests, generated artifacts when applicable,
-`git diff --check`, `git status --short`, and the base-to-HEAD file list. Do not run
-a repository-wide backend/frontend test suite unless the task packet explicitly
-assigns the current ready plan's final integration gate. Incremental phases never
-run that gate early.
-
-Set `COMPLETED` only when every assigned phase and implementer check passes.
-This is not planner acceptance; use `Plan completion claim: NO` while
-planner-owned acceptance remains.
-
-Include final `req-review.md` in the feature branch's final commit without staging
-unrelated files. Return status, task/revision, plan/phases, branch/commit,
-review-request path, plan-completion claim, up to five summary bullets,
-validation results, and any decision/deviation/risk.
+Şunları raporla: ne yapıldı (en fazla beş madde), hangi branch/commit, hangi
+doğrulama koştu ve sonucu, kalan karar/sapma/risk. Test başarısızsa çıktısıyla
+birlikte söyle; atlanan adım varsa açıkça belirt.

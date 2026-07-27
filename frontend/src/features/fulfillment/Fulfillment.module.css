@@ -1,0 +1,118 @@
+.fulfillmentPanel {
+  display: grid;
+  gap: 18px;
+}
+.fulfillmentTurnBanner {
+  margin: 0;
+  padding: 13px 15px;
+  border: 1px solid rgb(28 74 160 / 22%);
+  border-radius: 5px;
+  background: var(--color-notice);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.fulfillmentFeedback {
+  margin: 0;
+}
+.fulfillmentFeedback .fulfillmentClosureNav {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+.pendingUploadRecovery {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid #e0c48a;
+  border-radius: 6px;
+  background: #fffaf0;
+}
+.pendingUploadRecovery :global(.secondary-button) {
+  justify-self: start;
+}
+.evidenceTimeline {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.evidenceTimelineItem {
+  position: relative;
+  padding: 14px 16px 14px 22px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  border-left: 3px solid #96a2b4;
+  background: #ffffff;
+}
+.evidenceTimelineItem[data-status="ACCEPTED"] {
+  border-left-color: #17663a;
+}
+.evidenceTimelineItem[data-status="SUBMITTED"] {
+  border-left-color: #1c4aa0;
+}
+.evidenceTimelineItem[data-status="REJECTED"] {
+  border-left-color: #8d2632;
+}
+.evidenceTimelineItem[data-status="PENDING_UPLOAD"][data-cancelled="true"] {
+  opacity: 0.85;
+  border-left-color: #b8bec8;
+}
+.evidenceTimelineMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 10px;
+  color: var(--color-copy);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+/* StatusBadge owns these semantic classes; retain domain-specific status colors. */
+:global(.fulfillment-status-badge),
+:global(.evidence-status-badge) {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #eef2f7;
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+:global(.fulfillment-status-badge[data-status="COMPLETED"]),
+:global(.evidence-status-badge[data-status="ACCEPTED"]) {
+  background: #e8f5ed;
+  color: #17663a;
+}
+:global(.fulfillment-status-badge[data-status="REVIEW_REQUIRED"]),
+:global(.evidence-status-badge[data-status="SUBMITTED"]) {
+  background: var(--color-notice);
+  color: #1c4aa0;
+}
+:global(.fulfillment-status-badge[data-status="EVIDENCE_REQUIRED"]),
+:global(.fulfillment-status-badge[data-status="IN_PROGRESS"]),
+:global(.evidence-status-badge[data-status="PENDING_UPLOAD"]) {
+  background: #fff7e8;
+  color: #8a5a12;
+}
+:global(
+  .evidence-status-badge[data-status="PENDING_UPLOAD"][data-cancelled="true"]
+) {
+  opacity: 0.85;
+  background: #f0f0f2;
+  color: #5c6370;
+}
+:global(.fulfillment-status-badge[data-status="CANCELLED"]),
+:global(.evidence-status-badge[data-status="REJECTED"]) {
+  background: #fff0f1;
+  color: #8d2632;
+}

@@ -33,7 +33,9 @@ export async function refreshCurrentUserAfterAuthentication(
   const currentUser = await queryClient.fetchQuery(currentUserQueryOptions());
 
   if (!currentUser) {
-    throw new Error("Authenticated current-user bootstrap could not be restored.");
+    throw new Error(
+      "Authenticated current-user bootstrap could not be restored.",
+    );
   }
 
   return currentUser;

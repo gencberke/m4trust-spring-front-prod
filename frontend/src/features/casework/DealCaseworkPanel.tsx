@@ -29,15 +29,12 @@ import {
   disputeHistoryQueryKey,
   disputeHistoryQueryOptions,
 } from "./caseworkQueries";
+import { formatDate, StatusBadge } from "@/shared";
+import styles from "./Casework.module.css";
 
 type VideoAnalysisResult = components["schemas"]["VideoAnalysisResult"];
 type DisputeEvidenceSnapshotEntry =
   components["schemas"]["DisputeEvidenceSnapshotEntry"];
-
-const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
 
 const DISPUTE_STATUS_LABELS: Record<string, string> = {
   OPEN: "Açık",
@@ -53,10 +50,6 @@ const REASON_CODE_LABELS: Record<DisputeReasonCode, string> = {
   CONTRACT_NON_CONFORMANCE: "Sözleşmeye aykırılık",
   OTHER: "Diğer",
 };
-
-function formatDate(value: string): string {
-  return DATE_FORMATTER.format(new Date(value));
-}
 
 function truncateHex(value: string, head = 10, tail = 8): string {
   return value.length > head + tail + 1
@@ -89,7 +82,8 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [commentPage, setCommentPage] = useState(0);
 
-  const [reasonCode, setReasonCode] = useState<DisputeReasonCode>("NON_DELIVERY");
+  const [reasonCode, setReasonCode] =
+    useState<DisputeReasonCode>("NON_DELIVERY");
   const [subject, setSubject] = useState("");
   const [statement, setStatement] = useState("");
   const [commentBody, setCommentBody] = useState("");
@@ -126,7 +120,8 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
 
   const dispute = detailQuery.data;
   const withdrawnHistory =
-    historyQuery.data?.items.filter((item) => item.status === "WITHDRAWN") ?? [];
+    historyQuery.data?.items.filter((item) => item.status === "WITHDRAWN") ??
+    [];
 
   function refreshCasework(disputeId?: string) {
     void queryClient.invalidateQueries({
@@ -214,7 +209,8 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
       if (shouldResetCaseworkIdempotencyKey(error, "comment")) {
         commentKeyRef.current = undefined;
       }
-      if (shouldRefetchAfterMutationError(error)) refreshCasework(activeDisputeId);
+      if (shouldRefetchAfterMutationError(error))
+        refreshCasework(activeDisputeId);
       setCommentError(getCaseworkErrorMessage(error));
     },
   });
@@ -244,7 +240,8 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
       if (shouldResetCaseworkIdempotencyKey(error, "acknowledge")) {
         acknowledgeKeyRef.current = undefined;
       }
-      if (shouldRefetchAfterMutationError(error)) refreshCasework(activeDisputeId);
+      if (shouldRefetchAfterMutationError(error))
+        refreshCasework(activeDisputeId);
       setActionError(getCaseworkErrorMessage(error));
     },
   });
@@ -271,7 +268,8 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
       if (shouldResetCaseworkIdempotencyKey(error, "withdraw")) {
         withdrawKeyRef.current = undefined;
       }
-      if (shouldRefetchAfterMutationError(error)) refreshCasework(activeDisputeId);
+      if (shouldRefetchAfterMutationError(error))
+        refreshCasework(activeDisputeId);
       setActionError(getCaseworkErrorMessage(error));
     },
   });
@@ -289,7 +287,9 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
     commentMutation.mutate(dispute.version);
   }
 
-  async function handleEvidenceDownload(evidence: DisputeEvidenceSnapshotEntry) {
+  async function handleEvidenceDownload(
+    evidence: DisputeEvidenceSnapshotEntry,
+  ) {
     setDownloadError(undefined);
     setDownloadingEvidenceId(evidence.evidenceSubmissionId);
     try {
@@ -323,26 +323,31 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
   }
 
   return (
-    <section className="workspace-panel casework-panel" aria-labelledby="casework-title">
+    <section
+      className={`workspace-panel ${styles.panel}`}
+      aria-labelledby="casework-title"
+    >
       <div className="panel-heading">
         <p className="section-kicker">Uyuşmazlık</p>
         <h2 id="casework-title">Uyuşmazlık</h2>
       </div>
 
-      {notice ? <p className="success-notice workspace-notice">{notice}</p> : null}
+      {notice ? (
+        <p className="success-notice workspace-notice">{notice}</p>
+      ) : null}
 
       {showEmptyState ? (
-        <p className="muted-copy invitation-empty">
+        <p className={`muted-copy ${styles.empty}`}>
           Henüz bu anlaşma için uyuşmazlık kaydı yok.
         </p>
       ) : null}
 
       {canOpen ? (
-        <form className="casework-open-form" onSubmit={handleOpenSubmit}>
+        <form className={styles.openForm} onSubmit={handleOpenSubmit}>
           <h3>Yeni uyuşmazlık aç</h3>
           <p className="muted-copy">
-            Bu işlem yalnızca izin verildiğinde görünür. Açılış anındaki teslimat
-            ve kanıt durumu değişmez şekilde kaydedilir.
+            Bu işlem yalnızca izin verildiğinde görünür. Açılış anındaki
+            teslimat ve kanıt durumu değişmez şekilde kaydedilir.
           </p>
           {fulfillmentQuery.isLoading ? (
             <p>Yükleniyor…</p>
@@ -391,7 +396,9 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
                   required
                 />
                 {openFieldErrors.statement ? (
-                  <span className="field-error">{openFieldErrors.statement}</span>
+                  <span className="field-error">
+                    {openFieldErrors.statement}
+                  </span>
                 ) : null}
               </label>
               {formError ? (
@@ -412,12 +419,17 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
       ) : null}
 
       {activeSummary ? (
-        <div className="casework-active-card">
-          <div className="casework-active-heading">
+        <div className={styles.activeCard}>
+          <div className={styles.activeHeading}>
             <h3>{activeSummary.subject}</h3>
-            <span className="casework-status-badge" data-status={activeSummary.status}>
-              {DISPUTE_STATUS_LABELS[activeSummary.status] ?? activeSummary.status}
-            </span>
+            <StatusBadge
+              domain="casework"
+              status={activeSummary.status}
+              label={
+                DISPUTE_STATUS_LABELS[activeSummary.status] ??
+                activeSummary.status
+              }
+            />
           </div>
           <p className="muted-copy">
             {REASON_CODE_LABELS[activeSummary.reasonCode]} ·{" "}
@@ -441,7 +453,7 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
 
           {dispute ? (
             <>
-              <p className="casework-statement">{dispute.statement}</p>
+              <p className={styles.statement}>{dispute.statement}</p>
               <SnapshotSection
                 dispute={dispute}
                 downloadingEvidenceId={downloadingEvidenceId}
@@ -453,7 +465,10 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
                 </p>
               ) : null}
 
-              <section className="casework-comments" aria-labelledby="casework-comments-title">
+              <section
+                className={styles.comments}
+                aria-labelledby="casework-comments-title"
+              >
                 <h4 id="casework-comments-title">Yorumlar</h4>
                 {commentsQuery.isLoading ? <p>Yükleniyor…</p> : null}
                 {commentsQuery.isError ? (
@@ -463,11 +478,13 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
                 ) : null}
                 {commentsQuery.data ? (
                   <>
-                    <ul className="casework-comment-list">
+                    <ul className={styles.commentList}>
                       {commentsQuery.data.items.map((comment) => (
                         <li key={comment.id}>
-                          <div className="casework-comment-meta">
-                            <strong>{comment.authorAttribution.displayName}</strong>
+                          <div className={styles.commentMeta}>
+                            <strong>
+                              {comment.authorAttribution.displayName}
+                            </strong>
                             <span>{comment.authorAttribution.legalName}</span>
                             <time dateTime={comment.createdAt}>
                               {formatDate(comment.createdAt)}
@@ -478,7 +495,7 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
                       ))}
                     </ul>
                     {commentsQuery.data.totalPages > 1 ? (
-                      <div className="casework-pagination">
+                      <div className={styles.pagination}>
                         <button
                           type="button"
                           className="secondary-button"
@@ -494,7 +511,9 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
                         <button
                           type="button"
                           className="secondary-button"
-                          disabled={commentPage + 1 >= commentsQuery.data.totalPages}
+                          disabled={
+                            commentPage + 1 >= commentsQuery.data.totalPages
+                          }
                           onClick={() => setCommentPage((page) => page + 1)}
                         >
                           Sonraki
@@ -505,7 +524,10 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
                 ) : null}
 
                 {dispute.availableActions.canComment === true ? (
-                  <form className="casework-comment-form" onSubmit={handleCommentSubmit}>
+                  <form
+                    className={styles.commentForm}
+                    onSubmit={handleCommentSubmit}
+                  >
                     <label>
                       Yeni yorum
                       <textarea
@@ -526,13 +548,15 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
                       className="secondary-button"
                       disabled={commentMutation.isPending}
                     >
-                      {commentMutation.isPending ? "Gönderiliyor…" : "Yorum ekle"}
+                      {commentMutation.isPending
+                        ? "Gönderiliyor…"
+                        : "Yorum ekle"}
                     </button>
                   </form>
                 ) : null}
               </section>
 
-              <div className="casework-actions">
+              <div className={styles.actions}>
                 {dispute.availableActions.canAcknowledge === true ? (
                   <button
                     type="button"
@@ -556,16 +580,18 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
               </div>
 
               {confirmWithdraw ? (
-                <div className="casework-confirm" role="dialog" aria-modal="true">
+                <div className={styles.confirm} role="dialog" aria-modal="true">
                   <p>Bu uyuşmazlığı geri çekmek istediğinize emin misiniz?</p>
-                  <div className="casework-actions">
+                  <div className={styles.actions}>
                     <button
                       type="button"
                       className="danger-button"
                       disabled={withdrawMutation.isPending}
                       onClick={() => withdrawMutation.mutate(dispute.version)}
                     >
-                      {withdrawMutation.isPending ? "Geri çekiliyor…" : "Evet, geri çek"}
+                      {withdrawMutation.isPending
+                        ? "Geri çekiliyor…"
+                        : "Evet, geri çek"}
                     </button>
                     <button
                       type="button"
@@ -589,19 +615,27 @@ function DealCaseworkPanelBody({ deal, legalEntityId }: Props) {
       ) : null}
 
       {withdrawnHistory.length > 0 ? (
-        <section className="casework-history" aria-labelledby="casework-history-title">
+        <section
+          className={styles.history}
+          aria-labelledby="casework-history-title"
+        >
           <h3 id="casework-history-title">Geri çekilmiş geçmiş</h3>
           <ul>
             {withdrawnHistory.map((item) => (
               <li key={item.id}>
                 <strong>{item.subject}</strong>
-                <span className="casework-status-badge" data-status={item.status}>
-                  {DISPUTE_STATUS_LABELS[item.status] ?? item.status}
-                </span>
+                <StatusBadge
+                  domain="casework"
+                  status={item.status}
+                  label={DISPUTE_STATUS_LABELS[item.status] ?? item.status}
+                />
                 <p className="muted-copy">
                   {REASON_CODE_LABELS[item.reasonCode]} ·{" "}
-                  {item.openingLegalEntity.legalName} · {formatDate(item.openedAt)}
-                  {item.withdrawnAt ? ` · Geri çekildi: ${formatDate(item.withdrawnAt)}` : ""}
+                  {item.openingLegalEntity.legalName} ·{" "}
+                  {formatDate(item.openedAt)}
+                  {item.withdrawnAt
+                    ? ` · Geri çekildi: ${formatDate(item.withdrawnAt)}`
+                    : ""}
                 </p>
               </li>
             ))}
@@ -623,9 +657,12 @@ function SnapshotSection({
 }) {
   const snapshot = dispute.openingSnapshot;
   return (
-    <section className="casework-snapshot" aria-labelledby="casework-snapshot-title">
+    <section
+      className={styles.snapshot}
+      aria-labelledby="casework-snapshot-title"
+    >
       <h4 id="casework-snapshot-title">Açılış anındaki kayıt</h4>
-      <dl className="casework-snapshot-meta">
+      <dl className={styles.snapshotMeta}>
         <div>
           <dt>Teslimat durumu</dt>
           <dd>Kaydedildi</dd>
@@ -635,7 +672,7 @@ function SnapshotSection({
           <dd>{snapshot.evidence.length}</dd>
         </div>
       </dl>
-      <ul className="casework-evidence-list">
+      <ul className={styles.evidenceList}>
         {snapshot.evidence.map((evidence) => (
           <li key={evidence.evidenceSubmissionId}>
             <div>
@@ -645,8 +682,12 @@ function SnapshotSection({
             </div>
             <details className="casework-technical-details">
               <summary>Teknik ayrıntılar</summary>
-              <p>SHA-256: <code>{truncateHex(evidence.verifiedSha256)}</code></p>
-              <p>Tür: {evidence.evidenceType} · Durum: {evidence.statusAtOpen}</p>
+              <p>
+                SHA-256: <code>{truncateHex(evidence.verifiedSha256)}</code>
+              </p>
+              <p>
+                Tür: {evidence.evidenceType} · Durum: {evidence.statusAtOpen}
+              </p>
             </details>
             <button
               type="button"
@@ -662,11 +703,9 @@ function SnapshotSection({
         ))}
       </ul>
       {snapshot.videoAnalysis.map((entry) => (
-        <div key={entry.jobId} className="casework-pinned-video">
+        <div key={entry.jobId} className={styles.pinnedVideo}>
           <h5>Sabitlenmiş video analizi</h5>
-          <p className="muted-copy">
-            Bu video kanıtına aittir.
-          </p>
+          <p className="muted-copy">Bu video kanıtına aittir.</p>
           <PinnedVideoResult result={entry.result} />
         </div>
       ))}
@@ -679,8 +718,8 @@ function PinnedVideoResult({ result }: { result: VideoAnalysisResult }) {
   return (
     <div className="casework-pinned-video-result">
       <p className="analysis-advisory">
-        Bu sonuç açılış anında sabitlenmiş danışmanlık verisidir; teslimat kanıtı veya
-        ödeme kararı vermez.
+        Bu sonuç açılış anında sabitlenmiş danışmanlık verisidir; teslimat
+        kanıtı veya ödeme kararı vermez.
       </p>
       {advisory ? (
         <p>

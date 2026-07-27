@@ -13,7 +13,8 @@ export type CreateDisputeCommentRequest =
   components["schemas"]["CreateDisputeCommentRequest"];
 export type AcknowledgeDisputeRequest =
   components["schemas"]["AcknowledgeDisputeRequest"];
-export type WithdrawDisputeRequest = components["schemas"]["WithdrawDisputeRequest"];
+export type WithdrawDisputeRequest =
+  components["schemas"]["WithdrawDisputeRequest"];
 export type DisputeCommentSort = components["parameters"]["DisputeCommentSort"];
 export type DisputeSort = components["parameters"]["DisputeSort"];
 
@@ -33,10 +34,13 @@ export function listDisputes(
     size: "20",
     sort,
   });
-  return requestJson<DisputePage>(`/deals/${dealId}/disputes?${search.toString()}`, {
-    signal,
-    headers: context(legalEntityId),
-  });
+  return requestJson<DisputePage>(
+    `/deals/${dealId}/disputes?${search.toString()}`,
+    {
+      signal,
+      headers: context(legalEntityId),
+    },
+  );
 }
 
 export function openDispute(
@@ -45,10 +49,14 @@ export function openDispute(
   request: OpenDisputeRequest,
   idempotencyKey: string,
 ): Promise<DisputeDetail> {
-  return postJsonWithFreshCsrf<DisputeDetail>(`/deals/${dealId}/disputes`, request, {
-    ...context(legalEntityId),
-    "Idempotency-Key": idempotencyKey,
-  });
+  return postJsonWithFreshCsrf<DisputeDetail>(
+    `/deals/${dealId}/disputes`,
+    request,
+    {
+      ...context(legalEntityId),
+      "Idempotency-Key": idempotencyKey,
+    },
+  );
 }
 
 export function getDispute(

@@ -16,7 +16,8 @@ contracts/                 OpenAPI, AsyncAPI, JSON Schema ve örnekler
 infra/                     Yerel PostgreSQL, RabbitMQ ve MinIO Compose tanımı
 scripts/                   Yerel reset ve seed giriş noktaları
 architecture-decisions/    Kabul edilmiş mimari kararlar ve yasaklar
-docs/plan/                 Slice planları
+docs/plan/                 Kabul edilmiş proje durumu ve aktif planlar
+docs/history/              Hackathon dönemi plan ve karar arşivi
 ```
 
 Bileşen rehberleri:
@@ -27,7 +28,9 @@ Bileşen rehberleri:
 - [Contract'lar](../contracts/README.md)
 - [Mock AI Worker](../tools/mock-ai-worker/README.md)
 - [Moka HTTP Emulator](../tools/moka-emulator/README.md)
-- [Tamamlanmış slice planları](plan/done/) ve [planlama notları](plan/planning/)
+- [Yol haritası](ROADMAP.md) ve [kabul edilmiş proje durumu](plan/CURRENT.md)
+- [Hackathon dönemi arşivi](history/hackathon-2026-07/) — tamamlanmış slice
+  planları, planlama notları ve gate kararları
 
 ## Hızlı başlangıç
 
@@ -37,8 +40,16 @@ Repository kökünden bash/zsh:
 ./scripts/dev-up.sh
 ```
 
-PowerShell kullanıcıları aynı Compose komutunu doğrudan çalıştırabilir; ayrıntılar
-[Yerel altyapı](../infra/README.md) rehberindedir.
+PowerShell:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev-up.ps1
+```
+
+Reset ve seed adımlarının her iki platformda da karşılığı vardır
+(`scripts/dev-reset.sh` ↔ `scripts/dev-reset.ps1`, `scripts/dev-seed.sh` ↔
+`scripts/dev-seed.ps1`); ayrıntılar [Yerel altyapı](../infra/README.md)
+rehberindedir.
 
 ## Slice 8 yerel analiz akışı
 
@@ -151,7 +162,7 @@ python -m pytest tools/mock-ai-worker/tests
 
 Railway staging Slice 7 kapsamında 21 Temmuz 2026'da kabul edilmiştir. Aşağıdaki
 bölüm kabul edilen config-as-code ve operatör akışını belgeler. Güncel kabul
-kanıtı `plan/done/review/04-07-implementation-review-handoff.md` içindedir.
+kanıtı `history/hackathon-2026-07/done/review/04-07-implementation-review-handoff.md` içindedir.
 
 ## Railway staging hazırlığı
 

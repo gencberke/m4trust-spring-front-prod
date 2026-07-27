@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type ChangeEvent } from "react";
 
+import { StatusBadge } from "@/shared";
+import styles from "./Fulfillment.module.css";
+
 import type { DealDetail } from "../deals/dealApi";
 import { dealDetailQueryKey } from "../deals/dealQueries";
 import {
@@ -13,7 +16,6 @@ import {
   rejectEvidence,
   startFulfillment,
   type EvidenceMediaType,
-  type EvidencePolicy,
   type EvidenceSubmission,
   type EvidenceType,
   type EvidenceUploadIntent,
@@ -28,7 +30,6 @@ import {
   fulfillmentDetailQueryKey,
   fulfillmentDetailQueryOptions,
 } from "./fulfillmentQueries";
-import { EvidenceVideoAnalysisPanel } from "../videoAnalysis/EvidenceVideoAnalysisPanel";
 import {
   ACCEPTED_EVIDENCE_FILE_INPUT_ACCEPT,
   computeSha256Hex,
@@ -37,188 +38,18 @@ import {
   isLikelyExpiredUploadStatus,
   putEvidenceBytes,
 } from "./evidenceUpload";
-
-const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
-
-function formatDate(value: string): string {
-  return DATE_FORMATTER.format(new Date(value));
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  const units = ["KB", "MB", "GB"];
-  let value = bytes / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
-  NOT_STARTED: "Başlatılmadı",
-  IN_PROGRESS: "Devam ediyor",
-  EVIDENCE_REQUIRED: "Teslimat kanıtı bekleniyor",
-  REVIEW_REQUIRED: "İnceleme bekleniyor",
-  COMPLETED: "Tamamlandı",
-  CANCELLED: "İptal edildi",
-};
-
-const EVIDENCE_STATUS_LABELS: Record<string, string> = {
-  PENDING_UPLOAD: "Yüklenecek",
-  SUBMITTED: "Sunuldu",
-  ACCEPTED: "Onaylandı",
-  REJECTED: "Reddedildi",
-};
-
-const EVIDENCE_TYPE_LABELS: Record<string, string> = {
-  DELIVERY_NOTE: "Teslimat notu",
-  INVOICE: "Fatura",
-  VIDEO: "Video",
-  PHOTO: "Fotoğraf",
-  SIGNED_DOCUMENT: "İmzalı belge",
-  OTHER: "Diğer",
-};
-
-function fulfillmentStatusLabel(status: string): string {
-  return FULFILLMENT_STATUS_LABELS[status] ?? status;
-}
-
-function evidenceStatusLabel(submission: EvidenceSubmission): string {
-  if (submission.status === "PENDING_UPLOAD" && submission.cancelledAt) {
-    return "Yükleme iptal edildi";
-  }
-  return EVIDENCE_STATUS_LABELS[submission.status] ?? submission.status;
-}
-
-function isCancelledPending(submission: EvidenceSubmission): boolean {
-  return submission.status === "PENDING_UPLOAD" && Boolean(submission.cancelledAt);
-}
-
-/** Backend-projected only — never invent cancel eligibility from local status. */
-function canCancelEvidenceUpload(submission: EvidenceSubmission | undefined): boolean {
-  return submission?.availableActions.canCancelUpload === true;
-}
-
-/**
- * Active pending cancel target from currentEvidence or history.
- * Prefers currentEvidence when both expose canCancelUpload.
- */
-function findCancellablePendingEvidence(
-  currentEvidence: EvidenceSubmission | null | undefined,
-  history: readonly EvidenceSubmission[] | undefined,
-): EvidenceSubmission | undefined {
-  if (canCancelEvidenceUpload(currentEvidence ?? undefined)) {
-    return currentEvidence!;
-  }
-  return history?.find((submission) => canCancelEvidenceUpload(submission));
-}
-
-function evidenceTypeLabel(type: string): string {
-  return EVIDENCE_TYPE_LABELS[type] ?? type;
-}
-
-function isAnalysisEligibleEvidence(submission: EvidenceSubmission): boolean {
-  if (submission.evidenceType === "VIDEO" && submission.mediaType === "video/mp4") {
-    return true;
-  }
-  return submission.evidenceType === "PHOTO"
-    && (submission.mediaType === "image/jpeg" || submission.mediaType === "image/png");
-}
-
-/** Chronological event time for timeline ordering — backend status timestamps only. */
-function evidenceEventAt(submission: EvidenceSubmission): string {
-  if (submission.status === "PENDING_UPLOAD" && submission.cancelledAt) {
-    return submission.cancelledAt;
-  }
-  if (submission.status === "ACCEPTED" && submission.acceptedAt) {
-    return submission.acceptedAt;
-  }
-  if (submission.status === "REJECTED" && submission.rejectedAt) {
-    return submission.rejectedAt;
-  }
-  if (submission.status === "SUBMITTED" && submission.submittedAt) {
-    return submission.submittedAt;
-  }
-  return submission.createdAt;
-}
-
-function sortEvidenceChronologically(
-  history: readonly EvidenceSubmission[],
-): EvidenceSubmission[] {
-  return [...history].sort((left, right) => {
-    const delta =
-      new Date(evidenceEventAt(left)).getTime() -
-      new Date(evidenceEventAt(right)).getTime();
-    if (delta !== 0) {
-      return delta;
-    }
-    return left.id.localeCompare(right.id);
-  });
-}
-
-const EVIDENCE_POLICY_LABELS: Record<EvidencePolicy, string> = {
-  REQUIRED: "Kanıt gerekli",
-  NOT_REQUIRED: "Kanıt gerekli değil",
-};
-
-/**
- * Whose-turn copy derived only from backend availableActions + status.
- * Frontend invents no eligibility rule.
- */
-function deriveTurnBanner(input: {
-  status: string | undefined;
-  evidencePolicy: EvidencePolicy | undefined;
-  canStart: boolean;
-  canUpload: boolean;
-  canAccept: boolean;
-  canReject: boolean;
-  canAcceptWithoutEvidence: boolean;
-}): string | undefined {
-  const {
-    status,
-    evidencePolicy,
-    canStart,
-    canUpload,
-    canAccept,
-    canReject,
-    canAcceptWithoutEvidence,
-  } = input;
-  if (!status || status === "COMPLETED" || status === "CANCELLED") {
-    return undefined;
-  }
-  if (canStart) {
-    return "Sıra sizde: teslimatı başlatın";
-  }
-  if (canAcceptWithoutEvidence) {
-    return "Sıra sizde: teslimatı kanıtsız kabul edin";
-  }
-  if (canUpload) {
-    return "Sıra sizde: teslimat kanıtı yükleyin";
-  }
-  if (canAccept || canReject) {
-    return "Sıra sizde: kanıtı inceleyin";
-  }
-  if (status === "REVIEW_REQUIRED") {
-    return "Sıra karşı tarafta: alıcı kanıtı inceliyor";
-  }
-  if (evidencePolicy === "NOT_REQUIRED" && status === "IN_PROGRESS") {
-    return "Alıcı onayını bekliyor: teslimat kanıtsız kabul edilecek";
-  }
-  if (status === "EVIDENCE_REQUIRED" || status === "IN_PROGRESS") {
-    return "Sıra karşı tarafta: satıcı kanıt yüklüyor";
-  }
-  if (status === "NOT_STARTED") {
-    return "Sıra karşı tarafta: satıcı teslimatı başlatacak";
-  }
-  return undefined;
-}
+import { EvidenceHistory } from "./components/EvidenceHistory";
+import { EvidenceReviewSection } from "./components/EvidenceReviewSection";
+import { EvidenceSummary } from "./components/EvidenceSummary";
+import {
+  EVIDENCE_POLICY_LABELS,
+  canCancelEvidenceUpload,
+  deriveTurnBanner,
+  evidenceTypeLabel,
+  findCancellablePendingEvidence,
+  fulfillmentStatusLabel,
+  sortEvidenceChronologically,
+} from "./components/fulfillmentPresentation";
 
 type UploadStage =
   | "idle"
@@ -290,7 +121,9 @@ export function DealFulfillmentPanel({
 
   const [notice, setNotice] = useState<string>();
   const [feedbackNotice, setFeedbackNotice] = useState<string>();
-  const [uploadState, setUploadState] = useState<UploadState>({ stage: "idle" });
+  const [uploadState, setUploadState] = useState<UploadState>({
+    stage: "idle",
+  });
   const [downloadError, setDownloadError] = useState<string>();
   const [downloadingId, setDownloadingId] = useState<string>();
   const [rejectionReason, setRejectionReason] = useState("");
@@ -380,9 +213,7 @@ export function DealFulfillmentPanel({
       ),
     onSuccess: () => {
       setUploadState({ stage: "done" });
-      setFeedbackNotice(
-        "Kanıt gönderildi — alıcının incelemesi bekleniyor",
-      );
+      setFeedbackNotice("Kanıt gönderildi — alıcının incelemesi bekleniyor");
       refreshAfterMutation();
     },
     onError: (error) => {
@@ -395,8 +226,7 @@ export function DealFulfillmentPanel({
         stage: "failed",
         failedStage: "finalize",
         expired:
-          isEvidenceUploadExpired(error) ||
-          isIntentExpired(previous.intent),
+          isEvidenceUploadExpired(error) || isIntentExpired(previous.intent),
         errorMessage: getFulfillmentErrorMessage(error),
       }));
     },
@@ -410,14 +240,19 @@ export function DealFulfillmentPanel({
   ) {
     setUploadState({ stage: "uploading", file, sha256, intent, progress: 0 });
     try {
-      await putEvidenceBytes(intent.uploadUrl, intent.uploadHeaders, file, (fraction) => {
-        if (attemptIdRef.current !== attemptId) return;
-        setUploadState((previous) =>
-          previous.stage === "uploading"
-            ? { ...previous, progress: fraction }
-            : previous,
-        );
-      });
+      await putEvidenceBytes(
+        intent.uploadUrl,
+        intent.uploadHeaders,
+        file,
+        (fraction) => {
+          if (attemptIdRef.current !== attemptId) return;
+          setUploadState((previous) =>
+            previous.stage === "uploading"
+              ? { ...previous, progress: fraction }
+              : previous,
+          );
+        },
+      );
     } catch (error) {
       if (attemptIdRef.current !== attemptId) return;
       const status = error instanceof DirectUploadError ? error.status : 0;
@@ -509,7 +344,13 @@ export function DealFulfillmentPanel({
       return;
     }
     if (attemptIdRef.current !== attemptId) return;
-    await createIntentAndUpload(file, evidenceType, mediaType, sha256, attemptId);
+    await createIntentAndUpload(
+      file,
+      evidenceType,
+      mediaType,
+      sha256,
+      attemptId,
+    );
   }
 
   function handleRetry() {
@@ -523,7 +364,13 @@ export function DealFulfillmentPanel({
       return;
     }
     resetFinalizeKey();
-    void createIntentAndUpload(file, evidenceType, mediaType, sha256, attemptId);
+    void createIntentAndUpload(
+      file,
+      evidenceType,
+      mediaType,
+      sha256,
+      attemptId,
+    );
   }
 
   const cancelMutation = useMutation({
@@ -698,7 +545,9 @@ export function DealFulfillmentPanel({
       refreshAfterMutation();
     },
     onError: (error) => {
-      if (shouldResetFulfillmentIdempotencyKey(error, "acceptWithoutEvidence")) {
+      if (
+        shouldResetFulfillmentIdempotencyKey(error, "acceptWithoutEvidence")
+      ) {
         resetAcceptWithoutEvidenceKey();
         refreshAfterMutation();
       }
@@ -707,7 +556,8 @@ export function DealFulfillmentPanel({
   });
 
   const canStart = !readOnly && deal.availableActions.canStartFulfillment;
-  const canUpload = !readOnly && (fulfillment?.milestone.availableActions.canUpload ?? false);
+  const canUpload =
+    !readOnly && (fulfillment?.milestone.availableActions.canUpload ?? false);
   const canAccept = !readOnly && deal.availableActions.canAcceptEvidence;
   const canReject = !readOnly && deal.availableActions.canRejectEvidence;
   const canAcceptWithoutEvidence =
@@ -744,7 +594,10 @@ export function DealFulfillmentPanel({
     );
   }
 
-  if (fulfillmentQuery.isError && !isFulfillmentNotFound(fulfillmentQuery.error)) {
+  if (
+    fulfillmentQuery.isError &&
+    !isFulfillmentNotFound(fulfillmentQuery.error)
+  ) {
     return (
       <section className="panel" aria-live="polite">
         <h2>Teslimat</h2>
@@ -769,21 +622,24 @@ export function DealFulfillmentPanel({
   const currentEvidence = fulfillment?.currentEvidence;
 
   return (
-    <section className="panel fulfillment-panel" aria-live="polite">
+    <section className={`panel ${styles.fulfillmentPanel}`} aria-live="polite">
       <h2>Teslimat</h2>
 
       {turnBanner ? (
-        <p className="fulfillment-turn-banner" role="status">
+        <p className={styles.fulfillmentTurnBanner} role="status">
           {turnBanner}
         </p>
       ) : null}
 
       {feedbackNotice ? (
-        <p className="success-notice fulfillment-feedback" role="status">
+        <p
+          className={`success-notice ${styles.fulfillmentFeedback}`}
+          role="status"
+        >
           {onNavigateToClosure ? (
             <button
               type="button"
-              className="text-button fulfillment-closure-nav"
+              className={`text-button ${styles.fulfillmentClosureNav}`}
               onClick={onNavigateToClosure}
             >
               {feedbackNotice}
@@ -795,7 +651,9 @@ export function DealFulfillmentPanel({
       ) : null}
 
       {readOnly ? (
-        <p className="muted-copy">Bu aşama salt okunurdur; teslimat geçmişi aşağıda korunur.</p>
+        <p className="muted-copy">
+          Bu aşama salt okunurdur; teslimat geçmişi aşağıda korunur.
+        </p>
       ) : null}
 
       {!fulfillment && canStart && (
@@ -820,20 +678,17 @@ export function DealFulfillmentPanel({
         </div>
       )}
 
-      {!fulfillment && !canStart && (
-        <p>Teslimat henüz başlatılmadı.</p>
-      )}
+      {!fulfillment && !canStart && <p>Teslimat henüz başlatılmadı.</p>}
 
       {fulfillment && (
         <div className="fulfillment-detail">
           <div className="fulfillment-status">
             <strong>Durum:</strong>{" "}
-            <span
-              className="fulfillment-status-badge"
-              data-status={fulfillment.status}
-            >
-              {fulfillmentStatusLabel(fulfillment.status)}
-            </span>
+            <StatusBadge
+              domain="fulfillment"
+              status={fulfillment.status}
+              label={fulfillmentStatusLabel(fulfillment.status)}
+            />
           </div>
 
           {fulfillment.evidencePolicy ? (
@@ -847,8 +702,8 @@ export function DealFulfillmentPanel({
           fulfillment.status === "IN_PROGRESS" &&
           !canAcceptWithoutEvidence ? (
             <p className="muted-copy">
-              Bu teslimatta dosya yüklenmez; alıcı kuruluş yöneticisinin kanıtsız
-              onayı bekleniyor.
+              Bu teslimatta dosya yüklenmez; alıcı kuruluş yöneticisinin
+              kanıtsız onayı bekleniyor.
             </p>
           ) : null}
 
@@ -876,7 +731,7 @@ export function DealFulfillmentPanel({
           ) : null}
 
           {serverCancellablePending && uploadState.stage === "idle" ? (
-            <div className="pending-upload-recovery">
+            <div className={styles.pendingUploadRecovery}>
               {cancelError ? (
                 <p className="form-alert" role="alert">
                   {cancelError}
@@ -924,9 +779,7 @@ export function DealFulfillmentPanel({
               {uploadState.stage === "idle" && (
                 <EvidenceUploadForm onFileSelected={handleFileSelected} />
               )}
-              {uploadState.stage === "hashing" && (
-                <p>Dosya doğrulanıyor…</p>
-              )}
+              {uploadState.stage === "hashing" && <p>Dosya doğrulanıyor…</p>}
               {uploadState.stage === "creating-intent" && (
                 <p>Yükleme hazırlanıyor…</p>
               )}
@@ -970,122 +823,33 @@ export function DealFulfillmentPanel({
             </div>
           )}
 
-          {currentEvidence && currentEvidence.status === "SUBMITTED" && (
-            <div className="current-evidence">
-              <h4>Mevcut teslimat kanıtı</h4>
-              <EvidenceSummary submission={currentEvidence} />
-              {isAnalysisEligibleEvidence(currentEvidence) && (
-                <EvidenceVideoAnalysisPanel
-                  legalEntityId={legalEntityId}
-                  dealId={deal.id}
-                  evidenceSubmissionId={currentEvidence.id}
-                  expectedEvidenceVersion={currentEvidence.version}
-                  readOnly={readOnly}
-                />
-              )}
-              {canAccept && (
-                <div className="review-actions">
-                  {reviewError && (
-                    <p className="form-alert" role="alert">
-                      {reviewError}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => handleAccept(currentEvidence)}
-                    disabled={acceptMutation.isPending || rejectMutation.isPending}
-                  >
-                    {acceptMutation.isPending
-                      ? "Onaylanıyor…"
-                      : "Teslimat kanıtını onayla"}
-                  </button>
-                  <div className="reject-form">
-                    <label htmlFor="rejection-reason">Reddetme sebebi</label>
-                    <textarea
-                      id="rejection-reason"
-                      rows={3}
-                      maxLength={1000}
-                      value={rejectionReason}
-                      onChange={(event) => setRejectionReason(event.target.value)}
-                      disabled={rejectMutation.isPending}
-                    />
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={() => handleReject(currentEvidence)}
-                      disabled={
-                        rejectMutation.isPending ||
-                        acceptMutation.isPending ||
-                        rejectionReason.trim().length === 0
-                      }
-                    >
-                      {rejectMutation.isPending
-                        ? "Reddediliyor…"
-                        : "Teslimat kanıtını reddet"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          {currentEvidence && (
+            <EvidenceReviewSection
+              legalEntityId={legalEntityId}
+              dealId={deal.id}
+              evidence={currentEvidence}
+              readOnly={readOnly}
+              canAccept={Boolean(canAccept)}
+              isAccepting={acceptMutation.isPending}
+              isRejecting={rejectMutation.isPending}
+              reviewError={reviewError}
+              rejectionReason={rejectionReason}
+              onRejectionReasonChange={setRejectionReason}
+              onAccept={handleAccept}
+              onReject={handleReject}
+            />
           )}
 
-          {chronologicalHistory.length > 0 && (
-            <div className="evidence-history">
-              <h4>Teslimat kanıtı geçmişi</h4>
-              {downloadError && (
-                <p className="form-alert" role="alert">
-                  {downloadError}
-                </p>
-              )}
-              <ol className="evidence-timeline">
-                {chronologicalHistory.map((submission) => (
-                  <li
-                    key={submission.id}
-                    className="evidence-timeline-item"
-                    data-status={submission.status}
-                    data-cancelled={isCancelledPending(submission) ? "true" : undefined}
-                  >
-                    <div className="evidence-timeline-meta">
-                      <time dateTime={evidenceEventAt(submission)}>
-                        {formatDate(evidenceEventAt(submission))}
-                      </time>
-                      <span
-                        className="evidence-status-badge"
-                        data-status={submission.status}
-                        data-cancelled={isCancelledPending(submission) ? "true" : undefined}
-                      >
-                        {evidenceStatusLabel(submission)}
-                      </span>
-                    </div>
-                    <EvidenceSummary submission={submission} />
-                    {isAnalysisEligibleEvidence(submission)
-                      && submission.id !== currentEvidence?.id && (
-                      <EvidenceVideoAnalysisPanel
-                        legalEntityId={legalEntityId}
-                        dealId={deal.id}
-                        evidenceSubmissionId={submission.id}
-                        expectedEvidenceVersion={submission.version}
-                        readOnly={readOnly}
-                      />
-                    )}
-                    {submission.availableActions.canDownload && (
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => handleDownload(submission)}
-                        disabled={downloadingId === submission.id}
-                      >
-                        {downloadingId === submission.id
-                          ? "Hazırlanıyor…"
-                          : "İndir"}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
+          <EvidenceHistory
+            legalEntityId={legalEntityId}
+            dealId={deal.id}
+            history={chronologicalHistory}
+            currentEvidence={currentEvidence}
+            readOnly={readOnly}
+            downloadError={downloadError}
+            downloadingId={downloadingId}
+            onDownload={handleDownload}
+          />
         </div>
       )}
     </section>
@@ -1100,7 +864,8 @@ function EvidenceUploadForm({
     evidenceType: EvidenceType,
   ) => void;
 }) {
-  const [evidenceType, setEvidenceType] = useState<EvidenceType>("DELIVERY_NOTE");
+  const [evidenceType, setEvidenceType] =
+    useState<EvidenceType>("DELIVERY_NOTE");
 
   return (
     <div className="evidence-upload-form">
@@ -1112,7 +877,9 @@ function EvidenceUploadForm({
           setEvidenceType(event.target.value as EvidenceType)
         }
       >
-        <option value="DELIVERY_NOTE">{evidenceTypeLabel("DELIVERY_NOTE")}</option>
+        <option value="DELIVERY_NOTE">
+          {evidenceTypeLabel("DELIVERY_NOTE")}
+        </option>
         <option value="INVOICE">{evidenceTypeLabel("INVOICE")}</option>
         <option value="VIDEO">{evidenceTypeLabel("VIDEO")}</option>
         <option value="PHOTO">{evidenceTypeLabel("PHOTO")}</option>
@@ -1130,55 +897,9 @@ function EvidenceUploadForm({
         onChange={(event) => onFileSelected(event, evidenceType)}
       />
       <p className="hint">
-        PDF, DOCX, JPEG, PNG veya MP4; boyut sınırı sunucu tarafından belirlenir.
+        PDF, DOCX, JPEG, PNG veya MP4; boyut sınırı sunucu tarafından
+        belirlenir.
       </p>
-    </div>
-  );
-}
-
-function EvidenceSummary({ submission }: { submission: EvidenceSubmission }) {
-  return (
-    <div className="evidence-summary">
-      <div>
-        <strong>{submission.fileName}</strong>
-        <span className="evidence-type">
-          {" "}
-          ({evidenceTypeLabel(submission.evidenceType)})
-        </span>
-      </div>
-      <div className="evidence-meta">
-        <span>Durum: {evidenceStatusLabel(submission)}</span>
-        {" | "}
-          <span>Dosya türü: {submission.mediaType}</span>
-        {" | "}
-        <span>
-          Boyut:{" "}
-          {submission.status === "PENDING_UPLOAD"
-            ? formatBytes(submission.clientSizeBytes)
-            : formatBytes(submission.verifiedSizeBytes)}
-        </span>
-        {" | "}
-        <span>Oluşturulma: {formatDate(submission.createdAt)}</span>
-        {submission.status === "PENDING_UPLOAD" && submission.cancelledAt && (
-          <span> | İptal: {formatDate(submission.cancelledAt)}</span>
-        )}
-        {submission.status === "SUBMITTED" && submission.submittedAt && (
-          <span> | Sunulma: {formatDate(submission.submittedAt)}</span>
-        )}
-        {submission.status === "ACCEPTED" && submission.acceptedAt && (
-          <span> | Onay: {formatDate(submission.acceptedAt)}</span>
-        )}
-        {submission.status === "REJECTED" && (
-          <>
-            {submission.rejectedAt && (
-              <span> | Red: {formatDate(submission.rejectedAt)}</span>
-            )}
-            <p className="rejection-reason">
-              Sebep: {submission.rejectionReason}
-            </p>
-          </>
-        )}
-      </div>
     </div>
   );
 }

@@ -1,6 +1,10 @@
 # ADR-020: Acyclic Release Manifest and Image Identity
 
 - Durum: Accepted
+- Runtime notu: GHCR/release-manifest promotion hattı kontrollü demo runtime'ı
+  için [ADR-022](ADR-022-Railway-Only-Controlled-Demo-Runtime.md) tarafından
+  geçici olarak ertelenmiştir; exact source revision ve Railway deployment/image
+  kimliği kanıtı korunur.
 - Tarih: 22 Temmuz 2026
 - Karar sahibi: M4Trust founder/user
 - Kapsam: Main `web`/`core` image kimliği ile release manifestinin tek yönlü bağı

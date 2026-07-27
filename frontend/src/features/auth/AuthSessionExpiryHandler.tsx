@@ -30,7 +30,11 @@ export function AuthSessionExpiryHandler() {
     }
 
     window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpiry);
-    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpiry);
+    return () =>
+      window.removeEventListener(
+        AUTH_SESSION_EXPIRED_EVENT,
+        handleSessionExpiry,
+      );
   }, [location.pathname, navigate, queryClient]);
 
   return null;

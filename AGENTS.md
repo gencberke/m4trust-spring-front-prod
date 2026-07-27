@@ -15,8 +15,14 @@ Cold-start discovery — read these before role-specific files:
 - Local bootstrap: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 - Light validation map: [`docs/VALIDATION.md`](docs/VALIDATION.md)
 - Project state: [`docs/plan/CURRENT.md`](docs/plan/CURRENT.md)
+- What's next: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 - Plan workflow: [`docs/plan/README.md`](docs/plan/README.md)
 - ADRs: [`architecture-decisions/ADR-INDEX.md`](architecture-decisions/ADR-INDEX.md) and [`architecture-decisions/FORBIDDEN.md`](architecture-decisions/FORBIDDEN.md)
+- Repo map (generated): [`docs/agent/repo-map.md`](docs/agent/repo-map.md)
+
+Hackathon-era plans, gate decisions and review records are archived under
+[`docs/history/hackathon-2026-07/`](docs/history/hackathon-2026-07/). They are
+historical context, never current project state.
 
 ## Read by role
 
@@ -28,8 +34,7 @@ Planner:
 
 Implementer:
 1. Read `docs/agent/implementer-agent.md`.
-2. Accept work only through the task-packet format defined there.
-3. Do not move plans or update accepted project state.
+2. Do not move plans or update accepted project state.
 
 ## Common rules
 

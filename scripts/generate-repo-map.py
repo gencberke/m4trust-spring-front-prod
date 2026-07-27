@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from collections import Counter
@@ -104,24 +105,33 @@ def import_fan_in(files: list[Path]) -> list[tuple[int, str]]:
         r"""from\s+['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]"""
     )
 
+    def resolve(base: Path, specifier: str) -> str | None:
+        """Resolve an import specifier to a repo-relative file, or None if external.
+
+        Bare specifiers (``react``, ``@tanstack/react-query``) are npm packages, not
+        internal modules, and must not be counted as fan-in.
+        """
+        if specifier.startswith("@/"):
+            candidate = Path("frontend/src") / specifier.removeprefix("@/")
+        elif specifier.startswith("."):
+            candidate = Path(os.path.normpath(base / specifier))
+        else:
+            return None
+        for suffix in ("", ".ts", ".tsx", "/index.ts", "/index.tsx"):
+            probe = candidate.as_posix() + suffix
+            if (ROOT / probe).is_file():
+                return probe
+        return None
+
     for rel in frontend_ts:
         text = (ROOT / rel).read_text(encoding="utf-8", errors="ignore")
         for match in import_re.finditer(text):
-            target = match.group(1) or match.group(2)
-            if not target or target.startswith("."):
+            specifier = match.group(1) or match.group(2)
+            if not specifier:
                 continue
-            if target.startswith("@/"):
-                target = "frontend/src/" + target.removeprefix("@/")
-            elif not target.startswith("frontend/"):
-                target = f"frontend/src/{target}"
-            if not target.endswith((".ts", ".tsx")):
-                if (ROOT / f"{target}.ts").exists():
-                    target = f"{target}.ts"
-                elif (ROOT / f"{target}.tsx").exists():
-                    target = f"{target}.tsx"
-                else:
-                    target = f"{target}.ts"
-            fan_in[target] += 1
+            target = resolve(rel.parent, specifier)
+            if target is not None:
+                fan_in[target] += 1
 
     ranked = [(count, module) for module, count in fan_in.items()]
     ranked.sort(key=lambda item: (-item[0], item[1]))
@@ -162,7 +172,10 @@ def top_level_tree() -> str:
             continue
         if entry.is_dir():
             lines.append(f"{name}/")
-            children = sorted(entry.iterdir(), key=lambda p: p.name)[:8]
+            children = sorted(
+                (child for child in entry.iterdir() if child.name not in SKIP_DIRS),
+                key=lambda p: p.name,
+            )[:8]
             for child in children:
                 if child.is_dir():
                     lines.append(f"  {child.name}/")

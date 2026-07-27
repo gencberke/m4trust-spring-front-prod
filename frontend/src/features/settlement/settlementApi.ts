@@ -47,10 +47,10 @@ export function getReleaseOperation(
   operationId: string,
   signal?: AbortSignal,
 ): Promise<ReleaseOperation> {
-  return requestJson<ReleaseOperation>(
-    `/release-operations/${operationId}`,
-    { signal, headers: context(legalEntityId) },
-  );
+  return requestJson<ReleaseOperation>(`/release-operations/${operationId}`, {
+    signal,
+    headers: context(legalEntityId),
+  });
 }
 
 export function reconcileReleaseOperation(

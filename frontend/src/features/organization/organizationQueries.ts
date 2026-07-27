@@ -32,7 +32,12 @@ export function legalEntityMembersQueryOptions(
   legalEntityId: string | undefined,
 ) {
   return queryOptions({
-    queryKey: ["organization", "legal-entity", legalEntityId, "members"] as const,
+    queryKey: [
+      "organization",
+      "legal-entity",
+      legalEntityId,
+      "members",
+    ] as const,
     queryFn: ({ signal }) => listLegalEntityMembers(legalEntityId!, signal),
     enabled: Boolean(legalEntityId),
   });

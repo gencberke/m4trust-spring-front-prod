@@ -20,7 +20,10 @@ export function fundingPlanQueryOptions(
   enabled: boolean,
 ) {
   return queryOptions({
-    queryKey: fundingPlanQueryKey(legalEntityId ?? "unselected", dealId ?? "missing"),
+    queryKey: fundingPlanQueryKey(
+      legalEntityId ?? "unselected",
+      dealId ?? "missing",
+    ),
     queryFn: ({ signal }) => getFundingPlan(legalEntityId!, dealId!, signal),
     enabled: Boolean(legalEntityId && dealId) && enabled,
   });
@@ -30,7 +33,11 @@ export function paymentOperationQueryKey(
   legalEntityId: string,
   paymentOperationId: string,
 ) {
-  return [...PAYMENT_OPERATION_QUERY_KEY, legalEntityId, paymentOperationId] as const;
+  return [
+    ...PAYMENT_OPERATION_QUERY_KEY,
+    legalEntityId,
+    paymentOperationId,
+  ] as const;
 }
 
 /**

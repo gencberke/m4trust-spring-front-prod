@@ -1,0 +1,40 @@
+.form textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 13px 15px;
+  border: 1px solid #aeb8c6;
+  border-radius: 5px;
+  background: #fff;
+  color: var(--color-ink);
+  line-height: 1.5;
+  outline: none;
+}
+.form textarea:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgb(0 107 85 / 16%);
+}
+.actionsPanel {
+  display: grid;
+  gap: 24px;
+}
+.managementForm {
+  margin-top: 28px;
+}
+.managementFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.managementFields select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #aeb8c6;
+  border-radius: 5px;
+  background: #fff;
+  color: var(--color-ink);
+}
+@media (max-width: 720px) {
+  .managementFields {
+    grid-template-columns: 1fr;
+  }
+}

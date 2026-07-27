@@ -1,0 +1,309 @@
+.workspace {
+  padding-top: 64px;
+}
+.workspace :global(.workspace-column) {
+  width: min(100%, 1180px);
+}
+.backLink {
+  display: inline-block;
+  margin-bottom: 30px;
+  font-weight: 750;
+}
+.heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 32px;
+}
+.heading > div:first-child {
+  max-width: 790px;
+}
+.heading h1 {
+  margin-top: 12px;
+  font-size: clamp(2.5rem, 5vw, 4.4rem);
+}
+.reference {
+  color: var(--color-accent);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.statusStack {
+  min-width: 160px;
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  padding-top: 10px;
+  color: var(--color-copy);
+  font-size: 0.78rem;
+}
+.stageCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 30px;
+  margin-top: 32px;
+  padding: 28px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: linear-gradient(135deg, #fff 0%, #f5faf8 100%);
+}
+.stageCard h2 {
+  margin: 9px 0 0;
+  color: var(--color-ink);
+  font-size: 1.45rem;
+}
+.stageCard p {
+  max-width: 630px;
+  margin: 10px 0 0;
+  color: var(--color-copy);
+}
+.stageList {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: start;
+  justify-content: end;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stageButton {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-copy);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.stageButton:hover,
+.stageButton[data-active="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+.stageButton:focus-visible {
+  outline: 3px solid rgb(0 107 85 / 24%);
+  outline-offset: 2px;
+}
+.stageList li[aria-current="step"] .stageButton::before {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  content: "";
+  vertical-align: middle;
+}
+.agreementLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  grid-template-areas: "main rail";
+  gap: 24px;
+  margin-top: 24px;
+}
+.agreementMain {
+  grid-area: main;
+  min-width: 0;
+}
+.editLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 24px;
+}
+.rail {
+  grid-area: rail;
+  min-width: 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--color-rule);
+}
+.facts > div {
+  padding: 19px;
+  background: #fff;
+}
+.facts dt,
+.technicalDetails dt {
+  color: var(--color-copy);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.facts dd {
+  margin: 8px 0 0;
+  color: var(--color-ink);
+  font-weight: 750;
+}
+.technicalDetails {
+  margin-top: 16px;
+}
+.participantsPanel {
+  margin-top: 16px;
+}
+.partiesPanel {
+  margin-top: 24px;
+}
+.partyAssignmentList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 24px 0 0;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-rule);
+}
+.partyAssignmentList > div {
+  min-width: 0;
+  padding: 16px;
+  background: #ffffff;
+}
+.partyAssignmentList dt {
+  color: var(--color-copy);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.partyAssignmentList dd {
+  margin: 8px 0 0;
+  color: var(--color-ink);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.partyReadinessNotice {
+  margin: 18px 0 0;
+  color: var(--color-accent-dark);
+  font-weight: 750;
+}
+.participantList {
+  display: grid;
+  gap: 12px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.participantList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+.participantList li > div > span {
+  display: block;
+  margin-top: 5px;
+  color: var(--color-copy);
+  font-size: 0.78rem;
+}
+.roleBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 7px;
+}
+.roleBadge {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.terminal {
+  margin-top: 24px;
+  border-left: 3px solid var(--color-accent);
+}
+.terminal h2 {
+  margin: 8px 0;
+}
+.simulationNotice {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff5e8;
+  color: #75410a;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+.closureNote {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-copy);
+  font-size: 0.78rem;
+}
+
+:global(.status-badge) {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #edf1f5;
+  color: #34425a;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+:global(.status-badge[data-status="DRAFT"]) {
+  background: #edf1f5;
+}
+:global(.status-badge[data-status="ACTIVE"]) {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+:global(.status-badge[data-status="COMPLETED"]) {
+  background: #e8f4ec;
+  color: #1f5c38;
+}
+:global(.status-badge[data-status="CANCELLED"]) {
+  background: #fff0f1;
+  color: #8d2632;
+}
+
+@media (max-width: 960px) {
+  .agreementLayout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "rail";
+  }
+  .editLayout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .heading,
+  .stageCard {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .statusStack,
+  .stageList,
+  .roleBadges {
+    justify-items: start;
+    justify-content: start;
+  }
+  .facts {
+    grid-template-columns: 1fr;
+  }
+  .partyAssignmentList {
+    grid-template-columns: 1fr;
+  }
+  .participantList li {
+    display: grid;
+  }
+}

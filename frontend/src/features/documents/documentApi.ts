@@ -20,8 +20,10 @@ export type HistoricalDealDocument =
   components["schemas"]["HistoricalDealDocument"];
 export type DealDocumentHistory = components["schemas"]["DealDocumentHistory"];
 export type DealDocumentHistoryItem = DealDocumentHistory["items"][number];
-export type DocumentUploadIntent = components["schemas"]["DocumentUploadIntent"];
-export type DocumentDownloadLink = components["schemas"]["DocumentDownloadLink"];
+export type DocumentUploadIntent =
+  components["schemas"]["DocumentUploadIntent"];
+export type DocumentDownloadLink =
+  components["schemas"]["DocumentDownloadLink"];
 
 export function createDealDocumentUploadIntent(
   legalEntityId: string,

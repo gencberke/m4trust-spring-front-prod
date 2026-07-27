@@ -1,0 +1,146 @@
+.settlementPanel {
+  margin-top: 24px;
+}
+.settlementSimulationNotice {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0 0 18px;
+  padding: 8px 14px;
+  border: 1px solid #f0cf6b;
+  border-radius: 6px;
+  background: #fff5d9;
+  color: #745000;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.settlementSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.settlementClosureBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e8f4ec;
+  color: #1f5c38;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.settlementFulfillmentNote {
+  color: var(--color-copy);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.settlementPlanCard {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--color-rule);
+  border-radius: 7px;
+  background: var(--color-surface);
+}
+.settlementSummaryList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 0;
+}
+.settlementSummaryList dt {
+  color: var(--color-copy);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.settlementSummaryList dd {
+  margin: 4px 0 0;
+  color: var(--color-ink);
+}
+.settlementOperationCard {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: #fff;
+}
+.settlementOperationHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-ink);
+  font-weight: 750;
+}
+.settlementOperationCard .settlementSummaryList {
+  margin-top: 14px;
+}
+.settlementReconciliationNotice {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-notice);
+  color: #234c83;
+  font-size: 0.85rem;
+}
+.settlementPollHint {
+  margin: 12px 0 0;
+}
+.settlementActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+:global(.settlement-status-badge),
+:global(.settlement-operation-status-badge) {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #edf1f5;
+  color: #34425a;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+:global(.settlement-status-badge[data-status="READY"]),
+:global(.settlement-operation-status-badge[data-status="QUEUED"]) {
+  background: var(--color-notice);
+  color: #234c83;
+}
+:global(.settlement-status-badge[data-status="NOT_READY"]),
+:global(.settlement-status-badge[data-status="ON_HOLD"]),
+:global(.settlement-status-badge[data-status="PROCESSING"]),
+:global(.settlement-operation-status-badge[data-status="PROCESSING"]),
+:global(
+  .settlement-operation-status-badge[data-status="RECONCILIATION_REQUIRED"]
+) {
+  background: #fff5d9;
+  color: #745000;
+}
+:global(.settlement-status-badge[data-status="SIMULATED_SETTLED"]),
+:global(.settlement-operation-status-badge[data-status="SIMULATED_SETTLED"]) {
+  background: #e8f4ec;
+  color: #1f5c38;
+}
+:global(.settlement-status-badge[data-status="FAILED"]),
+:global(.settlement-operation-status-badge[data-status="SIMULATED_DECLINED"]),
+:global(
+  .settlement-operation-status-badge[data-status="FAILED_BEFORE_DISPATCH"]
+) {
+  background: #fff0f1;
+  color: #8d2632;
+}

@@ -1,0 +1,7 @@
+package com.m4trust.coreapi.deal.api;
+
+import com.m4trust.coreapi.deal.api.port.*;
+import com.m4trust.coreapi.deal.domain.*;
+import com.m4trust.coreapi.deal.infra.repository.*;
+
+record DealInvitationAvailableActions(boolean canAccept, boolean canReject, boolean canRevoke) {}

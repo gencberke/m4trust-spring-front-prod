@@ -1,10 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import {
-  getDeal,
-  listDeals,
-  type DealListParameters,
-} from "./dealApi";
+import { getDeal, listDeals, type DealListParameters } from "./dealApi";
 
 export const DEAL_QUERY_KEY = ["deals"] as const;
 
@@ -34,10 +30,7 @@ export function dealListQueryOptions(
   });
 }
 
-export function dealDetailQueryKey(
-  legalEntityId: string,
-  dealId: string,
-) {
+export function dealDetailQueryKey(legalEntityId: string, dealId: string) {
   return [...DEAL_QUERY_KEY, legalEntityId, "detail", dealId] as const;
 }
 

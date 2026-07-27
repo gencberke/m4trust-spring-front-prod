@@ -1,11 +1,7 @@
 import { ApiError } from "../../app/coreApi";
 
 export type CaseworkField =
-  | "reasonCode"
-  | "subject"
-  | "statement"
-  | "body"
-  | "expectedVersion";
+  "reasonCode" | "subject" | "statement" | "body" | "expectedVersion";
 
 function isCaseworkField(field: string): field is CaseworkField {
   return (
@@ -106,7 +102,8 @@ export function shouldRefetchAfterOpenError(error: unknown): boolean {
 export function shouldRefetchAfterMutationError(error: unknown): boolean {
   return (
     error instanceof ApiError &&
-    (error.code === "DISPUTE_STALE_VERSION" || error.code === "DISPUTE_STATE_CONFLICT")
+    (error.code === "DISPUTE_STALE_VERSION" ||
+      error.code === "DISPUTE_STATE_CONFLICT")
   );
 }
 

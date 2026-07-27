@@ -35,7 +35,9 @@ function isAuthField(field: string): field is AuthField {
   return field === "displayName" || field === "email" || field === "password";
 }
 
-export function getFieldErrors(error: unknown): Partial<Record<AuthField, string>> {
+export function getFieldErrors(
+  error: unknown,
+): Partial<Record<AuthField, string>> {
   if (!(error instanceof ApiError) || error.code !== "VALIDATION_FAILED") {
     return {};
   }
@@ -43,13 +45,19 @@ export function getFieldErrors(error: unknown): Partial<Record<AuthField, string
   const result: Partial<Record<AuthField, string>> = {};
   for (const fieldError of error.problem?.errors ?? []) {
     if (isAuthField(fieldError.field) && !result[fieldError.field]) {
-      result[fieldError.field] = validationMessage(fieldError.field, fieldError.code);
+      result[fieldError.field] = validationMessage(
+        fieldError.field,
+        fieldError.code,
+      );
     }
   }
   return result;
 }
 
-export function getAuthErrorMessage(error: unknown, operation: AuthOperation): string {
+export function getAuthErrorMessage(
+  error: unknown,
+  operation: AuthOperation,
+): string {
   if (!(error instanceof ApiError)) {
     return "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.";
   }

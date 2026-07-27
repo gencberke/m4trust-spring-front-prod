@@ -1,0 +1,49 @@
+.workspace {
+  padding-top: 72px;
+}
+
+.workspace :global(.workspace-column) {
+  width: min(100%, 1180px);
+}
+
+.workspace h1 {
+  max-width: 930px;
+  font-size: clamp(2.7rem, 5vw, 4.6rem);
+}
+
+.workspace :global(.workspace-grid) {
+  margin-top: 38px;
+}
+
+.workspace :global(.workspace-panel:first-child) {
+  border-top: 3px solid var(--color-accent);
+}
+
+.createPanel {
+  max-width: 760px;
+  margin-top: 24px;
+}
+
+:global(.workspace-grid) + .createPanel,
+:global(.empty-entity-state) + .createPanel,
+:global(.workspace-state) + .createPanel {
+  margin-top: 24px;
+}
+
+.form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form :global(.primary-button) {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .workspace {
+    padding-top: 54px;
+  }
+
+  .form {
+    grid-template-columns: 1fr;
+  }
+}

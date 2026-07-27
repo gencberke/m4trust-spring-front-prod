@@ -12,7 +12,9 @@ export const ACCEPTED_DOCUMENT_MEDIA_TYPES: readonly DocumentMediaType[] = [
 export const ACCEPTED_DOCUMENT_FILE_INPUT_ACCEPT =
   ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-export function inferDocumentMediaType(file: File): DocumentMediaType | undefined {
+export function inferDocumentMediaType(
+  file: File,
+): DocumentMediaType | undefined {
   const lowerName = file.name.toLowerCase();
   if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
     return "application/pdf";

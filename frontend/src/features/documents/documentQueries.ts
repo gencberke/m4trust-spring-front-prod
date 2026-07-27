@@ -20,8 +20,7 @@ export function dealDocumentHistoryQueryOptions(
       legalEntityId ?? "unselected",
       dealId ?? "missing",
     ),
-    queryFn: ({ signal }) =>
-      listDealDocuments(legalEntityId!, dealId!, signal),
+    queryFn: ({ signal }) => listDealDocuments(legalEntityId!, dealId!, signal),
     enabled: Boolean(legalEntityId && dealId),
   });
 }

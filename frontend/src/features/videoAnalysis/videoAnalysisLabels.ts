@@ -34,7 +34,9 @@ export const WARNING_SEVERITY_LABELS: Record<WarningSeverity, string> = {
 };
 
 export function labelAdvisoryOutcome(value: string): string {
-  return ADVISORY_OUTCOME_LABELS[value as AdvisoryOutcome] ?? "Danışmanlık sonucu";
+  return (
+    ADVISORY_OUTCOME_LABELS[value as AdvisoryOutcome] ?? "Danışmanlık sonucu"
+  );
 }
 
 export function labelObservationType(value: string): string {
@@ -92,8 +94,3 @@ export function formatDurationMs(durationMs: number): string {
 export function formatTimeRange(startMs: number, endMs: number): string {
   return `${formatDurationMs(startMs)} – ${formatDurationMs(endMs)}`;
 }
-
-export const PERCENT_FORMATTER = new Intl.NumberFormat("tr-TR", {
-  style: "percent",
-  maximumFractionDigits: 0,
-});

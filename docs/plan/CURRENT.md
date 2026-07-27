@@ -5,28 +5,28 @@ Last updated: 2026-07-24
 ## Phase
 
 Slice 0 platform foundation and Slice 1 authentication are merged into `main`
-and accepted under `docs/plan/done/`.
+and accepted under `docs/history/hackathon-2026-07/done/`.
 
-Slice 2 organization and membership is accepted under `docs/plan/done/`.
+Slice 2 organization and membership is accepted under `docs/history/hackathon-2026-07/done/`.
 Contract, backend, frontend, and the real two-browser end-to-end isolation flow
 passed; the accepted branch is merged into `main`.
 
-Slice 3 Deal creation and listing is accepted under `docs/plan/done/`.
+Slice 3 Deal creation and listing is accepted under `docs/history/hackathon-2026-07/done/`.
 Contract, backend, frontend, automated validation, and the real browser
 stale-version and two-profile participant-isolation flows passed.
 
 Slice 4 Deal invitations and cross-entity participation is accepted under
-`docs/plan/done/`. Contract design review, expand/switch migrations, invitation
+`docs/history/hackathon-2026-07/done/`. Contract design review, expand/switch migrations, invitation
 state machine, reusable idempotency, backend/frontend validation, and the real
 two-browser acceptance flow passed.
 
 Slice 5 Deal parties and activation readiness is accepted under
-`docs/plan/done/`. Buyer/seller assignment, participant-only validation,
+`docs/history/hackathon-2026-07/done/`. Buyer/seller assignment, participant-only validation,
 explicit initiator authorization, backend-derived party action availability,
 optimistic stale-version recovery, and the real two-browser acceptance flow passed.
 Deal remains DRAFT in this slice; no activation endpoint or action exists.
 
-Slice 6 Document upload is accepted under `docs/plan/done/`. Direct
+Slice 6 Document upload is accepted under `docs/history/hackathon-2026-07/done/`. Direct
 browser-to-private-storage upload (client SHA-256 → intent → direct PUT to
 MinIO → finalize), storage-verified size/checksum, immutable object versioning,
 atomic finalize (AVAILABLE + previous SUPERSEDED + Deal current-document pointer
@@ -35,15 +35,15 @@ at the DB level, initiator-only mutation with participant read/download,
 history and short-lived download links, and the real two-browser acceptance
 flow (§7.1–7.8, initiator + participant) passed against real MinIO.
 
-Slice 7 Railway Staging Deployment is accepted under `docs/plan/done/`.
+Slice 7 Railway Staging Deployment is accepted under `docs/history/hackathon-2026-07/done/`.
 Main-bound immutable core/web deployments, public HTTPS edge with private Core
 API/PostgreSQL, one-shot Flyway pre-deploy, isolated migration failure gate,
 schema-compatible immutable rollback, release identity, secret/network checks,
 and the real two-context browser/security flow passed. Evidence:
-`docs/plan/done/review/04-07-implementation-review-handoff.md`. RabbitMQ, object storage and AI
+`docs/history/hackathon-2026-07/done/review/04-07-implementation-review-handoff.md`. RabbitMQ, object storage and AI
 workers remain outside this staging slice.
 
-Slice 8 AI Document Extraction is accepted under `docs/plan/done/`. The
+Slice 8 AI Document Extraction is accepted under `docs/history/hackathon-2026-07/done/`. The
 OpenAPI analysis surface, transactional outbox, idempotent inbox, RabbitMQ
 topology, contractintelligence flow, local-only Mock AI Worker, lifecycle
 projection and frontend analysis view are implemented. Real-browser acceptance
@@ -51,32 +51,32 @@ projection and frontend analysis view are implemented. Real-browser acceptance
 always land at REVIEW_REQUIRED.
 
 Slice 9 Manual Review and RuleSetVersion is accepted under
-`docs/plan/done/`. Initiator review, typed rule corrections/exclusions/manual
+`docs/history/hackathon-2026-07/done/`. Initiator review, typed rule corrections/exclusions/manual
 rules, immutable version history, atomic acceptance, document supersession,
 participant read-only visibility and real two-session concurrency acceptance
 passed against PostgreSQL, RabbitMQ, MinIO and the Compose Mock AI Worker.
 
-Slice 10 Ratification is accepted under `docs/plan/done/`. Immutable canonical
+Slice 10 Ratification is accepted under `docs/history/hackathon-2026-07/done/`. Immutable canonical
 package snapshots, RFC 8785/JCS content hashing, structured commercial terms,
 entity-scoped ADMIN approvals, rejection/supersession, atomic RATIFIED+ACTIVE
 and the real two-browser race matrix passed.
 
-Slice 11 Funding Foundation is accepted under `docs/plan/done/`. Explicit
+Slice 11 Funding Foundation is accepted under `docs/history/hackathon-2026-07/done/`. Explicit
 single-plan/single-unit funding, ratification-package provenance, durable
 dispatch, two-layer idempotency, query-first reconciliation, local-sandbox
 SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS flows and FUNDING→FULFILLMENT projection
 passed. Release, payout, refund, settlement and a real provider remain out of
 scope.
 
-Slice 11B-A Moka Provider Foundation is accepted under `docs/plan/done/`.
+Slice 11B-A Moka Provider Foundation is accepted under `docs/history/hackathon-2026-07/done/`.
 A separate deterministic HTTP emulator, bounded Moka authentication/money
 transport, the existing durable funding port over real HTTP, query-first
 timeout recovery and probe-only pool transport passed focused validation. This
 local/CI evidence is not real-provider proof; after the founder's scope change
 it supports G1-S simulation safety and never authorizes real-provider behavior.
-Evidence: `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
+Evidence: `docs/history/hackathon-2026-07/done/review/14a-15p4-implementation-review-handoff.md`.
 
-Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
+Slice 12 Fulfillment and Evidence is accepted under `docs/history/hackathon-2026-07/done/`.
 Seller start, participant-readable fulfillment, private-storage evidence
 upload/finalize, immutable history, buyer accept/reject/replacement, terminal
 completion, backend-derived lifecycle/actions, and the user-directed minimum
@@ -85,7 +85,7 @@ completion leaves the Deal ACTIVE and creates no release, settlement, refund,
 provider-payment, dispute, or AI side effect. Deployment/provider work remains
 deferred.
 
-Slice 13 Video Analysis is accepted under `docs/plan/done/`. Buyer ADMIN can
+Slice 13 Video Analysis is accepted under `docs/history/hackathon-2026-07/done/`. Buyer ADMIN can
 explicitly request/retry analysis for immutable current VIDEO/MP4 evidence;
 participants read safe advisory results, including accepted/rejected history.
 Fulfillment-owned jobs/results reuse the Slice 8 outbox/inbox and shared
@@ -95,17 +95,17 @@ Deal, release money, call a provider, or create dispute/casework state. Browser
 acceptance found and corrected canonical-result, cross-tenant tenant/FK, MIME
 wire-serialization, and historical-panel defects. The previously waived
 historical VIDEO/MP4 panel observation was later retired by gate C0 on
-2026-07-21 (`docs/plan/done/review/14a-15p4-implementation-review-handoff.md`).
+2026-07-21 (`docs/history/hackathon-2026-07/done/review/14a-15p4-implementation-review-handoff.md`).
 
 Slice 14A Dispute and Casework Foundation is accepted under
-`docs/plan/done/`. Buyer/seller ADMIN dispute opening, party-only read/comment,
+`docs/history/hackathon-2026-07/done/`. Buyer/seller ADMIN dispute opening, party-only read/comment,
 counterparty acknowledgement, opener withdrawal, immutable evidence/video
 snapshotting, actor-aware non-disclosing `DISPUTE` lifecycle, V22 authority,
 and frontend casework are implemented. The reported contract, backend, focused
 regression, frontend, and diff validations passed. The planner-owned real
 browser Section 6 matrix that was deferred at 14A closure was completed and
 accepted as gate C0 on 2026-07-21
-(`docs/plan/done/review/14a-15p4-implementation-review-handoff.md`).
+(`docs/history/hackathon-2026-07/done/review/14a-15p4-implementation-review-handoff.md`).
 
 ADR-014–ADR-022 were accepted on 2026-07-22. They fix the demo-only settlement
 boundary, conditional event/outbox rule, main Core/Web production
@@ -129,24 +129,24 @@ reconciliation is accepted for exact `main@23a4428ad76a5fdcf694dbca83104aca389e8
 The user stopped 15-T03
 before implementation and withdrew the former P4–P9 production-hardening scope
 from ready. ADR-022 and the replacement Railway-demo plan are accepted and archived at
-`docs/plan/done/15-railway-demo-reconciliation-and-deployment.md`. The user-owned
+`docs/history/hackathon-2026-07/done/15-railway-demo-reconciliation-and-deployment.md`. The user-owned
 UI/UX insertion gate is complete at `fbcbb7f`; independent review and real-browser
 desktop/mobile acceptance passed and the plan is archived at
-`docs/plan/done/15a-frontend-experience-redesign.md`. The user explicitly authorized
+`docs/history/hackathon-2026-07/done/15a-frontend-experience-redesign.md`. The user explicitly authorized
 autonomous continuation to P5/P6 in the active goal. Consolidated post-Slice-13
-evidence is in `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
-P5 evidence is in `docs/plan/done/review/15p5-implementation-review-handoff.md`.
+evidence is in `docs/history/hackathon-2026-07/done/review/14a-15p4-implementation-review-handoff.md`.
+P5 evidence is in `docs/history/hackathon-2026-07/done/review/15p5-implementation-review-handoff.md`.
 P6 is independently accepted for the same exact source SHA. Production Web, Core,
 PostgreSQL and versioned private MinIO are live in the existing Railway production
 environment; the resulting controlled-demo state is `RAILWAY_DEMO_READY`. Evidence
-is in `docs/plan/done/review/15p6-implementation-review-handoff.md`.
+is in `docs/history/hackathon-2026-07/done/review/15p6-implementation-review-handoff.md`.
 Plan 17 Living Fulfillment Experience and Demo-Scoped Simulated Settlement is
-accepted under `docs/plan/done/`. Living fulfillment UI, demo-scoped simulated
+accepted under `docs/history/hackathon-2026-07/done/`. Living fulfillment UI, demo-scoped simulated
 settlement/release, dispute-window eligibility and staging-simulated funding
 merged at `main@693add7`.
 
 Plan 18 Fulfillment and Closure Simplification (18a–18c) is accepted under
-`docs/plan/done/`. Separate `Kapanış` workspace with `SETTLEMENT` lifecycle,
+`docs/history/hackathon-2026-07/done/`. Separate `Kapanış` workspace with `SETTLEMENT` lifecycle,
 ratified `evidencePolicy` (schema v3), pending-evidence cancellation and
 PHOTO/JPEG|PNG analysis eligibility merged at `main@47f3d2a`.
 
@@ -157,30 +157,30 @@ landed by Plan 17/18.
 
 - ADR-001 through ADR-022 are accepted and remain authoritative; ADR-019 grants
   no AI-internal implementation authority to the main team.
-- Slice 0 platform foundation is accepted under `docs/plan/done/`.
-- Slice 1 authentication is accepted under `docs/plan/done/`.
-- Slice 2 organization and membership is accepted under `docs/plan/done/`.
-- Slice 3 Deal creation and listing is accepted under `docs/plan/done/`.
+- Slice 0 platform foundation is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 1 authentication is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 2 organization and membership is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 3 Deal creation and listing is accepted under `docs/history/hackathon-2026-07/done/`.
 - Slice 4 Deal invitations and cross-entity participation is accepted under
-  `docs/plan/done/`.
+  `docs/history/hackathon-2026-07/done/`.
 - Slice 5 Deal parties and activation readiness is accepted under
-  `docs/plan/done/`.
-- Slice 6 Document upload is accepted under `docs/plan/done/`.
-- Slice 7 Railway Staging Deployment is accepted under `docs/plan/done/`.
-- Slice 8 AI Document Extraction is accepted under `docs/plan/done/`.
+  `docs/history/hackathon-2026-07/done/`.
+- Slice 6 Document upload is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 7 Railway Staging Deployment is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 8 AI Document Extraction is accepted under `docs/history/hackathon-2026-07/done/`.
 - Slice 9 Manual Review and RuleSetVersion is accepted under
-  `docs/plan/done/`.
-- Slice 10 Ratification is accepted under `docs/plan/done/`.
-- Slice 11 Funding Foundation is accepted under `docs/plan/done/`.
-- Slice 11B-A Moka Provider Foundation is accepted under `docs/plan/done/`.
-- Slice 12 Fulfillment and Evidence is accepted under `docs/plan/done/`.
-- Slice 13 Video Analysis is accepted under `docs/plan/done/`.
+  `docs/history/hackathon-2026-07/done/`.
+- Slice 10 Ratification is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 11 Funding Foundation is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 11B-A Moka Provider Foundation is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 12 Fulfillment and Evidence is accepted under `docs/history/hackathon-2026-07/done/`.
+- Slice 13 Video Analysis is accepted under `docs/history/hackathon-2026-07/done/`.
 - Slice 14A Dispute and Casework Foundation is accepted under
-  `docs/plan/done/`.
+  `docs/history/hackathon-2026-07/done/`.
 - Plan 17 Living Fulfillment Experience and Demo-Scoped Simulated Settlement
-  is accepted under `docs/plan/done/`.
+  is accepted under `docs/history/hackathon-2026-07/done/`.
 - Plan 18 Fulfillment and Closure Simplification and child plans 18a–18c are
-  accepted under `docs/plan/done/`.
+  accepted under `docs/history/hackathon-2026-07/done/`.
 - V15–V27 migrations are frozen accepted history; future database changes use
   new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
@@ -270,13 +270,13 @@ landed by Plan 17/18.
   immutable hash, approve/reject/supersede/withdraw races, ACTIVE mutation
   closure, SUCCESS/DECLINE/TIMEOUT_THEN_SUCCESS, retry/reconcile and actor
   visibility flows passed. Evidence:
-  `docs/plan/done/review/08-11-implementation-review-handoff.md`.
+  `docs/history/hackathon-2026-07/done/review/08-11-implementation-review-handoff.md`.
 - Slice 12 planner review and the user-directed minimum real-browser acceptance
   passed on 2026-07-20. The critical seller start → direct MinIO upload/finalize
   → buyer reject → replacement → buyer accept path completed; rejected history
   remained immutable. Targeted reviewer tests passed 17/17 and frontend
   production build passed. Evidence:
-  `docs/plan/done/review/12-13-implementation-review-handoff.md`.
+  `docs/history/hackathon-2026-07/done/review/12-13-implementation-review-handoff.md`.
 - Slice 13 planner review and combined real-browser acceptance passed on
   2026-07-21 against PostgreSQL, RabbitMQ, MinIO, the rebuilt Mock AI Worker,
   Core API, and frontend. Cross-tenant request, participant authorization,
@@ -284,7 +284,7 @@ landed by Plan 17/18.
   replacement isolation, no-side-effect behavior, and Slice 8/12 regressions
   passed. The user explicitly waived only the final post-fix browser observation
   of the historical VIDEO/MP4 panel; that exact regression debt is recorded in
-  `docs/plan/done/review/12-13-implementation-review-handoff.md`.
+  `docs/history/hackathon-2026-07/done/review/12-13-implementation-review-handoff.md`.
 - Mock AI Worker tests pass 27/27; frontend typecheck/build pass.
 - Slice 14A implementer validation reports contract validation passing
   21 schemas and 13 fixtures, Core API `mvn verify` passing 331 tests, the
@@ -294,12 +294,12 @@ landed by Plan 17/18.
   direction.
 - Gate C0 (14A §6 + Slice 13 historical VIDEO panel) passed on 2026-07-21
   against the local stack on Deal `DL-0000000017`. Evidence:
-  `docs/plan/done/review/14a-15p4-implementation-review-handoff.md`.
+  `docs/history/hackathon-2026-07/done/review/14a-15p4-implementation-review-handoff.md`.
 - Slice 7 Railway staging passed on 2026-07-21 at
   `main@832cccab8e6f4e2c32bed8230520bdc76ec9df82`: core/web immutable deploys,
   Flyway V22 pre-deploy, disposable failure gate, compatible rollback,
   release identity, HTTPS/security topology, and the real two-context browser
-  flow passed. Evidence: `docs/plan/done/review/04-07-implementation-review-handoff.md`.
+  flow passed. Evidence: `docs/history/hackathon-2026-07/done/review/04-07-implementation-review-handoff.md`.
 - Slice 15 P4 contract/catalog, Railway config, Core image and messaging-guard
   focused validation passed through revisions `c1206cf`, `3bc077f` and
   `381ed5b`. Full Core/frontend suites were intentionally not run; the accepted
@@ -322,8 +322,8 @@ landed by Plan 17/18.
   uses additive schema v2 with immutable `disputeWindowDays` and a new
   server-owned fulfillment `completedAt`; schema v1 remains readable and
   permanently release-ineligible. Evidence:
-  `docs/plan/planning/gates/g2-g3-founder-decision-2026-07-21.md`. Current payment/
-  release authority: `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`.
+  `docs/history/hackathon-2026-07/planning/gates/g2-g3-founder-decision-2026-07-21.md`. Current payment/
+  release authority: `docs/history/hackathon-2026-07/planning/gates/simulation-only-payment-decision-2026-07-22.md`.
 
 ## Not yet stable or accepted
 
@@ -340,7 +340,7 @@ No plan in `docs/plan/ready/` currently authorizes implementation. Plan 17 and
 Plan 18 (including 18a–18c) are accepted on `main@47f3d2a`; simulated
 settlement, `Kapanış` closure, `evidencePolicy`, pending-evidence cancellation
 and PHOTO analysis are on `main`. Slice 15 Railway Demo Reconciliation remains
-accepted under `docs/plan/done/`; the controlled-demo deployment posture
+accepted under `docs/history/hackathon-2026-07/done/`; the controlled-demo deployment posture
 (`RAILWAY_DEMO_READY`) is the accepted production-environment label until a new
 deployment plan updates it. That label is not broad-production or AI-readiness
 acceptance. Slice 14B planning draft and the R2–R7 capability roadmap have no

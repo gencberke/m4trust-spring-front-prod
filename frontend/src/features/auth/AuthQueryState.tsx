@@ -1,6 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 
 import type { CurrentUser } from "./authApi";
+import styles from "./Auth.module.css";
 
 interface AuthQueryStateProps {
   query: UseQueryResult<CurrentUser | null>;
@@ -14,13 +15,13 @@ export function AuthQueryState({ query }: AuthQueryStateProps) {
       <header className="site-header">
         <span className="brand">M4Trust</span>
       </header>
-      <main className="state-page" aria-busy={!hasError}>
+      <main className={styles.statePage} aria-busy={!hasError}>
         <section
-          className="state-card"
+          className={styles.stateCard}
           role={hasError ? "alert" : "status"}
           aria-live={hasError ? "assertive" : "polite"}
         >
-          <span className="state-card__eyebrow">Güvenli oturum</span>
+          <span className={styles.stateEyebrow}>Güvenli oturum</span>
           <h1>{hasError ? "Bağlantı kurulamadı" : "Oturum doğrulanıyor"}</h1>
           <p>
             {hasError
@@ -29,7 +30,7 @@ export function AuthQueryState({ query }: AuthQueryStateProps) {
           </p>
           {hasError ? (
             <button
-              className="primary-button state-card__action"
+              className={`primary-button ${styles.stateAction}`}
               type="button"
               onClick={() => void query.refetch()}
               disabled={query.isFetching}

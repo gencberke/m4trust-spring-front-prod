@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
+import analysisStyles from "../analysis/Analysis.module.css";
+import styles from "./VideoAnalysis.module.css";
 
 import {
   requestVideoAnalysis,
@@ -21,11 +23,11 @@ import {
   labelObservationType,
   labelReviewReason,
   labelWarningCode,
-  PERCENT_FORMATTER,
   presentWarningMessage,
   shouldShowWarningCode,
   WARNING_SEVERITY_LABELS,
 } from "./videoAnalysisLabels";
+import { PERCENT_FORMATTER } from "@/shared";
 import {
   videoAnalysisQueryKey,
   videoAnalysisQueryOptions,
@@ -72,7 +74,11 @@ export function EvidenceVideoAnalysisPanel({
     onError: (error) => {
       if (shouldRefetchAfterVideoAnalysisRequestError(error)) {
         void queryClient.invalidateQueries({
-          queryKey: videoAnalysisQueryKey(legalEntityId, dealId, evidenceSubmissionId),
+          queryKey: videoAnalysisQueryKey(
+            legalEntityId,
+            dealId,
+            evidenceSubmissionId,
+          ),
         });
       }
     },
@@ -89,7 +95,7 @@ export function EvidenceVideoAnalysisPanel({
 
   if (analysisQuery.isLoading) {
     return (
-      <div className="video-analysis-panel" aria-live="polite">
+      <div className={styles.panel} aria-live="polite">
         <h4>Video analizi</h4>
         <p>Yükleniyor…</p>
       </div>
@@ -98,7 +104,7 @@ export function EvidenceVideoAnalysisPanel({
 
   if (analysisQuery.isError) {
     return (
-      <div className="video-analysis-panel" aria-live="polite">
+      <div className={styles.panel} aria-live="polite">
         <h4>Video analizi</h4>
         <p className="error-text" role="alert">
           {getVideoAnalysisReadErrorMessage(analysisQuery.error)}
@@ -108,7 +114,11 @@ export function EvidenceVideoAnalysisPanel({
           className="secondary-button"
           onClick={() =>
             void queryClient.invalidateQueries({
-              queryKey: videoAnalysisQueryKey(legalEntityId, dealId, evidenceSubmissionId),
+              queryKey: videoAnalysisQueryKey(
+                legalEntityId,
+                dealId,
+                evidenceSubmissionId,
+              ),
             })
           }
         >
@@ -123,7 +133,7 @@ export function EvidenceVideoAnalysisPanel({
   }
 
   return (
-    <div className="video-analysis-panel" aria-live="polite">
+    <div className={styles.panel} aria-live="polite">
       <h4>Video analizi</h4>
       <VideoAnalysisBody analysis={analysis} />
       {!readOnly && analysis.availableActions?.canRequest === true ? (
@@ -152,7 +162,7 @@ export function EvidenceVideoAnalysisPanel({
 function VideoAnalysisBody({ analysis }: { analysis: VideoAnalysisDetail }) {
   if (analysis.status === "NOT_REQUESTED") {
     return (
-      <p className="video-analysis-empty-copy">
+      <p className={styles.emptyCopy}>
         Bu teslimat kanıtı için henüz video analizi talep edilmedi.
       </p>
     );
@@ -160,13 +170,20 @@ function VideoAnalysisBody({ analysis }: { analysis: VideoAnalysisDetail }) {
 
   if (analysis.status === "QUEUED") {
     return (
-      <div className="analysis-progress" role="status" aria-live="polite">
-        <span className="analysis-progress-mark" aria-hidden="true" />
+      <div
+        className={analysisStyles.analysisProgress}
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          className={analysisStyles.analysisProgressMark}
+          aria-hidden="true"
+        />
         <div>
           <strong>Video analizi sırada bekliyor</strong>
           <p>
-            Bu bölüm otomatik yenilenir. Analiz tamamlanana kadar teslimat kanıtı
-            incelemesine devam edebilirsiniz.
+            Bu bölüm otomatik yenilenir. Analiz tamamlanana kadar teslimat
+            kanıtı incelemesine devam edebilirsiniz.
           </p>
         </div>
       </div>
@@ -190,13 +207,13 @@ function VideoAnalysisFailureView({
   failure: VideoAnalysisFailureSummary;
 }) {
   return (
-    <div className="analysis-failure" role="alert">
-      <span className="analysis-failure-code">{failure.code}</span>
+    <div className={analysisStyles.analysisFailure} role="alert">
+      <span className={analysisStyles.analysisFailureCode}>{failure.code}</span>
       <h5>Video analizi tamamlanamadı</h5>
       <p>{labelFailureCode(failure.code)}</p>
-      <p className="analysis-advisory">
-        Bu sonuç yalnızca danışmanlık amaçlıdır; teslimat kanıtı kabul veya red kararı
-        vermez.
+      <p className={analysisStyles.analysisAdvisory}>
+        Bu sonuç yalnızca danışmanlık amaçlıdır; teslimat kanıtı kabul veya red
+        kararı vermez.
       </p>
       {failure.retryRecommended ? (
         <p className="muted-copy">
@@ -214,8 +231,8 @@ function VideoAnalysisFailureView({
 
 function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
   return (
-    <div className="analysis-result">
-      <div className="analysis-review-notice" role="status">
+    <div className={analysisStyles.analysisResult}>
+      <div className={analysisStyles.analysisReviewNotice} role="status">
         <span>Danışmanlık sonucu</span>
         <div>
           <strong>
@@ -228,18 +245,23 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
         </div>
       </div>
 
-      <section className="analysis-result-section" aria-labelledby="video-summary-title">
-        <div className="analysis-section-heading">
+      <section
+        className={analysisStyles.analysisResultSection}
+        aria-labelledby="video-summary-title"
+      >
+        <div className={analysisStyles.analysisSectionHeading}>
           <h3 id="video-summary-title">Özet</h3>
         </div>
         <p>
-          <strong>{labelAdvisoryOutcome(result.summary.advisoryOutcome)}</strong>
+          <strong>
+            {labelAdvisoryOutcome(result.summary.advisoryOutcome)}
+          </strong>
         </p>
         <p className="muted-copy">
           Süre: {formatDurationMs(result.durationMs)}
         </p>
         {result.summary.reviewReasons.length ? (
-          <ul className="analysis-card-list">
+          <ul className={analysisStyles.analysisCardList}>
             {result.summary.reviewReasons.map((reason) => (
               <li key={reason}>{labelReviewReason(reason)}</li>
             ))}
@@ -250,18 +272,18 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
       </section>
 
       <section
-        className="analysis-result-section"
+        className={analysisStyles.analysisResultSection}
         aria-labelledby="video-observations-title"
       >
-        <div className="analysis-section-heading">
+        <div className={analysisStyles.analysisSectionHeading}>
           <h3 id="video-observations-title">Gözlemler</h3>
           <span>{result.observations.length} kayıt</span>
         </div>
         {result.observations.length ? (
-          <ul className="analysis-card-list">
+          <ul className={analysisStyles.analysisCardList}>
             {result.observations.map((observation) => (
               <li key={observation.observationReference}>
-                <div className="analysis-card-heading">
+                <div className={analysisStyles.analysisCardHeading}>
                   <strong>{observation.label}</strong>
                   <span>{labelObservationType(observation.type)}</span>
                 </div>
@@ -269,7 +291,7 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
                   Değer: {String(observation.observedValue)} · Güven{" "}
                   {PERCENT_FORMATTER.format(observation.confidence)}
                 </p>
-                <p className="analysis-source-copy">
+                <p className={analysisStyles.analysisSourceCopy}>
                   {formatTimeRange(
                     observation.timeRange.startMs,
                     observation.timeRange.endMs,
@@ -284,27 +306,32 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
       </section>
 
       <section
-        className="analysis-result-section"
+        className={analysisStyles.analysisResultSection}
         aria-labelledby="video-anomalies-title"
       >
-        <div className="analysis-section-heading">
+        <div className={analysisStyles.analysisSectionHeading}>
           <h3 id="video-anomalies-title">Anomaliler</h3>
           <span>{result.anomalies.length} kayıt</span>
         </div>
         {result.anomalies.length ? (
-          <ul className="analysis-rule-list">
+          <ul className={analysisStyles.analysisRuleList}>
             {result.anomalies.map((anomaly) => (
               <li key={anomaly.anomalyReference}>
-                <div className="analysis-rule-topline">
-                  <span className="analysis-category-badge">
+                <div className={analysisStyles.analysisRuleTopline}>
+                  <span className={analysisStyles.analysisCategoryBadge}>
                     {labelAnomalySeverity(anomaly.severity)}
                   </span>
-                  <span>Güven {PERCENT_FORMATTER.format(anomaly.confidence)}</span>
+                  <span>
+                    Güven {PERCENT_FORMATTER.format(anomaly.confidence)}
+                  </span>
                 </div>
                 <h4>{anomaly.type}</h4>
                 <p>{anomaly.description}</p>
-                <p className="analysis-source-copy">
-                  {formatTimeRange(anomaly.timeRange.startMs, anomaly.timeRange.endMs)}
+                <p className={analysisStyles.analysisSourceCopy}>
+                  {formatTimeRange(
+                    anomaly.timeRange.startMs,
+                    anomaly.timeRange.endMs,
+                  )}
                 </p>
               </li>
             ))}
@@ -316,20 +343,23 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
 
       {result.warnings.length ? (
         <section
-          className="analysis-result-section"
+          className={analysisStyles.analysisResultSection}
           aria-labelledby="video-warnings-title"
         >
-          <div className="analysis-section-heading">
+          <div className={analysisStyles.analysisSectionHeading}>
             <h3 id="video-warnings-title">Uyarılar</h3>
             <span>{result.warnings.length} kayıt</span>
           </div>
-          <ul className="analysis-card-list">
+          <ul className={analysisStyles.analysisCardList}>
             {result.warnings.map((warning) => (
               <li key={`${warning.code}-${warning.path ?? "root"}`}>
-                <div className="analysis-card-heading">
-                  <strong>{presentWarningMessage(warning.code, warning.message)}</strong>
+                <div className={analysisStyles.analysisCardHeading}>
+                  <strong>
+                    {presentWarningMessage(warning.code, warning.message)}
+                  </strong>
                   <span>
-                    {WARNING_SEVERITY_LABELS[warning.severity] ?? warning.severity}
+                    {WARNING_SEVERITY_LABELS[warning.severity] ??
+                      warning.severity}
                   </span>
                 </div>
                 {shouldShowWarningCode(warning.code) ? (

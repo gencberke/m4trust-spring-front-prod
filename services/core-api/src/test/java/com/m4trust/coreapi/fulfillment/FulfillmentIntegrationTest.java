@@ -10,6 +10,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
+import com.m4trust.coreapi.fulfillment.api.*;
+import com.m4trust.coreapi.fulfillment.api.dto.*;
+import com.m4trust.coreapi.fulfillment.domain.*;
+import com.m4trust.coreapi.fulfillment.domain.port.*;
+import com.m4trust.coreapi.fulfillment.infra.persistence.*;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
@@ -21,8 +27,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,9 +48,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * End-to-end HTTP coverage for the fulfillment/evidence surface against a real
- * PostgreSQL database. A test-scoped fake object-storage adapter replaces S3 so
- * the tests do not require a running MinIO instance.
+ * End-to-end HTTP coverage for the fulfillment/evidence surface against a real PostgreSQL database.
+ * A test-scoped fake object-storage adapter replaces S3 so the tests do not require a running MinIO
+ * instance.
  */
 @SpringBootTest
 @ActiveProfiles("local")
@@ -55,35 +59,31 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Import(FulfillmentIntegrationTest.FakeStorageConfiguration.class)
 class FulfillmentIntegrationTest {
 
-    private static final String LEGAL_ENTITY_HEADER = "X-M4Trust-Legal-Entity-Id";
-    private static final String SHA = "a".repeat(64);
+  private static final String LEGAL_ENTITY_HEADER = "X-M4Trust-Legal-Entity-Id";
+  private static final String SHA = "a".repeat(64);
 
-    @Container
-    @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:17.5-alpine");
+  @Container @ServiceConnection
+  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
-    @Autowired
-    private JdbcTemplate jdbc;
+  @Autowired private JdbcTemplate jdbc;
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @Autowired
-    private FakeStorage storage;
+  @Autowired private FakeStorage storage;
 
-    private Principal buyerAdmin;
-    private Principal buyerMember;
-    private Principal sellerAdmin;
-    private Principal sellerMember;
-    private Principal outsider;
+  private Principal buyerAdmin;
+  private Principal buyerMember;
+  private Principal sellerAdmin;
+  private Principal sellerMember;
+  private Principal outsider;
 
-    @BeforeEach
-    void setUp() {
-        storage.reset();
-        jdbc.update("DELETE FROM spring_session_attributes");
-        jdbc.update("DELETE FROM spring_session");
-        jdbc.execute("""
+  @BeforeEach
+  void setUp() {
+    storage.reset();
+    jdbc.update("DELETE FROM spring_session_attributes");
+    jdbc.update("DELETE FROM spring_session");
+    jdbc.execute(
+        """
                 TRUNCATE TABLE
                     dispute_comment, dispute_evidence_snapshot, dispute_case, fulfillment_video_analysis_result,
                     fulfillment_video_analysis_job,
@@ -116,605 +116,767 @@ class FulfillmentIntegrationTest {
                     tenant,
                     identity_user
                 """);
-        buyerAdmin = insertPrincipal("buyer-admin@example.test", "Buyer Co", "ADMIN");
-        buyerMember = insertMember(buyerAdmin, "buyer-member@example.test");
-        sellerAdmin = insertPrincipal("seller-admin@example.test", "Seller Co", "ADMIN");
-        sellerMember = insertMember(sellerAdmin, "seller-member@example.test");
-        outsider = insertPrincipal("outsider@example.test", "Outsider Co", "ADMIN");
-    }
+    buyerAdmin = insertPrincipal("buyer-admin@example.test", "Buyer Co", "ADMIN");
+    buyerMember = insertMember(buyerAdmin, "buyer-member@example.test");
+    sellerAdmin = insertPrincipal("seller-admin@example.test", "Seller Co", "ADMIN");
+    sellerMember = insertMember(sellerAdmin, "seller-member@example.test");
+    outsider = insertPrincipal("outsider@example.test", "Outsider Co", "ADMIN");
+  }
 
-    @Test
-    void fulfillmentResponsesSerializeEvidenceMediaTypeAsMimeWireValues() throws Exception {
-        UUID videoDealId = createActiveFundedDeal();
-        startFulfillment(videoDealId, sellerAdmin);
-        String videoSubmissionId = submitEvidence(videoDealId, sellerAdmin, "VIDEO", "delivery.mp4", "video/mp4", 2048);
-        mockMvc.perform(get("/api/v1/deals/" + videoDealId + "/fulfillment")
-                        .with(user(buyerAdmin.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentEvidence.id").value(videoSubmissionId))
-                .andExpect(jsonPath("$.currentEvidence.mediaType").value("video/mp4"));
+  @Test
+  void fulfillmentResponsesSerializeEvidenceMediaTypeAsMimeWireValues() throws Exception {
+    UUID videoDealId = createActiveFundedDeal();
+    startFulfillment(videoDealId, sellerAdmin);
+    String videoSubmissionId =
+        submitEvidence(videoDealId, sellerAdmin, "VIDEO", "delivery.mp4", "video/mp4", 2048);
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + videoDealId + "/fulfillment")
+                .with(user(buyerAdmin.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentEvidence.id").value(videoSubmissionId))
+        .andExpect(jsonPath("$.currentEvidence.mediaType").value("video/mp4"));
 
-        UUID pdfDealId = createActiveFundedDeal();
-        startFulfillment(pdfDealId, sellerAdmin);
-        String pdfSubmissionId = submitEvidence(pdfDealId, sellerAdmin, "DELIVERY_NOTE", "receipt.pdf",
-                "application/pdf");
-        mockMvc.perform(get("/api/v1/deals/" + pdfDealId + "/fulfillment")
-                        .with(user(buyerAdmin.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentEvidence.id").value(pdfSubmissionId))
-                .andExpect(jsonPath("$.currentEvidence.mediaType").value("application/pdf"));
-    }
+    UUID pdfDealId = createActiveFundedDeal();
+    startFulfillment(pdfDealId, sellerAdmin);
+    String pdfSubmissionId =
+        submitEvidence(pdfDealId, sellerAdmin, "DELIVERY_NOTE", "receipt.pdf", "application/pdf");
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + pdfDealId + "/fulfillment")
+                .with(user(buyerAdmin.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentEvidence.id").value(pdfSubmissionId))
+        .andExpect(jsonPath("$.currentEvidence.mediaType").value("application/pdf"));
+  }
 
-    @Test
-    void sellerCanStartFulfillmentForActiveFundedDeal() throws Exception {
-        UUID dealId = createActiveFundedDeal();
+  @Test
+  void sellerCanStartFulfillmentForActiveFundedDeal() throws Exception {
+    UUID dealId = createActiveFundedDeal();
 
-        mockMvc.perform(get("/api/v1/deals/" + dealId)
-                        .with(user(sellerMember.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.availableActions.canStartFulfillment").value(true));
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + dealId)
+                .with(user(sellerMember.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.availableActions.canStartFulfillment").value(true));
 
-        MvcResult result = mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(sellerMember.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 3}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
-                .andExpect(jsonPath("$.milestone.ruleReferences.length()").value(2))
-                .andReturn();
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/api/v1/deals/" + dealId + "/fulfillment")
+                    .with(user(sellerMember.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
+                    .header("Idempotency-Key", UUID.randomUUID())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"expectedVersion\": 3}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.milestone.ruleReferences.length()").value(2))
+            .andReturn();
 
-        String response = result.getResponse().getContentAsString();
-        assertEquals("Primary milestone", JsonPath.read(response, "$.milestone.title"));
-        assertTrue(storage.verifyCalls.get() >= 0);
-    }
+    String response = result.getResponse().getContentAsString();
+    assertEquals("Primary milestone", JsonPath.read(response, "$.milestone.title"));
+    assertTrue(storage.verifyCalls.get() >= 0);
+  }
 
-    @Test
-    void startIsForbiddenForNonSeller() throws Exception {
-        UUID dealId = createActiveFundedDeal();
+  @Test
+  void startIsForbiddenForNonSeller() throws Exception {
+    UUID dealId = createActiveFundedDeal();
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 0}"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FULFILLMENT_START_FORBIDDEN"));
-    }
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(buyerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedVersion\": 0}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FULFILLMENT_START_FORBIDDEN"));
+  }
 
-    @Test
-    void startConflictWhenDealNotFunded() throws Exception {
-        UUID dealId = createActiveDealWithoutFunding();
+  @Test
+  void startConflictWhenDealNotFunded() throws Exception {
+    UUID dealId = createActiveDealWithoutFunding();
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 0}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
-    }
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(sellerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedVersion\": 0}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
+  }
 
-    @Test
-    void concurrentStartsProduceOneFulfillment() throws Exception {
-        UUID dealId = createActiveFundedDeal();
+  @Test
+  void concurrentStartsProduceOneFulfillment() throws Exception {
+    UUID dealId = createActiveFundedDeal();
 
-        CountDownLatch start = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        AtomicInteger createdCount = new AtomicInteger();
-        AtomicInteger conflictCount = new AtomicInteger();
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    AtomicInteger createdCount = new AtomicInteger();
+    AtomicInteger conflictCount = new AtomicInteger();
 
-        Future<?> first = executor.submit(() -> {
-            try {
+    Future<?> first =
+        executor.submit(
+            () -> {
+              try {
                 start.await();
-            } catch (InterruptedException exception) {
+              } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(exception);
-            }
-            recordStartOutcome(dealId, sellerAdmin, createdCount, conflictCount);
-        });
-        Future<?> second = executor.submit(() -> {
-            try {
+              }
+              recordStartOutcome(dealId, sellerAdmin, createdCount, conflictCount);
+            });
+    Future<?> second =
+        executor.submit(
+            () -> {
+              try {
                 start.await();
-            } catch (InterruptedException exception) {
+              } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(exception);
-            }
-            recordStartOutcome(dealId, sellerAdmin, createdCount, conflictCount);
-        });
+              }
+              recordStartOutcome(dealId, sellerAdmin, createdCount, conflictCount);
+            });
 
-        start.countDown();
-        first.get(10, TimeUnit.SECONDS);
-        second.get(10, TimeUnit.SECONDS);
-        executor.shutdown();
+    start.countDown();
+    first.get(10, TimeUnit.SECONDS);
+    second.get(10, TimeUnit.SECONDS);
+    executor.shutdown();
 
-        assertEquals(1, createdCount.get());
-        assertEquals(1, conflictCount.get());
-        assertEquals(1L, jdbc.queryForObject(
-                "SELECT COUNT(*) FROM fulfillment WHERE deal_id = ?", Long.class, dealId));
-    }
+    assertEquals(1, createdCount.get());
+    assertEquals(1, conflictCount.get());
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM fulfillment WHERE deal_id = ?", Long.class, dealId));
+  }
 
-    @Test
-    void sellerMemberCanUploadIntentAndBuyerAdminCanReview() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerMember);
+  @Test
+  void sellerMemberCanUploadIntentAndBuyerAdminCanReview() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerMember);
 
-        MvcResult intentResult = mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(sellerMember.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"))
-                .andExpect(jsonPath("$.evidence.expiresAt").exists())
-                .andExpect(jsonPath("$.evidence.length()").value(14))
-                .andReturn();
+    MvcResult intentResult =
+        mockMvc
+            .perform(
+                post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                    .with(user(sellerMember.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"))
+            .andExpect(jsonPath("$.evidence.expiresAt").exists())
+            .andExpect(jsonPath("$.evidence.length()").value(14))
+            .andReturn();
 
-        String intentResponse = intentResult.getResponse().getContentAsString();
-        String submissionId = JsonPath.read(intentResponse, "$.evidence.id");
+    String intentResponse = intentResult.getResponse().getContentAsString();
+    String submissionId = JsonPath.read(intentResponse, "$.evidence.id");
 
-        mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(sellerAdmin.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("EVIDENCE_REQUIRED"))
-                .andExpect(jsonPath("$.currentEvidence.status").value("PENDING_UPLOAD"));
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(sellerAdmin.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("EVIDENCE_REQUIRED"))
+        .andExpect(jsonPath("$.currentEvidence.status").value("PENDING_UPLOAD"));
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + submissionId + "/finalize")
-                        .with(user(sellerMember.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sizeBytes\": 12, \"sha256\": \"" + SHA + "\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/" + submissionId + "/finalize")
+                .with(user(sellerMember.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sizeBytes\": 12, \"sha256\": \"" + SHA + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("SUBMITTED"));
 
-        mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(buyerAdmin.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("REVIEW_REQUIRED"))
-                .andExpect(jsonPath("$.currentEvidence.status").value("SUBMITTED"));
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(buyerAdmin.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("REVIEW_REQUIRED"))
+        .andExpect(jsonPath("$.currentEvidence.status").value("SUBMITTED"));
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + submissionId + "/accept")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 3, \"expectedEvidenceVersion\": 1}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/" + submissionId + "/accept")
+                .with(user(buyerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedVersion\": 3, \"expectedEvidenceVersion\": 1}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ACCEPTED"));
 
-        mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(sellerMember.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("COMPLETED"));
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(sellerMember.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, sellerMember.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("COMPLETED"));
 
-        assertTrue(storage.verifyCalls.get() >= 1);
-        assertFalse(storage.calledInsideTransaction.get());
-    }
+    assertTrue(storage.verifyCalls.get() >= 1);
+    assertFalse(storage.calledInsideTransaction.get());
+  }
 
-    @Test
-    void uploadForbiddenForBuyer() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
+  @Test
+  void uploadForbiddenForBuyer() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("EVIDENCE_UPLOAD_FORBIDDEN"));
-    }
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                .with(user(buyerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("EVIDENCE_UPLOAD_FORBIDDEN"));
+  }
 
-    @Test
-    void finalizeRejectsMismatchedMediaType() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
+  @Test
+  void finalizeRejectsMismatchedMediaType() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
 
-        MvcResult intentResult = mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String submissionId = JsonPath.read(intentResult.getResponse().getContentAsString(), "$.evidence.id");
+    MvcResult intentResult =
+        mockMvc
+            .perform(
+                post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                    .with(user(sellerAdmin.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String submissionId =
+        JsonPath.read(intentResult.getResponse().getContentAsString(), "$.evidence.id");
 
-        storage.setVerified(new FulfillmentObjectStorage.VerifiedObject(12, SHA, "v1", "image/png"));
+    storage.setVerified(new FulfillmentObjectStorage.VerifiedObject(12, SHA, "v1", "image/png"));
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + submissionId + "/finalize")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sizeBytes\": 12, \"sha256\": \"" + SHA + "\"}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("EVIDENCE_VERIFICATION_FAILED"));
-    }
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/" + submissionId + "/finalize")
+                .with(user(sellerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sizeBytes\": 12, \"sha256\": \"" + SHA + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("EVIDENCE_VERIFICATION_FAILED"));
+  }
 
-    @Test
-    void rejectPreservesHistoryAndAllowsReplacement() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
+  @Test
+  void rejectPreservesHistoryAndAllowsReplacement() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
 
-        String firstSubmissionId = submitEvidence(dealId, sellerAdmin, "INVOICE", "invoice.pdf", "application/pdf");
+    String firstSubmissionId =
+        submitEvidence(dealId, sellerAdmin, "INVOICE", "invoice.pdf", "application/pdf");
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + firstSubmissionId + "/reject")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 3, \"expectedEvidenceVersion\": 1, \"reason\": \"Missing tax number\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("REJECTED"));
+    mockMvc
+        .perform(
+            post("/api/v1/deals/"
+                    + dealId
+                    + "/fulfillment/evidence/"
+                    + firstSubmissionId
+                    + "/reject")
+                .with(user(buyerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"expectedVersion\": 3, \"expectedEvidenceVersion\": 1, \"reason\": \"Missing tax number\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("REJECTED"));
 
-        String secondSubmissionId = submitEvidence(dealId, sellerAdmin, "INVOICE", "invoice2.pdf", "application/pdf");
+    String secondSubmissionId =
+        submitEvidence(dealId, sellerAdmin, "INVOICE", "invoice2.pdf", "application/pdf");
 
-        mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(buyerAdmin.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("REVIEW_REQUIRED"))
-                .andExpect(jsonPath("$.history.length()").value(2))
-                .andExpect(jsonPath("$.currentEvidence.id").value(secondSubmissionId));
-    }
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(buyerAdmin.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("REVIEW_REQUIRED"))
+        .andExpect(jsonPath("$.history.length()").value(2))
+        .andExpect(jsonPath("$.currentEvidence.id").value(secondSubmissionId));
+  }
 
-    @Test
-    void buyerMemberCannotReview() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
-        String submissionId = submitEvidence(dealId, sellerAdmin, "DELIVERY_NOTE", "note.pdf", "application/pdf");
+  @Test
+  void buyerMemberCannotReview() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
+    String submissionId =
+        submitEvidence(dealId, sellerAdmin, "DELIVERY_NOTE", "note.pdf", "application/pdf");
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + submissionId + "/accept")
-                        .with(user(buyerMember.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerMember.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 0, \"expectedEvidenceVersion\": 1}"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("EVIDENCE_REVIEW_FORBIDDEN"));
-    }
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/" + submissionId + "/accept")
+                .with(user(buyerMember.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerMember.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedVersion\": 0, \"expectedEvidenceVersion\": 1}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("EVIDENCE_REVIEW_FORBIDDEN"));
+  }
 
-    @Test
-    void participantCanDownloadSubmittedEvidence() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
-        String submissionId = submitEvidence(dealId, sellerAdmin, "PHOTO", "photo.png", "image/png");
-        insertParticipant(dealId, outsider);
+  @Test
+  void participantCanDownloadSubmittedEvidence() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
+    String submissionId = submitEvidence(dealId, sellerAdmin, "PHOTO", "photo.png", "image/png");
+    insertParticipant(dealId, outsider);
 
-        mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(outsider.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentEvidence.id").value(submissionId));
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + submissionId + "/download-link")
-                        .with(user(outsider.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.downloadUrl").exists());
-    }
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(outsider.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentEvidence.id").value(submissionId));
+    mockMvc
+        .perform(
+            post("/api/v1/deals/"
+                    + dealId
+                    + "/fulfillment/evidence/"
+                    + submissionId
+                    + "/download-link")
+                .with(user(outsider.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.downloadUrl").exists());
+  }
 
-    @Test
-    void nonParticipantCannotAccessFulfillment() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
+  @Test
+  void nonParticipantCannotAccessFulfillment() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
 
-        mockMvc.perform(get("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(outsider.userId.toString()))
-                        .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("DEAL_NOT_FOUND"));
-    }
+    mockMvc
+        .perform(
+            get("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(outsider.userId.toString()))
+                .header(LEGAL_ENTITY_HEADER, outsider.legalEntityId))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("DEAL_NOT_FOUND"));
+  }
 
-    @Test
-    void validationRejectsInvalidSha256() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
+  @Test
+  void validationRejectsInvalidSha256() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")
-                                .replace(SHA, "not-a-hash")))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
-    }
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                .with(user(sellerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")
+                        .replace(SHA, "not-a-hash")))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+  }
 
-    @Test
-    void concurrentSameKeyAcceptWithoutEvidenceCompletesOnceAndReplays() throws Exception {
-        UUID dealId = createActiveFundedNotRequiredDeal();
-        startFulfillment(dealId, sellerAdmin);
-        UUID key = UUID.randomUUID();
-        String body = """
+  @Test
+  void concurrentSameKeyAcceptWithoutEvidenceCompletesOnceAndReplays() throws Exception {
+    UUID dealId = createActiveFundedNotRequiredDeal();
+    startFulfillment(dealId, sellerAdmin);
+    UUID key = UUID.randomUUID();
+    String body =
+        """
                 {"expectedDealVersion": 3, "expectedFulfillmentVersion": 0}
                 """;
 
-        CountDownLatch start = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        AtomicInteger successCount = new AtomicInteger();
-        AtomicInteger failureCount = new AtomicInteger();
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    AtomicInteger successCount = new AtomicInteger();
+    AtomicInteger failureCount = new AtomicInteger();
 
-        Future<?> first = executor.submit(() -> recordAcceptWithoutEvidenceOutcome(
-                dealId, key, body, start, successCount, failureCount));
-        Future<?> second = executor.submit(() -> recordAcceptWithoutEvidenceOutcome(
-                dealId, key, body, start, successCount, failureCount));
-        start.countDown();
-        first.get(20, TimeUnit.SECONDS);
-        second.get(20, TimeUnit.SECONDS);
-        executor.shutdown();
+    Future<?> first =
+        executor.submit(
+            () ->
+                recordAcceptWithoutEvidenceOutcome(
+                    dealId, key, body, start, successCount, failureCount));
+    Future<?> second =
+        executor.submit(
+            () ->
+                recordAcceptWithoutEvidenceOutcome(
+                    dealId, key, body, start, successCount, failureCount));
+    start.countDown();
+    first.get(20, TimeUnit.SECONDS);
+    second.get(20, TimeUnit.SECONDS);
+    executor.shutdown();
 
-        assertEquals(2, successCount.get());
-        assertEquals(0, failureCount.get());
-        assertEquals(1L, jdbc.queryForObject(
-                "SELECT COUNT(*) FROM fulfillment WHERE deal_id = ? AND status = 'COMPLETED'",
-                Long.class, dealId));
-        assertEquals(1L, jdbc.queryForObject(
-                "SELECT COUNT(*) FROM http_idempotency_record WHERE operation = 'FULFILLMENT_ACCEPT_WITHOUT_EVIDENCE'",
-                Long.class));
-        Instant completedAt = jdbc.queryForObject(
-                "SELECT completed_at FROM fulfillment WHERE deal_id = ?", Instant.class, dealId);
-        assertTrue(completedAt != null);
+    assertEquals(2, successCount.get());
+    assertEquals(0, failureCount.get());
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM fulfillment WHERE deal_id = ? AND status = 'COMPLETED'",
+            Long.class,
+            dealId));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM http_idempotency_record WHERE operation = 'FULFILLMENT_ACCEPT_WITHOUT_EVIDENCE'",
+            Long.class));
+    Instant completedAt =
+        jdbc.queryForObject(
+            "SELECT completed_at FROM fulfillment WHERE deal_id = ?", Instant.class, dealId);
+    assertTrue(completedAt != null);
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment/accept-without-evidence")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .header("Idempotency-Key", key)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("COMPLETED"));
-    }
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/accept-without-evidence")
+                .with(user(buyerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                .header("Idempotency-Key", key)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("COMPLETED"));
+  }
 
-    @Test
-    void activePendingBlocksReplacementUntilCancelledOrExpired() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
+  @Test
+  void activePendingBlocksReplacementUntilCancelledOrExpired() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
 
-        MvcResult first = mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String firstId = JsonPath.read(first.getResponse().getContentAsString(), "$.evidence.id");
+    MvcResult first =
+        mockMvc
+            .perform(
+                post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                    .with(user(sellerAdmin.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String firstId = JsonPath.read(first.getResponse().getContentAsString(), "$.evidence.id");
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("INVOICE", "invoice.pdf", "application/pdf")))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("FULFILLMENT_STATE_CONFLICT"));
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                .with(user(sellerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(uploadIntentRequest("INVOICE", "invoice.pdf", "application/pdf")))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("FULFILLMENT_STATE_CONFLICT"));
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + firstId + "/cancel-upload")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedEvidenceVersion\": 0}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cancelledAt").exists());
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/" + firstId + "/cancel-upload")
+                .with(user(sellerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedEvidenceVersion\": 0}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cancelledAt").exists());
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("INVOICE", "invoice.pdf", "application/pdf")))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"));
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                .with(user(sellerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(uploadIntentRequest("INVOICE", "invoice.pdf", "application/pdf")))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"));
 
-        String secondId = jdbc.queryForObject("""
+    String secondId =
+        jdbc.queryForObject(
+            """
                 SELECT id::text FROM fulfillment_evidence_submission
                 WHERE deal_id = ? AND cancelled_at IS NULL AND status = 'PENDING_UPLOAD'
-                """, String.class, dealId);
-        jdbc.update("""
+                """,
+            String.class,
+            dealId);
+    jdbc.update(
+        """
                 UPDATE fulfillment_evidence_submission
                 SET created_at = CURRENT_TIMESTAMP - INTERVAL '2 minutes',
                     upload_expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute'
                 WHERE id = ?
-                """, UUID.fromString(secondId));
+                """,
+        UUID.fromString(secondId));
 
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(sellerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest("PHOTO", "photo.jpg", "image/jpeg")))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"));
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                .with(user(sellerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(uploadIntentRequest("PHOTO", "photo.jpg", "image/jpeg")))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.evidence.status").value("PENDING_UPLOAD"));
 
-        assertEquals(3L, jdbc.queryForObject(
-                "SELECT COUNT(*) FROM fulfillment_evidence_submission WHERE deal_id = ?",
-                Long.class, dealId));
-        assertEquals(1L, jdbc.queryForObject("""
+    assertEquals(
+        3L,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM fulfillment_evidence_submission WHERE deal_id = ?",
+            Long.class,
+            dealId));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            """
                 SELECT COUNT(*) FROM fulfillment_evidence_submission
                 WHERE deal_id = ? AND status = 'PENDING_UPLOAD'
                   AND cancelled_at IS NULL AND upload_expires_at > CURRENT_TIMESTAMP
-                """, Long.class, dealId));
-    }
+                """,
+            Long.class,
+            dealId));
+  }
 
-    @Test
-    void concurrentUploadIntentsAllowOnlyOneActivePending() throws Exception {
-        UUID dealId = createActiveFundedDeal();
-        startFulfillment(dealId, sellerAdmin);
+  @Test
+  void concurrentUploadIntentsAllowOnlyOneActivePending() throws Exception {
+    UUID dealId = createActiveFundedDeal();
+    startFulfillment(dealId, sellerAdmin);
 
-        CountDownLatch start = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        AtomicInteger createdCount = new AtomicInteger();
-        AtomicInteger conflictCount = new AtomicInteger();
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    AtomicInteger createdCount = new AtomicInteger();
+    AtomicInteger conflictCount = new AtomicInteger();
 
-        Future<?> first = executor.submit(() -> recordUploadIntentOutcome(
-                dealId, start, createdCount, conflictCount));
-        Future<?> second = executor.submit(() -> recordUploadIntentOutcome(
-                dealId, start, createdCount, conflictCount));
-        start.countDown();
-        first.get(20, TimeUnit.SECONDS);
-        second.get(20, TimeUnit.SECONDS);
-        executor.shutdown();
+    Future<?> first =
+        executor.submit(
+            () -> recordUploadIntentOutcome(dealId, start, createdCount, conflictCount));
+    Future<?> second =
+        executor.submit(
+            () -> recordUploadIntentOutcome(dealId, start, createdCount, conflictCount));
+    start.countDown();
+    first.get(20, TimeUnit.SECONDS);
+    second.get(20, TimeUnit.SECONDS);
+    executor.shutdown();
 
-        assertEquals(1, createdCount.get());
-        assertEquals(1, conflictCount.get());
-        assertEquals(1L, jdbc.queryForObject("""
+    assertEquals(1, createdCount.get());
+    assertEquals(1, conflictCount.get());
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            """
                 SELECT COUNT(*) FROM fulfillment_evidence_submission
                 WHERE deal_id = ? AND status = 'PENDING_UPLOAD'
                   AND cancelled_at IS NULL AND upload_expires_at > CURRENT_TIMESTAMP
-                """, Long.class, dealId));
+                """,
+            Long.class,
+            dealId));
+  }
+
+  private String submitEvidence(
+      UUID dealId, Principal seller, String evidenceType, String fileName, String mediaType)
+      throws Exception {
+    return submitEvidence(dealId, seller, evidenceType, fileName, mediaType, 12);
+  }
+
+  private String submitEvidence(
+      UUID dealId,
+      Principal seller,
+      String evidenceType,
+      String fileName,
+      String mediaType,
+      long sizeBytes)
+      throws Exception {
+    MvcResult intentResult =
+        mockMvc
+            .perform(
+                post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                    .with(user(seller.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(uploadIntentRequest(evidenceType, fileName, mediaType, sizeBytes)))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String submissionId =
+        JsonPath.read(intentResult.getResponse().getContentAsString(), "$.evidence.id");
+
+    storage.setVerified(
+        new FulfillmentObjectStorage.VerifiedObject(
+            sizeBytes, SHA, "immutable-version", mediaType));
+
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment/evidence/" + submissionId + "/finalize")
+                .with(user(seller.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sizeBytes\": " + sizeBytes + ", \"sha256\": \"" + SHA + "\"}"))
+        .andExpect(status().isOk());
+    return submissionId;
+  }
+
+  private void startFulfillment(UUID dealId, Principal seller) throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + dealId + "/fulfillment")
+                .with(user(seller.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedVersion\": 3}"))
+        .andExpect(status().isCreated());
+  }
+
+  private void recordStartOutcome(
+      UUID dealId, Principal seller, AtomicInteger createdCount, AtomicInteger conflictCount) {
+    try {
+      MvcResult result =
+          mockMvc
+              .perform(
+                  post("/api/v1/deals/" + dealId + "/fulfillment")
+                      .with(user(seller.userId.toString()))
+                      .with(csrf())
+                      .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
+                      .header("Idempotency-Key", UUID.randomUUID())
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content("{\"expectedVersion\": 3}"))
+              .andReturn();
+      int status = result.getResponse().getStatus();
+      if (status == 201) {
+        createdCount.incrementAndGet();
+      } else if (status == 409) {
+        conflictCount.incrementAndGet();
+      } else {
+        throw new AssertionError("Unexpected start status: " + status);
+      }
+    } catch (Exception exception) {
+      throw new RuntimeException(exception);
     }
+  }
 
-    private String submitEvidence(UUID dealId, Principal seller, String evidenceType,
-            String fileName, String mediaType) throws Exception {
-        return submitEvidence(dealId, seller, evidenceType, fileName, mediaType, 12);
+  private void recordAcceptWithoutEvidenceOutcome(
+      UUID dealId,
+      UUID key,
+      String body,
+      CountDownLatch start,
+      AtomicInteger successCount,
+      AtomicInteger failureCount) {
+    try {
+      start.await();
+      MvcResult result =
+          mockMvc
+              .perform(
+                  post("/api/v1/deals/" + dealId + "/fulfillment/accept-without-evidence")
+                      .with(user(buyerAdmin.userId.toString()))
+                      .with(csrf())
+                      .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                      .header("Idempotency-Key", key)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(body))
+              .andReturn();
+      if (result.getResponse().getStatus() == 200) {
+        successCount.incrementAndGet();
+        return;
+      }
+      failureCount.incrementAndGet();
+      throw new AssertionError(
+          "Unexpected accept-without-evidence status: "
+              + result.getResponse().getStatus()
+              + " body="
+              + result.getResponse().getContentAsString());
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      failureCount.incrementAndGet();
+      throw new RuntimeException(exception);
+    } catch (RuntimeException exception) {
+      throw exception;
+    } catch (Exception exception) {
+      failureCount.incrementAndGet();
+      throw new RuntimeException(exception);
     }
+  }
 
-    private String submitEvidence(UUID dealId, Principal seller, String evidenceType,
-            String fileName, String mediaType, long sizeBytes) throws Exception {
-        MvcResult intentResult = mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/upload-intents")
-                        .with(user(seller.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(uploadIntentRequest(evidenceType, fileName, mediaType, sizeBytes)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String submissionId = JsonPath.read(intentResult.getResponse().getContentAsString(), "$.evidence.id");
-
-        storage.setVerified(new FulfillmentObjectStorage.VerifiedObject(sizeBytes, SHA, "immutable-version", mediaType));
-
-        mockMvc.perform(post("/api/v1/deals/" + dealId
-                        + "/fulfillment/evidence/" + submissionId + "/finalize")
-                        .with(user(seller.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sizeBytes\": " + sizeBytes + ", \"sha256\": \"" + SHA + "\"}"))
-                .andExpect(status().isOk());
-        return submissionId;
+  private void recordUploadIntentOutcome(
+      UUID dealId, CountDownLatch start, AtomicInteger createdCount, AtomicInteger conflictCount) {
+    try {
+      start.await();
+      MvcResult result =
+          mockMvc
+              .perform(
+                  post("/api/v1/deals/" + dealId + "/fulfillment/evidence/upload-intents")
+                      .with(user(sellerAdmin.userId.toString()))
+                      .with(csrf())
+                      .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(
+                          uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
+              .andReturn();
+      int status = result.getResponse().getStatus();
+      if (status == 201) {
+        createdCount.incrementAndGet();
+      } else if (status == 409) {
+        conflictCount.incrementAndGet();
+      } else {
+        throw new AssertionError(
+            "Unexpected upload-intent status: "
+                + status
+                + " body="
+                + result.getResponse().getContentAsString());
+      }
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(exception);
+    } catch (Exception exception) {
+      throw new RuntimeException(exception);
     }
+  }
 
-    private void startFulfillment(UUID dealId, Principal seller) throws Exception {
-        mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment")
-                        .with(user(seller.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\": 3}"))
-                .andExpect(status().isCreated());
-    }
+  private String uploadIntentRequest(String evidenceType, String fileName, String mediaType) {
+    return uploadIntentRequest(evidenceType, fileName, mediaType, 12);
+  }
 
-    private void recordStartOutcome(UUID dealId, Principal seller,
-            AtomicInteger createdCount, AtomicInteger conflictCount) {
-        try {
-            MvcResult result = mockMvc.perform(post("/api/v1/deals/" + dealId + "/fulfillment")
-                            .with(user(seller.userId.toString())).with(csrf())
-                            .header(LEGAL_ENTITY_HEADER, seller.legalEntityId)
-                            .header("Idempotency-Key", UUID.randomUUID())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"expectedVersion\": 3}"))
-                    .andReturn();
-            int status = result.getResponse().getStatus();
-            if (status == 201) {
-                createdCount.incrementAndGet();
-            } else if (status == 409) {
-                conflictCount.incrementAndGet();
-            } else {
-                throw new AssertionError("Unexpected start status: " + status);
-            }
-        } catch (Exception exception) {
-            throw new RuntimeException(exception);
-        }
-    }
-
-    private void recordAcceptWithoutEvidenceOutcome(UUID dealId, UUID key, String body,
-            CountDownLatch start, AtomicInteger successCount, AtomicInteger failureCount) {
-        try {
-            start.await();
-            MvcResult result = mockMvc.perform(post("/api/v1/deals/" + dealId
-                            + "/fulfillment/accept-without-evidence")
-                            .with(user(buyerAdmin.userId.toString())).with(csrf())
-                            .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                            .header("Idempotency-Key", key)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(body))
-                    .andReturn();
-            if (result.getResponse().getStatus() == 200) {
-                successCount.incrementAndGet();
-                return;
-            }
-            failureCount.incrementAndGet();
-            throw new AssertionError("Unexpected accept-without-evidence status: "
-                    + result.getResponse().getStatus()
-                    + " body=" + result.getResponse().getContentAsString());
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            failureCount.incrementAndGet();
-            throw new RuntimeException(exception);
-        } catch (RuntimeException exception) {
-            throw exception;
-        } catch (Exception exception) {
-            failureCount.incrementAndGet();
-            throw new RuntimeException(exception);
-        }
-    }
-
-    private void recordUploadIntentOutcome(UUID dealId, CountDownLatch start,
-            AtomicInteger createdCount, AtomicInteger conflictCount) {
-        try {
-            start.await();
-            MvcResult result = mockMvc.perform(post("/api/v1/deals/" + dealId
-                            + "/fulfillment/evidence/upload-intents")
-                            .with(user(sellerAdmin.userId.toString())).with(csrf())
-                            .header(LEGAL_ENTITY_HEADER, sellerAdmin.legalEntityId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(uploadIntentRequest("DELIVERY_NOTE", "receipt.pdf", "application/pdf")))
-                    .andReturn();
-            int status = result.getResponse().getStatus();
-            if (status == 201) {
-                createdCount.incrementAndGet();
-            } else if (status == 409) {
-                conflictCount.incrementAndGet();
-            } else {
-                throw new AssertionError("Unexpected upload-intent status: " + status
-                        + " body=" + result.getResponse().getContentAsString());
-            }
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(exception);
-        } catch (Exception exception) {
-            throw new RuntimeException(exception);
-        }
-    }
-
-    private String uploadIntentRequest(String evidenceType, String fileName, String mediaType) {
-        return uploadIntentRequest(evidenceType, fileName, mediaType, 12);
-    }
-
-    private String uploadIntentRequest(String evidenceType, String fileName, String mediaType, long sizeBytes) {
-        return """
+  private String uploadIntentRequest(
+      String evidenceType, String fileName, String mediaType, long sizeBytes) {
+    return """
                 {
                   "evidenceType": "%s",
                   "mediaType": "%s",
@@ -722,114 +884,147 @@ class FulfillmentIntegrationTest {
                   "sizeBytes": %d,
                   "sha256": "%s"
                 }
-                """.formatted(evidenceType, mediaType, fileName, sizeBytes, SHA);
-    }
+                """
+        .formatted(evidenceType, mediaType, fileName, sizeBytes, SHA);
+  }
 
-    private UUID createActiveFundedDeal() throws Exception {
-        UUID dealId = createActiveDeal(null);
-        seedFunding(dealId);
-        return dealId;
-    }
+  private UUID createActiveFundedDeal() throws Exception {
+    UUID dealId = createActiveDeal(null);
+    seedFunding(dealId);
+    return dealId;
+  }
 
-    private UUID createActiveFundedNotRequiredDeal() throws Exception {
-        UUID dealId = createActiveDeal("NOT_REQUIRED");
-        seedFunding(dealId);
-        return dealId;
-    }
+  private UUID createActiveFundedNotRequiredDeal() throws Exception {
+    UUID dealId = createActiveDeal("NOT_REQUIRED");
+    seedFunding(dealId);
+    return dealId;
+  }
 
-    private UUID createActiveDealWithoutFunding() throws Exception {
-        return createActiveDeal(null);
-    }
+  private UUID createActiveDealWithoutFunding() throws Exception {
+    return createActiveDeal(null);
+  }
 
-    private UUID createActiveDeal() throws Exception {
-        return createActiveDeal(null);
-    }
+  private UUID createActiveDeal() throws Exception {
+    return createActiveDeal(null);
+  }
 
-    private UUID createActiveDeal(String evidencePolicy) throws Exception {
-        MvcResult dealResult = mockMvc.perform(post("/api/v1/deals")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\": \"Fulfillment Deal\"}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        UUID dealId = UUID.fromString(JsonPath.read(dealResult.getResponse().getContentAsString(), "$.id"));
+  private UUID createActiveDeal(String evidencePolicy) throws Exception {
+    MvcResult dealResult =
+        mockMvc
+            .perform(
+                post("/api/v1/deals")
+                    .with(user(buyerAdmin.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\": \"Fulfillment Deal\"}"))
+            .andExpect(status().isCreated())
+            .andReturn();
+    UUID dealId =
+        UUID.fromString(JsonPath.read(dealResult.getResponse().getContentAsString(), "$.id"));
 
-        insertParticipant(dealId, sellerAdmin);
+    insertParticipant(dealId, sellerAdmin);
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .patch("/api/v1/deals/" + dealId + "/parties")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"buyerLegalEntityId": "%s", "sellerLegalEntityId": "%s", "expectedVersion": 0}
-                                """.formatted(buyerAdmin.legalEntityId, sellerAdmin.legalEntityId)))
-                .andExpect(status().isOk());
-
-        seedAvailableDocumentAndRuleSetWithRules(dealId);
-
-        String policyFields = evidencePolicy == null
-                ? ""
-                : ", \"disputeWindowDays\": 7, \"evidencePolicy\": \"" + evidencePolicy + "\"";
-        MvcResult created = mockMvc.perform(post("/api/v1/deals/" + dealId + "/ratification-packages")
-                        .with(user(buyerAdmin.userId.toString())).with(csrf())
-                        .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                        .header("Idempotency-Key", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"expectedVersion": 1, "commercialTerms": {"amountMinor": 5000, "currency": "TRY"}%s}
-                                """.formatted(policyFields)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        UUID packageId = UUID.fromString(JsonPath.read(created.getResponse().getContentAsString(), "$.id"));
-
-        approve(dealId, packageId, buyerAdmin, 0).andExpect(status().isOk());
-        approve(dealId, packageId, sellerAdmin, 1).andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("RATIFIED"));
-
-        return dealId;
-    }
-
-    private org.springframework.test.web.servlet.ResultActions approve(
-            UUID dealId, UUID packageId, Principal actor, long expectedPackageVersion) throws Exception {
-        return mockMvc.perform(post("/api/v1/deals/" + dealId + "/ratification-packages/" + packageId + "/approve")
-                .with(user(actor.userId.toString())).with(csrf())
-                .header(LEGAL_ENTITY_HEADER, actor.legalEntityId)
-                .header("Idempotency-Key", UUID.randomUUID())
+    mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                    "/api/v1/deals/" + dealId + "/parties")
+                .with(user(buyerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"expectedPackageVersion\": " + expectedPackageVersion + "}"));
-    }
+                .content(
+                    """
+                                {"buyerLegalEntityId": "%s", "sellerLegalEntityId": "%s", "expectedVersion": 0}
+                                """
+                        .formatted(buyerAdmin.legalEntityId, sellerAdmin.legalEntityId)))
+        .andExpect(status().isOk());
 
-    private void seedFunding(UUID dealId) {
-        UUID planId = UUID.randomUUID();
-        UUID unitId = UUID.randomUUID();
-        jdbc.update("""
+    seedAvailableDocumentAndRuleSetWithRules(dealId);
+
+    String policyFields =
+        evidencePolicy == null
+            ? ""
+            : ", \"disputeWindowDays\": 7, \"evidencePolicy\": \"" + evidencePolicy + "\"";
+    MvcResult created =
+        mockMvc
+            .perform(
+                post("/api/v1/deals/" + dealId + "/ratification-packages")
+                    .with(user(buyerAdmin.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                    .header("Idempotency-Key", UUID.randomUUID())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                                {"expectedVersion": 1, "commercialTerms": {"amountMinor": 5000, "currency": "TRY"}%s}
+                                """
+                            .formatted(policyFields)))
+            .andExpect(status().isCreated())
+            .andReturn();
+    UUID packageId =
+        UUID.fromString(JsonPath.read(created.getResponse().getContentAsString(), "$.id"));
+
+    approve(dealId, packageId, buyerAdmin, 0).andExpect(status().isOk());
+    approve(dealId, packageId, sellerAdmin, 1)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("RATIFIED"));
+
+    return dealId;
+  }
+
+  private org.springframework.test.web.servlet.ResultActions approve(
+      UUID dealId, UUID packageId, Principal actor, long expectedPackageVersion) throws Exception {
+    return mockMvc.perform(
+        post("/api/v1/deals/" + dealId + "/ratification-packages/" + packageId + "/approve")
+            .with(user(actor.userId.toString()))
+            .with(csrf())
+            .header(LEGAL_ENTITY_HEADER, actor.legalEntityId)
+            .header("Idempotency-Key", UUID.randomUUID())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"expectedPackageVersion\": " + expectedPackageVersion + "}"));
+  }
+
+  private void seedFunding(UUID dealId) {
+    UUID planId = UUID.randomUUID();
+    UUID unitId = UUID.randomUUID();
+    jdbc.update(
+        """
                 INSERT INTO funding_plan (id, deal_id, ratification_package_id, tenant_id,
                     amount_minor, currency, version, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, 'TRY', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """, planId, dealId, currentRatificationPackageId(dealId), tenantId(dealId), 5000L);
-        jdbc.update("""
+                """,
+        planId,
+        dealId,
+        currentRatificationPackageId(dealId),
+        tenantId(dealId),
+        5000L);
+    jdbc.update(
+        """
                 INSERT INTO funding_unit (id, funding_plan_id, sequence_no, amount_minor,
                     currency, status, version, created_at, updated_at)
                 VALUES (?, ?, 1, ?, 'TRY', 'FUNDED', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """, unitId, planId, 5000L);
-    }
+                """,
+        unitId,
+        planId,
+        5000L);
+  }
 
-    private UUID currentRatificationPackageId(UUID dealId) {
-        return jdbc.queryForObject(
-                "SELECT current_ratification_package_id FROM deal WHERE id = ?", UUID.class, dealId);
-    }
+  private UUID currentRatificationPackageId(UUID dealId) {
+    return jdbc.queryForObject(
+        "SELECT current_ratification_package_id FROM deal WHERE id = ?", UUID.class, dealId);
+  }
 
-    private UUID tenantId(UUID dealId) {
-        return jdbc.queryForObject("SELECT tenant_id FROM deal WHERE id = ?", UUID.class, dealId);
-    }
+  private UUID tenantId(UUID dealId) {
+    return jdbc.queryForObject("SELECT tenant_id FROM deal WHERE id = ?", UUID.class, dealId);
+  }
 
-    private void seedAvailableDocumentAndRuleSetWithRules(UUID dealId) {
-        UUID tenantId = buyerAdmin.tenantId;
-        String sha = SHA;
-        UUID documentId = UUID.randomUUID();
-        jdbc.update("""
+  private void seedAvailableDocumentAndRuleSetWithRules(UUID dealId) {
+    UUID tenantId = buyerAdmin.tenantId;
+    String sha = SHA;
+    UUID documentId = UUID.randomUUID();
+    jdbc.update(
+        """
                 INSERT INTO document (
                     id, deal_id, file_name, media_type, document_status, object_key,
                     declared_size_bytes, declared_sha256, upload_expires_at,
@@ -838,27 +1033,45 @@ class FulfillmentIntegrationTest {
                 ) VALUES (?, ?, 'contract.pdf', 'application/pdf', 'AVAILABLE', ?,
                     1024, ?, CURRENT_TIMESTAMP + INTERVAL '1 hour',
                     1024, ?, 'v1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """, documentId, dealId, "obj-" + documentId, sha, sha);
-        jdbc.update("""
+                """,
+        documentId,
+        dealId,
+        "obj-" + documentId,
+        sha,
+        sha);
+    jdbc.update(
+        """
                 UPDATE deal SET current_document_id = ?, current_document_status = 'AVAILABLE' WHERE id = ?
-                """, documentId, dealId);
+                """,
+        documentId,
+        dealId);
 
-        UUID analysisJobId = UUID.randomUUID();
-        jdbc.update("""
+    UUID analysisJobId = UUID.randomUUID();
+    jdbc.update(
+        """
                 INSERT INTO contract_intelligence_analysis_job (
                     id, tenant_id, deal_id, document_id, object_version, input_sha256, status,
                     requested_at, processing_started_at, completed_at
                 ) VALUES (?, ?, ?, ?, 'v1', ?, 'ACCEPTED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """, analysisJobId, tenantId, dealId, documentId, sha);
-        UUID extractionId = UUID.randomUUID();
-        jdbc.update("""
+                """,
+        analysisJobId,
+        tenantId,
+        dealId,
+        documentId,
+        sha);
+    UUID extractionId = UUID.randomUUID();
+    jdbc.update(
+        """
                 INSERT INTO contract_intelligence_extraction_result_version (
                     id, analysis_job_id, schema_version, canonical_result, created_at
                 ) VALUES (?, ?, '1.0.0',
                     '{"parties":[],"rules":[],"deliveryRequirements":[],"summary":{}}'::jsonb, CURRENT_TIMESTAMP)
-                """, extractionId, analysisJobId);
-        UUID ruleSetId = UUID.randomUUID();
-        String rules = """
+                """,
+        extractionId,
+        analysisJobId);
+    UUID ruleSetId = UUID.randomUUID();
+    String rules =
+        """
                 [
                   {
                     "ruleReference": "delivery-1",
@@ -882,120 +1095,159 @@ class FulfillmentIntegrationTest {
                   }
                 ]
                 """;
-        jdbc.update("""
+    jdbc.update(
+        """
                 INSERT INTO contract_intelligence_rule_set_version (
                     id, deal_id, version, source_analysis_id, source_extraction_result_version_id,
                     created_by_user_id, created_at, rules, excluded_rule_references
                 ) VALUES (?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP, CAST(? AS jsonb), '[]'::jsonb)
-                """, ruleSetId, dealId, analysisJobId, extractionId, buyerAdmin.userId, rules);
-        jdbc.update("UPDATE deal SET current_rule_set_version_id = ? WHERE id = ?", ruleSetId, dealId);
-    }
+                """,
+        ruleSetId,
+        dealId,
+        analysisJobId,
+        extractionId,
+        buyerAdmin.userId,
+        rules);
+    jdbc.update("UPDATE deal SET current_rule_set_version_id = ? WHERE id = ?", ruleSetId, dealId);
+  }
 
-    private void insertParticipant(UUID dealId, Principal principal) {
-        jdbc.update("""
+  private void insertParticipant(UUID dealId, Principal principal) {
+    jdbc.update(
+        """
                 INSERT INTO deal_participant (deal_id, tenant_id, legal_entity_id, legal_entity_tenant_id)
                 SELECT id, tenant_id, ?, ? FROM deal WHERE id = ?
-                """, principal.legalEntityId, principal.tenantId, dealId);
-    }
+                """,
+        principal.legalEntityId,
+        principal.tenantId,
+        dealId);
+  }
 
-    private Principal insertPrincipal(String email, String legalName, String role) {
-        UUID userId = UUID.randomUUID();
-        UUID tenantId = UUID.randomUUID();
-        UUID legalEntityId = UUID.randomUUID();
-        jdbc.update("""
+  private Principal insertPrincipal(String email, String legalName, String role) {
+    UUID userId = UUID.randomUUID();
+    UUID tenantId = UUID.randomUUID();
+    UUID legalEntityId = UUID.randomUUID();
+    jdbc.update(
+        """
                 INSERT INTO identity_user (id, email, password_hash, display_name, enabled)
                 VALUES (?, ?, 'test-hash', ?, true)
-                """, userId, email, legalName + " User");
-        jdbc.update("INSERT INTO tenant (id) VALUES (?)", tenantId);
-        jdbc.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)", userId, tenantId);
-        jdbc.update("""
+                """,
+        userId,
+        email,
+        legalName + " User");
+    jdbc.update("INSERT INTO tenant (id) VALUES (?)", tenantId);
+    jdbc.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)", userId, tenantId);
+    jdbc.update(
+        """
                 INSERT INTO legal_entity (id, tenant_id, legal_name, registration_number)
                 VALUES (?, ?, ?, ?)
-                """, legalEntityId, tenantId, legalName, "REG-" + legalEntityId);
-        jdbc.update("""
+                """,
+        legalEntityId,
+        tenantId,
+        legalName,
+        "REG-" + legalEntityId);
+    jdbc.update(
+        """
                 INSERT INTO legal_entity_membership (id, tenant_id, legal_entity_id, user_id, role)
                 VALUES (?, ?, ?, ?, ?)
-                """, UUID.randomUUID(), tenantId, legalEntityId, userId, role);
-        return new Principal(userId, tenantId, legalEntityId);
-    }
+                """,
+        UUID.randomUUID(),
+        tenantId,
+        legalEntityId,
+        userId,
+        role);
+    return new Principal(userId, tenantId, legalEntityId);
+  }
 
-    private Principal insertMember(Principal ofEntity, String email) {
-        UUID userId = UUID.randomUUID();
-        jdbc.update("""
+  private Principal insertMember(Principal ofEntity, String email) {
+    UUID userId = UUID.randomUUID();
+    jdbc.update(
+        """
                 INSERT INTO identity_user (id, email, password_hash, display_name, enabled)
                 VALUES (?, ?, 'test-hash', 'Member User', true)
-                """, userId, email);
-        jdbc.update("INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)", userId, ofEntity.tenantId);
-        jdbc.update("""
+                """,
+        userId,
+        email);
+    jdbc.update(
+        "INSERT INTO tenant_user (user_id, tenant_id) VALUES (?, ?)", userId, ofEntity.tenantId);
+    jdbc.update(
+        """
                 INSERT INTO legal_entity_membership (id, tenant_id, legal_entity_id, user_id, role)
                 VALUES (?, ?, ?, ?, 'MEMBER')
-                """, UUID.randomUUID(), ofEntity.tenantId, ofEntity.legalEntityId, userId);
-        return new Principal(userId, ofEntity.tenantId, ofEntity.legalEntityId);
+                """,
+        UUID.randomUUID(),
+        ofEntity.tenantId,
+        ofEntity.legalEntityId,
+        userId);
+    return new Principal(userId, ofEntity.tenantId, ofEntity.legalEntityId);
+  }
+
+  private static final class Principal {
+    final UUID userId;
+    final UUID tenantId;
+    final UUID legalEntityId;
+
+    Principal(UUID userId, UUID tenantId, UUID legalEntityId) {
+      this.userId = userId;
+      this.tenantId = tenantId;
+      this.legalEntityId = legalEntityId;
+    }
+  }
+
+  @TestConfiguration
+  static class FakeStorageConfiguration {
+    @Bean
+    @Primary
+    FakeStorage fakeFulfillmentObjectStorage() {
+      return new FakeStorage();
+    }
+  }
+
+  static class FakeStorage implements FulfillmentObjectStorage {
+    final AtomicBoolean calledInsideTransaction = new AtomicBoolean();
+    final AtomicBoolean downloadCalledInsideTransaction = new AtomicBoolean();
+    final AtomicInteger verifyCalls = new AtomicInteger();
+    private volatile VerifiedObject verified =
+        new VerifiedObject(12, SHA, "immutable-version", "application/pdf");
+
+    void reset() {
+      calledInsideTransaction.set(false);
+      downloadCalledInsideTransaction.set(false);
+      verifyCalls.set(0);
+      verified = new VerifiedObject(12, SHA, "immutable-version", "application/pdf");
     }
 
-    private static final class Principal {
-        final UUID userId;
-        final UUID tenantId;
-        final UUID legalEntityId;
-
-        Principal(UUID userId, UUID tenantId, UUID legalEntityId) {
-            this.userId = userId;
-            this.tenantId = tenantId;
-            this.legalEntityId = legalEntityId;
-        }
+    void setVerified(VerifiedObject verified) {
+      this.verified = verified;
     }
 
-    @TestConfiguration
-    static class FakeStorageConfiguration {
-        @Bean
-        @Primary
-        FakeStorage fakeFulfillmentObjectStorage() {
-            return new FakeStorage();
-        }
+    @Override
+    public DirectUpload createDirectUpload(String objectKey, String mediaType, long contentLength) {
+      recordTransactionState();
+      return new DirectUpload(
+          URI.create("https://storage.example/" + objectKey),
+          Map.of("Content-Type", mediaType),
+          Instant.now().plusSeconds(600));
     }
 
-    static class FakeStorage implements FulfillmentObjectStorage {
-        final AtomicBoolean calledInsideTransaction = new AtomicBoolean();
-        final AtomicBoolean downloadCalledInsideTransaction = new AtomicBoolean();
-        final AtomicInteger verifyCalls = new AtomicInteger();
-        private volatile VerifiedObject verified = new VerifiedObject(12, SHA, "immutable-version", "application/pdf");
-
-        void reset() {
-            calledInsideTransaction.set(false);
-            downloadCalledInsideTransaction.set(false);
-            verifyCalls.set(0);
-            verified = new VerifiedObject(12, SHA, "immutable-version", "application/pdf");
-        }
-
-        void setVerified(VerifiedObject verified) {
-            this.verified = verified;
-        }
-
-        @Override
-        public DirectUpload createDirectUpload(String objectKey, String mediaType, long contentLength) {
-            recordTransactionState();
-            return new DirectUpload(URI.create("https://storage.example/" + objectKey),
-                    Map.of("Content-Type", mediaType), Instant.now().plusSeconds(600));
-        }
-
-        @Override
-        public DirectDownload createDirectDownload(String objectKey, String objectVersion) {
-            downloadCalledInsideTransaction.compareAndSet(false,
-                    TransactionSynchronizationManager.isActualTransactionActive());
-            return new DirectDownload(URI.create("https://storage.example/" + objectKey
-                    + "?version=" + objectVersion), Instant.now().plusSeconds(300));
-        }
-
-        @Override
-        public VerifiedObject verify(String objectKey) {
-            recordTransactionState();
-            verifyCalls.incrementAndGet();
-            return verified;
-        }
-
-        private void recordTransactionState() {
-            calledInsideTransaction.compareAndSet(false,
-                    TransactionSynchronizationManager.isActualTransactionActive());
-        }
+    @Override
+    public DirectDownload createDirectDownload(String objectKey, String objectVersion) {
+      downloadCalledInsideTransaction.compareAndSet(
+          false, TransactionSynchronizationManager.isActualTransactionActive());
+      return new DirectDownload(
+          URI.create("https://storage.example/" + objectKey + "?version=" + objectVersion),
+          Instant.now().plusSeconds(300));
     }
+
+    @Override
+    public VerifiedObject verify(String objectKey) {
+      recordTransactionState();
+      verifyCalls.incrementAndGet();
+      return verified;
+    }
+
+    private void recordTransactionState() {
+      calledInsideTransaction.compareAndSet(
+          false, TransactionSynchronizationManager.isActualTransactionActive());
+    }
+  }
 }

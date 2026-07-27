@@ -1,16 +1,12 @@
 import type { components } from "../../generated/core-api";
-import {
-  postJsonWithFreshCsrf,
-  requestJson,
-} from "../../app/coreApi";
+import { postJsonWithFreshCsrf, requestJson } from "../../app/coreApi";
 
 export type AcceptDealInvitationRequest =
   components["schemas"]["AcceptDealInvitationRequest"];
 export type CreateDealInvitationRequest =
   components["schemas"]["CreateDealInvitationRequest"];
 export type DealInvitation = components["schemas"]["DealInvitation"];
-export type DealInvitationPage =
-  components["schemas"]["DealInvitationPage"];
+export type DealInvitationPage = components["schemas"]["DealInvitationPage"];
 export type DealInvitationTerminalActionRequest =
   components["schemas"]["DealInvitationTerminalActionRequest"];
 export type IncomingDealInvitation =

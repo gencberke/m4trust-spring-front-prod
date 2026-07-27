@@ -9,9 +9,18 @@ monorepo verify loops for small edits.
 | --- | --- |
 | TS-only, no OpenAPI regen | `cd frontend && npm run typecheck:fast` |
 | Full typecheck (regenerates API types) | `cd frontend && npm run typecheck` |
+| Lint | `cd frontend && npm run lint` |
+| Unit tests | `cd frontend && npm run test` |
+| Tests in watch mode | `cd frontend && npm run test:watch` |
+| Formatting check | `cd frontend && npm run format:check` |
+| Apply formatting | `cd frontend && npm run format` |
 | Production build | `cd frontend && npm run build` |
 
 Prefer `typecheck:fast` when you did not change contracts or generated types.
+
+Lint must stay at zero errors. Warnings are tolerated only where they are
+recorded as known debt in [`ROADMAP.md`](ROADMAP.md); do not silence a rule to
+make a warning disappear.
 
 Optional wrapper from repo root: `./scripts/validate-frontend.sh` (fast) or
 `./scripts/validate-frontend.sh --full`.

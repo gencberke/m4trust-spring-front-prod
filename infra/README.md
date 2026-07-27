@@ -2,21 +2,46 @@
 
 Bu Compose projesi yalnızca yerel geliştirme içindir. PostgreSQL, RabbitMQ ve MinIO'yu kalıcı, proje kapsamlı volume'larla başlatır. Varsayılan kimlik bilgileri bilinçli olarak yalnızca yerel placeholder değerlerdir; staging veya production ortamında kullanılmamalıdır.
 
-Komutları repository kök dizininde PowerShell ile çalıştırın.
+Komutları repository kök dizininde çalıştırın. Her adım için bash (macOS/Linux) ve
+PowerShell (Windows) karşılıkları verilmiştir.
 
 ## Başlatma ve durum
 
-Tek komutla altyapıyı başlatın ve üç servisin de healthy olmasını bekleyin:
+Önerilen yol, altyapıyı ve opsiyonel mock AI worker'ı tek komutla başlatan bootstrap
+scriptidir:
+
+```bash
+./scripts/dev-up.sh
+```
 
 ```powershell
-docker compose --project-name m4trust-local --file .\infra\compose.yaml up --detach --wait
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev-up.ps1
+```
+
+Compose'u doğrudan çağırmak isterseniz:
+
+```bash
+docker compose --project-name m4trust-local --file ./infra/compose.yaml up --detach
+```
+
+```powershell
+docker compose --project-name m4trust-local --file .\infra\compose.yaml up --detach
 ```
 
 Durumu ve health bilgisini görüntüleyin:
 
+```bash
+docker compose --project-name m4trust-local --file ./infra/compose.yaml ps
+```
+
 ```powershell
 docker compose --project-name m4trust-local --file .\infra\compose.yaml ps
 ```
+
+`--wait` bayrağına güvenmeyin: `minio-bootstrap` tek seferlik bir container olduğu için
+çekirdek servisler healthy olsa bile `--wait` başarısız çıkış kodu döndürebilir. Bunun
+yerine yukarıdaki `ps` çıktısından postgres, rabbitmq ve minio'nun healthy olduğunu
+doğrulayın.
 
 Yerel erişim noktaları:
 
@@ -38,9 +63,15 @@ public değildir.
 AI document extraction akışını gerçek RabbitMQ sınırıyla çalıştırmak için
 opsiyonel Mock AI Worker profilini açın:
 
-```powershell
-docker compose --project-name m4trust-local --file .\infra\compose.yaml --profile mock-ai up --detach --build --wait
+```bash
+docker compose --project-name m4trust-local --file ./infra/compose.yaml --profile mock-ai up --detach --build
 ```
+
+```powershell
+docker compose --project-name m4trust-local --file .\infra\compose.yaml --profile mock-ai up --detach --build
+```
+
+`./scripts/dev-up.sh` ve `scripts\dev-up.ps1` bu profili zaten açık başlatır.
 
 Profil verilmezse worker kapalı kalır; PostgreSQL, RabbitMQ ve MinIO normal şekilde
 çalışmaya devam eder. Bu davranış, analiz talebinin worker yokken `QUEUED` kalıp
@@ -58,6 +89,10 @@ yazılmaz.
 
 ## Seed
 
+```bash
+./scripts/dev-seed.sh
+```
+
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev-seed.ps1
 ```
@@ -66,13 +101,21 @@ Slice 0'da business verisi bulunmadığı için seed komutu açıklayıcı bir m
 
 ## Reset
 
+```bash
+./scripts/dev-reset.sh
+```
+
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev-reset.ps1
 ```
 
 Reset yalnızca sabit `m4trust-local` Compose projesinin container, network ve named volume'larını kaldırır. Başka Compose projelerine veya Docker kaynaklarına dokunmaz. Ardından başlatma komutunu tekrar çalıştırın.
 
-Komutun çalıştırmadan önce hedefleyeceği sabit proje kapsamını görmek için `-WhatIf` ekleyebilirsiniz:
+Komutun çalıştırmadan önce hedefleyeceği sabit proje kapsamını görmek için kuru çalıştırma bayrağını ekleyebilirsiniz:
+
+```bash
+./scripts/dev-reset.sh --dry-run
+```
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev-reset.ps1 -WhatIf
