@@ -8,8 +8,11 @@ const FULFILLMENT_NOT_FOUND_CODES: ReadonlySet<ApiErrorCode> = new Set([
 ]);
 
 export function isFulfillmentNotFound(error: unknown): boolean {
-  return error instanceof ApiError && error.code != null
-    && FULFILLMENT_NOT_FOUND_CODES.has(error.code);
+  return (
+    error instanceof ApiError &&
+    error.code != null &&
+    FULFILLMENT_NOT_FOUND_CODES.has(error.code)
+  );
 }
 
 export function isEvidenceUploadExpired(error: unknown): boolean {

@@ -1,6 +1,11 @@
 # ADR-007: Deployment and Runtime Environments
 
 - **Durum:** Accepted
+- **Runtime notu:** §§3–4 ve 13–14'teki RabbitMQ zorunluluğu ile server-side
+  encryption, lifecycle ve broad-production storage recovery beklentileri
+  kontrollü demo runtime'ı için
+  [ADR-022](ADR-022-Railway-Only-Controlled-Demo-Runtime.md) tarafından geçici
+  olarak ertelenmiştir.
 - **Tarih:** 14 Temmuz 2026
 - **Karar sahipleri:** M4Trust mimari ekibi
 - **Kapsam:** Uygulamaların paketlenmesi, Railway üzerinde çalıştırılması, ortamların ayrılması, runtime ağ sınırları, configuration, secret, migration, health, backup ve rollback yaklaşımı

@@ -1,6 +1,12 @@
 # ADR-016: Main Application Production Runtime, Release, and Recovery
 
 - Durum: Accepted
+- Runtime notu: EU West, AWS S3, Postmark, Grafana Cloud, iki replica,
+  build-once registry promotion, release manifest, PITR/RPO/RTO ve yedi günlük
+  production pilot zorunlulukları kontrollü demo runtime'ı için
+  [ADR-022](ADR-022-Railway-Only-Controlled-Demo-Runtime.md) tarafından geçici
+  olarak ertelenmiştir. Bu maddelerin mevcut Railway demo ortamında yürürlükte
+  olduğu varsayılmamalıdır.
 - Tarih: 22 Temmuz 2026
 - Karar sahibi: M4Trust founder/user
 - Kısmen değiştirildi: ADR-020, release manifest ile image kimliği arasındaki

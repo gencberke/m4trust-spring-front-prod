@@ -11,7 +11,9 @@ function hasUpStatus(payload: unknown): payload is ReadinessPayload {
   );
 }
 
-export async function fetchReadiness(signal: AbortSignal): Promise<ReadinessPayload> {
+export async function fetchReadiness(
+  signal: AbortSignal,
+): Promise<ReadinessPayload> {
   const response = await fetch("/actuator/health/readiness", {
     signal,
     headers: {
@@ -21,7 +23,9 @@ export async function fetchReadiness(signal: AbortSignal): Promise<ReadinessPayl
   });
 
   if (!response.ok) {
-    throw new Error(`Core API readiness request failed with status ${response.status}.`);
+    throw new Error(
+      `Core API readiness request failed with status ${response.status}.`,
+    );
   }
 
   const payload: unknown = await response.json();

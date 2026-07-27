@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type ChangeEvent } from "react";
 
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
+import { formatDate } from "@/shared";
+import styles from "./Documents.module.css";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
 import {
   createDealDocumentUploadIntent,
   createDocumentDownloadLink,
@@ -12,7 +14,10 @@ import {
   type DocumentStatus,
   type DocumentUploadIntent,
 } from "./documentApi";
-import { getDocumentErrorMessage, isDocumentUploadExpired } from "./documentErrors";
+import {
+  getDocumentErrorMessage,
+  isDocumentUploadExpired,
+} from "./documentErrors";
 import {
   dealDocumentHistoryQueryKey,
   dealDocumentHistoryQueryOptions,
@@ -25,15 +30,6 @@ import {
   isLikelyExpiredUploadStatus,
   putDocumentBytes,
 } from "./documentUpload";
-
-const DOCUMENT_DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
-
-function formatDocumentDate(value: string): string {
-  return DOCUMENT_DATE_FORMATTER.format(new Date(value));
-}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) {
@@ -105,7 +101,9 @@ export function DealDocumentManagement({
   const queryClient = useQueryClient();
   const attemptIdRef = useRef(0);
   const idempotencyKeyRef = useRef<string | undefined>(undefined);
-  const [uploadState, setUploadState] = useState<UploadState>({ stage: "idle" });
+  const [uploadState, setUploadState] = useState<UploadState>({
+    stage: "idle",
+  });
   const [downloadError, setDownloadError] = useState<string>();
   const [downloadingDocumentId, setDownloadingDocumentId] = useState<string>();
 
@@ -166,14 +164,28 @@ export function DealDocumentManagement({
     sha256: string,
     attemptId: number,
   ) {
-    setUploadState({ stage: "uploading", file, mediaType, sha256, intent, progress: 0 });
+    setUploadState({
+      stage: "uploading",
+      file,
+      mediaType,
+      sha256,
+      intent,
+      progress: 0,
+    });
     try {
-      await putDocumentBytes(intent.uploadUrl, intent.uploadHeaders, file, (fraction) => {
-        if (attemptIdRef.current !== attemptId) return;
-        setUploadState((previous) =>
-          previous.stage === "uploading" ? { ...previous, progress: fraction } : previous,
-        );
-      });
+      await putDocumentBytes(
+        intent.uploadUrl,
+        intent.uploadHeaders,
+        file,
+        (fraction) => {
+          if (attemptIdRef.current !== attemptId) return;
+          setUploadState((previous) =>
+            previous.stage === "uploading"
+              ? { ...previous, progress: fraction }
+              : previous,
+          );
+        },
+      );
     } catch (error) {
       if (attemptIdRef.current !== attemptId) return;
       const status = error instanceof DirectUploadError ? error.status : 0;
@@ -273,9 +285,15 @@ export function DealDocumentManagement({
   function handleRetry() {
     if (uploadState.stage !== "failed" || !uploadState.file) return;
     const attemptId = attemptIdRef.current;
-    const { file, mediaType, sha256, intent, failedStage, expired } = uploadState;
+    const { file, mediaType, sha256, intent, failedStage, expired } =
+      uploadState;
 
-    if (failedStage === "hashing" || failedStage === "intent" || !mediaType || !sha256) {
+    if (
+      failedStage === "hashing" ||
+      failedStage === "intent" ||
+      !mediaType ||
+      !sha256
+    ) {
       void startUpload(file);
       return;
     }
@@ -306,22 +324,22 @@ export function DealDocumentManagement({
   }
 
   return (
-    <section className="workspace-panel document-management-panel">
+    <section className={`workspace-panel ${styles.panel}`}>
       <div className="panel-heading">
         <span className="section-kicker">Belgeler</span>
         <h2>Anlaşma belgesi</h2>
         <p>Güncel sözleşme belgesi ve geçmiş sürümler burada listelenir.</p>
       </div>
 
-      <div className="document-section">
+      <div className={styles.section}>
         <h3>Güncel belge</h3>
         {currentDocument ? (
-          <div className="document-current-card">
+          <div className={styles.currentCard}>
             <div>
               <strong>{currentDocument.fileName}</strong>
               <span>
                 {formatBytes(currentDocument.verifiedSizeBytes)} ·{" "}
-                {formatDocumentDate(currentDocument.availableAt)}
+                {formatDate(currentDocument.availableAt)}
               </span>
             </div>
             {currentDocument.availableActions.canDownload ? (
@@ -338,17 +356,19 @@ export function DealDocumentManagement({
             ) : null}
           </div>
         ) : (
-          <p className="muted-copy">Bu anlaşma için henüz onaylanmış bir belge yok.</p>
+          <p className="muted-copy">
+            Bu anlaşma için henüz onaylanmış bir belge yok.
+          </p>
         )}
       </div>
 
-      <div className="document-section">
+      <div className={styles.section}>
         {canUpload ? (
           <>
             <h3>Belge yükle</h3>
             <p className="muted-copy">
-              Kabul edilen biçimler: PDF, DOCX. Dosya yüklenmeden önce tarayıcıda
-              özetlenir (SHA-256) ve sunucu tarafında doğrulanır.
+              Kabul edilen biçimler: PDF, DOCX. Dosya yüklenmeden önce
+              tarayıcıda özetlenir (SHA-256) ve sunucu tarafında doğrulanır.
             </p>
 
             <input
@@ -372,14 +392,18 @@ export function DealDocumentManagement({
               </div>
             ) : null}
             {uploadState.stage === "uploading" ? (
-              <div className="document-upload-progress" role="status">
-                <div className="document-upload-progress-track">
+              <div className={styles.uploadProgress} role="status">
+                <div className={styles.uploadProgressTrack}>
                   <div
-                    className="document-upload-progress-fill"
-                    style={{ width: `${Math.round((uploadState.progress ?? 0) * 100)}%` }}
+                    className={styles.uploadProgressFill}
+                    style={{
+                      width: `${Math.round((uploadState.progress ?? 0) * 100)}%`,
+                    }}
                   />
                 </div>
-                <span>{Math.round((uploadState.progress ?? 0) * 100)}% yüklendi</span>
+                <span>
+                  {Math.round((uploadState.progress ?? 0) * 100)}% yüklendi
+                </span>
               </div>
             ) : null}
             {uploadState.stage === "finalizing" ? (
@@ -402,7 +426,11 @@ export function DealDocumentManagement({
                     yükleme başlatabilirsiniz.
                   </p>
                 ) : null}
-                <button className="secondary-button" type="button" onClick={handleRetry}>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleRetry}
+                >
                   {uploadState.expired ? "Yeni yükleme başlat" : "Yeniden dene"}
                 </button>
               </div>
@@ -410,15 +438,18 @@ export function DealDocumentManagement({
           </>
         ) : (
           <p className="muted-copy">
-            Belge yükleme yalnızca bu anlaşmayı başlatan taraf tarafından yapılabilir.
+            Belge yükleme yalnızca bu anlaşmayı başlatan taraf tarafından
+            yapılabilir.
           </p>
         )}
       </div>
 
-      <div className="document-section">
-        <div className="invitation-list-heading">
+      <div className={styles.section}>
+        <div className={styles.historyHeading}>
           <h3>Belge geçmişi</h3>
-          {historyQuery.data ? <span>{historyQuery.data.items.length} kayıt</span> : null}
+          {historyQuery.data ? (
+            <span>{historyQuery.data.items.length} kayıt</span>
+          ) : null}
         </div>
 
         {historyQuery.isPending ? (
@@ -441,10 +472,12 @@ export function DealDocumentManagement({
           </div>
         ) : null}
         {historyQuery.data?.items.length === 0 ? (
-          <p className="muted-copy invitation-empty">Henüz yüklenmiş bir belge yok.</p>
+          <p className={`muted-copy ${styles.historyEmpty}`}>
+            Henüz yüklenmiş bir belge yok.
+          </p>
         ) : null}
         {historyQuery.data?.items.length ? (
-          <ul className="invitation-list">
+          <ul className={styles.historyList}>
             {historyQuery.data.items.map((item) => (
               <li key={item.id}>
                 <div>
@@ -454,7 +487,7 @@ export function DealDocumentManagement({
                     {item.status === "PENDING_UPLOAD"
                       ? formatBytes(item.clientSizeBytes)
                       : formatBytes(item.verifiedSizeBytes)}{" "}
-                    · {formatDocumentDate(item.createdAt)}
+                    · {formatDate(item.createdAt)}
                   </span>
                 </div>
                 {item.availableActions.canDownload ? (

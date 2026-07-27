@@ -1,4 +1,4 @@
-import { ReadinessStatus } from "../features/readiness/ReadinessStatus";
+import { ReadinessStatus } from "../features/readiness";
 
 export function PlatformStatusPage() {
   return (

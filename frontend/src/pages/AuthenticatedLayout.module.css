@@ -1,0 +1,210 @@
+.authenticatedShell {
+  background: var(--color-surface);
+}
+.authenticatedHeader {
+  justify-content: space-between;
+  background: #ffffff;
+}
+.authenticatedHeader.workspaceHeader {
+  height: auto;
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: auto minmax(260px, 420px) auto;
+  gap: clamp(24px, 4vw, 64px);
+}
+.workspaceNav {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  margin: -8px 0 14px;
+}
+.workspaceNav a {
+  padding: 9px 13px;
+  border-radius: 5px;
+  color: var(--color-copy);
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+.workspaceNav a:hover,
+.workspaceNav a[aria-current="page"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+.accountSummary {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+.accountSummary span:first-child {
+  color: var(--color-ink);
+  font-weight: 750;
+}
+.accountSummary span:last-child {
+  color: var(--color-copy);
+  font-size: 0.84rem;
+}
+.accountActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+.entitySwitcher {
+  display: grid;
+  gap: 6px;
+}
+.entitySwitcher > span {
+  color: var(--color-copy);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.entitySwitcher select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 38px 0 12px;
+  border: 1px solid #aeb8c6;
+  border-radius: 5px;
+  background: #ffffff;
+  color: var(--color-ink);
+}
+.entitySwitcher select:focus-visible {
+  border-color: var(--color-accent);
+  outline: 3px solid rgb(0 107 85 / 18%);
+  outline-offset: 1px;
+}
+.entitySwitcher select:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.layoutAlert {
+  width: min(100% - 48px, 1180px);
+  margin: 0 auto;
+}
+.layoutAlert :global(.form-alert) {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .authenticatedHeader.workspaceHeader {
+    width: 100%;
+    max-width: 100vw;
+    height: 213px;
+    min-height: 213px;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "brand account"
+      "switcher switcher"
+      "nav nav";
+    gap: 18px 28px;
+    padding-block: 18px;
+  }
+  .workspaceHeader :global(.brand) {
+    grid-area: brand;
+  }
+  .entitySwitcher {
+    grid-column: auto;
+    grid-row: auto;
+    grid-area: switcher;
+  }
+  .accountActions {
+    grid-column: auto;
+    grid-row: auto;
+    grid-area: account;
+  }
+  .workspaceNav {
+    grid-column: auto;
+    grid-row: auto;
+    grid-area: nav;
+    margin: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .accountSummary span:first-child {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .accountSummary span:last-child {
+    display: none;
+  }
+  .authenticatedHeader.workspaceHeader {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 14px;
+    padding-inline: 20px;
+  }
+  .authenticatedShell {
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+  .workspaceHeader :global(.brand) {
+    font-size: 1.85rem;
+  }
+  .accountActions {
+    min-width: 0;
+    gap: 10px;
+  }
+  .accountSummary span:first-child {
+    max-width: 96px;
+  }
+}
+
+@media (min-width: 721px) {
+  .authenticatedHeader.workspaceHeader {
+    min-height: 72px;
+    height: 72px;
+    grid-template-columns: auto auto minmax(220px, 310px) 1fr;
+    grid-template-areas: "brand nav switcher account";
+    grid-template-rows: 1fr;
+    gap: 22px;
+    padding-inline: clamp(24px, 3vw, 48px);
+    border: 0;
+    background: #081638;
+    color: #ffffff;
+  }
+  .authenticatedHeader :global(.brand),
+  .authenticatedHeader .accountSummary span:first-child {
+    color: #ffffff;
+  }
+  .authenticatedHeader :global(.brand) {
+    grid-area: brand;
+  }
+  .workspaceNav {
+    grid-column: auto;
+    grid-row: auto;
+    grid-area: nav;
+    order: 0;
+    margin: 0;
+    gap: 2px;
+  }
+  .entitySwitcher {
+    grid-area: switcher;
+  }
+  .accountActions {
+    grid-area: account;
+  }
+  .authenticatedHeader .accountSummary span:last-child,
+  .authenticatedHeader .entitySwitcher > span {
+    color: #cbd5e4;
+  }
+  .workspaceNav a {
+    color: #dce5ef;
+  }
+  .workspaceNav a:hover,
+  .workspaceNav a[aria-current="page"] {
+    background: rgb(255 255 255 / 12%);
+    color: #ffffff;
+  }
+  .entitySwitcher select,
+  .logoutButton {
+    border-color: rgb(255 255 255 / 24%);
+    background: rgb(255 255 255 / 8%);
+    color: #ffffff;
+  }
+}

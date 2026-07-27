@@ -19,7 +19,13 @@ export function disputeDetailQueryKey(
   dealId: string,
   disputeId: string,
 ) {
-  return [...CASEWORK_QUERY_KEY, legalEntityId, dealId, "detail", disputeId] as const;
+  return [
+    ...CASEWORK_QUERY_KEY,
+    legalEntityId,
+    dealId,
+    "detail",
+    disputeId,
+  ] as const;
 }
 
 export function disputeCommentsQueryKey(
@@ -47,7 +53,10 @@ export function disputeHistoryQueryOptions(
 ) {
   return queryOptions({
     queryKey: [
-      ...disputeHistoryQueryKey(legalEntityId ?? "unselected", dealId ?? "missing"),
+      ...disputeHistoryQueryKey(
+        legalEntityId ?? "unselected",
+        dealId ?? "missing",
+      ),
       page,
       sort,
     ] as const,
@@ -91,7 +100,14 @@ export function disputeCommentsQueryOptions(
       page,
     ),
     queryFn: ({ signal }) =>
-      listDisputeComments(legalEntityId!, dealId!, disputeId!, page, sort, signal),
+      listDisputeComments(
+        legalEntityId!,
+        dealId!,
+        disputeId!,
+        page,
+        sort,
+        signal,
+      ),
     enabled: Boolean(legalEntityId && dealId && disputeId) && enabled,
   });
 }

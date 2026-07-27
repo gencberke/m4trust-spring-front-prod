@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import styles from "./Analysis.module.css";
 
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
 import {
   requestDealDocumentAnalysis,
   type DealDocumentAnalysis,
@@ -19,19 +20,14 @@ import {
   dealDocumentAnalysisQueryKey,
   dealDocumentAnalysisQueryOptions,
 } from "./analysisQueries";
-
-const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-const NUMBER_FORMATTER = new Intl.NumberFormat("tr-TR", {
-  maximumFractionDigits: 2,
-});
-const PERCENT_FORMATTER = new Intl.NumberFormat("tr-TR", {
-  style: "percent",
-  maximumFractionDigits: 0,
-});
-const MONEY_FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
+import {
+  formatDateOnly,
+  formatDateOrUndefined,
+  formatMoney,
+  NUMBER_FORMATTER,
+  PERCENT_FORMATTER,
+  StatusBadge,
+} from "@/shared";
 
 const STATUS_LABELS: Readonly<
   Partial<Record<DealDocumentAnalysis["status"], string>>
@@ -87,22 +83,6 @@ const EVIDENCE_TYPE_LABELS: Readonly<Record<string, string>> = {
   UNKNOWN: "Belirsiz",
 };
 
-function formatDate(value: string | null): string | undefined {
-  return value ? DATE_FORMATTER.format(new Date(value)) : undefined;
-}
-
-function formatMoney(amountMinor: number, currency: string): string {
-  let formatter = MONEY_FORMATTER_CACHE.get(currency);
-  if (!formatter) {
-    formatter = new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency,
-    });
-    MONEY_FORMATTER_CACHE.set(currency, formatter);
-  }
-  return formatter.format(amountMinor / 100);
-}
-
 function formatRuleValue(value: ExtractedRuleValue): string {
   switch (value.type) {
     case "TEXT":
@@ -118,9 +98,7 @@ function formatRuleValue(value: ExtractedRuleValue): string {
         : `${NUMBER_FORMATTER.format(value.valueSeconds)} saniye`;
     }
     case "DATE":
-      return new Intl.DateTimeFormat("tr-TR", { dateStyle: "long" }).format(
-        new Date(`${value.value}T00:00:00Z`),
-      );
+      return formatDateOnly(value.value);
     case "BOOLEAN":
       return value.value ? "Evet" : "Hayır";
     case "QUANTITY":
@@ -199,17 +177,17 @@ export function DealContractAnalysis({
   // A newer server may return an additive status before this client is deployed.
   // Keep it visible but never derive a mutable UI from an unknown value.
   const knownStatus = analysis ? isKnownAnalysisStatus(analysis.status) : false;
-  const requestedAt = formatDate(analysis?.requestedAt ?? null);
-  const completedAt = formatDate(
-    analysis?.completedAt ?? analysis?.failedAt ?? null,
+  const requestedAt = formatDateOrUndefined(analysis?.requestedAt);
+  const completedAt = formatDateOrUndefined(
+    analysis?.completedAt ?? analysis?.failedAt,
   );
 
   return (
     <section
-      className="workspace-panel analysis-panel"
+      className={`workspace-panel ${styles.analysisPanel}`}
       aria-labelledby="contract-analysis-title"
     >
-      <div className="analysis-heading">
+      <div className={styles.analysisHeading}>
         <div className="panel-heading">
           <span className="section-kicker">Yapay zekâ destekli çıkarım</span>
           <h2 id="contract-analysis-title">Sözleşme analizi</h2>
@@ -219,9 +197,14 @@ export function DealContractAnalysis({
           </p>
         </div>
         {analysis ? (
-          <span className="analysis-status-badge" data-status={analysis.status}>
-            {knownStatus ? STATUS_LABELS[analysis.status] : "Bilinmeyen durum"}
-          </span>
+          <StatusBadge
+            domain="analysis"
+            status={analysis.status}
+            label={
+              (knownStatus ? STATUS_LABELS[analysis.status] : undefined) ??
+              "Bilinmeyen durum"
+            }
+          />
         ) : null}
       </div>
 
@@ -249,7 +232,7 @@ export function DealContractAnalysis({
       {analysis ? (
         <>
           {!knownStatus ? (
-            <div className="analysis-failure" role="status">
+            <div className={styles.analysisFailure} role="status">
               <h3>Bu analiz durumu bu istemci tarafından desteklenmiyor</h3>
               <p>
                 Bilgiler salt okunur gösteriliyor; güvenli bir işlem yapmak için
@@ -258,7 +241,7 @@ export function DealContractAnalysis({
             </div>
           ) : null}
           {requestedAt || completedAt ? (
-            <dl className="analysis-timeline">
+            <dl className={styles.analysisTimeline}>
               {requestedAt ? (
                 <div>
                   <dt>Talep</dt>
@@ -277,14 +260,21 @@ export function DealContractAnalysis({
           ) : null}
 
           {analysis.status === "NOT_REQUESTED" ? (
-            <p className="analysis-empty-copy">
+            <p className={styles.analysisEmptyCopy}>
               Güncel belge için henüz analiz talep edilmedi.
             </p>
           ) : null}
 
           {analysis.status === "QUEUED" || analysis.status === "PROCESSING" ? (
-            <div className="analysis-progress" role="status" aria-live="polite">
-              <span className="analysis-progress-mark" aria-hidden="true" />
+            <div
+              className={styles.analysisProgress}
+              role="status"
+              aria-live="polite"
+            >
+              <span
+                className={styles.analysisProgressMark}
+                aria-hidden="true"
+              />
               <div>
                 <strong>
                   {analysis.status === "QUEUED"
@@ -300,14 +290,14 @@ export function DealContractAnalysis({
           ) : null}
 
           {analysis.status === "FAILED" && analysis.failure ? (
-            <div className="analysis-failure" role="alert">
-              <span className="analysis-failure-code">
+            <div className={styles.analysisFailure} role="alert">
+              <span className={styles.analysisFailureCode}>
                 {analysis.failure.code}
               </span>
               <h3>Analiz tamamlanamadı</h3>
               <p>{getAnalysisFailureMessage(analysis.failure.code)}</p>
               {analysis.failure.retryRecommended ? (
-                <p className="analysis-advisory">
+                <p className={styles.analysisAdvisory}>
                   Yeni talep ayrı bir analiz işi oluşturur.
                 </p>
               ) : null}
@@ -320,7 +310,7 @@ export function DealContractAnalysis({
 
           {requestMutation.isError ? (
             <p
-              className="form-alert panel-alert analysis-request-alert"
+              className={`form-alert panel-alert ${styles.analysisRequestAlert}`}
               role="alert"
             >
               {getAnalysisRequestErrorMessage(requestMutation.error)}
@@ -328,7 +318,7 @@ export function DealContractAnalysis({
           ) : null}
 
           {knownStatus && deal.availableActions.canRequestAnalysis === true ? (
-            <div className="analysis-action-row">
+            <div className={styles.analysisActionRow}>
               <button
                 className="primary-button"
                 type="button"
@@ -358,8 +348,8 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
   if (!result) return null;
 
   return (
-    <div className="analysis-result">
-      <div className="analysis-review-notice" role="status">
+    <div className={styles.analysisResult}>
+      <div className={styles.analysisReviewNotice} role="status">
         <span>İnceleme bekliyor</span>
         <div>
           <strong>
@@ -372,18 +362,18 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
       </div>
 
       <section
-        className="analysis-result-section"
+        className={styles.analysisResultSection}
         aria-labelledby="analysis-parties-title"
       >
-        <div className="analysis-section-heading">
+        <div className={styles.analysisSectionHeading}>
           <h3 id="analysis-parties-title">Çıkarılan taraflar</h3>
           <span>{result.parties.length} kayıt</span>
         </div>
         {result.parties.length ? (
-          <ul className="analysis-card-list">
+          <ul className={styles.analysisCardList}>
             {result.parties.map((party) => (
               <li key={party.partyReference}>
-                <div className="analysis-card-heading">
+                <div className={styles.analysisCardHeading}>
                   <strong>{party.legalName.value}</strong>
                   <span>{PARTY_ROLE_LABELS[party.role] ?? party.role}</span>
                 </div>
@@ -406,34 +396,34 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
       </section>
 
       <section
-        className="analysis-result-section"
+        className={styles.analysisResultSection}
         aria-labelledby="analysis-rules-title"
       >
-        <div className="analysis-section-heading">
+        <div className={styles.analysisSectionHeading}>
           <h3 id="analysis-rules-title">Çıkarılan kurallar</h3>
           <span>{result.rules.length} kayıt</span>
         </div>
         {result.rules.length ? (
-          <ul className="analysis-rule-list">
+          <ul className={styles.analysisRuleList}>
             {result.rules.map((rule) => (
               <li key={rule.ruleReference}>
-                <div className="analysis-rule-topline">
-                  <span className="analysis-category-badge">
+                <div className={styles.analysisRuleTopline}>
+                  <span className={styles.analysisCategoryBadge}>
                     {RULE_CATEGORY_LABELS[rule.category] ?? rule.category}
                   </span>
                   <span>Güven {PERCENT_FORMATTER.format(rule.confidence)}</span>
                 </div>
                 <h4>{rule.title}</h4>
                 <p>{rule.description}</p>
-                <dl className="analysis-rule-value">
+                <dl className={styles.analysisRuleValue}>
                   <dt>Yapılandırılmış değer</dt>
                   <dd>{formatRuleValue(rule.structuredValue)}</dd>
                 </dl>
-                <p className="analysis-source-copy">
+                <p className={styles.analysisSourceCopy}>
                   {formatSourcePages(rule.sourceReferences)}
                 </p>
                 {rule.legalBasis ? (
-                  <div className="analysis-legal-basis">
+                  <div className={styles.analysisLegalBasis}>
                     <span>
                       {LEGAL_BASIS_LABELS[rule.legalBasis.source] ??
                         rule.legalBasis.source}
@@ -455,15 +445,15 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
       </section>
 
       <section
-        className="analysis-result-section"
+        className={styles.analysisResultSection}
         aria-labelledby="analysis-delivery-title"
       >
-        <div className="analysis-section-heading">
+        <div className={styles.analysisSectionHeading}>
           <h3 id="analysis-delivery-title">Teslimat gereksinimleri</h3>
           <span>{result.deliveryRequirements.length} kayıt</span>
         </div>
         {result.deliveryRequirements.length ? (
-          <ul className="analysis-delivery-list">
+          <ul className={styles.analysisDeliveryList}>
             {result.deliveryRequirements.map((requirement) => (
               <li key={requirement.requirementReference}>
                 <div>
@@ -488,10 +478,10 @@ function AnalysisResultView({ analysis }: { analysis: DealDocumentAnalysis }) {
       </section>
 
       <section
-        className="analysis-result-section analysis-summary"
+        className={`${styles.analysisResultSection} ${styles.analysisSummary}`}
         aria-labelledby="analysis-summary-title"
       >
-        <div className="analysis-section-heading">
+        <div className={styles.analysisSectionHeading}>
           <h3 id="analysis-summary-title">İnceleme özeti</h3>
         </div>
         <p>

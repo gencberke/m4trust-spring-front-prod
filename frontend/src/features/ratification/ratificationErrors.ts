@@ -9,7 +9,8 @@ export function getRatificationFieldErrors(
     return {};
   return (error.problem?.errors ?? []).reduce<RatificationFieldError>(
     (result, fieldError) => {
-      if (!result[fieldError.field]) result[fieldError.field] = fieldError.message;
+      if (!result[fieldError.field])
+        result[fieldError.field] = fieldError.message;
       return result;
     },
     {},

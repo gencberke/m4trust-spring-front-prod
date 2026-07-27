@@ -11,100 +11,189 @@ import org.junit.jupiter.api.Test;
 
 class ModuleArchitectureTest {
 
-    private static final String[] MODULES = {
-        "api", "audit", "casework", "contractintelligence", "contracts", "deal", "document", "fulfillment",
-        "idempotency", "identity", "integration", "organization", "payment", "ratification", "sharedkernel"
-    };
+  // sharedkernel is an empty scaffold (ADR-004); deployment is a single-class Boot entry
+  // point with no api/domain/infra split — neither belongs in layered-module rules.
+  private static final String[] MODULES = {
+    "api",
+    "audit",
+    "casework",
+    "contractintelligence",
+    "contracts",
+    "deal",
+    "document",
+    "fulfillment",
+    "idempotency",
+    "identity",
+    "integration",
+    "organization",
+    "payment",
+    "ratification",
+    "sharedkernel"
+  };
 
-    @Test
-    void topLevelModulesAreFreeOfCycles() {
-        JavaClasses productionClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.m4trust.coreapi");
+  // Eleven modules with real domain code. api, contracts, and integration keep only empty
+  // domain placeholders and are excluded until they own domain types.
+  private static final String[] LAYERED_MODULES = {
+    "audit",
+    "casework",
+    "contractintelligence",
+    "deal",
+    "document",
+    "fulfillment",
+    "idempotency",
+    "identity",
+    "organization",
+    "payment",
+    "ratification"
+  };
 
-        slices()
-                .matching("com.m4trust.coreapi.(*)..")
-                .should().beFreeOfCycles()
-                .because("module collaboration must not create cyclic ownership")
-                .check(productionClasses);
+  @Test
+  void topLevelModulesAreFreeOfCycles() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
+
+    slices()
+        .matching("com.m4trust.coreapi.(*)..")
+        .should()
+        .beFreeOfCycles()
+        .because("module collaboration must not create cyclic ownership")
+        .check(productionClasses);
+  }
+
+  @Test
+  void repositoriesAreOnlyAccessedFromOwningModule() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
+
+    for (String module : MODULES) {
+      classes()
+          .that()
+          .resideInAPackage("com.m4trust.coreapi." + module + "..")
+          .and()
+          .haveSimpleNameEndingWith("Repository")
+          .should()
+          .onlyBeAccessed()
+          .byClassesThat()
+          .resideInAnyPackage("com.m4trust.coreapi." + module + "..")
+          .because(
+              "ADR-003 §23 restricts repository access to the owning module's own package tree")
+          .allowEmptyShould(true)
+          .check(productionClasses);
     }
+  }
 
-    @Test
-    void repositoriesAreOnlyAccessedFromOwningModule() {
-        JavaClasses productionClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.m4trust.coreapi");
+  @Test
+  void domainLayersDoNotDependOnApiLayers() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
 
-        for (String module : MODULES) {
-            classes()
-                    .that().resideInAPackage("com.m4trust.coreapi." + module + "..")
-                    .and().haveSimpleNameEndingWith("Repository")
-                    .should().onlyBeAccessed().byClassesThat()
-                    .resideInAnyPackage("com.m4trust.coreapi." + module + "..")
-                    .because(
-                            "ADR-003 §23 restricts repository access to the owning module's own package tree")
-                    .allowEmptyShould(true)
-                    .check(productionClasses);
-        }
+    for (String module : LAYERED_MODULES) {
+      noClasses()
+          .that()
+          .resideInAPackage("com.m4trust.coreapi." + module + ".domain..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage("com.m4trust.coreapi." + module + ".api..")
+          .because("a module's domain layer must remain independent from its transport API")
+          .check(productionClasses);
     }
+  }
 
-    @Test
-    void fulfillmentDoesNotDependOnContractIntelligenceOrDocumentModules() {
-        JavaClasses productionClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.m4trust.coreapi");
+  @Test
+  void domainLayersDoNotDependOnInfrastructureLayers() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
 
-        noClasses()
-                .that().resideInAPackage("com.m4trust.coreapi.fulfillment..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage(
-                        "com.m4trust.coreapi.contractintelligence..",
-                        "com.m4trust.coreapi.document..")
-                .because("fulfillment owns video analysis without reusing document-analysis ownership")
-                .check(productionClasses);
+    for (String module : LAYERED_MODULES) {
+      noClasses()
+          .that()
+          .resideInAPackage("com.m4trust.coreapi." + module + ".domain..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage("com.m4trust.coreapi." + module + ".infra..")
+          .because(
+              "a module's domain layer must remain independent from infrastructure implementations")
+          .check(productionClasses);
     }
+  }
 
-    @Test
-    void fulfillmentDoesNotDependOnIntegrationModule() {
-        JavaClasses productionClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.m4trust.coreapi");
+  @Test
+  void fulfillmentDoesNotDependOnContractIntelligenceOrDocumentModules() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
 
-        noClasses()
-                .that().resideInAPackage("com.m4trust.coreapi.fulfillment..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage("com.m4trust.coreapi.integration..")
-                .because("fulfillment owns video analysis commands through a fulfillment port implemented by integration")
-                .check(productionClasses);
-    }
+    noClasses()
+        .that()
+        .resideInAPackage("com.m4trust.coreapi.fulfillment..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "com.m4trust.coreapi.contractintelligence..", "com.m4trust.coreapi.document..")
+        .because("fulfillment owns video analysis without reusing document-analysis ownership")
+        .check(productionClasses);
+  }
 
-    @Test
-    void paymentBusinessServicesDoNotReachProviderIntegrationCapabilities() {
-        JavaClasses productionClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.m4trust.coreapi");
+  @Test
+  void fulfillmentDoesNotDependOnIntegrationModule() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
 
-        noClasses()
-                .that().resideInAPackage("com.m4trust.coreapi.payment..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage("com.m4trust.coreapi.integration.payment..")
-                .because("payment business services own only the neutral funding port; Moka pool probes stay integration-only")
-                .check(productionClasses);
-    }
+    noClasses()
+        .that()
+        .resideInAPackage("com.m4trust.coreapi.fulfillment..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("com.m4trust.coreapi.integration..")
+        .because(
+            "fulfillment owns video analysis commands through a fulfillment port implemented by integration")
+        .check(productionClasses);
+  }
 
-    @Test
-    void caseworkDoesNotDependOnDealOrFulfillmentModules() {
-        JavaClasses productionClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.m4trust.coreapi");
+  @Test
+  void paymentBusinessServicesDoNotReachProviderIntegrationCapabilities() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
 
-        noClasses()
-                .that().resideInAPackage("com.m4trust.coreapi.casework..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage(
-                        "com.m4trust.coreapi.deal..",
-                        "com.m4trust.coreapi.fulfillment..")
-                .because("casework collaborates through consumer-owned ports implemented by deal and fulfillment")
-                .check(productionClasses);
-    }
+    noClasses()
+        .that()
+        .resideInAPackage("com.m4trust.coreapi.payment..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("com.m4trust.coreapi.integration.infra.payment..")
+        .because(
+            "payment business services own only the neutral funding port; Moka pool probes stay integration-only")
+        .check(productionClasses);
+  }
+
+  @Test
+  void caseworkDoesNotDependOnDealOrFulfillmentModules() {
+    JavaClasses productionClasses =
+        new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("com.m4trust.coreapi");
+
+    noClasses()
+        .that()
+        .resideInAPackage("com.m4trust.coreapi.casework..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("com.m4trust.coreapi.deal..", "com.m4trust.coreapi.fulfillment..")
+        .because(
+            "casework collaborates through consumer-owned ports implemented by deal and fulfillment")
+        .check(productionClasses);
+  }
 }

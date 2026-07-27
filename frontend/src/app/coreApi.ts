@@ -1,5 +1,5 @@
 import type { components } from "../generated/core-api";
-import { readSelectedLegalEntityId } from "../features/organization/legalEntitySelection";
+import { readSelectedLegalEntityId } from "../features/organization";
 
 export type ProblemDetail = components["schemas"]["ProblemDetail"];
 export type ApiErrorCode = components["schemas"]["ApiErrorCode"];
@@ -45,7 +45,9 @@ function isProblemDetail(value: unknown): value is ProblemDetail {
   );
 }
 
-async function readProblem(response: Response): Promise<ProblemDetail | undefined> {
+async function readProblem(
+  response: Response,
+): Promise<ProblemDetail | undefined> {
   const payload: unknown = await response.json().catch(() => undefined);
   return isProblemDetail(payload) ? payload : undefined;
 }
@@ -101,7 +103,9 @@ export async function requestJson<T>(
   init: RequestInit & CoreApiRequestOptions = {},
 ): Promise<T> {
   const { suppressLegalEntityContext, ...requestInit } = init;
-  const response = await request(path, requestInit, { suppressLegalEntityContext });
+  const response = await request(path, requestInit, {
+    suppressLegalEntityContext,
+  });
   return (await response.json()) as T;
 }
 
@@ -126,11 +130,15 @@ async function postWithFreshCsrf(
   }
   headers.set(csrf.headerName, csrf.token);
 
-  return request(path, {
-    method: "POST",
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  }, options);
+  return request(
+    path,
+    {
+      method: "POST",
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+    options,
+  );
 }
 
 export async function postJsonWithFreshCsrf<T>(

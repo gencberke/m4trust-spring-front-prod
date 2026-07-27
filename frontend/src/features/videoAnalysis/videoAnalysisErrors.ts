@@ -43,11 +43,14 @@ export function getVideoAnalysisRequestErrorMessage(error: unknown): string {
   }
 }
 
-export function shouldRefetchAfterVideoAnalysisRequestError(error: unknown): boolean {
-  return error instanceof ApiError && (
-    error.code === "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS"
-    || error.code === "VIDEO_ANALYSIS_ALREADY_COMPLETED"
-    || error.code === "VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE"
-    || error.code === "EVIDENCE_STALE_VERSION"
+export function shouldRefetchAfterVideoAnalysisRequestError(
+  error: unknown,
+): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.code === "VIDEO_ANALYSIS_ACTIVE_JOB_EXISTS" ||
+      error.code === "VIDEO_ANALYSIS_ALREADY_COMPLETED" ||
+      error.code === "VIDEO_ANALYSIS_EVIDENCE_NOT_ELIGIBLE" ||
+      error.code === "EVIDENCE_STALE_VERSION")
   );
 }

@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
-import { getFundingPlan } from "../funding/fundingApi";
-import { fundingPlanQueryKey } from "../funding/fundingQueries";
-import { getFulfillment } from "../fulfillment/fulfillmentApi";
-import { fulfillmentDetailQueryKey } from "../fulfillment/fulfillmentQueries";
+import { formatDate, StatusBadge } from "@/shared";
+import styles from "./Settlement.module.css";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
+import { getFundingPlan, fundingPlanQueryKey } from "../funding";
+import { getFulfillment, fulfillmentDetailQueryKey } from "../fulfillment";
 import {
   reconcileReleaseOperation,
   requestSettlementRelease,
@@ -29,18 +29,9 @@ import {
   settlementQueryOptions,
 } from "./settlementQueries";
 
-const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
-
 const RELATIVE_FORMATTER = new Intl.RelativeTimeFormat("tr-TR", {
   numeric: "auto",
 });
-
-function formatDate(value: string): string {
-  return DATE_FORMATTER.format(new Date(value));
-}
 
 function formatDeadlineCountdown(releaseEligibleAt: string): string {
   const targetMs = new Date(releaseEligibleAt).getTime();
@@ -109,15 +100,15 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
   );
   const settlement = settlementQuery.data;
 
-  const [operationId, setOperationId] = useState<string | undefined>(undefined);
+  const [requestedOperationId, setRequestedOperationId] = useState<
+    string | undefined
+  >(undefined);
   const summaryOperationId =
     settlement?.currentReleaseOperation?.id ??
     deal.settlement?.currentReleaseOperationId ??
     undefined;
 
-  useEffect(() => {
-    if (summaryOperationId) setOperationId(summaryOperationId);
-  }, [summaryOperationId]);
+  const operationId = requestedOperationId ?? summaryOperationId;
 
   useEffect(() => {
     previousOperationStatusRef.current = undefined;
@@ -132,7 +123,10 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
       if (status === "QUEUED" || status === "PROCESSING") {
         return SETTLEMENT_POLL_INTERVAL_MS;
       }
-      if (status === "RECONCILIATION_REQUIRED" && reconcileDispatchedRef.current) {
+      if (
+        status === "RECONCILIATION_REQUIRED" &&
+        reconcileDispatchedRef.current
+      ) {
         return SETTLEMENT_POLL_INTERVAL_MS;
       }
       return false;
@@ -144,13 +138,19 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
     settlement?.availableActions.canRequestRelease === true;
 
   const fulfillmentBootstrapQuery = useQuery({
-    queryKey: [...fulfillmentDetailQueryKey(legalEntityId, deal.id), "release-bootstrap"],
+    queryKey: [
+      ...fulfillmentDetailQueryKey(legalEntityId, deal.id),
+      "release-bootstrap",
+    ],
     queryFn: ({ signal }) => getFulfillment(legalEntityId, deal.id, signal),
     enabled: mayRequestRelease && Boolean(deal.fulfillment?.fulfillmentId),
   });
 
   const fundingBootstrapQuery = useQuery({
-    queryKey: [...fundingPlanQueryKey(legalEntityId, deal.id), "release-bootstrap"],
+    queryKey: [
+      ...fundingPlanQueryKey(legalEntityId, deal.id),
+      "release-bootstrap",
+    ],
     queryFn: ({ signal }) => getFundingPlan(legalEntityId, deal.id, signal),
     enabled:
       mayRequestRelease &&
@@ -205,7 +205,7 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
     },
     onSuccess: (created) => {
       releaseKeyRef.current = undefined;
-      setOperationId(created.id);
+      setRequestedOperationId(created.id);
       queryClient.setQueryData(
         releaseOperationQueryKey(legalEntityId, created.id),
         created,
@@ -255,7 +255,7 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
   if (settlementQuery.isPending) {
     return (
       <section
-        className="workspace-panel settlement-panel"
+        className={`workspace-panel ${styles.settlementPanel}`}
         aria-labelledby="settlement-title"
       >
         <div className="panel-heading">
@@ -273,7 +273,7 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
   if (settlementQuery.isError && !isSettlementNotFound(settlementQuery.error)) {
     return (
       <section
-        className="workspace-panel settlement-panel"
+        className={`workspace-panel ${styles.settlementPanel}`}
         aria-labelledby="settlement-title"
       >
         <div className="panel-heading">
@@ -298,7 +298,7 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
   if (!settlement) {
     return (
       <section
-        className="workspace-panel settlement-panel"
+        className={`workspace-panel ${styles.settlementPanel}`}
         aria-labelledby="settlement-title"
       >
         <div className="panel-heading">
@@ -358,7 +358,7 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
 
   return (
     <section
-      className="workspace-panel settlement-panel"
+      className={`workspace-panel ${styles.settlementPanel}`}
       aria-labelledby="settlement-title"
     >
       <div className="panel-heading">
@@ -366,30 +366,29 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
         <h2 id="settlement-title">Kapanış</h2>
         <p>
           Teslimat tamamlandıktan sonra anlaşma burada kapanır. Bu adım,
-          teslimatın tamamlanmasından ayrıdır; anlaşma yalnızca simüle
-          kapanış doğrulandığında sonlanır.
+          teslimatın tamamlanmasından ayrıdır; anlaşma yalnızca simüle kapanış
+          doğrulandığında sonlanır.
         </p>
       </div>
 
       {isSimulated ? (
-        <p className="settlement-simulation-notice" role="status">
+        <p className={styles.settlementSimulationNotice} role="status">
           Demo simülasyonu — gerçek para hareketi yok
         </p>
       ) : null}
 
-      <div className="settlement-summary" role="status">
-        <span
-          className="settlement-status-badge"
-          data-status={settlement.status}
-        >
-          {settlementStatusLabel(settlement.status)}
-        </span>
+      <div className={styles.settlementSummary} role="status">
+        <StatusBadge
+          domain="settlement"
+          status={settlement.status}
+          label={settlementStatusLabel(settlement.status)}
+        />
         {deal.status === "COMPLETED" ? (
-          <span className="settlement-closure-badge" role="status">
+          <span className={styles.settlementClosureBadge} role="status">
             Anlaşma kapatıldı
           </span>
         ) : deal.fulfillment?.status === "COMPLETED" ? (
-          <span className="settlement-fulfillment-note">
+          <span className={styles.settlementFulfillmentNote}>
             Teslimat tamamlandı — anlaşma hâlâ aktif
           </span>
         ) : null}
@@ -401,8 +400,8 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
         </p>
       ) : null}
 
-      <div className="settlement-plan-card">
-        <dl className="settlement-summary-list">
+      <div className={styles.settlementPlanCard}>
+        <dl className={styles.settlementSummaryList}>
           {settlement.disputeWindowDays !== null ? (
             <div>
               <dt>İtiraz penceresi</dt>
@@ -426,12 +425,11 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
           <div>
             <dt>Kapanış durumu</dt>
             <dd>
-              <span
-                className="settlement-status-badge"
-                data-status={settlement.status}
-              >
-                {settlementStatusLabel(settlement.status)}
-              </span>
+              <StatusBadge
+                domain="settlement"
+                status={settlement.status}
+                label={settlementStatusLabel(settlement.status)}
+              />
             </dd>
           </div>
           <div>
@@ -441,16 +439,15 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
         </dl>
 
         {operationSummary || currentOperation ? (
-          <div className="settlement-operation-card">
-            <div className="settlement-operation-heading">
+          <div className={styles.settlementOperationCard}>
+            <div className={styles.settlementOperationHeading}>
               <span>Kapanış işlemi</span>
               {operationStatus ? (
-                <span
-                  className="settlement-operation-status-badge"
-                  data-status={operationStatus}
-                >
-                  {releaseOperationStatusLabel(operationStatus)}
-                </span>
+                <StatusBadge
+                  domain="settlementOperation"
+                  status={operationStatus}
+                  label={releaseOperationStatusLabel(operationStatus)}
+                />
               ) : null}
             </div>
             {operationQuery.isPending && !currentOperation ? (
@@ -459,7 +456,7 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
                 İşlem ayrıntıları yükleniyor…
               </p>
             ) : currentOperation ? (
-              <dl className="settlement-summary-list">
+              <dl className={styles.settlementSummaryList}>
                 <div>
                   <dt>Başlatıldı</dt>
                   <dd>{formatDate(currentOperation.createdAt)}</dd>
@@ -472,7 +469,10 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
             ) : null}
 
             {reconciliationRequired ? (
-              <p className="settlement-reconciliation-notice" role="status">
+              <p
+                className={styles.settlementReconciliationNotice}
+                role="status"
+              >
                 Kapanış sonucu henüz kesinleşmedi; bu{" "}
                 <strong>başarısızlık değildir</strong>. Aynı işlem için
                 doğrulama sonucu bekleniyor.
@@ -480,15 +480,16 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
             ) : null}
 
             {operationPolling ? (
-              <p className="muted-copy settlement-poll-hint" role="status">
+              <p
+                className={`muted-copy ${styles.settlementPollHint}`}
+                role="status"
+              >
                 Sonuç otomatik izleniyor…
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="muted-copy">
-            Henüz kapanış işlemi başlatılmadı.
-          </p>
+          <p className="muted-copy">Henüz kapanış işlemi başlatılmadı.</p>
         )}
 
         {releaseMutation.isError ? (
@@ -502,7 +503,7 @@ export function DealSettlementPanel({ deal, legalEntityId }: Props) {
           </p>
         ) : null}
 
-        <div className="settlement-actions">
+        <div className={styles.settlementActions}>
           {mayRequestRelease ? (
             <button
               className="primary-button"

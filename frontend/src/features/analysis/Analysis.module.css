@@ -1,0 +1,321 @@
+.analysisPanel {
+  position: relative;
+  margin-top: 24px;
+  border-color: #ead087;
+  background: #fffbeb;
+}
+
+.analysisHeading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 28px;
+}
+.analysisHeading :global(.panel-heading) {
+  max-width: 720px;
+}
+:global(.analysis-status-badge),
+.analysisCategoryBadge,
+.analysisLegalBasis > span,
+.analysisFailureCode,
+.analysisReviewNotice > span {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+:global(.analysis-status-badge) {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  background: #edf1f5;
+  color: #34425a;
+}
+:global(.analysis-status-badge[data-status="QUEUED"]),
+:global(.analysis-status-badge[data-status="PROCESSING"]) {
+  background: var(--color-notice);
+  color: #234c83;
+}
+:global(.analysis-status-badge[data-status="REVIEW_REQUIRED"]) {
+  background: #fff5d9;
+  color: #745000;
+}
+:global(.analysis-status-badge[data-status="ACCEPTED"]) {
+  background: #e8f5ed;
+  color: #17663a;
+}
+:global(.analysis-status-badge[data-status="FAILED"]) {
+  background: #fff0f1;
+  color: #8d2632;
+}
+.analysisTimeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 32px;
+  margin: 26px 0 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-rule);
+}
+.analysisTimeline > div {
+  display: grid;
+  gap: 4px;
+}
+.analysisTimeline dt,
+.analysisRuleValue dt {
+  color: var(--color-copy);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.analysisTimeline dd,
+.analysisRuleValue dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-weight: 750;
+}
+.analysisEmptyCopy {
+  margin: 26px 0 0;
+  color: var(--color-copy);
+}
+.analysisProgress,
+.analysisReviewNotice {
+  display: flex;
+  align-items: start;
+  gap: 16px;
+  margin-top: 26px;
+  padding: 20px;
+  border: 1px solid #bad1ee;
+  border-radius: 7px;
+  background: #f4f8fe;
+}
+.analysisProgressMark {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2d659f;
+  box-shadow: 0 0 0 6px rgb(45 101 159 / 12%);
+  animation: analysis-pulse 1.5s ease-in-out infinite;
+}
+.analysisProgress strong,
+.analysisReviewNotice strong {
+  color: var(--color-ink);
+}
+.analysisProgress p,
+.analysisReviewNotice p,
+.analysisFailure p {
+  margin: 6px 0 0;
+  color: var(--color-copy);
+  line-height: 1.5;
+}
+.analysisFailure {
+  margin-top: 26px;
+  padding: 22px;
+  border: 1px solid rgb(173 63 74 / 32%);
+  border-radius: 7px;
+  background: #fff7f7;
+}
+.analysisFailureCode {
+  padding: 6px 9px;
+  background: #ffe9eb;
+  color: #8d2632;
+  overflow-wrap: anywhere;
+}
+.analysisFailure h3 {
+  margin: 14px 0 0;
+  color: var(--color-ink);
+}
+.analysisFailure .analysisAdvisory {
+  font-size: 0.82rem;
+}
+.analysisRequestAlert {
+  margin-top: 22px;
+}
+.analysisActionRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-rule);
+}
+.analysisActionRow p {
+  margin: 0;
+  color: var(--color-copy);
+  font-size: 0.8rem;
+}
+.analysisResult {
+  margin-top: 28px;
+}
+.analysisReviewNotice {
+  margin-top: 0;
+  border-color: #ead087;
+  background: #fffbeb;
+}
+.analysisReviewNotice > span {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  background: #f7e7b7;
+  color: #745000;
+}
+.analysisResultSection {
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-rule);
+}
+.analysisSectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.analysisSectionHeading h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 1.15rem;
+}
+.analysisSectionHeading > span {
+  color: var(--color-copy);
+  font-size: 0.8rem;
+}
+.analysisCardList,
+.analysisRuleList,
+.analysisDeliveryList {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.analysisCardList,
+.analysisRuleList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.analysisCardList li,
+.analysisRuleList li,
+.analysisDeliveryList li {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--color-rule);
+  border-radius: 7px;
+  background: #fff;
+}
+.analysisCardHeading,
+.analysisRuleTopline,
+.analysisDeliveryList li > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.analysisCardHeading > span,
+.analysisRuleTopline > span:last-child,
+.analysisDeliveryList li > div > span {
+  color: var(--color-copy);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.analysisCardList p,
+.analysisDeliveryList p {
+  margin: 9px 0 0;
+  color: var(--color-copy);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.analysisCategoryBadge {
+  padding: 6px 8px;
+  background: #edf1f5;
+  color: #34425a;
+}
+.analysisRuleList h4 {
+  margin: 15px 0 0;
+  color: var(--color-ink);
+  font-size: 1rem;
+}
+.analysisRuleList h4 + p {
+  margin: 8px 0 0;
+  color: var(--color-copy);
+  line-height: 1.5;
+}
+.analysisRuleValue {
+  display: grid;
+  gap: 5px;
+  margin: 17px 0 0;
+  padding: 14px;
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+.analysisSourceCopy {
+  margin: 13px 0 0;
+  color: var(--color-copy);
+  font-size: 0.78rem;
+}
+.analysisLegalBasis {
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--color-border);
+}
+.analysisLegalBasis > span {
+  padding: 6px 9px;
+  background: #f0eef8;
+  color: #524878;
+  text-transform: none;
+}
+.analysisLegalBasis p {
+  margin: 7px 0 0;
+  color: var(--color-copy);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.analysisDeliveryList li {
+  display: grid;
+  gap: 2px;
+}
+.analysisSummary > p,
+.analysisSummary > ul {
+  color: var(--color-copy);
+  line-height: 1.55;
+}
+.analysisSummary > p {
+  margin: 14px 0 0;
+}
+.analysisSummary > ul {
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+@keyframes analysis-pulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+@media (max-width: 720px) {
+  .analysisRuleList,
+  .analysisCardList {
+    grid-template-columns: 1fr;
+  }
+  .analysisHeading {
+    display: grid;
+  }
+  :global(.analysis-status-badge) {
+    justify-self: start;
+  }
+  .analysisActionRow,
+  .analysisReviewNotice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .analysisCardHeading,
+  .analysisRuleTopline,
+  .analysisDeliveryList li > div {
+    align-items: start;
+    flex-direction: column;
+    gap: 5px;
+  }
+}

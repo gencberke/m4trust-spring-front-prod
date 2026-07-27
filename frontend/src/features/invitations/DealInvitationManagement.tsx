@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 
-import type { DealDetail } from "../deals/dealApi";
+import type { DealDetail } from "../deals";
 import {
   createDealInvitation,
   revokeDealInvitation,
   type CreateDealInvitationRequest,
 } from "./invitationApi";
-import { getInvitationErrorMessage, isInvitationRefreshRequired } from "./invitationErrors";
+import {
+  getInvitationErrorMessage,
+  isInvitationRefreshRequired,
+} from "./invitationErrors";
 import { dealInvitationsQueryOptions } from "./invitationQueries";
+import styles from "./Invitations.module.css";
 
 const INVITATION_PAGE_SIZE = 100;
 
@@ -59,10 +63,14 @@ export function DealInvitationManagement({
   });
 
   const revokeMutation = useMutation({
-    mutationFn: ({ invitationId, expectedVersion }: {
+    mutationFn: ({
+      invitationId,
+      expectedVersion,
+    }: {
       invitationId: string;
       expectedVersion: number;
-    }) => revokeDealInvitation(legalEntityId, invitationId, { expectedVersion }),
+    }) =>
+      revokeDealInvitation(legalEntityId, invitationId, { expectedVersion }),
     onSuccess: refreshInvitations,
     onError: (error) => {
       if (isInvitationRefreshRequired(error)) {
@@ -91,13 +99,13 @@ export function DealInvitationManagement({
 
   if (!deal.availableActions.canCreateInvitation) {
     return (
-      <section className="workspace-panel invitation-management-panel">
+      <section className={`workspace-panel ${styles.managementPanel}`}>
         <div className="panel-heading">
           <span className="section-kicker">Katılım</span>
           <h2>Davet yönetimi kapalı</h2>
           <p>
-            Sunucunun güncel işlem yetkisi bu anlaşma için davet oluşturmaya izin
-            vermiyor.
+            Sunucunun güncel işlem yetkisi bu anlaşma için davet oluşturmaya
+            izin vermiyor.
           </p>
         </div>
       </section>
@@ -105,7 +113,7 @@ export function DealInvitationManagement({
   }
 
   return (
-    <section className="workspace-panel invitation-management-panel">
+    <section className={`workspace-panel ${styles.managementPanel}`}>
       <div className="panel-heading">
         <span className="section-kicker">Katılım</span>
         <h2>Anlaşma davetleri</h2>
@@ -118,9 +126,11 @@ export function DealInvitationManagement({
         </p>
       ) : null}
 
-      <form className="auth-form invitation-form" onSubmit={handleSubmit}>
+      <form className={`auth-form ${styles.form}`} onSubmit={handleSubmit}>
         <div className="field-group">
-          <label htmlFor="invitation-recipient-email">Alıcı e-posta adresi</label>
+          <label htmlFor="invitation-recipient-email">
+            Alıcı e-posta adresi
+          </label>
           <input
             id="invitation-recipient-email"
             type="email"
@@ -133,14 +143,20 @@ export function DealInvitationManagement({
             required
             aria-invalid={Boolean(clientError)}
           />
-          {clientError ? <span className="field-error">{clientError}</span> : null}
+          {clientError ? (
+            <span className="field-error">{clientError}</span>
+          ) : null}
         </div>
-        <button className="primary-button" type="submit" disabled={createMutation.isPending}>
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={createMutation.isPending}
+        >
           {createMutation.isPending ? "Davet gönderiliyor…" : "Davet gönder"}
         </button>
       </form>
 
-      <div className="invitation-list-heading">
+      <div className={styles.listHeading}>
         <h3>Gönderilen davetler</h3>
         {invitationsQuery.data ? (
           <span>{invitationsQuery.data.totalElements} kayıt</span>
@@ -162,15 +178,19 @@ export function DealInvitationManagement({
             onClick={() => void invitationsQuery.refetch()}
             disabled={invitationsQuery.isFetching}
           >
-            {invitationsQuery.isFetching ? "Yeniden deneniyor…" : "Yeniden dene"}
+            {invitationsQuery.isFetching
+              ? "Yeniden deneniyor…"
+              : "Yeniden dene"}
           </button>
         </div>
       ) : null}
       {invitationsQuery.data?.items.length === 0 ? (
-        <p className="muted-copy invitation-empty">Henüz gönderilmiş bir davet yok.</p>
+        <p className={`muted-copy ${styles.empty}`}>
+          Henüz gönderilmiş bir davet yok.
+        </p>
       ) : null}
       {invitationsQuery.data?.items.length ? (
-        <ul className="invitation-list">
+        <ul className={styles.list}>
           {invitationsQuery.data.items.map((invitation) => (
             <li key={invitation.id}>
               <div>
@@ -189,7 +209,9 @@ export function DealInvitationManagement({
                   }
                   disabled={revokeMutation.isPending}
                 >
-                  {revokeMutation.isPending ? "Geri alınıyor…" : "Daveti geri al"}
+                  {revokeMutation.isPending
+                    ? "Geri alınıyor…"
+                    : "Daveti geri al"}
                 </button>
               ) : null}
             </li>

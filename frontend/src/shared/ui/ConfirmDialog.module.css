@@ -1,0 +1,36 @@
+.confirmationDialog {
+  padding: 20px;
+  border: 1px solid rgb(173 63 74 / 35%);
+  border-radius: 6px;
+  background: #fff7f7;
+}
+
+.confirmationDialog h3,
+.confirmationDialog p {
+  margin: 0;
+}
+
+.confirmationDialog p {
+  margin-top: 10px;
+  color: var(--color-copy);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.warning {
+  position: relative;
+  margin-top: 24px;
+  border-color: #ead087;
+  background: #fffbeb;
+}
+
+@media (max-width: 520px) {
+  .actions {
+    display: grid;
+  }
+}

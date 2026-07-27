@@ -9,3 +9,8 @@
 # Python bytecode
 **/__pycache__/
 *.py[cod]
+
+# Python virtualenvs (scripts/validate-contracts.sh bootstraps contracts/.venv)
+.venv/
+**/.venv/
+.pytest_cache/

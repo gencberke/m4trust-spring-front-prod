@@ -1,68 +1,46 @@
 # M4Trust Core API
 
-Spring Boot modular-monolith Core API for M4Trust. The implemented foundation
-includes PostgreSQL-backed identity and server-side session authentication,
-tenant provisioning, legal entities, memberships, append-only business audit,
-reusable application-layer legal-entity authorization, and the participant-
-scoped Deal aggregate with cross-entity invitations, buyer/seller assignment,
-optimistic concurrency, and lifecycle/action projections.
+Spring Boot modular-monolith Core API for M4Trust. The service implements the
+full deal lifecycle (identity, organization, deals, documents, contract
+intelligence, review, ratification, funding, fulfillment, disputes/casework, and
+simulated settlement) behind the reviewed OpenAPI contract.
 
-## Operational endpoints
+Public HTTP operations, schemas, and error codes are defined in
+[`contracts/openapi/core-api-v1.yaml`](../../contracts/openapi/core-api-v1.yaml).
+See [`contracts/README.md`](../../contracts/README.md) for contract workflow and
+[`docs/VALIDATION.md`](../../docs/VALIDATION.md) for build and test commands.
 
-The reviewed `contracts/openapi/core-api-v1.yaml` defines these implemented
-public operations:
+Actuator health endpoints (`/actuator/health/*`) are operational surfaces outside
+the public contract. Errors use RFC 9457 Problem Details with stable machine-
+readable codes and a request correlation ID.
 
-- `GET /api/v1/security/csrf` — issue/read the CSRF token and header name.
-- `POST /api/v1/auth/register` — create an account and authenticated session.
-- `POST /api/v1/auth/login` — authenticate and rotate the session identifier.
-- `POST /api/v1/auth/logout` — invalidate the server-side session.
-- `GET /api/v1/auth/me` — return safe public account fields and a required,
-  non-null legal-entity membership array.
-- `POST /api/v1/legal-entities` — create a legal entity and atomically assign
-  the creator an `ADMIN` membership.
-- `GET /api/v1/legal-entities` — list only the authenticated user's
-  memberships.
-- `GET /api/v1/legal-entities/{legalEntityId}` — return member-visible detail.
-- `GET /api/v1/legal-entities/{legalEntityId}/members` — return the
-  member-visible identity projection and role list.
-- `POST /api/v1/deals` — create a `DRAFT` Deal for the active legal entity,
-  add it as the initial participant, and append `DEAL_CREATED` atomically.
-- `GET /api/v1/deals` — list only participant-visible Deals with stable
-  pagination, optional status filtering, and allowlisted sorting.
-- `GET /api/v1/deals/{dealId}` — return participant-visible detail with the
-  backend-derived lifecycle and available actions.
-- `PATCH /api/v1/deals/{dealId}` — replace editable basic fields using the
-  required `expectedVersion`; stale writes and invalid states return distinct
-  stable conflict codes.
-- `POST /api/v1/deals/{dealId}/cancel` — apply the aggregate cancellation rule
-  and return the current detail projection.
+## Source layout
 
-- `PATCH /api/v1/deals/{dealId}/parties` atomically assigns or clears nullable
-  buyer/seller participant rows in DRAFT using required `expectedVersion`.
-- `POST /api/v1/deals/{dealId}/invitations` and
-  `GET /api/v1/deals/{dealId}/invitations` create and list initiator-scoped
-  Deal invitations with idempotency and disclosure-safe projections.
-- `GET /api/v1/deal-invitations/incoming` lists invitations addressed to the
-  authenticated account.
-- `POST /api/v1/deal-invitations/{invitationId}/accept`, `/reject`, and
-  `/revoke` apply explicit invitation terminal actions with the concurrency
-  requirements defined by the contract.
+Java sources live under `src/main/java/com/m4trust/coreapi/`. Each business
+boundary is a top-level package with `api`, `domain`, and `infra` subpackages
+where applicable:
 
-All state-changing operations require the CSRF token from
-`GET /api/v1/security/csrf` in the response's declared header. The two scoped
-legal-entity reads also require `X-M4Trust-Legal-Entity-Id` to match the path.
-Every Deal operation requires the same header; the application layer first
-verifies legal-entity membership and then enforces Deal participation. Active
-selection is never stored in the session. Actuator endpoints remain operational
-surfaces outside the public contract:
+| Package | Role |
+| --- | --- |
+| `api` | Cross-cutting HTTP infrastructure (filters, Problem Details, shared error codes) |
+| `audit` | Append-only business audit port and JDBC adapter |
+| `casework` | Dispute cases and casework workflows |
+| `contractintelligence` | Document extraction and analysis orchestration |
+| `contracts` | Contract-bundle helpers used by the API surface |
+| `deal` | Deal aggregate, invitations, parties, lifecycle projections |
+| `deployment` | `run` / `migrate` process entrypoints |
+| `document` | Deal document upload and storage orchestration |
+| `fulfillment` | Evidence submission and video-analysis handoff |
+| `idempotency` | HTTP idempotency persistence |
+| `identity` | Registration, sessions, CSRF, credential handling |
+| `integration` | Messaging, object storage, and external provider adapters |
+| `organization` | Tenants, legal entities, memberships, operation context |
+| `payment` | Funding plans and simulated settlement |
+| `ratification` | Ratification packages and confirmations |
+| `sharedkernel` | Reserved shared primitives scaffold (currently minimal) |
 
-- `GET /actuator/health` — overall health.
-- `GET /actuator/health/liveness` — liveness probe.
-- `GET /actuator/health/readiness` — readiness probe.
-- `GET /actuator/info` — build information when available.
-
-Errors use RFC 9457 Problem Details with stable machine-readable codes and a
-request correlation ID.
+`ModuleArchitectureTest` enforces acyclic module dependencies and the
+`api` / `domain` / `infra` layering rules.
 
 ## Run locally
 
@@ -171,60 +149,13 @@ belongs in this chain.
 
 ## Module boundaries
 
-The modular monolith currently contains these explicit boundaries:
+The modular monolith uses explicit package boundaries (see table above). Future
+business modules are added only by the slice that needs them. `ModuleArchitectureTest`
+slices production code by top-level package, rejects cyclic dependencies, and
+enforces `api` / `domain` / `infra` layering. ArchUnit is test-only.
 
-- `identity` — account registration, credential verification, and the safe
-  public user projection; password hashes remain internal to this module.
-- `organization` — tenants, legal entities, memberships, and the reusable
-  `OperationContext` authorization boundary.
-- `audit` — append-only business audit persistence through a narrow port that
-  joins the caller's business transaction.
-- `deal` — the Deal aggregate, centralized lifecycle behavior, participant-
-  scoped JDBC persistence, invitations, buyer/seller assignment, public
-  projections, and audited application transactions.
-
-- `sharedkernel` — genuinely shared, stable primitives; never generic helpers
-  or module-specific business rules.
-- `integration` — external adapters and reliable-delivery plumbing; never
-  business decisions.
-
-Future business modules are created only by the slice that needs them. A small
-ArchUnit test slices production code by top-level package and rejects cyclic
-dependencies. ArchUnit is test-only and framework-neutral, which keeps the
-check maintainable without forbidding ADR-approved collaboration through
-ports, stable IDs, domain events, or read-only projections. More specific rules
-require an accepted module contract rather than being guessed upfront.
-
-## Authentication validation
-
-Authentication integration tests run against a real disposable PostgreSQL
-instance through Testcontainers. They prove email normalization and uniqueness,
-Argon2id password storage, safe response projection, session rotation and
-invalidation, CSRF enforcement, cookie policy, generic credential failures,
-and the absolute session deadline. Docker must be available to run `mvn verify`.
-
-Login throttling is explicitly deferred from Slice 1 and remains a required
-follow-up before public launch; generic failures prevent account enumeration but
-do not replace rate limiting.
-
-## Organization validation
-
-Organization integration tests also use real PostgreSQL. They prove creator
-`ADMIN` assignment, the two audit appends and rollback atomicity, stable list
-and detail projections, non-null `/auth/me` memberships, centralized header
-validation, and 404 non-disclosure for nonexistent or hidden legal entities.
-The browser end-to-end flow remains a separate acceptance step.
-
-## Deal validation
-
-Deal integration tests use MockMvc and disposable PostgreSQL. They prove the
-create/list/detail/update/cancel surface, deterministic pagination, optimistic
-conflicts, cross-tenant participant visibility, invitation state/idempotency
-rules, initiator-only mutations, atomic buyer/seller assignment, participant
-referential integrity, audit atomicity, and the absence of implicit activation.
-Real two-browser acceptance remains a separate slice completion gate; Slice 5
-passed that gate with invitation/participation regression and stale party-update
-recovery.
+For validation commands (focused tests, Spotless, JaCoCo, full `verify`), see
+[`docs/VALIDATION.md`](../../docs/VALIDATION.md).
 
 ## Structured logging
 

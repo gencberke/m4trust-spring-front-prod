@@ -1,6 +1,12 @@
 # ADR-017: Invite-Only Identity and Transactional Notification
 
 - Durum: Accepted
+- Runtime notu: invite-only registration, account/member invitation, password
+  recovery, login throttling, Postmark ve operator bootstrap kapsamı kontrollü
+  demo runtime'ı için
+  [ADR-022](ADR-022-Railway-Only-Controlled-Demo-Runtime.md) tarafından geçici
+  olarak ertelenmiştir; demo ortamında ADR-005'teki mevcut register/login/session
+  akışı çalışır.
 - Tarih: 22 Temmuz 2026
 - Karar sahibi: M4Trust founder/user
 - Kapsam: Production registration policy, account/member invitations, email

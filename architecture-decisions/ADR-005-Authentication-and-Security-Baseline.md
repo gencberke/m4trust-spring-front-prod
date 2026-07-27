@@ -1,6 +1,10 @@
 # ADR-005: Authentication and Security Baseline
 
 - Durum: Accepted
+- Runtime notu: §22.2 login throttling, kontrollü demo runtime'ı için
+  [ADR-022](ADR-022-Railway-Only-Controlled-Demo-Runtime.md) tarafından geçici
+  olarak ertelenmiştir. Session, CSRF, cookie, parola ve authorization kuralları
+  aynen korunur.
 - Tarih: 14 Temmuz 2026
 - Karar sahipleri: M4Trust mimari ekibi
 - Kapsam: Spring Boot public authentication, browser session yönetimi, parola güvenliği, CSRF, CORS ve authorization bağlamı

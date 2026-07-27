@@ -16,7 +16,9 @@ export type RegisterRequest = components["schemas"]["RegisterRequest"];
 export { ApiError, AUTH_SESSION_EXPIRED_EVENT };
 export type { ProblemDetail };
 
-export async function fetchCurrentUser(signal?: AbortSignal): Promise<CurrentUser | null> {
+export async function fetchCurrentUser(
+  signal?: AbortSignal,
+): Promise<CurrentUser | null> {
   try {
     return await requestJson<CurrentUser>("/auth/me", { signal });
   } catch (error) {

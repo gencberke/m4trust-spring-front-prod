@@ -5,8 +5,9 @@ import { BrowserRouter } from "react-router";
 
 import { App } from "./App";
 import { queryClient } from "./app/queryClient";
-import { AuthSessionExpiryHandler } from "./features/auth/AuthSessionExpiryHandler";
-import "./styles.css";
+import { AuthSessionExpiryHandler } from "./features/auth";
+import "./shared/styles/tokens.css";
+import "./shared/styles/base.css";
 
 const rootElement = document.getElementById("root");
 

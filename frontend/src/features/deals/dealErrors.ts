@@ -1,16 +1,15 @@
 import { ApiError } from "../../app/coreApi";
 
 export type DealField =
-  | "title"
-  | "description"
-  | "buyerLegalEntityId"
-  | "sellerLegalEntityId";
+  "title" | "description" | "buyerLegalEntityId" | "sellerLegalEntityId";
 
 function isDealField(field: string): field is DealField {
-  return field === "title"
-    || field === "description"
-    || field === "buyerLegalEntityId"
-    || field === "sellerLegalEntityId";
+  return (
+    field === "title" ||
+    field === "description" ||
+    field === "buyerLegalEntityId" ||
+    field === "sellerLegalEntityId"
+  );
 }
 
 export function getDealFieldErrors(
@@ -25,13 +24,14 @@ export function getDealFieldErrors(
     if (!isDealField(fieldError.field) || result[fieldError.field]) {
       continue;
     }
-    result[fieldError.field] = fieldError.code === "REQUIRED"
-      ? "Bu alan zorunludur."
-      : fieldError.code === "MUST_DIFFER"
-        ? "Alıcı ve satıcı farklı katılımcılar olmalıdır."
-        : fieldError.code === "NOT_A_PARTICIPANT"
-          ? "Yalnızca mevcut anlaşma katılımcıları atanabilir."
-          : "Bu alanın uzunluğunu ve biçimini kontrol edin.";
+    result[fieldError.field] =
+      fieldError.code === "REQUIRED"
+        ? "Bu alan zorunludur."
+        : fieldError.code === "MUST_DIFFER"
+          ? "Alıcı ve satıcı farklı katılımcılar olmalıdır."
+          : fieldError.code === "NOT_A_PARTICIPANT"
+            ? "Yalnızca mevcut anlaşma katılımcıları atanabilir."
+            : "Bu alanın uzunluğunu ve biçimini kontrol edin.";
   }
   return result;
 }

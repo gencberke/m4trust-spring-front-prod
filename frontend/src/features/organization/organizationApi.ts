@@ -1,8 +1,5 @@
 import type { components } from "../../generated/core-api";
-import {
-  postJsonWithFreshCsrf,
-  requestJson,
-} from "../../app/coreApi";
+import { postJsonWithFreshCsrf, requestJson } from "../../app/coreApi";
 
 export type CreateLegalEntityRequest =
   components["schemas"]["CreateLegalEntityRequest"];

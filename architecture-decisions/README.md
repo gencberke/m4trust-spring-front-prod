@@ -160,6 +160,22 @@ ADR dosyalarında aşağıdaki durumlar kullanılabilir:
 
 Bir ADR başka bir karar tarafından değiştirildiğinde eski dosya silinmez. Eski ADR üzerinde hangi yeni ADR tarafından değiştirildiği belirtilir.
 
+Bugün itibarıyla ADR-001 – ADR-022'nin tamamı `Accepted` durumundadır; hiçbir ADR
+başka bir ADR tarafından tümüyle değiştirilmemiştir.
+
+### Runtime notu
+
+Bir ADR kabul edilmiş olduğu hâlde belirli maddeleri geçerli runtime'da geçici
+olarak ertelenmiş olabilir. Bu durumda ADR'nin başlığına bir **Runtime notu**
+satırı eklenir ve erteleyen ADR'ye bağlantı verilir. Durum `Accepted` kalır —
+karar hâlâ bağlayıcıdır, yalnız yürürlüğü ertelenmiştir.
+
+Mevcut kontrollü demo runtime'ı için
+[ADR-022](ADR-022-Railway-Only-Controlled-Demo-Runtime.md) tarafından maddeleri
+ertelenen ADR'ler: ADR-005, ADR-007, ADR-016, ADR-017, ADR-018, ADR-020.
+Ertelenen maddelerin exact listesi ADR-022'nin "Geçici olarak değiştirdiği
+kararlar" bölümündedir.
+
 ## Dosya adlandırma
 
 ADR dosyaları aşağıdaki formata uygun adlandırılır:

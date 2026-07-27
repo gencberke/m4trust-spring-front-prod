@@ -9,7 +9,13 @@ export function dealDocumentAnalysisQueryKey(
   legalEntityId: string,
   dealId: string,
 ) {
-  return ["deals", legalEntityId, "detail", dealId, "document-analysis"] as const;
+  return [
+    "deals",
+    legalEntityId,
+    "detail",
+    dealId,
+    "document-analysis",
+  ] as const;
 }
 
 export function dealDocumentAnalysisQueryOptions(
@@ -21,7 +27,8 @@ export function dealDocumentAnalysisQueryOptions(
       legalEntityId ?? "unselected",
       dealId ?? "missing",
     ),
-    queryFn: ({ signal }) => getDealDocumentAnalysis(legalEntityId!, dealId!, signal),
+    queryFn: ({ signal }) =>
+      getDealDocumentAnalysis(legalEntityId!, dealId!, signal),
     enabled: Boolean(legalEntityId && dealId),
     refetchInterval: (query) =>
       query.state.data && ACTIVE_ANALYSIS_STATUSES.has(query.state.data.status)

@@ -29,7 +29,11 @@ export function inferEvidenceMediaType(
   ) {
     return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   }
-  if (file.type === "image/jpeg" || lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
+  if (
+    file.type === "image/jpeg" ||
+    lowerName.endsWith(".jpg") ||
+    lowerName.endsWith(".jpeg")
+  ) {
     return "image/jpeg";
   }
   if (file.type === "image/png" || lowerName.endsWith(".png")) {

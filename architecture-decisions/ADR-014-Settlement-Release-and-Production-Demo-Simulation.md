@@ -16,8 +16,8 @@
     casework payment repository'sine erişmez.
 - Bağlı kararlar: ADR-003, ADR-006, ADR-009, ADR-010, ADR-011, ADR-013, ADR-015
 - Karar girdileri:
-  - `docs/plan/planning/gates/g2-g3-founder-decision-2026-07-21.md`
-  - `docs/plan/planning/gates/simulation-only-payment-decision-2026-07-22.md`
+  - `docs/history/hackathon-2026-07/planning/gates/g2-g3-founder-decision-2026-07-21.md`
+  - `docs/history/hackathon-2026-07/planning/gates/simulation-only-payment-decision-2026-07-22.md`
 
 ## 1. Bağlam
 

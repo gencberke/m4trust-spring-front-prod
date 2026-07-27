@@ -20,6 +20,13 @@ Yerel kurulum, başlatma sırası ve ortam değişkenleri:
 Hafif doğrulama haritası (test ve contract kontrolleri):
 [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
+## Proje durumu ve yol haritası
+
+Kabul edilmiş mevcut durum: [`docs/plan/CURRENT.md`](docs/plan/CURRENT.md).
+Sıradaki iş ve açık kararlar: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Hackathon dönemi plan ve karar arşivi:
+[`docs/history/hackathon-2026-07/`](docs/history/hackathon-2026-07/).
+
 ## Agent girişi
 
 Planner/Implementer yönlendirmesi ve keşif bağlantıları:

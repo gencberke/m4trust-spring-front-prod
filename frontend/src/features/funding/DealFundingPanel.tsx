@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import { decimalFromMinor } from "../../app/money";
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
+import { decimalFromMinor, formatDate, StatusBadge } from "@/shared";
+import styles from "./Funding.module.css";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
 import {
   createFundingPlan,
   initiatePaymentOperation,
@@ -26,15 +27,6 @@ import {
   paymentOperationQueryKey,
   paymentOperationQueryOptions,
 } from "./fundingQueries";
-
-const DATE_FORMATTER = new Intl.DateTimeFormat("tr-TR", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
-
-function formatDate(value: string): string {
-  return DATE_FORMATTER.format(new Date(value));
-}
 
 const FUNDING_STATUS_LABELS: Record<string, string> = {
   NOT_CONFIGURED: "Yapılandırılmadı",
@@ -79,7 +71,6 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string>();
   const [createdPlan, setCreatedPlan] = useState<FundingPlanDetail>();
-  const [startAfterPlanCreation, setStartAfterPlanCreation] = useState(false);
 
   const createKeyRef = useRef<string | undefined>(undefined);
   const initiateKeyRef = useRef<string | undefined>(undefined);
@@ -97,12 +88,11 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
   );
   const plan = planQuery.data ?? createdPlan;
 
-  const [operationId, setOperationId] = useState<string | undefined>(undefined);
+  const [initiatedOperationId, setInitiatedOperationId] = useState<
+    string | undefined
+  >(undefined);
   const planOperationId = plan?.fundingUnit.currentOperation?.id;
-
-  useEffect(() => {
-    if (planOperationId) setOperationId(planOperationId);
-  }, [planOperationId]);
+  const operationId = initiatedOperationId ?? planOperationId;
 
   useEffect(() => {
     previousOperationStatusRef.current = undefined;
@@ -114,7 +104,8 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status === "CREATED") return 3000;
-      if (status === "UNCONFIRMED" && reconcileDispatchedRef.current) return 3000;
+      if (status === "UNCONFIRMED" && reconcileDispatchedRef.current)
+        return 3000;
       return false;
     },
   });
@@ -155,17 +146,23 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
     onSuccess: (created) => {
       createKeyRef.current = undefined;
       setCreatedPlan(created);
-      queryClient.setQueryData(fundingPlanQueryKey(legalEntityId, deal.id), created);
+      queryClient.setQueryData(
+        fundingPlanQueryKey(legalEntityId, deal.id),
+        created,
+      );
       setNotice("Ödeme hazırlığı tamamlandı.");
       refreshAfterMutation();
       if (created.fundingUnit.availableActions.canInitiatePayment === true) {
-        setStartAfterPlanCreation(true);
+        initiateMutation.mutate(created.fundingUnit);
       } else {
-        setNotice("Ödeme hazırlığı tamamlandı; işlem başlatma izni sunucudan bekleniyor.");
+        setNotice(
+          "Ödeme hazırlığı tamamlandı; işlem başlatma izni sunucudan bekleniyor.",
+        );
       }
     },
     onError: (error) => {
-      if (shouldResetFundingIdempotencyKey(error, "create")) createKeyRef.current = undefined;
+      if (shouldResetFundingIdempotencyKey(error, "create"))
+        createKeyRef.current = undefined;
       if (shouldRefetchAfterCreatePlanError(error)) refreshAfterMutation();
     },
   });
@@ -182,7 +179,7 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
     },
     onSuccess: (created) => {
       initiateKeyRef.current = undefined;
-      setOperationId(created.id);
+      setInitiatedOperationId(created.id);
       queryClient.setQueryData(
         paymentOperationQueryKey(legalEntityId, created.id),
         created,
@@ -191,16 +188,11 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
       refreshAfterMutation();
     },
     onError: (error) => {
-      if (shouldResetFundingIdempotencyKey(error, "initiate")) initiateKeyRef.current = undefined;
+      if (shouldResetFundingIdempotencyKey(error, "initiate"))
+        initiateKeyRef.current = undefined;
       if (shouldRefetchAfterInitiateError(error)) refreshAfterMutation();
     },
   });
-
-  useEffect(() => {
-    if (!startAfterPlanCreation || !plan || initiateMutation.isPending) return;
-    setStartAfterPlanCreation(false);
-    initiateMutation.mutate(plan.fundingUnit);
-  }, [initiateMutation, plan, startAfterPlanCreation]);
 
   const reconcileMutation = useMutation({
     mutationFn: (operation: PaymentOperation) => {
@@ -222,28 +214,33 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
       setNotice("Doğrulama isteği gönderildi; sonuç izleniyor.");
     },
     onError: (error) => {
-      if (shouldResetFundingIdempotencyKey(error, "reconcile")) reconcileKeyRef.current = undefined;
+      if (shouldResetFundingIdempotencyKey(error, "reconcile"))
+        reconcileKeyRef.current = undefined;
       if (shouldRefetchAfterReconcileError(error)) refreshAfterMutation();
     },
   });
 
   if (!funding) {
     return (
-      <section className="workspace-panel funding-panel" aria-labelledby="funding-title">
+      <section
+        className={`workspace-panel ${styles.fundingPanel}`}
+        aria-labelledby="funding-title"
+      >
         <div className="panel-heading">
           <span className="section-kicker">Ödeme</span>
           <h2 id="funding-title">Ödeme durumu</h2>
         </div>
         <p className="muted-copy">
-          Bu anlaşma için ödeme bilgisi şu anda sunulmuyor; bölüm salt
-          okunur kabul edilir.
+          Bu anlaşma için ödeme bilgisi şu anda sunulmuyor; bölüm salt okunur
+          kabul edilir.
         </p>
       </section>
     );
   }
 
   const mayCreatePlan = deal.availableActions.canCreateFundingPlan === true;
-  const currentOperation = operationQuery.data ?? plan?.fundingUnit.currentOperation ?? null;
+  const currentOperation =
+    operationQuery.data ?? plan?.fundingUnit.currentOperation ?? null;
   const unit = plan?.fundingUnit;
   const mayInitiate =
     deal.availableActions.canInitiateFunding === true &&
@@ -253,20 +250,25 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
     currentOperation?.availableActions.canReconcile === true;
 
   return (
-    <section className="workspace-panel funding-panel" aria-labelledby="funding-title">
+    <section
+      className={`workspace-panel ${styles.fundingPanel}`}
+      aria-labelledby="funding-title"
+    >
       <div className="panel-heading">
         <span className="section-kicker">Ödeme</span>
         <h2 id="funding-title">Ödemeyi güvenceye al</h2>
         <p>
-          Tutar, iki tarafın onayladığı koşullardan gelir ve burada değiştirilemez.
-          Sonuç, sunucunun güncel ödeme kaydından izlenir.
+          Tutar, iki tarafın onayladığı koşullardan gelir ve burada
+          değiştirilemez. Sonuç, sunucunun güncel ödeme kaydından izlenir.
         </p>
       </div>
 
-      <div className="funding-summary" role="status">
-        <span className="funding-status-badge" data-status={funding.fundingStatus}>
-          {fundingStatusLabel(funding.fundingStatus)}
-        </span>
+      <div className={styles.fundingSummary} role="status">
+        <StatusBadge
+          domain="funding"
+          status={funding.fundingStatus}
+          label={fundingStatusLabel(funding.fundingStatus)}
+        />
         {funding.amountMinor !== null && funding.currency !== null ? (
           <strong>
             {decimalFromMinor(funding.amountMinor)} {funding.currency}
@@ -281,10 +283,8 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
       ) : null}
 
       {!hasPlan ? (
-        <div className="funding-not-configured">
-          <p className="muted-copy">
-            Ödeme hazırlığı henüz başlatılmadı.
-          </p>
+        <div className={styles.fundingNotConfigured}>
+          <p className="muted-copy">Ödeme hazırlığı henüz başlatılmadı.</p>
           {mayCreatePlan ? (
             <>
               {createMutation.isError ? (
@@ -301,7 +301,9 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
                   createMutation.mutate();
                 }}
               >
-                {createMutation.isPending ? "Hazırlanıyor…" : "Ödemeyi güvenceye al"}
+                {createMutation.isPending
+                  ? "Hazırlanıyor…"
+                  : "Ödemeyi güvenceye al"}
               </button>
             </>
           ) : null}
@@ -335,7 +337,12 @@ export function DealFundingPanel({ deal, legalEntityId }: Props) {
 }
 
 interface FundingPlanSectionProps {
-  planQuery: { isPending: boolean; isError: boolean; error: unknown; isFetching: boolean };
+  planQuery: {
+    isPending: boolean;
+    isError: boolean;
+    error: unknown;
+    isFetching: boolean;
+  };
   plan: FundingPlanDetail | undefined;
   currentOperation: PaymentOperation | null;
   mayInitiate: boolean;
@@ -389,28 +396,26 @@ function FundingPlanSection({
   }
 
   if (!plan) {
-    return (
-      <p className="muted-copy">
-        Ödeme hazırlığı henüz bulunamadı.
-      </p>
-    );
+    return <p className="muted-copy">Ödeme hazırlığı henüz bulunamadı.</p>;
   }
 
   const unit = plan.fundingUnit;
   const isRetry = unit.status === "FAILED";
-  const reconciliationRequired = currentOperation?.reconciliationRequired === true;
+  const reconciliationRequired =
+    currentOperation?.reconciliationRequired === true;
   const isSimulated =
-    plan.mode === "DEMO_SIMULATED" || currentOperation?.mode === "DEMO_SIMULATED";
+    plan.mode === "DEMO_SIMULATED" ||
+    currentOperation?.mode === "DEMO_SIMULATED";
 
   return (
-    <div className="funding-plan-card">
+    <div className={styles.fundingPlanCard}>
       {isSimulated ? (
-        <p className="funding-simulation-notice" role="status">
+        <p className={styles.fundingSimulationNotice} role="status">
           Demo simülasyonu — gerçek para hareketi yok
         </p>
       ) : null}
 
-      <dl className="funding-summary-list">
+      <dl className={styles.fundingSummaryList}>
         <div>
           <dt>Tutar</dt>
           <dd>
@@ -422,9 +427,11 @@ function FundingPlanSection({
         <div>
           <dt>Ödeme durumu</dt>
           <dd>
-            <span className="funding-status-badge" data-status={plan.fundingStatus}>
-              {fundingStatusLabel(plan.fundingStatus)}
-            </span>
+            <StatusBadge
+              domain="funding"
+              status={plan.fundingStatus}
+              label={fundingStatusLabel(plan.fundingStatus)}
+            />
           </dd>
         </div>
         <div>
@@ -437,26 +444,27 @@ function FundingPlanSection({
         </div>
       </dl>
 
-      <div className="funding-unit-card">
-        <div className="funding-unit-heading">
+      <div className={styles.fundingUnitCard}>
+        <div className={styles.fundingUnitHeading}>
           <span>Ödeme adımı #{unit.sequenceNo}</span>
-          <span className="funding-unit-status-badge" data-status={unit.status}>
-            {fundingUnitStatusLabel(unit.status)}
-          </span>
+          <StatusBadge
+            domain="fundingUnit"
+            status={unit.status}
+            label={fundingUnitStatusLabel(unit.status)}
+          />
         </div>
 
         {currentOperation ? (
-          <div className="funding-operation-card">
-            <div className="funding-operation-heading">
+          <div className={styles.fundingOperationCard}>
+            <div className={styles.fundingOperationHeading}>
               <span>Son ödeme işlemi</span>
-              <span
-                className="funding-operation-status-badge"
-                data-status={currentOperation.status}
-              >
-                {paymentOperationStatusLabel(currentOperation.status)}
-              </span>
+              <StatusBadge
+                domain="fundingOperation"
+                status={currentOperation.status}
+                label={paymentOperationStatusLabel(currentOperation.status)}
+              />
             </div>
-            <dl className="funding-summary-list">
+            <dl className={styles.fundingSummaryList}>
               <div>
                 <dt>Başlatıldı</dt>
                 <dd>{formatDate(currentOperation.createdAt)}</dd>
@@ -470,19 +478,24 @@ function FundingPlanSection({
             {currentOperation.providerReference ? (
               <details className="funding-technical-details">
                 <summary>Teknik işlem ayrıntıları</summary>
-                <p><code>{currentOperation.providerReference}</code></p>
+                <p>
+                  <code>{currentOperation.providerReference}</code>
+                </p>
               </details>
             ) : null}
 
             {reconciliationRequired ? (
-              <p className="funding-reconciliation-notice" role="status">
-                Ödeme sonucu henüz kesinleşmedi; bu <strong>başarısızlık değildir</strong>.
-                Aynı işlem için doğrulama sonucu bekleniyor.
+              <p className={styles.fundingReconciliationNotice} role="status">
+                Ödeme sonucu henüz kesinleşmedi; bu{" "}
+                <strong>başarısızlık değildir</strong>. Aynı işlem için
+                doğrulama sonucu bekleniyor.
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="muted-copy">Bu ödeme adımı için henüz işlem başlatılmadı.</p>
+          <p className="muted-copy">
+            Bu ödeme adımı için henüz işlem başlatılmadı.
+          </p>
         )}
 
         {initiateError ? (
@@ -496,7 +509,7 @@ function FundingPlanSection({
           </p>
         ) : null}
 
-        <div className="funding-unit-actions">
+        <div className={styles.fundingUnitActions}>
           {mayInitiate ? (
             <button
               className="primary-button"

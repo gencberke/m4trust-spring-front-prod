@@ -4,7 +4,7 @@ import {
   AnonymousOnlyRoute,
   HomeRedirect,
   ProtectedRoute,
-} from "./features/auth/AuthRouteGuards";
+} from "./features/auth";
 import { DealDetailPage } from "./pages/DealDetailPage";
 import { DealListPage } from "./pages/DealListPage";
 import { IncomingInvitationsPage } from "./pages/IncomingInvitationsPage";

@@ -17,7 +17,8 @@ export type RatificationSnapshotDocument =
   components["schemas"]["RatificationSnapshotDocument"];
 export type RatificationPackageSnapshot =
   components["schemas"]["RatificationPackageSnapshot"];
-export type RatificationApproval = components["schemas"]["RatificationApproval"];
+export type RatificationApproval =
+  components["schemas"]["RatificationApproval"];
 export type RatificationPackageAvailableActions =
   components["schemas"]["RatificationPackageAvailableActions"];
 export type RatificationPackageDetail =

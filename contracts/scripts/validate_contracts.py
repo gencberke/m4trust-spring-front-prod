@@ -1270,11 +1270,11 @@ def validate_closed_error_catalogs(core_openapi: dict[str, Any], failures: list[
 
     repo_root = ROOT.parent
     java_api = read_java_enum_names(
-        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/ApiErrorCode.java",
+        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/api/ApiErrorCode.java",
         "ApiErrorCode",
     )
     java_field = read_java_enum_names(
-        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/FieldErrorCode.java",
+        repo_root / "services/core-api/src/main/java/com/m4trust/coreapi/api/api/FieldErrorCode.java",
         "FieldErrorCode",
     )
     if java_api is None:
