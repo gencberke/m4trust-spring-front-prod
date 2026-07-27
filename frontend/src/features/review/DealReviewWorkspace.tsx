@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
-import type { DealDetail } from "../deals/dealApi";
+import type { DealDetail } from "../deals";
 import { ReviewConfirmationDialog } from "./components/ReviewConfirmationDialog";
 import { ManualRule, ReviewRule } from "./components/ReviewRules";
 import {

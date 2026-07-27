@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import com.m4trust.coreapi.organization.domain.LegalEntityRole;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
@@ -34,7 +36,7 @@ public class RatificationPackageReadService {
   }
 
   @Transactional(readOnly = true)
-  RatificationPackageReadDtos.Detail detail(OperationContext context, UUID dealId, UUID packageId) {
+  RatificationPackageDetail detail(OperationContext context, UUID dealId, UUID packageId) {
     require(context, RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ);
     RatificationSourcePorts.Target target = visible(context, dealId);
     RatificationPackageRecord packageRecord =
@@ -43,10 +45,10 @@ public class RatificationPackageReadService {
   }
 
   @Transactional(readOnly = true)
-  RatificationPackageReadDtos.History history(OperationContext context, UUID dealId) {
+  RatificationPackageHistory history(OperationContext context, UUID dealId) {
     require(context, RequestedOperation.DEAL_RATIFICATION_PACKAGE_HISTORY_READ);
     RatificationSourcePorts.Target target = visible(context, dealId);
-    return new RatificationPackageReadDtos.History(
+    return new RatificationPackageHistory(
         packages.listByDealId(dealId).stream()
             .map(packageRecord -> project(context, target, packageRecord))
             .toList());
@@ -57,7 +59,7 @@ public class RatificationPackageReadService {
   }
 
   /** Internal projection shared by package mutations after they have obtained deal visibility. */
-  RatificationPackageReadDtos.Detail project(
+  RatificationPackageDetail project(
       OperationContext context,
       RatificationSourcePorts.Target target,
       RatificationPackageRecord packageRecord) {
@@ -68,9 +70,9 @@ public class RatificationPackageReadService {
     verifyWrapper(packageRecord, snapshot);
     List<RatificationRepository.ApprovalRecord> storedApprovals =
         packages.listApprovals(packageRecord.id());
-    List<RatificationPackageReadDtos.Approval> approvals =
+    List<RatificationPackageApproval> approvals =
         approvalProjection(context, packageRecord, snapshot, storedApprovals);
-    return new RatificationPackageReadDtos.Detail(
+    return new RatificationPackageDetail(
         packageRecord.id(),
         packageRecord.version(),
         packageRecord.status(),
@@ -90,7 +92,7 @@ public class RatificationPackageReadService {
    * approval; reject has no such restriction because an entity that already approved may still
    * reject while the package remains PENDING.
    */
-  private static RatificationPackageReadDtos.AvailableActions availableActions(
+  private static RatificationPackageAvailableActions availableActions(
       OperationContext context,
       RatificationSourcePorts.Target target,
       RatificationPackageRecord packageRecord,
@@ -108,7 +110,7 @@ public class RatificationPackageReadService {
             && storedApprovals.stream()
                 .anyMatch(
                     approval -> approval.legalEntityId().equals(context.activeLegalEntityId()));
-    return new RatificationPackageReadDtos.AvailableActions(
+    return new RatificationPackageAvailableActions(
         baseEligible && !alreadyApproved, baseEligible);
   }
 
@@ -173,7 +175,7 @@ public class RatificationPackageReadService {
     }
   }
 
-  private static List<RatificationPackageReadDtos.Approval> approvalProjection(
+  private static List<RatificationPackageApproval> approvalProjection(
       OperationContext context,
       RatificationPackageRecord packageRecord,
       RatificationSnapshotAssembler.Snapshot snapshot,
@@ -193,14 +195,14 @@ public class RatificationPackageReadService {
         approval(context, seller, snapshot.seller().legalName(), byEntity.get(seller)));
   }
 
-  private static RatificationPackageReadDtos.Approval approval(
+  private static RatificationPackageApproval approval(
       OperationContext context,
       UUID legalEntityId,
       String legalName,
       RatificationRepository.ApprovalRecord stored) {
     return stored == null
-        ? new RatificationPackageReadDtos.Approval(legalEntityId, legalName, "PENDING", null, null)
-        : new RatificationPackageReadDtos.Approval(
+        ? new RatificationPackageApproval(legalEntityId, legalName, "PENDING", null, null)
+        : new RatificationPackageApproval(
             legalEntityId,
             legalName,
             "APPROVED",

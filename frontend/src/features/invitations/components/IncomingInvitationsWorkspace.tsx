@@ -13,7 +13,7 @@ import {
 } from "../invitationErrors";
 import { incomingInvitationsQueryOptions } from "../invitationQueries";
 import { AcceptInvitationDialog } from "./AcceptInvitationDialog";
-import type { LegalEntityMembership } from "../../organization/organizationApi";
+import type { LegalEntityMembership } from "../../organization";
 import styles from "../Invitations.module.css";
 
 const INVITATION_PAGE_SIZE = 50;

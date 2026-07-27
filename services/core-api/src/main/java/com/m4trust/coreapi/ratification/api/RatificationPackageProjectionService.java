@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;
@@ -63,11 +65,11 @@ public class RatificationPackageProjectionService implements RatificationPackage
             null,
             null,
             packageId);
-    RatificationPackageReadDtos.Detail detail = reads.project(context, target, record);
+    RatificationPackageDetail detail = reads.project(context, target, record);
     return Optional.of(toPort(detail));
   }
 
-  private static CurrentPackage toPort(RatificationPackageReadDtos.Detail detail) {
+  private static CurrentPackage toPort(RatificationPackageDetail detail) {
     RatificationSnapshotAssembler.Snapshot snapshot = detail.snapshot();
     return new CurrentPackage(
         detail.id(),

@@ -52,10 +52,32 @@ export default tseslint.config(
               message:
                 "Import a feature through its index.ts barrel, not its internal files.",
             },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Relative sibling-feature deep imports (for example ../organization/foo) bypass
+    // the **/features/*/* pattern because "features" is not in the path string.
+    // Coverage is tied to directory depth: files under features/x/* use ../,
+    // features/x/components/* use ../../. A file at features/x/components/sub/
+    // reaching a sibling via ../../../ is not matched today (no such path exists yet).
+    files: ["src/features/*/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
             {
-              group: ["../../app/*", "../app/*"],
+              group: ["**/features/*/*"],
               message:
-                "Shared helpers live in src/shared/. Import from @/shared/lib or @/shared/ui.",
+                "Import a feature through its index.ts barrel, not its internal files.",
+            },
+            {
+              regex: "^\\.\\./[^./][^/]*/.+",
+              message:
+                "Import a feature through its index.ts barrel, not its internal files.",
             },
           ],
         },
@@ -63,10 +85,25 @@ export default tseslint.config(
     },
   },
   {
-    // A feature's own files may reach its siblings directly.
-    files: ["src/features/*/**"],
+    files: ["src/features/*/*/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-imports": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/features/*/*"],
+              message:
+                "Import a feature through its index.ts barrel, not its internal files.",
+            },
+            {
+              regex: "^\\.\\./\\.\\./[^./][^/]*/.+",
+              message:
+                "Import a feature through its index.ts barrel, not its internal files.",
+            },
+          ],
+        },
+      ],
     },
   },
   {

@@ -75,7 +75,7 @@ Response'larda `version` (optimistic lock token) ve `lifecycle` (projection) ala
 ## 7. Kabul testi (tarayıcı akışı)
 
 Ayrıntılı, copy-paste komutları ve beklenen Problem Details kodlarını içeren
-rehber: [Slice 3 manuel kabul testi](../../DEVELOPMENT.md#slice-3-manuel-kabul-testi).
+rehber: [Slice 3 manuel kabul testi](../../../DEVELOPMENT.md#slice-3-manuel-kabul-testi).
 
 1. Kullanıcı A aktif entity'siyle deal oluşturur → listede görür → detayını açar
 2. Title günceller → değişiklik ve artan version görünür

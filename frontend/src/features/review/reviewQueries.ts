@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import type { MutableRefObject } from "react";
 import type { components } from "../../generated/core-api";
-import type { DealDetail } from "../deals/dealApi";
+import type { DealDetail } from "../deals";
 import {
   acceptExtractionReview,
   getExtractionReview,

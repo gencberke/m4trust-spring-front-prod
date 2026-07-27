@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import com.m4trust.coreapi.audit.domain.AuditRecord;
 import com.m4trust.coreapi.audit.domain.port.AuditAppendPort;
 import com.m4trust.coreapi.idempotency.domain.IdempotencyClaim;
@@ -57,7 +59,7 @@ public class RatificationPackageActionService {
     this.json = json;
   }
 
-  RatificationPackageReadDtos.Detail approve(
+  RatificationPackageDetail approve(
       OperationContext context,
       UUID dealId,
       UUID packageId,
@@ -67,7 +69,7 @@ public class RatificationPackageActionService {
     return action(context, dealId, packageId, request, key, correlationId, Action.APPROVE);
   }
 
-  RatificationPackageReadDtos.Detail reject(
+  RatificationPackageDetail reject(
       OperationContext context,
       UUID dealId,
       UUID packageId,
@@ -77,7 +79,7 @@ public class RatificationPackageActionService {
     return action(context, dealId, packageId, request, key, correlationId, Action.REJECT);
   }
 
-  private RatificationPackageReadDtos.Detail action(
+  private RatificationPackageDetail action(
       OperationContext context,
       UUID dealId,
       UUID packageId,
@@ -90,7 +92,7 @@ public class RatificationPackageActionService {
     }
     IdempotencyRequest idempotencyRequest =
         idempotencyRequest(context, dealId, packageId, request, key, action);
-    RatificationPackageReadDtos.Detail result =
+    RatificationPackageDetail result =
         transactions.execute(
             status ->
                 mutate(
@@ -107,7 +109,7 @@ public class RatificationPackageActionService {
     return result;
   }
 
-  private RatificationPackageReadDtos.Detail mutate(
+  private RatificationPackageDetail mutate(
       OperationContext context,
       UUID dealId,
       UUID packageId,
@@ -156,7 +158,7 @@ public class RatificationPackageActionService {
     }
   }
 
-  private RatificationPackageReadDtos.Detail approveFresh(
+  private RatificationPackageDetail approveFresh(
       OperationContext context,
       RatificationSourcePorts.Target target,
       RatificationPackageRecord record,
@@ -212,7 +214,7 @@ public class RatificationPackageActionService {
     return finish(context, target, packageState.id(), claim);
   }
 
-  private RatificationPackageReadDtos.Detail rejectFresh(
+  private RatificationPackageDetail rejectFresh(
       OperationContext context,
       RatificationSourcePorts.Target target,
       RatificationPackageRecord record,
@@ -228,7 +230,7 @@ public class RatificationPackageActionService {
     return finish(context, target, packageState.id(), claim);
   }
 
-  private RatificationPackageReadDtos.Detail replay(
+  private RatificationPackageDetail replay(
       OperationContext context,
       RatificationSourcePorts.Target target,
       IdempotencyResultReference reference) {
@@ -240,7 +242,7 @@ public class RatificationPackageActionService {
     return reads.project(context, target, result);
   }
 
-  private RatificationPackageReadDtos.Detail finish(
+  private RatificationPackageDetail finish(
       OperationContext context,
       RatificationSourcePorts.Target target,
       UUID packageId,

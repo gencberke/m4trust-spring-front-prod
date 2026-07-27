@@ -1,7 +1,7 @@
 # Repository Map (deterministic)
 
-- Generated: 2026-07-27 15:17
-- Commit: `6ff30929e1d2ffe5f034ab6453b54d71a3e77591` (branch `chore/repo-cleanup-phase-0`)
+- Generated: 2026-07-27 17:20
+- Commit: `8a5102f8734d3cae3c7daa2cdb86e6cdbefcf9a8` (branch `chore/repo-cleanup-phase-0`)
 - Root: `.` → `m4trust-spring-front-prod`
 
 > FRESHNESS: this map is derived from the commit above. If `git rev-parse HEAD`
@@ -9,10 +9,10 @@
 > this map is a disposable index — never let it override what the code says.
 
 ## Languages
-- `.java`: 541 files
+- `.java`: 542 files
 - `.ts`: 78 files
-- `.tsx`: 56 files
-- `.py`: 21 files
+- `.tsx`: 62 files
+- `.py`: 22 files
 
 ## Build / tooling
 - Python: `tools/mock-ai-worker/requirements.txt`
@@ -34,12 +34,12 @@
 _How many internal files import each module. High fan-in = high blast radius =
 prime test candidate (feeds test-driven-development)._
 
-- 26× `frontend/src/app/coreApi.ts`
+- 27× `frontend/src/app/coreApi.ts`
+- 23× `frontend/src/features/deals/index.ts`
 - 21× `frontend/src/shared/index.ts`
-- 19× `frontend/src/features/deals/dealApi.ts`
-- 10× `frontend/src/features/organization/organizationApi.ts`
-- 9× `frontend/src/features/deals/dealQueries.ts`
-- 9× `frontend/src/features/fulfillment/fulfillmentApi.ts`
+- 12× `frontend/src/features/organization/index.ts`
+- 11× `frontend/src/features/fulfillment/fulfillmentApi.ts`
+- 9× `frontend/src/features/deals/dealApi.ts`
 
 ## Largest files (complexity hotspots)
 - 7270 lines · `contracts/openapi/core-api-v1.yaml`
@@ -56,21 +56,20 @@ prime test candidate (feeds test-driven-development)._
 - 1177 lines · `architecture-decisions/ADR-003-Core-Domain-Model-and-Deal-Lifecycle.md`
 
 ## Tests
-- Test files found: 100
+- Test files found: 105
 - Coverage signal for top modules:
   - `frontend/src/app/coreApi.ts` — test signal
+  - `frontend/src/features/deals/index.ts` — NO test signal
   - `frontend/src/shared/index.ts` — NO test signal
-  - `frontend/src/features/deals/dealApi.ts` — NO test signal
-  - `frontend/src/features/organization/organizationApi.ts` — NO test signal
-  - `frontend/src/features/deals/dealQueries.ts` — NO test signal
+  - `frontend/src/features/organization/index.ts` — NO test signal
   - `frontend/src/features/fulfillment/fulfillmentApi.ts` — NO test signal
+  - `frontend/src/features/deals/dealApi.ts` — NO test signal
 
 ## Top-level structure
 ```
 .DS_Store
 .claude/
 AGENTS.md
-HANDOFF.md
 README.md
 architecture-decisions/
   ADR-001-System-Boundaries-and-Data-Ownership.md
@@ -115,6 +114,7 @@ infra/
   README.md
   compose.yaml
 scripts/
+  check-markdown-links.py
   dev-reset.ps1
   dev-reset.sh
   dev-seed.ps1
@@ -122,7 +122,6 @@ scripts/
   dev-up.ps1
   dev-up.sh
   generate-repo-map.py
-  validate-contracts.sh
 services/
   core-api/
 tools/

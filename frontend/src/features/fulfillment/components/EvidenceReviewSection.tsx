@@ -1,4 +1,4 @@
-import { EvidenceVideoAnalysisPanel } from "../../videoAnalysis/EvidenceVideoAnalysisPanel";
+import { EvidenceVideoAnalysisPanel } from "../../videoAnalysis";
 import type { EvidenceSubmission } from "../fulfillmentApi";
 import { EvidenceSummary } from "./EvidenceSummary";
 import { isAnalysisEligibleEvidence } from "./fulfillmentPresentation";

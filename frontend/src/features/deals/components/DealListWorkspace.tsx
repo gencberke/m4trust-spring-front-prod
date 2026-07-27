@@ -10,7 +10,7 @@ import {
 } from "../dealApi";
 import { getDealErrorMessage, getDealFieldErrors } from "../dealErrors";
 import { dealListQueryOptions } from "../dealQueries";
-import { isInvalidLegalEntitySelection } from "../../organization/organizationErrors";
+import { isInvalidLegalEntitySelection } from "../../organization";
 import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
 import type { DealWorkspaceContext } from "../types";
 import styles from "../DealList.module.css";

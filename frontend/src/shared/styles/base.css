@@ -246,6 +246,40 @@ a:hover {
   margin: 0 auto;
 }
 
+.workspace .workspace-column {
+  width: min(100%, 1180px);
+}
+
+.status-badge {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #edf1f5;
+  color: #34425a;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.status-badge[data-status="DRAFT"] {
+  background: #edf1f5;
+}
+
+.status-badge[data-status="ACTIVE"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+}
+
+.status-badge[data-status="COMPLETED"] {
+  background: #e8f4ec;
+  color: #1f5c38;
+}
+
+.status-badge[data-status="CANCELLED"] {
+  background: #fff0f1;
+  color: #8d2632;
+}
+
 .workspace-main h1 {
   max-width: 850px;
   font-size: clamp(2.8rem, 6vw, 5rem);

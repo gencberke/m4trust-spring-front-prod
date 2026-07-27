@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import type { DealDetail } from "../deals/dealApi";
+import type { DealDetail } from "../deals";
 import { CreatePackageForm } from "./components/CreatePackageForm";
 import { CurrentPackage } from "./components/CurrentPackage";
 import { PackageHistory } from "./components/PackageHistory";

@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -80,7 +82,7 @@ class RatificationPackageCreateServiceTest {
   void firstCreateInsertsSnapshotAndPackageRepointsOnceAuditsActorTenantAndRecordsResult() {
     UUID dealId = UUID.randomUUID();
     var target = target(dealId, "DRAFT", true, 7, null, true);
-    var detail = mock(RatificationPackageReadDtos.Detail.class);
+    var detail = mock(RatificationPackageDetail.class);
     claimed();
     ready(target, "new");
     when(deals.lockVisibleForCreate(context, dealId)).thenReturn(Optional.of(target));
@@ -114,7 +116,7 @@ class RatificationPackageCreateServiceTest {
     var target = target(dealId, "ACTIVE", false, 99, currentId, true);
     var current = record(currentId, dealId, target, "old", RatificationPackageStatus.PENDING);
     var replay = record(replayId, dealId, target, "result", RatificationPackageStatus.SUPERSEDED);
-    var detail = mock(RatificationPackageReadDtos.Detail.class);
+    var detail = mock(RatificationPackageDetail.class);
     inTransaction();
     when(deals.lockVisibleForCreate(context, dealId)).thenReturn(Optional.of(target));
     when(packages.findByDealAndIdForUpdate(dealId, currentId)).thenReturn(Optional.of(current));
@@ -154,7 +156,7 @@ class RatificationPackageCreateServiceTest {
     UUID currentId = UUID.randomUUID();
     var target = target(dealId, "DRAFT", true, 7, currentId, true);
     var current = record(currentId, dealId, target, "same", RatificationPackageStatus.PENDING);
-    var detail = mock(RatificationPackageReadDtos.Detail.class);
+    var detail = mock(RatificationPackageDetail.class);
     claimed();
     ready(target, "same");
     when(deals.lockVisibleForCreate(context, dealId)).thenReturn(Optional.of(target));
@@ -186,7 +188,7 @@ class RatificationPackageCreateServiceTest {
     when(packages.findByDealAndIdForUpdate(dealId, currentId)).thenReturn(Optional.of(current));
     when(packages.updateStatus(any(), eq(0L))).thenReturn(true);
     when(reads.project(eq(context), eq(target), any()))
-        .thenReturn(mock(RatificationPackageReadDtos.Detail.class));
+        .thenReturn(mock(RatificationPackageDetail.class));
 
     service.create(context, dealId, request(), UUID.randomUUID(), UUID.randomUUID());
 
@@ -292,7 +294,7 @@ class RatificationPackageCreateServiceTest {
         .thenReturn(assembledResult("same"));
     when(deals.lockVisibleForCreate(context, dealId)).thenReturn(Optional.of(target));
     when(reads.project(eq(context), eq(target), any()))
-        .thenReturn(mock(RatificationPackageReadDtos.Detail.class));
+        .thenReturn(mock(RatificationPackageDetail.class));
     service.create(context, dealId, request(), UUID.randomUUID(), UUID.randomUUID());
     service.create(context, dealId, request(), UUID.randomUUID(), UUID.randomUUID());
     service.create(

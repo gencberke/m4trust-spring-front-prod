@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 
 class ModuleArchitectureTest {
 
+  // sharedkernel is an empty scaffold (ADR-004); deployment is a single-class Boot entry
+  // point with no api/domain/infra split — neither belongs in layered-module rules.
   private static final String[] MODULES = {
     "api",
     "audit",
@@ -29,18 +31,17 @@ class ModuleArchitectureTest {
     "sharedkernel"
   };
 
+  // Eleven modules with real domain code. api, contracts, and integration keep only empty
+  // domain placeholders and are excluded until they own domain types.
   private static final String[] LAYERED_MODULES = {
-    "api",
     "audit",
     "casework",
     "contractintelligence",
-    "contracts",
     "deal",
     "document",
     "fulfillment",
     "idempotency",
     "identity",
-    "integration",
     "organization",
     "payment",
     "ratification"
@@ -100,7 +101,6 @@ class ModuleArchitectureTest {
           .dependOnClassesThat()
           .resideInAnyPackage("com.m4trust.coreapi." + module + ".api..")
           .because("a module's domain layer must remain independent from its transport API")
-          .allowEmptyShould(true)
           .check(productionClasses);
     }
   }
@@ -121,7 +121,6 @@ class ModuleArchitectureTest {
           .resideInAnyPackage("com.m4trust.coreapi." + module + ".infra..")
           .because(
               "a module's domain layer must remain independent from infrastructure implementations")
-          .allowEmptyShould(true)
           .check(productionClasses);
     }
   }

@@ -1,4 +1,4 @@
-import type { LegalEntityMembership } from "../../features/organization/organizationApi";
+import type { LegalEntityMembership } from "../organization";
 
 export interface DealWorkspaceContext {
   selectedLegalEntityId: string | undefined;

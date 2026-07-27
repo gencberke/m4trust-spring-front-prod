@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { LegalEntityMembership } from "../../organization/organizationApi";
+import type { LegalEntityMembership } from "../../organization";
 import type { IncomingDealInvitation } from "../invitationApi";
 import { getInvitationErrorMessage } from "../invitationErrors";
 import styles from "../Invitations.module.css";

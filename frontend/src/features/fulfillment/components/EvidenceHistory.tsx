@@ -1,7 +1,7 @@
 import { formatDate, StatusBadge } from "@/shared";
 import styles from "../Fulfillment.module.css";
 
-import { EvidenceVideoAnalysisPanel } from "../../videoAnalysis/EvidenceVideoAnalysisPanel";
+import { EvidenceVideoAnalysisPanel } from "../../videoAnalysis";
 import type { EvidenceSubmission } from "../fulfillmentApi";
 import { EvidenceSummary } from "./EvidenceSummary";
 import {

@@ -82,7 +82,7 @@ Sabitlenen public contract kararları:
 ## 7. Kabul testi (tarayıcı akışı)
 
 Copy-paste komutları ve beklenen Problem Details kodlarını içeren ayrıntılı
-uygulama rehberi: [Slice 2 manuel kabul testi](../../DEVELOPMENT.md#slice-2-manuel-kabul-testi).
+uygulama rehberi: [Slice 2 manuel kabul testi](../../../DEVELOPMENT.md#slice-2-manuel-kabul-testi).
 
 1. Kullanıcı kayıt olur (tenant otomatik oluşur — kullanıcıya görünmez)
 2. Hiç entity'si yokken boş state görür ve oluşturma akışına yönlenir

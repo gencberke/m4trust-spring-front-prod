@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -85,7 +87,7 @@ class RatificationPackageActionServiceTest {
         .thenReturn(Optional.of(approval(BUYER)));
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored(current)));
     when(reads.project(any(), eq(target), any()))
-        .thenReturn(mock(RatificationPackageReadDtos.Detail.class));
+        .thenReturn(mock(RatificationPackageDetail.class));
 
     service.approve(
         context(BUYER, LegalEntityRole.ADMIN, true),
@@ -109,7 +111,7 @@ class RatificationPackageActionServiceTest {
     var target = target(dealId, "ACTIVE", currentId);
     var current = record(currentId, dealId, RatificationPackageStatus.RATIFIED, 2);
     var historical = stored(record(historicalId, dealId, RatificationPackageStatus.SUPERSEDED, 1));
-    var detail = mock(RatificationPackageReadDtos.Detail.class);
+    var detail = mock(RatificationPackageDetail.class);
     OperationContext member = context(BUYER, LegalEntityRole.MEMBER, true);
     when(deals.lockVisibleForCreate(member, dealId)).thenReturn(Optional.of(target));
     when(packages.findByDealAndIdForUpdate(dealId, currentId)).thenReturn(Optional.of(current));
@@ -224,7 +226,7 @@ class RatificationPackageActionServiceTest {
     var target = target(dealId, "DRAFT", packageId);
     var current = record(packageId, dealId, RatificationPackageStatus.PENDING, 1);
     var stored = stored(current);
-    var detail = mock(RatificationPackageReadDtos.Detail.class);
+    var detail = mock(RatificationPackageDetail.class);
     claimed();
     stubCurrent(context, target, current);
     when(packages.findApprovalByPackageAndEntity(packageId, BUYER))
@@ -265,7 +267,7 @@ class RatificationPackageActionServiceTest {
     when(packages.updateStatus(any(), eq(0L))).thenReturn(true);
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored));
     when(reads.project(context, target, stored))
-        .thenReturn(mock(RatificationPackageReadDtos.Detail.class));
+        .thenReturn(mock(RatificationPackageDetail.class));
 
     service.approve(
         context,
@@ -300,7 +302,7 @@ class RatificationPackageActionServiceTest {
     when(packages.updateStatus(any(), eq(1L))).thenReturn(true);
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored));
     when(reads.project(context, target, stored))
-        .thenReturn(mock(RatificationPackageReadDtos.Detail.class));
+        .thenReturn(mock(RatificationPackageDetail.class));
 
     service.approve(
         context,
@@ -344,7 +346,7 @@ class RatificationPackageActionServiceTest {
     when(packages.updateStatus(any(), eq(0L))).thenReturn(true);
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored));
     when(reads.project(context, target, stored))
-        .thenReturn(mock(RatificationPackageReadDtos.Detail.class));
+        .thenReturn(mock(RatificationPackageDetail.class));
 
     service.reject(
         context,
@@ -421,7 +423,7 @@ class RatificationPackageActionServiceTest {
     when(packages.findByDealAndId(dealId, firstPackage))
         .thenReturn(Optional.of(stored(firstRecord)));
     when(reads.project(any(), any(), any()))
-        .thenReturn(mock(RatificationPackageReadDtos.Detail.class));
+        .thenReturn(mock(RatificationPackageDetail.class));
     OperationContext buyerApprove = context(BUYER, LegalEntityRole.ADMIN, true);
     OperationContext buyerReject = context(BUYER, LegalEntityRole.ADMIN, false);
     OperationContext sellerApprove = context(SELLER, LegalEntityRole.ADMIN, true);

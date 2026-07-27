@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -51,7 +53,7 @@ class RatificationPackageReadServiceTest {
     assertEquals(
         List.of(fixture.buyerId, fixture.sellerId),
         buyerDetail.approvals().stream()
-            .map(RatificationPackageReadDtos.Approval::legalEntityId)
+            .map(RatificationPackageApproval::legalEntityId)
             .toList());
     assertEquals("Buyer", buyerDetail.approvals().get(0).legalName());
     assertEquals("APPROVED", buyerDetail.approvals().get(0).status());
@@ -220,7 +222,7 @@ class RatificationPackageReadServiceTest {
             fixture.dealId);
     assertEquals(
         List.of(fixture.packageRecord.id(), later.id()),
-        history.items().stream().map(RatificationPackageReadDtos.Detail::id).toList());
+        history.items().stream().map(RatificationPackageDetail::id).toList());
     assertEquals(fixture.packageRecord.contentHash(), history.items().get(0).contentHash());
     assertEquals(fixture.packageRecord.contentHash(), history.items().get(1).contentHash());
     assertEquals(

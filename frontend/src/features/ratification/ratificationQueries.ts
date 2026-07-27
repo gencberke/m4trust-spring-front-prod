@@ -5,9 +5,9 @@ import {
 } from "@tanstack/react-query";
 import type { MutableRefObject } from "react";
 
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
-import { getRuleSetVersion } from "../review/reviewApi";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
+import { getRuleSetVersion } from "../review";
 import {
   approveRatificationPackage,
   createRatificationPackage,

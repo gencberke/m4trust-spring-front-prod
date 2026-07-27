@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import com.m4trust.coreapi.api.infra.CorrelationIdFilter;
 import com.m4trust.coreapi.organization.api.ResolvedOperationContext;
 import com.m4trust.coreapi.organization.domain.OperationContext;
@@ -38,7 +40,7 @@ class RatificationController {
   }
 
   @PostMapping
-  ResponseEntity<RatificationPackageReadDtos.Detail> create(
+  ResponseEntity<RatificationPackageDetail> create(
       @ResolvedOperationContext(RequestedOperation.DEAL_RATIFICATION_PACKAGE_CREATE)
           OperationContext context,
       @PathVariable String dealId,
@@ -46,7 +48,7 @@ class RatificationController {
       @Valid @RequestBody CreateRatificationPackageHttpRequest request,
       @RequestAttribute(CorrelationIdFilter.ATTRIBUTE) String correlationId) {
     UUID parsedDealId = id(dealId);
-    RatificationPackageReadDtos.Detail created =
+    RatificationPackageDetail created =
         createService.create(
             context,
             parsedDealId,
@@ -59,7 +61,7 @@ class RatificationController {
   }
 
   @GetMapping
-  RatificationPackageReadDtos.History history(
+  RatificationPackageHistory history(
       @ResolvedOperationContext(RequestedOperation.DEAL_RATIFICATION_PACKAGE_HISTORY_READ)
           OperationContext context,
       @PathVariable String dealId) {
@@ -67,7 +69,7 @@ class RatificationController {
   }
 
   @GetMapping("/{ratificationPackageId}")
-  RatificationPackageReadDtos.Detail detail(
+  RatificationPackageDetail detail(
       @ResolvedOperationContext(RequestedOperation.DEAL_RATIFICATION_PACKAGE_READ)
           OperationContext context,
       @PathVariable String dealId,
@@ -76,7 +78,7 @@ class RatificationController {
   }
 
   @PostMapping("/{ratificationPackageId}/approve")
-  RatificationPackageReadDtos.Detail approve(
+  RatificationPackageDetail approve(
       @ResolvedOperationContext(RequestedOperation.DEAL_RATIFICATION_PACKAGE_APPROVE)
           OperationContext context,
       @PathVariable String dealId,
@@ -94,7 +96,7 @@ class RatificationController {
   }
 
   @PostMapping("/{ratificationPackageId}/reject")
-  RatificationPackageReadDtos.Detail reject(
+  RatificationPackageDetail reject(
       @ResolvedOperationContext(RequestedOperation.DEAL_RATIFICATION_PACKAGE_REJECT)
           OperationContext context,
       @PathVariable String dealId,

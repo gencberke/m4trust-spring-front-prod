@@ -5,3 +5,197 @@
   margin-top: 16px;
   color: var(--color-copy);
 }
+
+/* Shared analysis-result presentation (mirrors analysis feature; kept local for isolation). */
+.analysisCategoryBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  background: #edf1f5;
+  color: #34425a;
+}
+.analysisProgress,
+.analysisReviewNotice {
+  display: flex;
+  align-items: start;
+  gap: 16px;
+  margin-top: 26px;
+  padding: 20px;
+  border: 1px solid #bad1ee;
+  border-radius: 7px;
+  background: #f4f8fe;
+}
+.analysisProgressMark {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2d659f;
+  box-shadow: 0 0 0 6px rgb(45 101 159 / 12%);
+  animation: analysis-pulse 1.5s ease-in-out infinite;
+}
+.analysisProgress strong,
+.analysisReviewNotice strong {
+  color: var(--color-ink);
+}
+.analysisProgress p,
+.analysisReviewNotice p,
+.analysisFailure p {
+  margin: 6px 0 0;
+  color: var(--color-copy);
+  line-height: 1.5;
+}
+.analysisFailure {
+  margin-top: 26px;
+  padding: 22px;
+  border: 1px solid rgb(173 63 74 / 32%);
+  border-radius: 7px;
+  background: #fff7f7;
+}
+.analysisFailureCode {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  padding: 6px 9px;
+  background: #ffe9eb;
+  color: #8d2632;
+  overflow-wrap: anywhere;
+}
+.analysisFailure h3,
+.analysisFailure h5 {
+  margin: 14px 0 0;
+  color: var(--color-ink);
+}
+.analysisFailure .analysisAdvisory {
+  font-size: 0.82rem;
+}
+.analysisResult {
+  margin-top: 28px;
+}
+.analysisReviewNotice {
+  margin-top: 0;
+  border-color: #ead087;
+  background: #fffbeb;
+}
+.analysisReviewNotice > span {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  background: #f7e7b7;
+  color: #745000;
+}
+.analysisResultSection {
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-rule);
+}
+.analysisSectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.analysisSectionHeading h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 1.15rem;
+}
+.analysisSectionHeading > span {
+  color: var(--color-copy);
+  font-size: 0.8rem;
+}
+.analysisCardList,
+.analysisRuleList {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.analysisCardList li,
+.analysisRuleList li {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--color-rule);
+  border-radius: 7px;
+  background: #fff;
+}
+.analysisCardHeading,
+.analysisRuleTopline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.analysisCardHeading > span,
+.analysisRuleTopline > span:last-child {
+  color: var(--color-copy);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.analysisCardList p {
+  margin: 9px 0 0;
+  color: var(--color-copy);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.analysisRuleList h4 {
+  margin: 15px 0 0;
+  color: var(--color-ink);
+  font-size: 1rem;
+}
+.analysisRuleList h4 + p {
+  margin: 8px 0 0;
+  color: var(--color-copy);
+  line-height: 1.5;
+}
+.analysisSourceCopy {
+  margin: 13px 0 0;
+  color: var(--color-copy);
+  font-size: 0.78rem;
+}
+@keyframes analysis-pulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+@media (max-width: 720px) {
+  .analysisRuleList,
+  .analysisCardList {
+    grid-template-columns: 1fr;
+  }
+  .analysisReviewNotice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .analysisCardHeading,
+  .analysisRuleTopline {
+    align-items: start;
+    flex-direction: column;
+    gap: 5px;
+  }
+}

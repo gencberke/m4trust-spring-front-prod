@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { decimalFromMinor, formatDate, StatusBadge } from "@/shared";
 import styles from "./Funding.module.css";
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
 import {
   createFundingPlan,
   initiatePaymentOperation,

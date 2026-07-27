@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { CURRENT_USER_QUERY_KEY } from "../../auth/useCurrentUser";
+import { CURRENT_USER_QUERY_KEY } from "../../auth";
 import {
   createLegalEntity,
   type CreateLegalEntityRequest,

@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { components } from "../../generated/core-api";
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
-import { createEvidenceDownloadLink } from "../fulfillment/fulfillmentApi";
-import { fulfillmentDetailQueryOptions } from "../fulfillment/fulfillmentQueries";
-import { labelAdvisoryOutcome } from "../videoAnalysis/videoAnalysisLabels";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
+import {
+  createEvidenceDownloadLink,
+  fulfillmentDetailQueryOptions,
+} from "../fulfillment";
+import { labelAdvisoryOutcome } from "../videoAnalysis";
 import {
   acknowledgeDispute,
   createDisputeComment,

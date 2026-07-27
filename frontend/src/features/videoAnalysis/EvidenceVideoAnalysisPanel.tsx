@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
-import analysisStyles from "../analysis/Analysis.module.css";
 import styles from "./VideoAnalysis.module.css";
 
 import {
@@ -170,15 +169,8 @@ function VideoAnalysisBody({ analysis }: { analysis: VideoAnalysisDetail }) {
 
   if (analysis.status === "QUEUED") {
     return (
-      <div
-        className={analysisStyles.analysisProgress}
-        role="status"
-        aria-live="polite"
-      >
-        <span
-          className={analysisStyles.analysisProgressMark}
-          aria-hidden="true"
-        />
+      <div className={styles.analysisProgress} role="status" aria-live="polite">
+        <span className={styles.analysisProgressMark} aria-hidden="true" />
         <div>
           <strong>Video analizi sırada bekliyor</strong>
           <p>
@@ -207,11 +199,11 @@ function VideoAnalysisFailureView({
   failure: VideoAnalysisFailureSummary;
 }) {
   return (
-    <div className={analysisStyles.analysisFailure} role="alert">
-      <span className={analysisStyles.analysisFailureCode}>{failure.code}</span>
+    <div className={styles.analysisFailure} role="alert">
+      <span className={styles.analysisFailureCode}>{failure.code}</span>
       <h5>Video analizi tamamlanamadı</h5>
       <p>{labelFailureCode(failure.code)}</p>
-      <p className={analysisStyles.analysisAdvisory}>
+      <p className={styles.analysisAdvisory}>
         Bu sonuç yalnızca danışmanlık amaçlıdır; teslimat kanıtı kabul veya red
         kararı vermez.
       </p>
@@ -231,8 +223,8 @@ function VideoAnalysisFailureView({
 
 function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
   return (
-    <div className={analysisStyles.analysisResult}>
-      <div className={analysisStyles.analysisReviewNotice} role="status">
+    <div className={styles.analysisResult}>
+      <div className={styles.analysisReviewNotice} role="status">
         <span>Danışmanlık sonucu</span>
         <div>
           <strong>
@@ -246,10 +238,10 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
       </div>
 
       <section
-        className={analysisStyles.analysisResultSection}
+        className={styles.analysisResultSection}
         aria-labelledby="video-summary-title"
       >
-        <div className={analysisStyles.analysisSectionHeading}>
+        <div className={styles.analysisSectionHeading}>
           <h3 id="video-summary-title">Özet</h3>
         </div>
         <p>
@@ -261,7 +253,7 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
           Süre: {formatDurationMs(result.durationMs)}
         </p>
         {result.summary.reviewReasons.length ? (
-          <ul className={analysisStyles.analysisCardList}>
+          <ul className={styles.analysisCardList}>
             {result.summary.reviewReasons.map((reason) => (
               <li key={reason}>{labelReviewReason(reason)}</li>
             ))}
@@ -272,18 +264,18 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
       </section>
 
       <section
-        className={analysisStyles.analysisResultSection}
+        className={styles.analysisResultSection}
         aria-labelledby="video-observations-title"
       >
-        <div className={analysisStyles.analysisSectionHeading}>
+        <div className={styles.analysisSectionHeading}>
           <h3 id="video-observations-title">Gözlemler</h3>
           <span>{result.observations.length} kayıt</span>
         </div>
         {result.observations.length ? (
-          <ul className={analysisStyles.analysisCardList}>
+          <ul className={styles.analysisCardList}>
             {result.observations.map((observation) => (
               <li key={observation.observationReference}>
-                <div className={analysisStyles.analysisCardHeading}>
+                <div className={styles.analysisCardHeading}>
                   <strong>{observation.label}</strong>
                   <span>{labelObservationType(observation.type)}</span>
                 </div>
@@ -291,7 +283,7 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
                   Değer: {String(observation.observedValue)} · Güven{" "}
                   {PERCENT_FORMATTER.format(observation.confidence)}
                 </p>
-                <p className={analysisStyles.analysisSourceCopy}>
+                <p className={styles.analysisSourceCopy}>
                   {formatTimeRange(
                     observation.timeRange.startMs,
                     observation.timeRange.endMs,
@@ -306,19 +298,19 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
       </section>
 
       <section
-        className={analysisStyles.analysisResultSection}
+        className={styles.analysisResultSection}
         aria-labelledby="video-anomalies-title"
       >
-        <div className={analysisStyles.analysisSectionHeading}>
+        <div className={styles.analysisSectionHeading}>
           <h3 id="video-anomalies-title">Anomaliler</h3>
           <span>{result.anomalies.length} kayıt</span>
         </div>
         {result.anomalies.length ? (
-          <ul className={analysisStyles.analysisRuleList}>
+          <ul className={styles.analysisRuleList}>
             {result.anomalies.map((anomaly) => (
               <li key={anomaly.anomalyReference}>
-                <div className={analysisStyles.analysisRuleTopline}>
-                  <span className={analysisStyles.analysisCategoryBadge}>
+                <div className={styles.analysisRuleTopline}>
+                  <span className={styles.analysisCategoryBadge}>
                     {labelAnomalySeverity(anomaly.severity)}
                   </span>
                   <span>
@@ -327,7 +319,7 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
                 </div>
                 <h4>{anomaly.type}</h4>
                 <p>{anomaly.description}</p>
-                <p className={analysisStyles.analysisSourceCopy}>
+                <p className={styles.analysisSourceCopy}>
                   {formatTimeRange(
                     anomaly.timeRange.startMs,
                     anomaly.timeRange.endMs,
@@ -343,17 +335,17 @@ function VideoAnalysisResultView({ result }: { result: VideoAnalysisResult }) {
 
       {result.warnings.length ? (
         <section
-          className={analysisStyles.analysisResultSection}
+          className={styles.analysisResultSection}
           aria-labelledby="video-warnings-title"
         >
-          <div className={analysisStyles.analysisSectionHeading}>
+          <div className={styles.analysisSectionHeading}>
             <h3 id="video-warnings-title">Uyarılar</h3>
             <span>{result.warnings.length} kayıt</span>
           </div>
-          <ul className={analysisStyles.analysisCardList}>
+          <ul className={styles.analysisCardList}>
             {result.warnings.map((warning) => (
               <li key={`${warning.code}-${warning.path ?? "root"}`}>
-                <div className={analysisStyles.analysisCardHeading}>
+                <div className={styles.analysisCardHeading}>
                   <strong>
                     {presentWarningMessage(warning.code, warning.message)}
                   </strong>

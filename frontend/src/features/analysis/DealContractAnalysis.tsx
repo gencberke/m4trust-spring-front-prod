@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import styles from "./Analysis.module.css";
 
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
 import {
   requestDealDocumentAnalysis,
   type DealDocumentAnalysis,

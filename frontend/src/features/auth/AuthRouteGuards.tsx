@@ -5,7 +5,7 @@ import { useCurrentUser } from "./useCurrentUser";
 import {
   clearActiveSelectionUser,
   setActiveSelectionUser,
-} from "../organization/legalEntitySelection";
+} from "../organization";
 
 export function HomeRedirect() {
   const currentUser = useCurrentUser();

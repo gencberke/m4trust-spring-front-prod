@@ -1,4 +1,4 @@
-import { getOrganizationErrorMessage } from "../../organization/organizationErrors";
+import { getOrganizationErrorMessage } from "../../organization";
 import styles from "../DealDetail.module.css";
 
 interface DealMembershipBootstrapStateProps {

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 
 import { logout } from "./authApi";
 import { CURRENT_USER_QUERY_KEY } from "./useCurrentUser";
-import { clearActiveSelectionUser } from "../organization/legalEntitySelection";
+import { clearActiveSelectionUser } from "../organization";
 
 export function useLogout() {
   const navigate = useNavigate();

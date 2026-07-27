@@ -3,8 +3,8 @@ import { useRef, useState, type ChangeEvent } from "react";
 
 import { formatDate } from "@/shared";
 import styles from "./Documents.module.css";
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
 import {
   createDealDocumentUploadIntent,
   createDocumentDownloadLink,

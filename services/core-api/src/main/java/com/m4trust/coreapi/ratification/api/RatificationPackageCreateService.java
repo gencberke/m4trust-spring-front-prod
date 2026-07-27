@@ -1,5 +1,7 @@
 package com.m4trust.coreapi.ratification.api;
 
+import com.m4trust.coreapi.ratification.api.dto.*;
+
 import com.m4trust.coreapi.audit.domain.AuditRecord;
 import com.m4trust.coreapi.audit.domain.port.AuditAppendPort;
 import com.m4trust.coreapi.idempotency.domain.IdempotencyClaim;
@@ -68,7 +70,7 @@ public class RatificationPackageCreateService {
     this.clock = clock;
   }
 
-  RatificationPackageReadDtos.Detail create(
+  RatificationPackageDetail create(
       OperationContext context,
       UUID dealId,
       CreateRatificationPackageRequest request,
@@ -83,7 +85,7 @@ public class RatificationPackageCreateService {
                 createInTransaction(context, dealId, request, idempotencyRequest, correlationId)));
   }
 
-  private RatificationPackageReadDtos.Detail createInTransaction(
+  private RatificationPackageDetail createInTransaction(
       OperationContext context,
       UUID dealId,
       CreateRatificationPackageRequest request,
@@ -161,7 +163,7 @@ public class RatificationPackageCreateService {
     return reads.project(context, target, withSnapshot(createdRecord, snapshot));
   }
 
-  private RatificationPackageReadDtos.Detail replay(
+  private RatificationPackageDetail replay(
       OperationContext context,
       RatificationSourcePorts.Target target,
       IdempotencyResultReference reference) {

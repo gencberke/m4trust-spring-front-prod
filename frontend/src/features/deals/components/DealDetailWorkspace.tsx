@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
-import { DealContractAnalysis } from "../../analysis/DealContractAnalysis";
-import { DealReviewWorkspace } from "../../review/DealReviewWorkspace";
+import { DealContractAnalysis } from "../../analysis";
+import { DealReviewWorkspace } from "../../review";
 import {
   cancelDeal,
   updateDeal,
@@ -14,18 +14,18 @@ import {
 } from "../dealApi";
 import { getDealErrorMessage, isDealNotFound } from "../dealErrors";
 import { dealDetailQueryKey, dealDetailQueryOptions } from "../dealQueries";
-import { DealDocumentManagement } from "../../documents/DealDocumentManagement";
-import { DealFundingPanel } from "../../funding/DealFundingPanel";
-import { DealFulfillmentPanel } from "../../fulfillment/DealFulfillmentPanel";
+import { DealDocumentManagement } from "../../documents";
+import { DealFundingPanel } from "../../funding";
 import {
+  DealFulfillmentPanel,
   FULFILLMENT_LIVE_POLL_STATUSES,
   FULFILLMENT_POLL_INTERVAL_MS,
-} from "../../fulfillment/fulfillmentQueries";
-import { DealCaseworkPanel } from "../../casework/DealCaseworkPanel";
-import { DealInvitationManagement } from "../../invitations/DealInvitationManagement";
-import { DealRatificationPanel } from "../../ratification/DealRatificationPanel";
-import { DealSettlementPanel } from "../../settlement/DealSettlementPanel";
-import { isInvalidLegalEntitySelection } from "../../organization/organizationErrors";
+} from "../../fulfillment";
+import { DealCaseworkPanel } from "../../casework";
+import { DealInvitationManagement } from "../../invitations";
+import { DealRatificationPanel } from "../../ratification";
+import { DealSettlementPanel } from "../../settlement";
+import { isInvalidLegalEntitySelection } from "../../organization";
 import { DealMembershipBootstrapState } from "./DealMembershipBootstrapState";
 import {
   workspaceAreaForLifecycle,

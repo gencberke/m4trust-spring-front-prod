@@ -3,12 +3,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { formatDate, StatusBadge } from "@/shared";
 import styles from "./Settlement.module.css";
-import type { DealDetail } from "../deals/dealApi";
-import { dealDetailQueryKey } from "../deals/dealQueries";
-import { getFundingPlan } from "../funding/fundingApi";
-import { fundingPlanQueryKey } from "../funding/fundingQueries";
-import { getFulfillment } from "../fulfillment/fulfillmentApi";
-import { fulfillmentDetailQueryKey } from "../fulfillment/fulfillmentQueries";
+import type { DealDetail } from "../deals";
+import { dealDetailQueryKey } from "../deals";
+import { getFundingPlan, fundingPlanQueryKey } from "../funding";
+import { getFulfillment, fulfillmentDetailQueryKey } from "../fulfillment";
 import {
   reconcileReleaseOperation,
   requestSettlementRelease,

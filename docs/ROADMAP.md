@@ -22,36 +22,29 @@ kapatılıyor; ürün yönü kararları ondan sonra alınacak.
 | Faz | Kapsam | Durum |
 |---|---|---|
 | 0 | Kırık referanslar, gitignore, script platform paritesi, CI'da beyan edilmemiş python bağımlılığı | ✅ |
-| 1 | Hackathon docs arşivi, bu yol haritası, ADR status alanlarının gerçekten kullanılması | 🔄 |
-| 2 | Frontend zemini: ESLint/Prettier/Vitest, `src/shared/`, path alias, 43 test | ✅ |
-| 3 | Frontend yapı: `pages`/`features` sınırı, dev component'lerin bölünmesi, CSS Modules | ⏳ |
-| 4 | Backend modül içi `api/domain/infra` katmanlaması, spotless + jacoco | ⏳ |
+| 1 | Hackathon docs arşivi, bu yol haritası, ADR status alanlarının gerçekten kullanılması | ✅ |
+| 2 | Frontend zemini: ESLint/Prettier/Vitest, `src/shared/`, path alias, 54 test | ✅ |
+| 3 | Frontend yapı: `pages`/`features` sınırı, büyük panel/component bölünmesi, CSS Modules, barrel import'lar | ✅ |
+| 4 | Backend modül içi `api/domain/infra` katmanlaması, Spotless + JaCoCo (%85 satır) | ✅ |
 | 5 | Test kapsamı ve ADR revizyonu turu | ⏳ (kapsam tanımlanmadı) |
+| Audit düzeltme (A–E) | FIX-PLAN bulguları: CI gate'leri, ESLint/ArchUnit, doküman senkronu, tek commit | 🔄 |
 
 Gerekçe ve ayrıntı: bu turun audit bulguları aşağıdaki "Bilinen boşluklar"
 bölümünde özetlenmiştir.
+
+Faz 4 notu: `sharedkernel` boş iskelet olarak **korunacak**; Money/Ids/Clock
+primitifleri şimdilik `api`, `audit`, `idempotency` ve `organization` modüllerinde.
 
 ## Bilinen boşluklar
 
 Dört paralel audit'ten çıkan, henüz kapatılmamış maddeler:
 
-**Faz 2'den devredilen, Faz 3'te kapatılacak lint borcu**
-- `react-hooks/set-state-in-effect` — dört panel (`DealFundingPanel`,
-  `DealSettlementPanel`, `DealDetailPage`, `DealListPage`) effect içinde
-  senkron `setState` çağırıyor; bu cascading render tetikliyor. Kural şu an
-  `warn` seviyesinde, çünkü düzeltmek panellerin senkronizasyon mantığını
-  yeniden kurgulamayı gerektiriyor — bu da Faz 3'ün component bölme işine ait.
-- `no-restricted-imports` — `pages/` katmanı feature iç dosyalarını doğrudan
-  import ediyor. Faz 3'te her feature `index.ts` barrel'ı kazanınca kural
-  `error` seviyesine çıkarılacak.
-
 **Test ve doğrulama**
 - `audit` modülünün kendi test sınıfı yok; append-only audit trail yalnız başka
   modüllerin atomicity testlerinden dolaylı geçiyor.
-- `tools/mock-ai-worker` ve `tools/moka-emulator` altındaki 7 test dosyası CI'da
-  hiç koşmuyor.
-- Frontend'de test yok (Faz 2'de temel atılıyor).
-- Hiçbir dilde lint/format gate'i yok; bağımlılık güvenlik taraması yok
+- `tools/mock-ai-worker` ve `tools/moka-emulator` altındaki 6 test dosyası CI'da
+  hiç koşmuyor (`smoke_rabbitmq.py` pytest varsayılan toplama desenine uymuyor).
+- Hiçbir dilde bağımlılık güvenlik taraması yok
   (Dependabot, `npm audit`, `pip-audit` — hiçbiri kurulu değil).
 
 **Ürünleşme kararları (açık)**
@@ -72,7 +65,6 @@ Dört paralel audit'ten çıkan, henüz kapatılmamış maddeler:
 
 | Konu | Seçenekler | Ne zaman |
 |---|---|---|
-| `sharedkernel` paketi | Money/Ids/Clock ile doldur **veya** kaldır (bugün boş, işi `api`/`audit`/`idempotency`/`organization` yapıyor) | Faz 4 başında |
 | Ürün yönü | Repo toparlama bittikten sonra ayrı bir oturumda | Faz 4 sonrası |
 
 ## Güncelleme kuralı

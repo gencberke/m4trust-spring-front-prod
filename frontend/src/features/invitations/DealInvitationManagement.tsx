@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 
-import type { DealDetail } from "../deals/dealApi";
+import type { DealDetail } from "../deals";
 import {
   createDealInvitation,
   revokeDealInvitation,
