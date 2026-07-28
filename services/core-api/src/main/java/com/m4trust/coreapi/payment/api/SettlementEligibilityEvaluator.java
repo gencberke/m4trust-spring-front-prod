@@ -8,10 +8,7 @@ import java.time.Clock;
 import java.time.Instant;
 import org.springframework.stereotype.Component;
 
-/**
- * Re-evaluates settlement readiness under ADR-014 §2.4 eligibility without creating automatic
- * release intents.
- */
+/** Re-evaluates settlement readiness without creating automatic release intents. */
 @Component
 class SettlementEligibilityEvaluator {
 

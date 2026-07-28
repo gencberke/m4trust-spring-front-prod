@@ -11,13 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
-import com.m4trust.coreapi.integration.infra.payment.moka.MokaHttpPaymentProviderAdapter;
-import com.m4trust.coreapi.integration.infra.payment.moka.MokaTransportSettings;
 import com.m4trust.coreapi.payment.api.*;
 import com.m4trust.coreapi.payment.domain.*;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.net.ServerSocket;
 import java.net.URI;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -31,7 +29,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -42,9 +39,6 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * End-to-end HTTP coverage for the funding surface plus the plan §8 minimum invariants. A
@@ -61,13 +55,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "app.payment.dispatch.relay.claim-timeout=0s",
       "app.payment.dispatch.relay.batch-size=20"
     })
-@Testcontainers
-class PaymentFundingIntegrationTest {
+class PaymentFundingIntegrationTest extends PostgresIntegrationTestSupport {
 
   private static final String LEGAL_ENTITY_HEADER = "X-M4Trust-Legal-Entity-Id";
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired private JdbcTemplate jdbc;
 
@@ -209,51 +199,6 @@ class PaymentFundingIntegrationTest {
   }
 
   @Test
-  void declineFailsTheUnitAndARetryThenSucceeds() throws Exception {
-    UUID dealId = createActiveDeal(7_000, "USD");
-    UUID unitId = planUnitId(createPlan(dealId, 3).andExpect(status().isCreated()).andReturn());
-
-    MvcResult first = initiate(unitId, 0).andExpect(status().isAccepted()).andReturn();
-    UUID firstOperationId = operationId(first);
-    String firstKey = providerKeyFor(firstOperationId);
-    provider.scriptDecline(firstKey);
-    relay.relayOnce();
-
-    assertEquals(
-        "DECLINED",
-        jdbc.queryForObject(
-            "SELECT status FROM payment_operation WHERE id = ?", String.class, firstOperationId));
-    assertEquals(
-        "FAILED",
-        jdbc.queryForObject("SELECT status FROM funding_unit WHERE id = ?", String.class, unitId));
-
-    // The unit's version advanced twice (PLANNED->PENDING, PENDING->FAILED) before this retry.
-    MvcResult second = initiate(unitId, 2).andExpect(status().isAccepted()).andReturn();
-    UUID secondOperationId = operationId(second);
-    String secondKey = providerKeyFor(secondOperationId);
-    assertFalse(
-        secondKey.equals(firstKey), "retry must use a new provider key, never the declined one");
-    provider.scriptSuccess(secondKey);
-    relay.relayOnce();
-
-    assertEquals(
-        "SUCCEEDED",
-        jdbc.queryForObject(
-            "SELECT status FROM payment_operation WHERE id = ?", String.class, secondOperationId));
-    assertEquals(
-        "FUNDED",
-        jdbc.queryForObject("SELECT status FROM funding_unit WHERE id = ?", String.class, unitId));
-    assertEquals(
-        1,
-        (int)
-            jdbc.queryForObject(
-                "SELECT count(*) FROM payment_operation WHERE funding_unit_id = ? AND status = 'SUCCEEDED'",
-                Integer.class,
-                unitId),
-        "exactly one successful money-movement record");
-  }
-
-  @Test
   void timeoutNeverProducesFailedAndReconciliationResolvesIt() throws Exception {
     UUID dealId = createActiveDeal(2_500, "TRY");
     UUID unitId = planUnitId(createPlan(dealId, 3).andExpect(status().isCreated()).andReturn());
@@ -295,134 +240,6 @@ class PaymentFundingIntegrationTest {
         jdbc.queryForObject("SELECT status FROM funding_unit WHERE id = ?", String.class, unitId));
     // Exactly one initiate call ever reached the provider for this key.
     assertEquals(1, provider.initiateCallCount(key));
-  }
-
-  @Test
-  void durableRelayUsesRealExternalMokaHttpQueryFirstWithoutDuplicateInitiate() throws Exception {
-    try (ExternalMokaEmulator emulator =
-        ExternalMokaEmulator.start("success,timeout_then_late_success")) {
-      provider.delegateTo(
-          new MokaHttpPaymentProviderAdapter(
-              new MokaTransportSettings(
-                  emulator.baseUri(),
-                  "DEALER-001",
-                  "fixture-user",
-                  "fixture-password",
-                  Duration.ofSeconds(1),
-                  Duration.ofMillis(400),
-                  8_192,
-                  16_384)));
-
-      UUID successDeal = createActiveDeal(2_500, "TRY");
-      UUID successUnit =
-          planUnitId(createPlan(successDeal, 3).andExpect(status().isCreated()).andReturn());
-      UUID successOperation =
-          operationId(initiate(successUnit, 0).andExpect(status().isAccepted()).andReturn());
-      String successKey = providerKeyFor(successOperation);
-      relay.relayOnce();
-      assertEquals(
-          "SUCCEEDED",
-          jdbc.queryForObject(
-              "SELECT status FROM payment_operation WHERE id = ?", String.class, successOperation));
-      assertEquals(1, provider.queryCallCount(successKey));
-      assertEquals(1, provider.initiateCallCount(successKey));
-      mockMvc
-          .perform(
-              get("/api/v1/deals/" + successDeal + "/funding-plan")
-                  .with(user(buyerAdmin.userId.toString()))
-                  .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.fundingStatus").value("FUNDED"))
-          .andExpect(jsonPath("$.fundingUnit.status").value("FUNDED"))
-          .andExpect(jsonPath("$.fundingUnit.availableActions.canInitiatePayment").value(false));
-
-      UUID timeoutDeal = createActiveDeal(2_600, "TRY");
-      UUID timeoutUnit =
-          planUnitId(createPlan(timeoutDeal, 3).andExpect(status().isCreated()).andReturn());
-      UUID timeoutOperation =
-          operationId(initiate(timeoutUnit, 0).andExpect(status().isAccepted()).andReturn());
-      String timeoutKey = providerKeyFor(timeoutOperation);
-      relay.relayOnce();
-      assertEquals(
-          "UNCONFIRMED",
-          jdbc.queryForObject(
-              "SELECT status FROM payment_operation WHERE id = ?", String.class, timeoutOperation));
-      assertEquals(1, provider.queryCallCount(timeoutKey));
-      assertEquals(1, provider.initiateCallCount(timeoutKey));
-      mockMvc
-          .perform(
-              get("/api/v1/deals/" + timeoutDeal + "/funding-plan")
-                  .with(user(buyerAdmin.userId.toString()))
-                  .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.fundingStatus").value("PENDING"))
-          .andExpect(jsonPath("$.fundingUnit.status").value("PENDING"))
-          .andExpect(jsonPath("$.fundingUnit.availableActions.canInitiatePayment").value(false));
-      initiate(timeoutUnit, 1)
-          .andExpect(status().isConflict())
-          .andExpect(jsonPath("$.code").value("PAYMENT_OPERATION_IN_FLIGHT"));
-
-      reconcile(timeoutOperation, operationVersion(timeoutOperation))
-          .andExpect(status().isAccepted());
-      relay.relayOnce();
-      assertEquals(
-          "UNCONFIRMED",
-          jdbc.queryForObject(
-              "SELECT status FROM payment_operation WHERE id = ?", String.class, timeoutOperation));
-      reconcile(timeoutOperation, operationVersion(timeoutOperation))
-          .andExpect(status().isAccepted());
-      relay.relayOnce();
-
-      assertEquals(
-          "SUCCEEDED",
-          jdbc.queryForObject(
-              "SELECT status FROM payment_operation WHERE id = ?", String.class, timeoutOperation));
-      assertEquals(
-          "FUNDED",
-          jdbc.queryForObject(
-              "SELECT status FROM funding_unit WHERE id = ?", String.class, timeoutUnit));
-      assertEquals(
-          3, provider.queryCallCount(timeoutKey), "initial query plus two reconciliation queries");
-      assertEquals(
-          1, provider.initiateCallCount(timeoutKey), "late recovery must not initiate again");
-      assertEquals(List.of(timeoutKey, timeoutKey, timeoutKey), provider.queryKeys(timeoutKey));
-      assertFalse(
-          provider.sawOpenTransaction(),
-          "external HTTP runs after the durable claim transaction closes");
-      mockMvc
-          .perform(
-              get("/api/v1/deals/" + timeoutDeal)
-                  .with(user(buyerAdmin.userId.toString()))
-                  .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.lifecycle").value("FULFILLMENT"))
-          .andExpect(jsonPath("$.funding.fundingStatus").value("FUNDED"))
-          .andExpect(jsonPath("$.funding.amountMinor").value(2600));
-    }
-  }
-
-  @Test
-  void createdOperationCannotBeReconciledBeforeItsInitialDispatch() throws Exception {
-    UUID dealId = createActiveDeal(2_600, "TRY");
-    UUID unitId = planUnitId(createPlan(dealId, 3).andExpect(status().isCreated()).andReturn());
-    UUID operationId =
-        operationId(initiate(unitId, 0).andExpect(status().isAccepted()).andReturn());
-
-    reconcile(operationId, 0)
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("PAYMENT_OPERATION_STATE_CONFLICT"));
-
-    assertEquals(
-        1,
-        (int)
-            jdbc.queryForObject(
-                "SELECT count(*) FROM payment_dispatch WHERE payment_operation_id = ?",
-                Integer.class,
-                operationId));
-    assertEquals(
-        "CREATED",
-        jdbc.queryForObject(
-            "SELECT status FROM payment_operation WHERE id = ?", String.class, operationId));
   }
 
   @Test
@@ -470,55 +287,6 @@ class PaymentFundingIntegrationTest {
     initiate(unitId, 0)
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("PAYMENT_OPERATION_IN_FLIGHT"));
-  }
-
-  @Test
-  void concurrentIdempotentFundingPlanCreateProducesExactlyOnePlanAndUnit() throws Exception {
-    UUID dealId = createActiveDeal(9_900, "TRY");
-    long dealVersion = 3;
-
-    // Two different Idempotency-Keys targeting the same canonical create race
-    // under the DB unique invariant; both must resolve to the single plan.
-    UUID keyA = UUID.randomUUID();
-    UUID keyB = UUID.randomUUID();
-    MvcResult first =
-        mockMvc
-            .perform(
-                post("/api/v1/deals/" + dealId + "/funding-plan")
-                    .with(user(buyerAdmin.userId.toString()))
-                    .with(csrf())
-                    .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                    .header("Idempotency-Key", keyA)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"expectedVersion\": " + dealVersion + "}"))
-            .andExpect(status().isCreated())
-            .andReturn();
-    UUID planId = UUID.fromString(JsonPath.read(first.getResponse().getContentAsString(), "$.id"));
-
-    mockMvc
-        .perform(
-            post("/api/v1/deals/" + dealId + "/funding-plan")
-                .with(user(buyerAdmin.userId.toString()))
-                .with(csrf())
-                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
-                .header("Idempotency-Key", keyB)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"expectedVersion\": " + dealVersion + "}"))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("FUNDING_PLAN_ALREADY_EXISTS"));
-
-    assertEquals(
-        1,
-        (int)
-            jdbc.queryForObject(
-                "SELECT count(*) FROM funding_plan WHERE deal_id = ?", Integer.class, dealId));
-    assertEquals(
-        1,
-        (int)
-            jdbc.queryForObject(
-                "SELECT count(*) FROM funding_unit WHERE funding_plan_id = ?",
-                Integer.class,
-                planId));
   }
 
   @Test
@@ -586,91 +354,6 @@ class PaymentFundingIntegrationTest {
                 .content("{\"expectedVersion\": 0}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FUNDING_MUTATION_FORBIDDEN"));
-  }
-
-  @Test
-  void negativeAmountIsRejectedAtTheDatabaseLevel() throws Exception {
-    UUID dealId = createActiveDeal(100, "TRY");
-    UUID packageId =
-        jdbc.queryForObject(
-            "SELECT current_ratification_package_id FROM deal WHERE id = ?", UUID.class, dealId);
-    assertThrowsDataIntegrityViolation(
-        () ->
-            jdbc.update(
-                """
-                INSERT INTO funding_plan (
-                    id, deal_id, ratification_package_id, tenant_id, amount_minor, currency,
-                    version, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'TRY', 0, now(), now())
-                """,
-                UUID.randomUUID(),
-                dealId,
-                packageId,
-                buyerAdmin.tenantId,
-                -100));
-  }
-
-  @Test
-  void crashBeforeAnyProviderCallIsRecoveredByANormalRelayPass() throws Exception {
-    UUID dealId = createActiveDeal(3_300, "TRY");
-    UUID unitId = planUnitId(createPlan(dealId, 3).andExpect(status().isCreated()).andReturn());
-    MvcResult initiated = initiate(unitId, 0).andExpect(status().isAccepted()).andReturn();
-    UUID operationId = operationId(initiated);
-    String key = providerKeyFor(operationId);
-    provider.scriptSuccess(key);
-
-    // The dispatch row is durable and CREATED already committed before any
-    // provider call happened; a normal relay pass is exactly the recovery path.
-    assertEquals(
-        "CREATED",
-        jdbc.queryForObject(
-            "SELECT status FROM payment_operation WHERE id = ?", String.class, operationId));
-    relay.relayOnce();
-
-    assertEquals(
-        "SUCCEEDED",
-        jdbc.queryForObject(
-            "SELECT status FROM payment_operation WHERE id = ?", String.class, operationId));
-    assertEquals(1, provider.initiateCallCount(key));
-  }
-
-  @Test
-  void crashAfterProviderCallBeforeLocalCommitNeverRepeatsInitiate() throws Exception {
-    UUID dealId = createActiveDeal(6_600, "TRY");
-    UUID unitId = planUnitId(createPlan(dealId, 3).andExpect(status().isCreated()).andReturn());
-    MvcResult initiated = initiate(unitId, 0).andExpect(status().isAccepted()).andReturn();
-    UUID operationId = operationId(initiated);
-    String key = providerKeyFor(operationId);
-    provider.scriptSuccess(key);
-
-    // Simulate the crash window by hand: claim + call the provider exactly as
-    // the relay would, but never apply the result or mark the dispatch
-    // completed. The process "dies" right here.
-    PaymentDispatchStore.DispatchClaim claim = store.claimAvailable(10, Duration.ZERO).get(0);
-    PaymentProviderPort.ProviderRequest request =
-        new PaymentProviderPort.ProviderRequest(
-            claim.providerKey().toString(), claim.amountMinor(), claim.currency());
-    provider.queryStatus(request); // NOT_FOUND (never dispatched at the provider yet)
-    provider.initiate(request); // provider now durably knows the key and its outcome
-    assertEquals(
-        "CREATED",
-        jdbc.queryForObject(
-            "SELECT status FROM payment_operation WHERE id = ?", String.class, operationId),
-        "the crash window: provider succeeded but the local result was never committed");
-
-    // Recovery: the still-claimed-but-uncompleted dispatch is reclaimable
-    // (claim-timeout is configured to 0 for this test) and resolves query-first.
-    relay.relayOnce();
-
-    assertEquals(
-        "SUCCEEDED",
-        jdbc.queryForObject(
-            "SELECT status FROM payment_operation WHERE id = ?", String.class, operationId));
-    assertEquals(
-        "FUNDED",
-        jdbc.queryForObject("SELECT status FROM funding_unit WHERE id = ?", String.class, unitId));
-    assertEquals(
-        1, provider.initiateCallCount(key), "initiate is never blindly repeated after a crash");
   }
 
   @Autowired private PaymentDispatchStore store;

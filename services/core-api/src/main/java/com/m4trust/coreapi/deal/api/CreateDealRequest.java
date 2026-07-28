@@ -19,7 +19,7 @@ record CreateDealRequest(
   }
 
   // Blank descriptions collapse to null so "no description" has one wire
-  // and storage representation (ADR-006 §32).
+  // and storage representation.
   static String normalizeDescription(String description) {
     return description == null || description.isBlank() ? null : description;
   }

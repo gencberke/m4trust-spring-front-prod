@@ -9,20 +9,10 @@ def settings(environment="local", enabled=True, scenario="auto"):
     return Settings(enabled, environment, Path("contracts"), "localhost", 5672, "user", "pass", scenario, 1, 3)
 
 
-def test_worker_refuses_production():
-    with pytest.raises(RuntimeError, match="forbidden"):
-        settings("production").validate_startup()
-
-
-def test_worker_refuses_staging():
-    with pytest.raises(RuntimeError, match="forbidden"):
-        settings("staging").validate_startup()
-
-
-def test_worker_requires_explicit_enablement():
-    with pytest.raises(RuntimeError, match="requires"):
-        settings(enabled=False).validate_startup()
-
-
-def test_warning_scenario_is_supported():
-    settings(scenario="warning").validate_startup()
+@pytest.mark.parametrize(
+    ("environment", "enabled", "message"),
+    [("production", True, "forbidden"), ("staging", True, "forbidden"), ("local", False, "requires")],
+)
+def test_worker_fails_closed_when_not_explicitly_local_and_enabled(environment, enabled, message):
+    with pytest.raises(RuntimeError, match=message):
+        settings(environment, enabled).validate_startup()

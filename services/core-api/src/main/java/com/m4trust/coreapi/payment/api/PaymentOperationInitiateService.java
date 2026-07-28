@@ -23,8 +23,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Buyer-ADMIN payment initiation. Writes the CREATED intent, its lifetime-fixed provider key, the
  * durable INITIATE dispatch record, audit, and the HTTP idempotency result in one short
- * transaction; the provider is never called here (ADR-010 §2.4). {@link PaymentDispatchRelay}
- * performs the out-of-transaction provider call later.
+ * transaction; the provider is never called here. {@link PaymentDispatchRelay} performs the
+ * out-of-transaction provider call later.
  */
 @Service
 class PaymentOperationInitiateService {

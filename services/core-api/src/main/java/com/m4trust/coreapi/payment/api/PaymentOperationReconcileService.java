@@ -21,10 +21,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Buyer-ADMIN query-first reconciliation dispatch (ADR-010 §2.4). Never calls the provider within
- * the request: writes a durable RECONCILE dispatch record, audit, and the HTTP idempotency result
- * in one short transaction and returns 202 with the same operation projection. {@link
- * PaymentDispatchRelay} performs the out-of-transaction {@code queryStatus} call later.
+ * Buyer-ADMIN query-first reconciliation dispatch. Never calls the provider within the request:
+ * writes a durable RECONCILE dispatch record, audit, and the HTTP idempotency result in one short
+ * transaction and returns 202 with the same operation projection. {@link PaymentDispatchRelay}
+ * performs the out-of-transaction {@code queryStatus} call later.
  */
 @Service
 class PaymentOperationReconcileService {

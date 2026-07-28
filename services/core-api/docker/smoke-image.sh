@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Smoke-check a built Core API image for non-root runtime, packaged schemas,
-# and ADR-016 complete packaged contract-bundle digest vs source + image label.
+# and complete packaged contract-bundle digest vs source + image label.
 # Usage: ./services/core-api/docker/smoke-image.sh m4trust-core-api:<tag>
 # Requires host tools: docker, jar (JDK), python3; repo root as cwd for source digest.
 set -euo pipefail

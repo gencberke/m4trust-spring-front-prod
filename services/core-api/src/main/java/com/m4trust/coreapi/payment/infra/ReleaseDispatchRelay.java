@@ -14,8 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Query-first release dispatch relay mirroring {@link PaymentDispatchRelay} (ADR-014 §2.7). Gated
- * by the same {@code app.payment.dispatch.relay} configuration family.
+ * Query-first release dispatch relay mirroring {@link PaymentDispatchRelay}. Gated by the same
+ * {@code app.payment.dispatch.relay} configuration family.
  */
 @Component
 @ConditionalOnProperty(

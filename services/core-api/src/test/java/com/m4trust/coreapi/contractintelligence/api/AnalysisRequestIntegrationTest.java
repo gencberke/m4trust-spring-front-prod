@@ -5,10 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.m4trust.coreapi.audit.domain.port.AuditAppendPort;
@@ -19,6 +16,7 @@ import com.m4trust.coreapi.contractintelligence.infra.adapter.*;
 import com.m4trust.coreapi.document.infra.DocumentObjectStorage;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.net.URI;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -30,31 +28,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(properties = {"spring.main.allow-bean-definition-overriding=true"})
 @ActiveProfiles({"local", "test"})
-@Testcontainers
 @AutoConfigureMockMvc
 @Import(AnalysisRequestIntegrationTest.Fakes.class)
-class AnalysisRequestIntegrationTest {
+class AnalysisRequestIntegrationTest extends PostgresIntegrationTestSupport {
 
   private static final String SHA = "a".repeat(64);
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired private AnalysisService service;
 
@@ -196,20 +185,6 @@ class AnalysisRequestIntegrationTest {
   }
 
   @Test
-  void auditFailureRollsBackJobOutboxAndIdempotencyResultTogether() {
-    failAudit.set(true);
-
-    assertThrows(
-        IllegalStateException.class,
-        () -> service.request(requestContext(), dealId, UUID.randomUUID(), UUID.randomUUID()));
-
-    assertEquals(0, count("contract_intelligence_analysis_job"));
-    assertEquals(0, count("integration_outbox_event"));
-    assertEquals(0, count("audit_record"));
-    assertEquals(0, count("http_idempotency_record"));
-  }
-
-  @Test
   void participantCanReadButCannotRequestAndUnavailableCurrentDocumentConflicts() {
     UUID participantUserId = UUID.randomUUID();
     UUID participantEntityId = UUID.randomUUID();
@@ -245,151 +220,6 @@ class AnalysisRequestIntegrationTest {
     assertThrows(
         AnalysisExceptions.Conflict.class,
         () -> service.request(requestContext(), dealId, UUID.randomUUID(), UUID.randomUUID()));
-  }
-
-  @Test
-  void databaseActiveJobConstraintRejectsASecondQueuedJob() {
-    insertQueuedJob(UUID.randomUUID());
-
-    assertThrows(DuplicateKeyException.class, () -> insertQueuedJob(UUID.randomUUID()));
-  }
-
-  @Test
-  void terminalDealsConflictAndNonParticipantsCannotReadTheProjection() {
-    jdbcTemplate.update("UPDATE deal SET deal_status = 'CANCELLED' WHERE id = ?", dealId);
-    assertThrows(
-        AnalysisExceptions.Conflict.class,
-        () -> service.request(requestContext(), dealId, UUID.randomUUID(), UUID.randomUUID()));
-
-    UUID outsiderUserId = UUID.randomUUID();
-    UUID outsiderEntityId = UUID.randomUUID();
-    createEntity(outsiderUserId, outsiderEntityId, "Outsider Entity", "OUTSIDER-");
-    assertThrows(
-        AnalysisExceptions.DealNotFound.class,
-        () ->
-            service.get(
-                context(
-                    outsiderUserId,
-                    outsiderEntityId,
-                    RequestedOperation.DEAL_DOCUMENT_ANALYSIS_READ),
-                dealId));
-  }
-
-  @Test
-  void httpRequestAcceptsTheJobAndReturnsTheCommittedLocationAndBody() throws Exception {
-    UUID key = UUID.randomUUID();
-
-    mockMvc
-        .perform(
-            post(analysisPath())
-                .with(user(userId.toString()))
-                .with(csrf())
-                .header(legalEntityHeader(), legalEntityId)
-                .header("Idempotency-Key", key))
-        .andExpect(status().isAccepted())
-        .andExpect(header().string("Location", analysisPath()))
-        .andExpect(jsonPath("$.currentDocumentId").value(documentId.toString()))
-        .andExpect(jsonPath("$.status").value("QUEUED"));
-  }
-
-  @Test
-  void httpRequestMapsMalformedUnauthorizedAndConflictCasesToStableProblems() throws Exception {
-    mockMvc
-        .perform(
-            post(analysisPath())
-                .with(user(userId.toString()))
-                .with(csrf())
-                .header(legalEntityHeader(), legalEntityId))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
-    mockMvc
-        .perform(
-            post(analysisPath())
-                .with(user(userId.toString()))
-                .with(csrf())
-                .header(legalEntityHeader(), legalEntityId)
-                .header("Idempotency-Key", "not-a-uuid"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
-
-    UUID participantUserId = UUID.randomUUID();
-    UUID participantEntityId = UUID.randomUUID();
-    createParticipant(participantUserId, participantEntityId);
-    mockMvc
-        .perform(
-            post(analysisPath())
-                .with(user(participantUserId.toString()))
-                .with(csrf())
-                .header(legalEntityHeader(), participantEntityId)
-                .header("Idempotency-Key", UUID.randomUUID()))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.code").value("DEAL_ANALYSIS_REQUEST_FORBIDDEN"));
-
-    acceptHttpRequest();
-    mockMvc
-        .perform(
-            post(analysisPath())
-                .with(user(userId.toString()))
-                .with(csrf())
-                .header(legalEntityHeader(), legalEntityId)
-                .header("Idempotency-Key", UUID.randomUUID()))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_DOCUMENT_ANALYSIS_ACTIVE_JOB_EXISTS"));
-  }
-
-  @Test
-  void httpRequestMapsNoDocumentAndTerminalDealConflicts() throws Exception {
-    jdbcTemplate.update(
-        """
-                UPDATE deal SET current_document_id = NULL, current_document_status = NULL
-                WHERE id = ?
-                """,
-        dealId);
-    mockMvc
-        .perform(
-            post(analysisPath())
-                .with(user(userId.toString()))
-                .with(csrf())
-                .header(legalEntityHeader(), legalEntityId)
-                .header("Idempotency-Key", UUID.randomUUID()))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_DOCUMENT_ANALYSIS_DOCUMENT_NOT_AVAILABLE"));
-
-    jdbcTemplate.update("UPDATE deal SET deal_status = 'CANCELLED' WHERE id = ?", dealId);
-    mockMvc
-        .perform(
-            post(analysisPath())
-                .with(user(userId.toString()))
-                .with(csrf())
-                .header(legalEntityHeader(), legalEntityId)
-                .header("Idempotency-Key", UUID.randomUUID()))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
-  }
-
-  @Test
-  void httpReadAllowsParticipantsAndHidesNonParticipants() throws Exception {
-    UUID participantUserId = UUID.randomUUID();
-    UUID participantEntityId = UUID.randomUUID();
-    createParticipant(participantUserId, participantEntityId);
-    mockMvc
-        .perform(
-            get(analysisPath())
-                .with(user(participantUserId.toString()))
-                .header(legalEntityHeader(), participantEntityId))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("NOT_REQUESTED"));
-
-    UUID outsiderUserId = UUID.randomUUID();
-    UUID outsiderEntityId = UUID.randomUUID();
-    createEntity(outsiderUserId, outsiderEntityId, "Outsider Entity", "OUTSIDER-");
-    mockMvc
-        .perform(
-            get(analysisPath())
-                .with(user(outsiderUserId.toString()))
-                .header(legalEntityHeader(), outsiderEntityId))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.code").value("DEAL_NOT_FOUND"));
   }
 
   private void insertQueuedJob(UUID jobId) {

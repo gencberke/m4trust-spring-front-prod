@@ -11,10 +11,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Provider-independent sandbox: simulates a held-funds provider entirely in-process, never moves
- * real money, and never claims M4Trust holds funds (ADR-010 §2.2, §2.6). Active under the {@code
- * local-sandbox} profile or the separately named {@code staging-simulated} profile (2026-07-22
- * simulation-only decision §2; ADR-014 §2.1) — never under {@code production} (see {@link
- * SandboxPaymentProviderBootstrapGuard}).
+ * real money, and never claims M4Trust holds funds. Active under the {@code local-sandbox} profile
+ * or the separately named {@code staging-simulated} profile (2026-07-22 simulation-only decision
+ * §2) — never under {@code production} (see {@link SandboxPaymentProviderBootstrapGuard}).
  *
  * <p>Exactly one configured scenario is consumed per new provider key (assigned the first time
  * {@link #initiate} sees that key), then resolved deterministically: {@code SUCCESS}/{@code

@@ -10,13 +10,14 @@ arşivlenmiştir.
 ```text
 CURRENT.md → yalnız kabul edilmiş güncel proje durumu
 ready/     → üzerinde çalışılan veya sıradaki plan dokümanları
+done/      → bağımsız kabulü tamamlanan plan kayıtları
 ```
 
 - `CURRENT.md` backlog değildir; yalnız kabul edilmiş proje durumu maddi olarak
   değiştiğinde güncellenir.
 - Sıradaki iş ve öncelikler [`docs/ROADMAP.md`](../ROADMAP.md) içindedir.
-- Bir plan bütün Done koşulları kanıtlandığında `CURRENT.md` güncellenir; plan
-  dosyası isterse arşive taşınır.
+- Bir plan bütün Done koşulları kanıtlandığında planner `CURRENT.md` dosyasını
+  günceller ve planı `done/` altına taşır.
 
 ## Plan dokümanı ne içerir
 
@@ -40,9 +41,8 @@ sınır için bağlayıcıysa exact yazılabilir.
 ## Contract ve ADR kuralları
 
 - Mikro kararlar için önce
-  [`architecture-decisions/ADR-INDEX.md`](../../architecture-decisions/ADR-INDEX.md),
-  yasaklar için
-  [`architecture-decisions/FORBIDDEN.md`](../../architecture-decisions/FORBIDDEN.md).
+  [`architecture-decisions/ADR-INDEX.md`](../../architecture-decisions/ADR-INDEX.md)
+  ve ilgili topic ADR non-negotiable maddeleri okunur.
 - Plan ile ADR çelişirse **ADR kazanır**; çelişki implementasyona gömülmez.
 - Public API yüzeyi implementasyondan önce
   `contracts/openapi/core-api-v1.yaml` içinde tasarlanır.

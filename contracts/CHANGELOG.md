@@ -2,12 +2,23 @@
 
 ## Unreleased
 
-- Expanded Slice 13 video analysis textual eligibility (ADR-012 amendment
+- Replaced deleted numbered architecture-decision citations in Core OpenAPI
+  descriptions and contract documentation with self-contained wording. No
+  path, method, parameter, security requirement, status, media type, schema
+  reference, field, enum or event contract changed. Exact-byte bundle digest
+  changed from
+  `sha256:93ec8fdfa2e26e0a9c0e3da4403be62eb930fb1351997597663c7459dffeec8a`
+  to
+  `sha256:03d14e860e6c60b726532ad4975b6ab7cc4d27e96ceca392e5b3f45d3d4ffd4a`.
+  The optional external AI baseline remains an owner-supplied verification
+  gate; this repository does not claim cross-repository acceptance.
+
+- Expanded Slice 13 video analysis textual eligibility (2026-07-23 amendment
   2026-07-23): GET/POST descriptions and conflict text now document finalized
   VIDEO MP4 or PHOTO JPEG/PNG evidence as eligible subjects; schema shape and
   response fields are unchanged.
 
-- Added Plan 18C-P1 pending evidence cancel-upload contract (ADR-011 §2.3
+- Added Plan 18C-P1 pending evidence cancel-upload contract (pending-cancellation
   pending-cancellation amendment): seller ADMIN/MEMBER
   `POST /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/cancel-upload`
   with `CancelEvidenceUploadRequest` (`expectedEvidenceVersion`), required
@@ -20,7 +31,7 @@
   No DELETE endpoint and no new finalized evidence status enum. Validator closed
   sets updated.
 
-- Added Plan 18B-P1 additive ratified evidence-policy contract (ADR-011 §2.5
+- Added Plan 18B-P1 additive ratified evidence-policy contract (founder
   founder amendment 2026-07-23): closed `EvidencePolicy` (`REQUIRED` |
   `NOT_REQUIRED`); discriminated `RatificationPackageSnapshotV3` requiring
   `disputeWindowDays` + `evidencePolicy`; `CreateRatificationPackageRequest`
@@ -38,7 +49,7 @@
   failures). Validator closed sets enforce strict Java/OpenAPI exact-set parity.
   No AI contract changes.
 
-- Added Plan 17 Phase B1 additive settlement/release contract surface (ADR-014 §2.3/§2.5):
+- Added Plan 17 Phase B1 additive settlement/release contract surface:
   `GET /deals/{dealId}/settlement`, `POST /deals/{dealId}/settlement/release`,
   `GET /release-operations/{operationId}`, and
   `POST /release-operations/{operationId}/reconcile` with `SettlementDetail`,
@@ -52,19 +63,19 @@
   `RELEASE_RECONCILIATION_UNAVAILABLE`, `RELEASE_OUTCOME_UNKNOWN`, and
   `SETTLEMENT_ALREADY_TERMINAL` (reusing existing stale-version and idempotency codes).
   Ratification create accepts optional `disputeWindowDays` `0..365` producing
-  discriminated `RatificationPackageSnapshotV2`; v1 remains readable. ADR-014 §2.2
-  amended to `0..365` with dated founder note. Validator adds Plan 17 closed sets and
+  discriminated `RatificationPackageSnapshotV2`; v1 remains readable. The `0..365` range
+  was amended with a dated founder note. Validator adds Plan 17 closed sets and
   temporary openapi-ahead Java enum tolerance until B2.
 
 - Added additive, optional, nullable `mode` field (new `PaymentSimulationMode`
   schema, single member `DEMO_SIMULATED`) to `FundingPlanDetail` and
   `PaymentOperation` responses per the 2026-07-22 simulation-only payment
-  decision §2 and ADR-014 §2.1 visible-mode labeling requirement. The field is
+  decision §2 visible-mode labeling requirement. The field is
   present only when the in-process demo simulator is the active payment
   provider; null/absent remains the only non-simulated representation. Slice 11
   required field sets are unchanged.
 
-- Removed unreleased ADR-017/018-only public ApiErrorCode catalog values that had
+- Removed unreleased public ApiErrorCode catalog values that had
   no runtime endpoint or reusable response ownership yet:
   `AUTH_INVITATION_NOT_FOUND_OR_INVALID`, `AUTH_INVITATION_STATE_CONFLICT`,
   `AUTH_PASSWORD_RESET_NOT_FOUND_OR_INVALID`, `AUTH_REGISTRATION_CLOSED`,
@@ -78,12 +89,12 @@
   SHA-256 hashes; absent baseline emits exact
   `UNVERIFIED_EXTERNAL_GATE: AI contract baseline not supplied`.
 
-- Added deterministic main contract-bundle digest foundation (ADR-016 §2.5): inclusion
+- Added deterministic main contract-bundle digest foundation: inclusion
   globs over `asyncapi`/`openapi`/`schemas`/`examples`, per-file SHA-256 of exact
   committed bytes, POSIX ordinal UTF-8/LF manifest, and `sha256:<hex>` digest via
   `contracts/scripts/validate_contracts.py` (including `--print-digest` and optional
   read-only `M4TRUST_AI_CONTRACTS_ROOT` compare). Added private
-  `openapi/core-internal-v1.yaml` for `GET /internal/v1/contracts` with the ADR-016
+  `openapi/core-internal-v1.yaml` for `GET /internal/v1/contracts` with the
   CoreContractBundle projection and HTTP bearer probe-token security scheme.
   Ownership arrays reject duplicate `global`/`byResponse` entries.
 
@@ -91,14 +102,14 @@
   now `$ref`s `ApiErrorCode` and `FieldError.code` `$ref`s `FieldErrorCode`. Catalog
   ownership is machine-readable via `components.x-m4trust-api-error-ownership`
   (exact-set of `global` plus every reusable-response `byResponse` entry) and includes
-  grandfathered `ACCESS_DENIED`, ADR-006 globals, Slice 15 readiness codes, and
+  grandfathered `ACCESS_DENIED`, global errors, Slice 15 readiness codes, and
   documented endpoint codes. Undocumented combined fulfillment codes
   `DEAL_OR_LEGAL_ENTITY_NOT_FOUND_OR_HIDDEN` and
   `FULFILLMENT_OR_EVIDENCE_NOT_FOUND_OR_HIDDEN` are removed; fulfillment/evidence
   authorization boundaries emit granular `LEGAL_ENTITY_NOT_FOUND`,
   `DEAL_NOT_FOUND`, `FULFILLMENT_NOT_FOUND`, and `EVIDENCE_NOT_FOUND`.
 
-- Added the Slice 14A additive dispute and casework foundation contract (ADR-013 §2.1-§2.8):
+- Added the Slice 14A additive dispute and casework foundation contract:
   buyer/seller entity ADMIN-only, idempotent `POST /deals/{dealId}/disputes` with closed
   `DisputeReasonCode`, trimmed plaintext `subject` (1–200) and `statement` (1–4000),
   `expectedDealVersion`, and `expectedFulfillmentVersion`, returning `201 Created` with
@@ -121,7 +132,7 @@
   `canOpenDispute` on `DealAvailableActions` are additive actor-aware members. AI
   schemas, fixtures, AsyncAPI, and the AI-internal OpenAPI remain unchanged.
 
-- Added the Slice 13 additive per-evidence video analysis contract (ADR-012 §2.1-§2.7):
+- Added the Slice 13 additive per-evidence video analysis contract:
   participant-readable `GET /deals/{dealId}/fulfillment/evidence/{evidenceSubmissionId}/video-analysis`
   and buyer entity ADMIN-only, idempotent `POST` on the same path with closed
   `RequestVideoAnalysisRequest.expectedEvidenceVersion`, returning `202 Accepted`
@@ -138,7 +149,7 @@
   identifiers/URLs, event payloads, and provider/model details. AI schemas,
   fixtures, AsyncAPI, and the AI-internal OpenAPI remain unchanged.
 
-- Added the Slice 12 additive fulfillment and evidence contract (ADR-011 §2.1-§2.6):
+- Added the Slice 12 additive fulfillment and evidence contract:
   seller ADMIN/MEMBER `POST /deals/{dealId}/fulfillment` to atomically create the
   Deal's single fulfillment record and primary milestone bound to the current
   RATIFIED package, with required `Idempotency-Key` and `expectedVersion`;
@@ -173,8 +184,8 @@
   exact public-contract validator. AI schemas, fixtures, AsyncAPI, and the
   AI-internal OpenAPI remain unchanged.
 
-- Added the Slice 11 additive provider-independent sandbox funding contract
-  (ADR-010 §2.2-§2.5): buyer-ADMIN, idempotent `POST /deals/{dealId}/funding-plan`
+- Added the Slice 11 additive provider-independent sandbox funding contract:
+  buyer-ADMIN, idempotent `POST /deals/{dealId}/funding-plan`
   whose request carries only the Deal `expectedVersion` (amount/currency are always
   server-copied from the RATIFIED package, never client-supplied), returning
   synchronous `201 Created` with `FundingPlanDetail` and a `Location` at the same
@@ -241,7 +252,7 @@
 
 - Added the optional advisory `legalBasis` object (`source` closed enum of Turkish
   legislation identifiers + `articleNo`) to document-extraction `result.rules[]`
-  items. Backward-compatible additive change within schema 1.0.0 (ADR-002 §15.3);
+  items. Backward-compatible additive change within schema 1.0.0;
   the field may be omitted entirely when legal retrieval is unavailable, carries
   no article text, and must never drive Spring business decisions.
 
@@ -276,7 +287,7 @@
   boundaries, request and response schemas, stable error components, idempotency header,
   participant semantics, and recipient-email disclosure boundary.
 - Aligned the video-analysis `result` object with the documented extensible transport-boundary policy (`additionalProperties: true`; symmetric with document-extraction) and added the corresponding future-optional result-metadata validator check.
-- Corrected the service name in the ADR-002 §21.3 capabilities example to the canonical `m4trust-ai-service` (documentation only; no wire change).
+- Corrected the service name in the capabilities example to the canonical `m4trust-ai-service` (documentation only; no wire change).
 - Added the Slice 3 legal-entity-scoped Deal create, paginated list, detail, editable-basic-field update, and cancel public API design.
 - Frozen the complete `DealStatus` and `DealLifecycleProjection` enum sets, separate summary/detail projections, required-nullable detail descriptions, optimistic `version`, and UTC timestamps.
 - Added explicit `expectedVersion` update conflicts (`DEAL_STALE_VERSION`), invalid-state conflicts (`DEAL_STATE_CONFLICT`), backend-derived `canUpdate`/`canCancel` availability, and the centralized context-resolution split between hidden legal entities (`LEGAL_ENTITY_NOT_FOUND`) and hidden/non-participant Deals (`DEAL_NOT_FOUND`).
@@ -296,8 +307,8 @@
 ## 1.0.2 - 2026-07-15
 
 - Documented optional `service` and `serviceVersion` fields on the capabilities response (additive, already tolerated by `additionalProperties`).
-- Aligned canonical fixture `producer.service` values with the ADR-007 service names (`m4trust-core-api`).
-- Documented in the README that the envelope `transactionId` identifies the owning Deal aggregate (ADR-003) and that a `dealId` rename is a v2 candidate.
+- Aligned canonical fixture `producer.service` values with the service name `m4trust-core-api`.
+- Documented in the README that the envelope `transactionId` identifies the owning Deal aggregate and that a `dealId` rename is a v2 candidate.
 - No schema shape, event name, or routing key changes; wire compatibility is unchanged.
 
 ## 1.0.1 - 2026-07-13

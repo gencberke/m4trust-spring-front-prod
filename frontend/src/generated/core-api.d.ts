@@ -1294,7 +1294,7 @@ export interface components {
             totalPages: number;
         };
         /**
-         * @description Closed authoritative Deal container status set. COMPLETED is reachable after query-verified simulated settlement and absence of active disputes (ADR-014 §2.8); it is not automatic on fulfillment completion.
+         * @description Closed authoritative Deal container status set. COMPLETED is reachable after query-verified simulated settlement and absence of active disputes; it is not automatic on fulfillment completion.
          * @enum {string}
          */
         DealStatus: "DRAFT" | "ACTIVE" | "CANCELLED" | "COMPLETED" | "ARCHIVED";
@@ -1916,7 +1916,7 @@ export interface components {
             expectedPackageVersion: number;
         };
         /**
-         * @description Closed Deal-level funding business projection (ADR-003 §12 axis). V1 exposes only the single-FundingUnit progression NOT_CONFIGURED -> PLANNED -> PENDING -> FUNDED. PARTIALLY_FUNDED remains part of the closed axis for forward multi-unit compatibility but is unreachable in V1 because exactly one FundingUnit exists per Deal.
+         * @description Closed Deal-level funding business projection. V1 exposes only the single-FundingUnit progression NOT_CONFIGURED -> PLANNED -> PENDING -> FUNDED. PARTIALLY_FUNDED remains part of the closed axis for forward multi-unit compatibility but is unreachable in V1 because exactly one FundingUnit exists per Deal.
          * @enum {string}
          */
         FundingStatus: "NOT_CONFIGURED" | "PLANNED" | "PENDING" | "PARTIALLY_FUNDED" | "FUNDED";
@@ -1931,7 +1931,7 @@ export interface components {
          */
         PaymentOperationStatus: "CREATED" | "SUCCEEDED" | "DECLINED" | "UNCONFIRMED";
         /**
-         * @description Visible simulated-mode label (2026-07-22 simulation-only decision §2; ADR-014 §2.1). DEMO_SIMULATED is the only member until a separate, future ADR introduces a real-provider production mode. It never claims real money movement, custody, or provider-verified finality (ADR-014 §2.9).
+         * @description Visible simulated-mode label. DEMO_SIMULATED is the only member until a separate future contract decision introduces a real-provider production mode. It never claims real money movement, custody, or provider-verified finality.
          * @enum {string}
          */
         PaymentSimulationMode: "DEMO_SIMULATED";
@@ -1961,7 +1961,7 @@ export interface components {
             availableActions: components["schemas"]["PaymentOperationAvailableActions"];
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
-            /** @description DEMO_SIMULATED when the active payment provider is the in-process demo simulator, or null when no simulator is active. Never fabricated; null/absent is the only non-simulated representation (2026-07-22 simulation-only decision §2; ADR-014 §2.1/§2.9). */
+            /** @description DEMO_SIMULATED when the active payment provider is the in-process demo simulator, or null when no simulator is active. Never fabricated; null/absent is the only non-simulated representation. */
             mode?: components["schemas"]["PaymentSimulationMode"] | null;
         };
         FundingUnit: {
@@ -1998,7 +1998,7 @@ export interface components {
             fundingUnit: components["schemas"]["FundingUnit"];
             createdAt: components["schemas"]["UtcTimestamp"];
             updatedAt: components["schemas"]["UtcTimestamp"];
-            /** @description DEMO_SIMULATED when the active payment provider is the in-process demo simulator, or null when no simulator is active. Never fabricated; null/absent is the only non-simulated representation (2026-07-22 simulation-only decision §2; ADR-014 §2.1/§2.9). */
+            /** @description DEMO_SIMULATED when the active payment provider is the in-process demo simulator, or null when no simulator is active. Never fabricated; null/absent is the only non-simulated representation. */
             mode?: components["schemas"]["PaymentSimulationMode"] | null;
         };
         /** @description Optional backend-owned Deal funding summary; independent of the full plan/unit/operation projection. */
@@ -2024,12 +2024,12 @@ export interface components {
             expectedVersion: number;
         };
         /**
-         * @description Closed Settlement state set (ADR-014 §2.3). Allowed transitions are NOT_READY -> READY -> PROCESSING; PROCESSING -> ON_HOLD | SIMULATED_SETTLED | FAILED; ON_HOLD -> PROCESSING | SIMULATED_SETTLED | FAILED. SIMULATED_SETTLED is terminal and query-verified only. FAILED is query-verified decline or permanent pre-dispatch failure; ambiguous outcomes remain non-terminal.
+         * @description Closed Settlement state set. Allowed transitions are NOT_READY -> READY -> PROCESSING; PROCESSING -> ON_HOLD | SIMULATED_SETTLED | FAILED; ON_HOLD -> PROCESSING | SIMULATED_SETTLED | FAILED. SIMULATED_SETTLED is terminal and query-verified only. FAILED is query-verified decline or permanent pre-dispatch failure; ambiguous outcomes remain non-terminal.
          * @enum {string}
          */
         SettlementStatus: "NOT_READY" | "READY" | "PROCESSING" | "ON_HOLD" | "SIMULATED_SETTLED" | "FAILED";
         /**
-         * @description Closed ReleaseOperation public state set (ADR-014 §2.3). QUEUED means durable intent committed; PROCESSING means initiate/query in flight for the lifetime key; RECONCILIATION_REQUIRED means outcome unknown; SIMULATED_SETTLED and SIMULATED_DECLINED are query-verified terminals; FAILED_BEFORE_DISPATCH is a proven pre-external permanent failure. No replacement operation after terminal.
+         * @description Closed ReleaseOperation public state set. QUEUED means durable intent committed; PROCESSING means initiate/query in flight for the lifetime key; RECONCILIATION_REQUIRED means outcome unknown; SIMULATED_SETTLED and SIMULATED_DECLINED are query-verified terminals; FAILED_BEFORE_DISPATCH is a proven pre-external permanent failure. No replacement operation after terminal.
          * @enum {string}
          */
         ReleaseOperationStatus: "QUEUED" | "PROCESSING" | "RECONCILIATION_REQUIRED" | "SIMULATED_SETTLED" | "SIMULATED_DECLINED" | "FAILED_BEFORE_DISPATCH";
@@ -2673,7 +2673,7 @@ export interface components {
          */
         DisputeReasonCode: "NON_DELIVERY" | "EVIDENCE_QUALITY" | "EVIDENCE_REJECTION" | "CONTRACT_NON_CONFORMANCE" | "OTHER";
         /**
-         * @description Closed dispute status set from ADR-003. RESOLVED remains part of the public enum but is unreachable in Slice 14A.
+         * @description Closed dispute status set. RESOLVED remains part of the public enum but is unreachable in Slice 14A.
          * @enum {string}
          */
         DisputeStatus: "OPEN" | "UNDER_REVIEW" | "RESOLVED" | "WITHDRAWN";

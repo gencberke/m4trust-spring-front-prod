@@ -14,21 +14,18 @@ import com.jayway.jsonpath.JsonPath;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.adapter.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * End-to-end HTTP coverage for the ratification surface (create/history/detail/ approve/reject),
@@ -42,13 +39,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles({"local", "test"})
-@Testcontainers
-class RatificationIntegrationTest {
+class RatificationIntegrationTest extends PostgresIntegrationTestSupport {
 
   private static final String LEGAL_ENTITY_HEADER = "X-M4Trust-Legal-Entity-Id";
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired private JdbcTemplate jdbc;
 

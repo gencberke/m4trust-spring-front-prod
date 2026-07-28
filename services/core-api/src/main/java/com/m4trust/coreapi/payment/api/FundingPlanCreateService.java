@@ -22,8 +22,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Explicit, buyer-ADMIN, idempotent FundingPlan creation from the Deal's current RATIFIED package
- * (ADR-010 §2.2). The Deal row is locked so a concurrent create races safely; the DB unique
- * invariant on {@code funding_plan.deal_id} is still the final word.
+ * The Deal row is locked so a concurrent create races safely; the DB unique invariant on {@code
+ * funding_plan.deal_id} is still the final word.
  */
 @Service
 class FundingPlanCreateService {

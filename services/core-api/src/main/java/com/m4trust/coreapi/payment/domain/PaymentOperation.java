@@ -6,7 +6,7 @@ import java.util.UUID;
 
 /**
  * One PaymentOperation attempt on a FundingUnit. {@code providerKey} is fixed for the lifetime of
- * the operation (ADR-010 §2.4): every dispatch/retry uses the same key, never a new one.
+ * the operation: every dispatch/retry uses the same key, never a new one.
  */
 public final class PaymentOperation {
   static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;

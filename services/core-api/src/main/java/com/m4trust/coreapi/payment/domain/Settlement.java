@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Internal settlement aggregate owned by the payment module (ADR-014 §2.3). */
+/** Internal settlement aggregate owned by the payment module. */
 public final class Settlement {
 
   private final UUID id;

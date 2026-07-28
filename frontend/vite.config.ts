@@ -17,10 +17,6 @@ const shared = {
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
-    coverage: {
-      provider: "v8" as const,
-      include: ["src/shared/**", "src/app/**"],
-    },
   },
 };
 

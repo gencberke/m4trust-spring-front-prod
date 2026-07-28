@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** V1 always sequence 1: exactly one FundingUnit exists per FundingPlan (ADR-010 §2.2). */
+/** V1 always sequence 1: exactly one FundingUnit exists per FundingPlan. */
 public final class FundingUnit {
   static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;
 

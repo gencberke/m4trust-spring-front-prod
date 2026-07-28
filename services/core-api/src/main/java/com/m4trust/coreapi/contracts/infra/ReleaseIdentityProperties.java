@@ -5,8 +5,8 @@ import java.util.regex.Pattern;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * ADR-016/020 release revision: exact 40-hex git SHA only. Missing or malformed values fail closed;
- * never substitute forty zeros.
+ * Release revision: exact 40-hex git SHA only. Missing or malformed values fail closed; never
+ * substitute forty zeros.
  */
 @ConfigurationProperties("m4trust.release")
 public record ReleaseIdentityProperties(String gitCommitSha) {
@@ -29,8 +29,7 @@ public record ReleaseIdentityProperties(String gitCommitSha) {
     }
     String normalized = value.trim().toLowerCase(Locale.ROOT);
     if ("0000000000000000000000000000000000000000".equals(normalized)) {
-      throw new IllegalArgumentException(
-          "m4trust.release.git-commit-sha must not be forty zeros (ADR-020)");
+      throw new IllegalArgumentException("m4trust.release.git-commit-sha must not be forty zeros");
     }
     if (!FORTY_HEX.matcher(normalized).matches()) {
       throw new IllegalArgumentException(

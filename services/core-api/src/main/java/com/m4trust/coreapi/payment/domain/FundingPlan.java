@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Deal-scoped, immutable-after-create amount/currency snapshot (ADR-010 §2.2). */
+/** Deal-scoped, immutable-after-create amount/currency snapshot. */
 public final class FundingPlan {
   static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;
 

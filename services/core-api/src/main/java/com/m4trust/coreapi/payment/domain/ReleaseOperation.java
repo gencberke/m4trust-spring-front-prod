@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Lifetime-fixed release operation aggregate (ADR-014 §2.3). */
+/** Lifetime-fixed release operation aggregate. */
 public final class ReleaseOperation {
 
   private final UUID id;

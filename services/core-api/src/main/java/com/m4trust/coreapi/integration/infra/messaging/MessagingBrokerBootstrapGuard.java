@@ -4,7 +4,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 /**
- * ADR-022 demo runtime: RabbitMQ credentials are required only when messaging topology or outbox
+ * In the demo runtime, RabbitMQ credentials are required only when messaging topology or outbox
  * relay is enabled. Both-disabled keeps startup broker-free. When messaging is enabled, {@code
  * spring.rabbitmq.port} must be an integer in the TCP range 1..65535.
  */

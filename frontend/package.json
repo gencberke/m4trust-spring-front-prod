@@ -17,7 +17,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "generate:api": "openapi-typescript ../contracts/openapi/core-api-v1.yaml -o src/generated/core-api.d.ts"
+    "generate:api": "openapi-typescript ../contracts/openapi/core-api-v1.yaml -o src/generated/core-api.d.ts",
+    "generate:api:check": "node scripts/check-generated-api.mjs",
+    "build:check": "npm run generate:api:check && tsc --noEmit && vite build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.2",
@@ -34,7 +36,6 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
-    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",

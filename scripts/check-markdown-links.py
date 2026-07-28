@@ -18,7 +18,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKIP_FILES = {"FIX-PLAN.md", "HANDOFF.md", "TEMP-REPO-CLEANUP-REPORT.md"}
-SKIP_DIRS = {".git", "node_modules", ".venv"}
+SKIP_DIRS = {
+    ".git",
+    "node_modules",
+    ".venv",
+    "target",
+    "dist",
+    "build",
+    "__pycache__",
+    ".pytest_cache",
+}
 
 MARKDOWN_LINK = re.compile(r"(?<!!)\[([^\]]*)\]\(([^)]+)\)")
 BACKTICK = re.compile(r"`([^`]+)`")
@@ -36,11 +45,6 @@ REPO_PATH_PREFIXES = (
 
 KNOWN_NON_DEFECTS: frozenset[tuple[str, int, str]] = frozenset(
     {
-        (
-            "architecture-decisions/ADR-004-Vertical-Slice-Delivery-and-Acceptance-Testing.md",
-            360,
-            "services/mock-ai-worker/",
-        ),
         (
             "docs/history/hackathon-2026-07/done/00-platform-foundation.md",
             73,

@@ -10,10 +10,10 @@ import tools.jackson.databind.JsonNode;
 /**
  * Ratification-owned projection port consumed by the Deal detail's embedded ratification
  * projection. The Deal module reaches ratification data only through this narrow port; ratification
- * never reads the Deal repository (ADR-003 §23) and this port's implementation never crosses back
- * into deal. The returned shape mirrors the public {@code RatificationPackageDetail} contract
- * schema field-for-field; the wrapper (status, approvals, actor-aware availableActions) is never
- * part of the immutable snapshot hash.
+ * never reads the Deal repository and this port's implementation never crosses back into deal. The
+ * returned shape mirrors the public {@code RatificationPackageDetail} contract schema
+ * field-for-field; the wrapper (status, approvals, actor-aware availableActions) is never part of
+ * the immutable snapshot hash.
  */
 public interface RatificationPackageProjectionPort {
 

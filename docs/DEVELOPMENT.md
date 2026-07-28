@@ -15,7 +15,7 @@ tools/moka-emulator/       Yerel/CI dış-process Moka HTTP transport emulatorü
 contracts/                 OpenAPI, AsyncAPI, JSON Schema ve örnekler
 infra/                     Yerel PostgreSQL, RabbitMQ ve MinIO Compose tanımı
 scripts/                   Yerel reset ve seed giriş noktaları
-architecture-decisions/    Kabul edilmiş mimari kararlar ve yasaklar
+architecture-decisions/    Mimari otorite index'i ve topic ADR'ler
 docs/plan/                 Kabul edilmiş proje durumu ve aktif planlar
 docs/history/              Hackathon dönemi plan ve karar arşivi
 ```
@@ -123,9 +123,9 @@ npm run dev
 ```
 
 Mock worker yalnız `--profile mock-ai` ile açılır. Profil kapalıyken gönderilen
-analiz talebi `QUEUED` kalır ve worker yeniden açıldığında işlenir. Deterministik
-başarı, retryable failure ve duplicate senaryoları ile yerel presigned-download
-köprüsünün ayrıntıları [Mock AI Worker rehberindedir](../tools/mock-ai-worker/README.md).
+analiz talebi `QUEUED` kalır ve worker yeniden açıldığında işlenir. Yerel
+contract-valid başarı akışı ile presigned-download köprüsünün ayrıntıları
+[Mock AI Worker rehberindedir](../tools/mock-ai-worker/README.md).
 
 Slice 8 doğrulama komutları:
 
@@ -136,8 +136,8 @@ cd services/core-api
 ./mvnw verify
 
 cd ../../frontend
-npm run typecheck
-npm run build
+npm run generate:api:check
+npm run build:check
 
 cd ..
 PYTHONPATH=tools/mock-ai-worker/src python -m pytest tools/mock-ai-worker/tests
@@ -150,8 +150,8 @@ Set-Location .\services\core-api
 .\mvnw.cmd verify
 
 Set-Location ..\..\frontend
-npm run typecheck
-npm run build
+npm run generate:api:check
+npm run build:check
 
 Set-Location ..
 $env:PYTHONPATH = "tools/mock-ai-worker/src"
@@ -189,7 +189,7 @@ Web edge'in root'u bilerek repository köküdür. `frontend/Dockerfile`, fronten
 type generation sırasında commit edilmiş
 `contracts/openapi/core-api-v1.yaml` dosyasını okur. Core service de monorepo
 root context'inden `services/core-api/Dockerfile` ile build edilir ve
-`contracts/**` watch kapsamına dahildir (ADR-022). Config File yolu Root
+`contracts/**` watch kapsamına dahildir (contract-first policy). Config File yolu Root
 Directory'den bağımsız olarak Railway service ayarında açıkça seçilmelidir.
 
 Yalnız `m4trust-web-edge` için public domain üretilir. `m4trust-core-api` ve

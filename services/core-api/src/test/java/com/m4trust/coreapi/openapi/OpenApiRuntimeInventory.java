@@ -14,8 +14,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * ADR-021 raw runtime inventory: exact public path/method keys plus reliably emitted named path
- * servlet parameters (name/in/required).
+ * Raw runtime inventory: exact public path/method keys plus reliably emitted named path servlet
+ * parameters (name/in/required).
  *
  * <p>Query/header/cookie design parameters are not compared here: springdoc reflects custom {@code
  * OperationContext} resolvers as spurious query parameters, and design headers (LegalEntityContext,

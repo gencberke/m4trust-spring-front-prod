@@ -16,7 +16,7 @@ Main merge commit'i: `0282c0e103a2fd3c0cacd32b11cb639c098b803c`
 Bu doküman fresh-context planner için kısa durum aktarımıdır. Başlangıçta
 `docs/agent/planner-agent.md`, `docs/plan/CURRENT.md`, `docs/plan/README.md`,
 `architecture-decisions/ADR-INDEX.md` ve
-`architecture-decisions/FORBIDDEN.md` okunmalıdır.
+historical FORBIDDEN policy (removed; see Git history) okunmalıdır.
 
 ## Kabul edilmiş durum
 

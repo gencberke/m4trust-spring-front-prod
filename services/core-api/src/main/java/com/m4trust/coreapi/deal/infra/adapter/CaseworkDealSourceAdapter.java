@@ -11,8 +11,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Deal-owned casework source boundary; casework never reads DealRepository (ADR-003 §23). Mirrors
- * {@code FulfillmentDealSourceAdapter}.
+ * Deal-owned casework source boundary; casework never reads DealRepository. Mirrors {@code
+ * FulfillmentDealSourceAdapter}.
  */
 @Service
 class CaseworkDealSourceAdapter implements CaseworkSourcePorts.DealTarget {

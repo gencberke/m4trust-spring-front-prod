@@ -42,11 +42,10 @@ where applicable:
 `ModuleArchitectureTest` enforces:
 
 - acyclic top-level module slices;
-- repository ownership (ADR-003 §23);
 - every `..domain..` package must not depend on any first-party `..api..` or
-  `..infra..` package (same module or foreign);
-- custom `@RequestBody` first-party types must live in an `api` package;
-- the existing fulfillment / payment / casework direction rules.
+  `..infra..` package;
+- module-owned repository access;
+- a deliberate domain-to-API negative fixture proving the boundary is active.
 
 It does **not** enforce a framework-free domain (Spring, Jackson, and non-wire
 Jakarta annotations may still appear in domain code). That conversion remains
@@ -164,7 +163,8 @@ business modules are added only by the slice that needs them. `ModuleArchitectur
 slices production code by top-level package, rejects cyclic dependencies, and
 enforces `api` / `domain` / `infra` layering. ArchUnit is test-only.
 
-For validation commands (focused tests, Spotless, JaCoCo, full `verify`), see
+For validation commands (focused tests, Spotless, optional JaCoCo reporting and
+full verification), see
 [`docs/VALIDATION.md`](../../docs/VALIDATION.md).
 
 ## Structured logging

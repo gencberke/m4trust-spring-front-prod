@@ -16,8 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Claims durable dispatch rows outside the caller's business transaction (mirrors {@code
  * JdbcOutboxRelayStore}). The claim/mark-completed pair runs in its own short transaction so the
- * provider call the relay makes in between never runs inside an open database transaction (ADR-010
- * §2.4).
+ * provider call the relay makes in between never runs inside an open database transaction.
  */
 @Repository
 public class PaymentDispatchStore {

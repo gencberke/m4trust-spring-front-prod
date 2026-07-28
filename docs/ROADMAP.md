@@ -29,10 +29,11 @@ kararları ayrı oturumda alınacak.
 | 4 | Backend modül içi `api/domain/infra` katmanlaması, Spotless + JaCoCo (%85 satır regresyon tabanı) | ✅ |
 | Audit düzeltme (A–E) | CI gate'leri, ESLint/ArchUnit, doküman senkronu | ✅ |
 | Closeout | Spotless, test lifecycle, domain sınırı, coverage ADR, repo-hygiene CI | ✅ ACCEPT |
-| 5 | Test kapsamı ve ADR revizyonu turu | ⏳ (kapsam tanımlanmadı) |
+| 5 | Compact ADR authority and critical validation spine | 🟡 implementation/review pending |
 
-Faz 0–4, audit remediation ve closeout kabul edildi. Repo toparlama bu
-noktada kapanır; kalan boşluklar Phase 5 ve ürünleşme kararlarına bırakılır.
+Faz 0–4, audit remediation ve closeout kabul edildi. Phase 5 implementasyonu
+başladı; bağımsız review kabulü gelmeden mevcut durum veya accepted authority
+değişmiş sayılmaz.
 
 Gerekçe ve ayrıntı: aşağıdaki "Bilinen boşluklar" bölümü ertelenmiş Phase 5
 işlerini ve üretimleşme boşluklarını tutar.
@@ -57,29 +58,28 @@ Dört paralel audit'ten çıkan, henüz kapatılmamış maddeler:
   akışları tek dosyada kaldı.
 
 **Test ve doğrulama**
-- Core `mvn verify` JaCoCo %85 satır tabanı regresyon bariyeridir; slice kabul kanıtı
-  değildir (ADR-004 §30). Birincil kanıt: kritik invariant, contract, mimari kural ve
-  tarayıcı kabul akışları.
-- `audit` modülünün kendi davranışsal test sınıfı yok; append-only audit trail yalnız
-  başka modüllerin atomicity testlerinden dolaylı geçiyor (Phase 5 adayı).
-- `tools/mock-ai-worker` ve `tools/moka-emulator` altındaki birim suite'leri CI'da
-  koşmuyor (`smoke_rabbitmq.py` pytest varsayılan toplama desenine uymuyor).
+- Phase 5 test/ADR konsolidasyonu implementation/review pending durumunda:
+  JaCoCo yüzde tabanı ve test sayısı gate değildir; kritik invariant, contract,
+  migration, architecture ve public-boundary kanıtları tutulur.
+- Audit transaction/append-only kanıtı ve pruned local-tool suite'lerinin CI
+  entegrasyonu Phase 5 branch'inde uygulanmıştır; bağımsız kabul bekler.
 - Secret, bağımlılık, lisans, zafiyet, SBOM ve provenance taraması yok; bu boşluk
-  geniş bir production-readiness iddiasını engeller (ADR-016/022 daraltılmış
-  demo kapsamı dışında sessizce genişletilmez).
-- Frontend feature testleri, browser automation ve coverage eşiği Phase 5 kapsamına
-  bırakılmıştır.
-- Framework-free domain dönüşümü yapılmadı; ArchUnit yalnız first-party
-  `domain ↛ api|infra` ve request-body konumunu zorlar.
+  geniş bir production-readiness iddiasını engeller ve sonraki ürünleşme turunda
+  ele alınır.
+- Frontend presentation tests ve browser automation bu Phase 5'in dışında kalır;
+  yalnız session/API boundary ve pure helper kanıtları tutulur.
+- Framework-free domain dönüşümü yapılmadı; compact ArchUnit omurgası yalnız
+  top-level cycle, first-party `domain ↛ api|infra` ve repository ownership
+  sınırlarını zorlar.
 
 **Ürünleşme kararları (açık)**
-- ADR-022 demo carve-out'ları: backup/PITR waiver (§2.7), invite-only kayıt
-  (ADR-017) ve malware quarantine (ADR-018) ertelemeleri. Ürünleşme kararı
-  verilirse bunlar yeni bir ADR turu ister.
+- Kabul edilmiş CURRENT'deki demo carve-out'ları (backup/PITR, invite-only ve
+  malware quarantine ertelemeleri) ürünleşme kararı verilirse yeni karar turu
+  ister.
 - Gerçek ödeme sağlayıcısı: 2026-07-22'de simulation-only'ye pivot edildi.
   Production legal/KYC/custody/fee/split/payout soruları **açık**.
-- AI capability ayrı bir repo/ekip tarafından sahipleniyor (ADR-019); bu repo
-  yalnız shared-contract uyumunu yönetir.
+- AI capability ayrı bir repo/ekip tarafından sahiplenir; bu repo yalnız
+  shared-contract uyumunu ve Spring sınırını yönetir.
 
 **Taşınabilirlik**
 - Railway deploy config'i derinden yük taşıyor (`railway.json` şeması,

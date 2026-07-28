@@ -11,7 +11,7 @@ alındığını taşır, *ne yapılacağını* değil.
 | Bugün kabul edilmiş durum ne? | [`docs/plan/CURRENT.md`](../../plan/CURRENT.md) |
 | Bundan sonra ne yapıyoruz? | [`docs/ROADMAP.md`](../../ROADMAP.md) |
 | Bağlayıcı mimari kural ne? | [`architecture-decisions/ADR-INDEX.md`](../../../architecture-decisions/ADR-INDEX.md) |
-| Neyi yapmak yasak? | [`architecture-decisions/FORBIDDEN.md`](../../../architecture-decisions/FORBIDDEN.md) |
+| Neyi yapmak yasak? | Historical `FORBIDDEN.md` (removed; see Git history) |
 
 ## İçerik
 
@@ -29,8 +29,7 @@ review/        Dönemin tek aktif implementasyon review inbox'ı (req-review.md)
 Hackathon dönemi `planning/ → ready/ → review/ → done/` akışı ve sekiz bölümlü
 task-packet protokolü, yarış temposunda iki kişilik bir ekip için tasarlanmıştı.
 Yarış bittiğinde bu süreç makinesi ağır kalıyordu. Kayıtlar silinmedi çünkü
-kabul edilmiş ADR'ler (özellikle
-[ADR-014](../../../architecture-decisions/ADR-014-Settlement-Release-and-Production-Demo-Simulation.md))
+historical numbered ADR'ler (özellikle ADR-014; removed, see Git history)
 buradaki gate kararlarını kanıt olarak referans veriyor.
 
 Bu dizindeki dosyalar arasındaki çapraz referanslar arşiv içi yollara göre

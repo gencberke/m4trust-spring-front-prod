@@ -9,7 +9,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
-/** Shared eligibility and projection helpers for settlement/release (ADR-014 §2.4). */
+/** Shared eligibility and projection helpers for settlement/release. */
 final class SettlementProjection {
   private SettlementProjection() {}
 

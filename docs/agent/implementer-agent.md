@@ -5,11 +5,11 @@ yazılır.
 
 ## Başlamadan önce
 
-İlgili planı (varsa), referans verilen ADR bölümlerini ve
-[`FORBIDDEN.md`](../../architecture-decisions/FORBIDDEN.md) dosyasını oku;
+İlgili planı (varsa), [`ADR-INDEX.md`](../../architecture-decisions/ADR-INDEX.md)
+ve ilgili topic ADR'yi oku;
 düzenlemeden önce ilgili kodu incele.
 
-İş planla çelişiyorsa, kapsamı genişletiyorsa, yasak bir maddeye çarpıyorsa veya
+İş planla çelişiyorsa, kapsamı genişletiyorsa, ADR non-negotiable maddesine çarpıyorsa veya
 alınmamış bir karar gerektiriyorsa **dur ve kullanıcıya bildir**. Workaround icat
 etme, sessizce yeni kapsam seçme.
 

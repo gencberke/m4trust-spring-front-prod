@@ -16,8 +16,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Deal-owned fulfillment source boundary; fulfillment never reads DealRepository (ADR-003 §23).
- * Mirrors {@code FundingDealSourceAdapter}.
+ * Deal-owned fulfillment source boundary; fulfillment never reads DealRepository. Mirrors {@code
+ * FundingDealSourceAdapter}.
  */
 @Service
 class FulfillmentDealSourceAdapter implements FulfillmentSourcePorts.DealTarget {

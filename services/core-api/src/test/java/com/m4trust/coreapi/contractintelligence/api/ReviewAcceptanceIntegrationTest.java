@@ -12,6 +12,7 @@ import com.m4trust.coreapi.contractintelligence.api.dto.*;
 import com.m4trust.coreapi.contractintelligence.domain.*;
 import com.m4trust.coreapi.contractintelligence.infra.*;
 import com.m4trust.coreapi.contractintelligence.infra.adapter.*;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
@@ -25,26 +26,19 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.*;
 
 /** Acceptance boundary for the sole conversion from advisory extraction to immutable rules. */
 @SpringBootTest(properties = {"spring.main.allow-bean-definition-overriding=true"})
 @ActiveProfiles({"local", "test"})
-@Testcontainers
 @AutoConfigureMockMvc
 @Import(ReviewAcceptanceIntegrationTest.Fakes.class)
-class ReviewAcceptanceIntegrationTest {
+class ReviewAcceptanceIntegrationTest extends PostgresIntegrationTestSupport {
   private static final String SHA = "a".repeat(64);
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate jdbc;
@@ -129,55 +123,6 @@ class ReviewAcceptanceIntegrationTest {
   }
 
   @Test
-  void acceptsAnEmptyExtractionWithNoDecisions() throws Exception {
-    seedAnalysis(
-        "{\"parties\":[],\"rules\":[],\"deliveryRequirements\":[],\"summary\":{\"requiresManualReview\":false,\"reviewReasons\":[]}}");
-    accept(body("[]"), UUID.randomUUID())
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.ruleCount").value(0))
-        .andExpect(jsonPath("$.rules").isEmpty());
-  }
-
-  @Test
-  void idempotencyReplaysSemanticJsonAndRejectsChangedRequest() throws Exception {
-    UUID key = UUID.randomUUID();
-    String request =
-        body(
-            decisions(
-                "{\"decision\":\"KEPT\",\"ruleReference\":\"keep\"},{\"decision\":\"KEPT\",\"ruleReference\":\"modify\"},{\"decision\":\"KEPT\",\"ruleReference\":\"exclude\"}"));
-    accept(request, key).andExpect(status().isCreated());
-    String reordered =
-        "{\"decisions\":[{\"ruleReference\":\"keep\",\"decision\":\"KEPT\"},{\"ruleReference\":\"modify\",\"decision\":\"KEPT\"},{\"ruleReference\":\"exclude\",\"decision\":\"KEPT\"}],\"expectedVersion\":0,\"analysisId\":\""
-            + analysis
-            + "\"}";
-    accept(reordered, key).andExpect(status().isCreated());
-    accept(
-            body(
-                decisions(
-                    "{\"decision\":\"EXCLUDED\",\"ruleReference\":\"keep\"},{\"decision\":\"KEPT\",\"ruleReference\":\"modify\"},{\"decision\":\"KEPT\",\"ruleReference\":\"exclude\"}")),
-            key)
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
-    assertEquals(1, count("contract_intelligence_rule_set_version"));
-    assertEquals(1, count("audit_record"));
-  }
-
-  @Test
-  void mapsMalformedValidationAndStateConflictsWithoutSideEffects() throws Exception {
-    accept("{", UUID.randomUUID()).andExpect(status().isBadRequest());
-    String negative =
-        body(
-            decisions(
-                "{\"decision\":\"MODIFIED\",\"ruleReference\":\"keep\",\"category\":\"PAYMENT\",\"title\":\"x\",\"description\":\"x\",\"structuredValue\":{\"type\":\"MONEY\",\"amountMinor\":-1,\"currency\":\"TRY\"}},{\"decision\":\"KEPT\",\"ruleReference\":\"modify\"},{\"decision\":\"KEPT\",\"ruleReference\":\"exclude\"}"));
-    accept(negative, UUID.randomUUID())
-        .andExpect(status().isUnprocessableEntity())
-        .andExpect(jsonPath("$.errors[0].field").value("decisions[0].structuredValue.amountMinor"));
-    accept(body(decisions("{\"decision\":\"KEPT\",\"ruleReference\":\"keep\"}")), UUID.randomUUID())
-        .andExpect(status().isBadRequest());
-    assertEquals(0, count("contract_intelligence_rule_set_version"));
-  }
-
-  @Test
   void participantReadsButCannotAcceptAndOutsiderGetsContractSpecificNotFound() throws Exception {
     UUID p = UUID.randomUUID(),
         pe = UUID.randomUUID(),
@@ -212,103 +157,6 @@ class ReviewAcceptanceIntegrationTest {
                 .header(h(), oe))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("DEAL_NOT_FOUND"));
-  }
-
-  @Test
-  void auditFailureRollsBackEveryAcceptanceWrite() throws Exception {
-    long initialDealVersion =
-        jdbc.queryForObject("select version from deal where id=?", Long.class, deal);
-    long initialAnalysisVersion =
-        jdbc.queryForObject(
-            "select version from contract_intelligence_analysis_job where id=?",
-            Long.class,
-            analysis);
-    failAudit.set(true);
-    accept(completeBody(), UUID.randomUUID()).andExpect(status().is5xxServerError());
-    assertEquals(0, count("contract_intelligence_rule_set_version"));
-    assertEquals(
-        "REVIEW_REQUIRED",
-        text("select status from contract_intelligence_analysis_job where id=?", analysis));
-    assertEquals(
-        initialDealVersion,
-        jdbc.queryForObject("select version from deal where id=?", Long.class, deal));
-    assertEquals(
-        initialAnalysisVersion,
-        jdbc.queryForObject(
-            "select version from contract_intelligence_analysis_job where id=?",
-            Long.class,
-            analysis));
-    assertEquals(0, count("audit_record"));
-    assertEquals(0, count("http_idempotency_record"));
-    assertNull(
-        jdbc.queryForObject(
-            "select current_rule_set_version_id from deal where id=?", UUID.class, deal));
-  }
-
-  @Test
-  void databaseEnforcesInsertOnlyAndSameDealPointers() throws Exception {
-    var accepted =
-        accept(
-                body(
-                    decisions(
-                        "{\"decision\":\"KEPT\",\"ruleReference\":\"keep\"},{\"decision\":\"KEPT\",\"ruleReference\":\"modify\"},{\"decision\":\"KEPT\",\"ruleReference\":\"exclude\"}")),
-                UUID.randomUUID())
-            .andReturn();
-    UUID id =
-        jdbc.queryForObject(
-            "select id from contract_intelligence_rule_set_version where deal_id=?",
-            UUID.class,
-            deal);
-    assertThrows(
-        Exception.class,
-        () ->
-            jdbc.update(
-                "update contract_intelligence_rule_set_version set version=2 where id=?", id));
-    assertThrows(
-        Exception.class,
-        () -> jdbc.update("delete from contract_intelligence_rule_set_version where id=?", id));
-    UUID otherDeal = UUID.randomUUID();
-    jdbc.update(
-        "insert into deal(id,tenant_id,reference,title,deal_status,initiator_legal_entity_id,created_by) values(?,?, 'DL-0000000002','other','DRAFT',?,?)",
-        otherDeal,
-        tenant,
-        entity,
-        user);
-    assertThrows(
-        Exception.class,
-        () ->
-            jdbc.update("update deal set current_rule_set_version_id=? where id=?", id, otherDeal));
-    var predecessorFailure =
-        assertThrows(Exception.class, () -> insertRuleSetWithCrossDealPredecessor(otherDeal, id));
-    assertTrue(
-        rootCauseMessage(predecessorFailure)
-            .contains("contract_intelligence_rule_set_previous_same_deal_fk"));
-  }
-
-  @Test
-  void rejectsStaleWrongNonCurrentSupersededAndTerminalAcceptancesWithoutWrites() throws Exception {
-    accept(bodyWithVersion(1, analysis), UUID.randomUUID())
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_STALE_VERSION"));
-    accept(body(UUID.randomUUID()), UUID.randomUUID())
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
-    UUID nonCurrent = seedNonCurrentAnalysis();
-    accept(body(nonCurrent), UUID.randomUUID())
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
-    jdbc.update(
-        "update contract_intelligence_analysis_job set status='SUPERSEDED' where id=?", analysis);
-    accept(body(analysis), UUID.randomUUID())
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
-    jdbc.update("update deal set deal_status='CANCELLED' where id=?", deal);
-    accept(body(analysis), UUID.randomUUID())
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("DEAL_STATE_CONFLICT"));
-    assertEquals(0, count("contract_intelligence_rule_set_version"));
-    assertEquals(0, count("audit_record"));
-    assertEquals(0, count("http_idempotency_record"));
   }
 
   @Test

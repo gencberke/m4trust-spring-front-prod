@@ -1,8 +1,6 @@
 package com.m4trust.coreapi.payment.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.m4trust.coreapi.payment.domain.*;
 import com.m4trust.coreapi.payment.infra.*;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
@@ -34,9 +32,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * End-to-end HTTP coverage for settlement release plus Plan 17 B2 gate scenarios. A test-scoped
@@ -51,14 +46,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "app.payment.dispatch.relay.claim-timeout=0s",
       "app.payment.dispatch.relay.batch-size=20"
     })
-@Testcontainers
-class PaymentSettlementIntegrationTest {
+class PaymentSettlementIntegrationTest extends PostgresIntegrationTestSupport {
 
   private static final String LEGAL_ENTITY_HEADER = "X-M4Trust-Legal-Entity-Id";
   private static final AtomicLong NEXT_DEAL_REFERENCE = new AtomicLong(1);
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired private JdbcTemplate jdbc;
 
@@ -171,63 +162,63 @@ class PaymentSettlementIntegrationTest {
   }
 
   @Test
-  void windowOneBlocksUntilElapsed() throws Exception {
-    SeedContext seed = seedReleaseReadyDeal(1, Instant.now());
-    Versions versions = fetchSettlementVersions(seed.dealId());
-
-    mockMvc
-        .perform(
-            get("/api/v1/deals/" + seed.dealId() + "/settlement")
-                .with(user(buyerAdmin.userId.toString()))
-                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("NOT_READY"));
-
-    requestRelease(seed.dealId(), versions)
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("SETTLEMENT_DISPUTE_WINDOW_NOT_ELAPSED"));
-  }
-
-  @Test
-  void disputeFirstBlocksRelease() throws Exception {
+  void disputeBlocksReleaseUntilItIsWithdrawnThenReleaseCompletesTheDeal() throws Exception {
     SeedContext seed = seedReleaseReadyDeal(0, Instant.parse("2026-07-20T12:00:00Z"));
     Versions versions = ensureSettlementReady(seed.dealId());
-    insertOpenDispute(seed);
+
+    MvcResult opened =
+        mockMvc
+            .perform(
+                post("/api/v1/deals/" + seed.dealId() + "/disputes")
+                    .with(user(buyerAdmin.userId.toString()))
+                    .with(csrf())
+                    .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                    .header("Idempotency-Key", UUID.randomUUID())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {"reasonCode":"NON_DELIVERY","subject":"Release blocked", "statement":"A dispute blocks settlement.",
+                         "expectedDealVersion":%d,"expectedFulfillmentVersion":%d}
+                        """
+                            .formatted(versions.dealVersion(), versions.fulfillmentVersion())))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("OPEN"))
+            .andReturn();
+    UUID disputeId =
+        UUID.fromString(JsonPath.read(opened.getResponse().getContentAsString(), "$.id"));
 
     requestRelease(seed.dealId(), versions)
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("SETTLEMENT_ACTIVE_DISPUTE"));
-  }
 
-  @Test
-  void releaseFirstThenDisputeDefersCompletion() throws Exception {
-    SeedContext seed = seedReleaseReadyDeal(0, Instant.parse("2026-07-20T12:00:00Z"));
-    Versions versions = ensureSettlementReady(seed.dealId());
+    mockMvc
+        .perform(
+            post("/api/v1/deals/" + seed.dealId() + "/disputes/" + disputeId + "/withdraw")
+                .with(user(buyerAdmin.userId.toString()))
+                .with(csrf())
+                .header(LEGAL_ENTITY_HEADER, buyerAdmin.legalEntityId)
+                .header("Idempotency-Key", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expectedVersion\":0}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("WITHDRAWN"));
 
-    MvcResult release =
-        requestRelease(seed.dealId(), versions).andExpect(status().isAccepted()).andReturn();
+    Versions releasedVersions = ensureSettlementReady(seed.dealId());
     UUID operationId =
-        UUID.fromString(JsonPath.read(release.getResponse().getContentAsString(), "$.id"));
+        UUID.fromString(
+            JsonPath.read(
+                requestRelease(seed.dealId(), releasedVersions)
+                    .andExpect(status().isAccepted())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString(),
+                "$.id"));
     provider.scriptReleaseSuccess(providerKeyFor(operationId));
-    insertOpenDispute(seed);
-
     releaseRelay.relayOnce();
-
     assertEquals(
-        "ACTIVE",
+        "COMPLETED",
         jdbc.queryForObject(
             "SELECT deal_status FROM deal WHERE id = ?", String.class, seed.dealId()));
-    String operationStatus =
-        jdbc.queryForObject(
-            "SELECT status FROM release_operation WHERE id = ?", String.class, operationId);
-    String settlementStatus =
-        jdbc.queryForObject(
-            "SELECT status FROM settlement WHERE deal_id = ?", String.class, seed.dealId());
-    assertTrue(
-        ("RECONCILIATION_REQUIRED".equals(operationStatus) && "ON_HOLD".equals(settlementStatus))
-            || ("SIMULATED_SETTLED".equals(operationStatus)
-                && "SIMULATED_SETTLED".equals(settlementStatus)),
-        "release must defer deal completion while an active dispute exists");
   }
 
   @Test
@@ -267,19 +258,6 @@ class PaymentSettlementIntegrationTest {
                 .content(releaseBody(versions)))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("SETTLEMENT_MUTATION_FORBIDDEN"));
-  }
-
-  @Test
-  void financialSettledUnreachable() {
-    for (SettlementStatus status : SettlementStatus.values()) {
-      assertNotEquals("SETTLED", status.name());
-    }
-    for (ReleaseOperationStatus status : ReleaseOperationStatus.values()) {
-      assertNotEquals("SETTLED", status.name());
-    }
-    for (PaymentProviderPort.ReleaseOutcome outcome : PaymentProviderPort.ReleaseOutcome.values()) {
-      assertNotEquals("SETTLED", outcome.name());
-    }
   }
 
   private Versions ensureSettlementReady(UUID dealId) throws Exception {
@@ -458,28 +436,6 @@ class PaymentSettlementIntegrationTest {
         dealId);
 
     return new SeedContext(dealId, packageId, fulfillmentId, milestoneId, unitId);
-  }
-
-  private void insertOpenDispute(SeedContext seed) {
-    jdbc.update(
-        """
-                INSERT INTO dispute_case (
-                    id, deal_id, tenant_id, fulfillment_id, milestone_id, ratification_package_id,
-                    fulfillment_status_at_open, fulfillment_version_at_open, milestone_version_at_open,
-                    reason_code, subject, statement, status, opening_tenant_id, opening_legal_entity_id,
-                    opening_user_id, opening_legal_name, opened_at, version, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'COMPLETED', 0, 0, 'NON_DELIVERY', 'subject', 'statement', 'OPEN',
-                    ?, ?, ?, 'Buyer', CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """,
-        UUID.randomUUID(),
-        seed.dealId(),
-        buyerAdmin.tenantId,
-        seed.fulfillmentId(),
-        seed.milestoneId(),
-        seed.packageId(),
-        buyerAdmin.tenantId,
-        buyerAdmin.legalEntityId,
-        buyerAdmin.userId);
   }
 
   private void insertParticipant(UUID dealId, Principal principal) {

@@ -3,8 +3,8 @@ package com.m4trust.coreapi.payment.domain;
 import java.util.UUID;
 
 /**
- * Narrow port for payment-owned Deal completion after query-verified simulated settlement (ADR-014
- * §2.8). Implemented by the deal module.
+ * Narrow port for payment-owned Deal completion after query-verified simulated settlement.
+ * Implemented by the deal module.
  */
 public interface SettlementDealCompletionPort {
 

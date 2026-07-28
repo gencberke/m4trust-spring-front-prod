@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Fulfillment-owned casework opening snapshot boundary; casework never reads fulfillment
- * repositories directly (ADR-013 §2.5).
+ * repositories directly.
  */
 @Service
 class CaseworkFulfillmentSourceAdapter implements CaseworkSourcePorts.FulfillmentTarget {

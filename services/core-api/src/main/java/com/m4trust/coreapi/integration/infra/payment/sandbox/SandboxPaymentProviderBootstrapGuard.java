@@ -6,13 +6,13 @@ import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 /**
- * Fail-closed bootstrap check (ADR-010 §2.6, extended by the 2026-07-22 simulation-only decision §2
- * and ADR-014 §2.1): the sandbox provider must never be the selected {@code PaymentProviderPort}
- * outside {@code local-sandbox} or the separately named {@code staging-simulated} profile, and
- * never alongside {@code production} under any circumstance. {@code @Profile({"local-sandbox",
- * "staging-simulated"})} on {@link SandboxPaymentProviderAdapter} already prevents most of this
- * under normal configuration; this bean is a second, explicit guard so a misconfigured profile list
- * still fails application startup instead of silently selecting the sandbox. The enforced matrix:
+ * Fail-closed bootstrap check: the sandbox provider must never be the selected {@code
+ * PaymentProviderPort} outside {@code local-sandbox} or the separately named {@code
+ * staging-simulated} profile, and never alongside {@code production} under any circumstance.
+ * {@code @Profile({"local-sandbox", "staging-simulated"})} on {@link SandboxPaymentProviderAdapter}
+ * already prevents most of this under normal configuration; this bean is a second, explicit guard
+ * so a misconfigured profile list still fails application startup instead of silently selecting the
+ * sandbox. The enforced matrix:
  *
  * <ul>
  *   <li>sandbox bean present + {@code production} active — always fails, regardless of any other
@@ -37,7 +37,7 @@ class SandboxPaymentProviderBootstrapGuard {
     if (stagingSimulatedActive && productionActive) {
       throw new IllegalStateException(
           "staging-simulated must never be combined with the production profile "
-              + "(2026-07-22 simulation-only decision §2; ADR-014 §2.1)");
+              + "(2026-07-22 simulation-only decision §2)");
     }
     if (sandboxBeanPresent && productionActive) {
       throw new IllegalStateException(
@@ -46,7 +46,7 @@ class SandboxPaymentProviderBootstrapGuard {
     if (sandboxBeanPresent && stagingActive && !stagingSimulatedActive) {
       throw new IllegalStateException(
           "Sandbox payment provider under the staging profile requires staging-simulated to also be "
-              + "active (2026-07-22 simulation-only decision §2; ADR-014 §2.1)");
+              + "active (2026-07-22 simulation-only decision §2)");
     }
   }
 }
