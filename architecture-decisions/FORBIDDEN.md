@@ -130,7 +130,7 @@ Birden fazla ADR'de tekrarlanan yasaklar tek satırda, çoklu kaynakla verilmiş
 | --- | --- |
 | Bütün backend'i bitirip frontend entegrasyonunu sona bırakmak | ADR-004 §1, §27 |
 | Frontend mock ile çalışırken slice'ı tamamlanmış saymak; production'a gizli mock fallback bırakmak | ADR-004 §18, §27 |
-| Test coverage yüzdesini başarı metriği yapmak; her sınıf/metoda test zorunluluğu | ADR-004 §6, §27 |
+| Test coverage yüzdesini ana başarı metriği, teslimat hedefi veya slice kabul kanıtı yapmak; yüzdeyi şişirmek için yalnızca coverage artıran test eklemek; sınıf/metot düzeyinde kota koymak; onaylı bundle regresyon tabanını (%85) sahip onayı olmadan değiştirmek veya düşürmek | ADR-004 §6, §27, §30 |
 | Spring'in kendi içinde fake AI sonucu üretmesini ana E2E test kabul etmek (messaging sınırını atlamak) | ADR-004 §14, §27 |
 | Gerçek FastAPI'yi günlük geliştirme için zorunlu kılmak | ADR-004 §11, §27 |
 | Yalnız Swagger/Postman testiyle capability'yi done saymak | ADR-004 §23, §27 |

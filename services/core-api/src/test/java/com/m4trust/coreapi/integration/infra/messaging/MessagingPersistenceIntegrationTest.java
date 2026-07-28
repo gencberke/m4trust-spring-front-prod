@@ -23,9 +23,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest(
-    properties = {"app.messaging.topology.enabled=false", "app.messaging.relay.enabled=false"})
-@ActiveProfiles("local")
+@SpringBootTest
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 class MessagingPersistenceIntegrationTest {
 

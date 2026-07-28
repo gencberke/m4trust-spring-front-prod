@@ -35,13 +35,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
 
-@SpringBootTest(
-    properties = {
-      "app.messaging.topology.enabled=false",
-      "app.messaging.relay.enabled=false",
-      "spring.main.allow-bean-definition-overriding=true"
-    })
-@ActiveProfiles("local")
+@SpringBootTest(properties = {"spring.main.allow-bean-definition-overriding=true"})
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 @AutoConfigureMockMvc
 @Import(AnalysisResultConsumerIntegrationTest.Fakes.class)

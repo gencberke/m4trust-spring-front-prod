@@ -44,13 +44,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest(
-    properties = {
-      "app.messaging.topology.enabled=false",
-      "app.messaging.relay.enabled=false",
-      "spring.main.allow-bean-definition-overriding=true"
-    })
-@ActiveProfiles("local")
+@SpringBootTest(properties = {"spring.main.allow-bean-definition-overriding=true"})
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 @AutoConfigureMockMvc
 @Import(AnalysisRequestIntegrationTest.Fakes.class)

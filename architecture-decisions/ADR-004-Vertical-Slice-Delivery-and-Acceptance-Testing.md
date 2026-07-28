@@ -180,7 +180,21 @@ Aşağıdaki alanlar için varsayılan olarak test yazılmayacaktır:
 - Her butonun render olması
 - Her HTTP status code’un ayrı testi
 - Framework’ün kendi davranışını tekrar doğrulayan testler
-Coverage yüzdesi başarı metriği olarak kullanılmayacaktır.
+Coverage yüzdesi teslimat hedefi, slice kabul kanıtı veya ana başarı metriği olarak
+kullanılmayacaktır.
+
+Birincil kabul kanıtı aşağıdakilerdir:
+
+- Kritik invariant testleri (§7)
+- Contract doğrulaması
+- Mimari kural testleri (ArchUnit vb.)
+- Tarayıcıda görülebilir kabul akışları (§8–§9)
+
+`services/core-api` için Maven/JaCoCo bundle düzeyinde %85 satır regresyon tabanı
+yalnızca toplu gerilemeyi erken yakalayan destekleyici bir CI bariyeridir; capability’nin
+Done sayılması için yeterli değildir. Sınıf veya metot düzeyinde kota konulmaz. Yüzdeyi
+şişirmek için yalnızca coverage artıran test eklenmez. Tabanın değiştirilmesi açık ve
+sahip onaylı ADR değişikliği gerektirir (§30).
 
 ## 7. Minimum kritik otomatik testler
 
@@ -805,8 +819,10 @@ Bu ADR ile aşağıdaki yaklaşımlar yasaklanmıştır:
 
 - Önce bütün backend’i bitirip frontend entegrasyonunu sona bırakmak
 - Frontend mock ile çalışırken slice’ı tamamlanmış saymak
-- Test coverage yüzdesini ana başarı metriği yapmak
+- Test coverage yüzdesini ana başarı metriği, teslimat hedefi veya slice kabul kanıtı yapmak
 - Her sınıf ve metot için otomatik test zorunluluğu koymak
+- Yüzdeyi şişirmek için yalnızca coverage artıran test eklemek
+- Onaylı bundle regresyon tabanını (%85) sahip onayı olmadan değiştirmek veya düşürmek
 - AI geliştirmesini beklediği için Spring ve frontend geliştirmesini durdurmak
 - AI modelini mocklamak yerine Spring–RabbitMQ sınırını tamamen atlamak
 - Spring’in kendi içinde fake AI sonucu üretmesini ana E2E test kabul etmek
@@ -846,7 +862,9 @@ M4Trust:
 - Bir backend capability’sini frontend gerçek API’ye bağlanmadan tamamlanmış saymayacaktır.
 - Belirleyici test olarak gerçek frontend kullanıcı akışını kullanacaktır.
 - Kod düzeyindeki otomatik testleri kritik invariant’larla sınırlı ve minimum tutacaktır.
-- Coverage hedefi kullanmayacaktır.
+- Coverage yüzdesini teslimat hedefi veya kabul kanıtı olarak kullanmayacaktır; onaylı
+  bundle düzeyinde %85 JaCoCo satır regresyon tabanını yalnızca destekleyici CI bariyeri
+  olarak koruyacaktır.
 - Spring–frontend arasında slice bazlı hibrit OpenAPI yaklaşımı kullanacaktır.
 - AI modellerini ve provider’ları varsayılan olarak mocklayabilecektir.
 - Günlük platform geliştirmesini gerçek FastAPI’ye bağımlı kılmayacaktır.
@@ -855,3 +873,21 @@ M4Trust:
 - Playwright’ı stabil ve kritik kullanıcı akışlarında seçici otomasyon için kullanacaktır.
 - Her slice sonunda manuel tarayıcı kabul testi uygulayacaktır.
 - Spring, PostgreSQL ve frontend’in gerçek entegrasyonunu slice tamamlanma koşulu olarak kabul edecektir.
+
+## 30. Güncelleme (28 Temmuz 2026) — Coverage regresyon tabanı
+
+**Amendment (2026-07-28):** Önceki metinlerde coverage yüzdesinin hiç kullanılmayacağı
+ifadesi ile `services/core-api` üzerindeki JaCoCo %85 bundle satır tabanı arasında çelişki
+vardı. Bu güncelleme çelişkiyi giderir.
+
+Bağlayıcı ayrım:
+
+1. **Birincil kabul kanıtı** — Kritik invariant testleri, contract doğrulaması, mimari kural
+   testleri ve tarayıcıda görülebilir kabul akışları (§6–§10, §23).
+2. **Regresyon tabanı (destekleyici)** — `services/core-api` Maven doğrulamasında bundle
+   düzeyinde %85 satır JaCoCo tabanı. Bu taban gerilemeyi erken yakalar; capability Done
+   tanımını veya slice kabul checklist’ini karşılamaz.
+3. **Yasaklar (değişmedi)** — Coverage’ı ana başarı metriği, teslimat hedefi veya kabul kanıtı
+   saymak; sınıf/metot düzeyinde kota koymak; yalnızca yüzdeyi artırmak için test eklemek.
+4. **Taban değişikliği** — Eşik veya kapsam değişikliği açık, sahip onaylı ADR değişikliği
+   olmadan yapılamaz; sessiz pom eşiği düşürme veya exclusion ekleme yasaktır.

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Regenerate docs/agent/repo-map.md from the current working tree."""
+"""Regenerate docs/agent/repo-map.md from a Git-aware, reproducible file set.
+
+Freshness rule: committed output is current only when running this generator
+produces no diff. The map intentionally omits wall-clock time, branch name,
+HEAD SHA, and absolute machine paths.
+"""
 
 from __future__ import annotations
 
@@ -7,13 +12,12 @@ import os
 import re
 import subprocess
 from collections import Counter
-from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "agent" / "repo-map.md"
 
-SKIP_DIRS = {
+SKIP_DIR_NAMES = {
     ".git",
     ".worktrees",
     "node_modules",
@@ -25,6 +29,14 @@ SKIP_DIRS = {
     ".vscode",
     ".claude",
     "__pycache__",
+    ".pytest_cache",
+}
+
+# Temporary root handoff artifacts that must not pollute the committed map.
+SKIP_FILE_NAMES = {
+    "FIX-PLAN.md",
+    "HANDOFF.md",
+    "TEMP-REPO-CLEANUP-REPORT.md",
 }
 
 LANG_EXTS = {
@@ -53,25 +65,26 @@ ENTRY_POINTS = [
 ]
 
 
-def git_head() -> tuple[str, str]:
-    commit = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-    ).strip()
-    branch = subprocess.check_output(
-        ["git", "branch", "--show-current"], cwd=ROOT, text=True
-    ).strip()
-    return commit, branch or "detached"
-
-
-def iter_files() -> list[Path]:
+def git_ls_candidate_files() -> list[Path]:
+    """Tracked files plus non-ignored untracked candidates (Git-aware set)."""
+    listed = subprocess.check_output(
+        ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+        cwd=ROOT,
+        text=True,
+    )
     files: list[Path] = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file():
+    for raw in listed.split("\0"):
+        if not raw:
             continue
-        rel = path.relative_to(ROOT)
-        if any(part in SKIP_DIRS for part in rel.parts):
+        rel = Path(raw)
+        if any(part in SKIP_DIR_NAMES for part in rel.parts):
+            continue
+        if rel.name in SKIP_FILE_NAMES:
+            continue
+        if not (ROOT / rel).is_file():
             continue
         files.append(rel)
+    files.sort(key=lambda path: path.as_posix())
     return files
 
 
@@ -81,11 +94,7 @@ def rel_posix(path: Path) -> str:
 
 def count_languages(files: list[Path]) -> list[tuple[str, int]]:
     counts = Counter(path.suffix for path in files)
-    return [
-        (ext, counts[ext])
-        for ext in (".java", ".ts", ".tsx", ".py")
-        if counts[ext]
-    ]
+    return [(ext, counts[ext]) for ext in (".java", ".ts", ".tsx", ".py") if counts[ext]]
 
 
 def existing_build_entries() -> list[tuple[str, str]]:
@@ -96,21 +105,15 @@ def import_fan_in(files: list[Path]) -> list[tuple[int, str]]:
     frontend_ts = [
         rel
         for rel in files
-        if rel.parts[0] == "frontend"
+        if rel.parts
+        and rel.parts[0] == "frontend"
         and rel.suffix in {".ts", ".tsx"}
         and "generated" not in rel.parts
     ]
     fan_in: Counter[str] = Counter()
-    import_re = re.compile(
-        r"""from\s+['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]"""
-    )
+    import_re = re.compile(r"""from\s+['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]""")
 
     def resolve(base: Path, specifier: str) -> str | None:
-        """Resolve an import specifier to a repo-relative file, or None if external.
-
-        Bare specifiers (``react``, ``@tanstack/react-query``) are npm packages, not
-        internal modules, and must not be counted as fan-in.
-        """
         if specifier.startswith("@/"):
             candidate = Path("frontend/src") / specifier.removeprefix("@/")
         elif specifier.startswith("."):
@@ -142,10 +145,12 @@ def largest_files(files: list[Path], limit: int = 12) -> list[tuple[int, str]]:
     sized = []
     for rel in files:
         try:
-            size = (ROOT / rel).stat().st_size
+            text = (ROOT / rel).read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
-        lines = (ROOT / rel).read_text(encoding="utf-8", errors="ignore").count("\n") + 1
+        lines = text.count("\n") + (0 if text.endswith("\n") or not text else 1)
+        if not text:
+            lines = 0
         sized.append((lines, rel_posix(rel)))
     sized.sort(key=lambda item: (-item[0], item[1]))
     return sized[:limit]
@@ -154,42 +159,42 @@ def largest_files(files: list[Path], limit: int = 12) -> list[tuple[int, str]]:
 def has_test_signal(module: str, tests: list[Path]) -> bool:
     stem = Path(module).stem
     for test in tests:
-        name = test.name.lower()
-        if stem.lower() in name:
+        if stem.lower() in test.name.lower():
             return True
     return False
 
 
-def top_level_tree() -> str:
-    lines = []
-    for entry in sorted(ROOT.iterdir(), key=lambda p: p.name):
-        name = entry.name
-        if name.startswith(".") and name not in {".claude"}:
-            if name == ".DS_Store":
-                lines.append(name)
+def top_level_tree(files: list[Path]) -> str:
+    """Deterministic top-level listing derived from the Git-aware file set."""
+    top_entries: set[str] = set()
+    children: dict[str, set[str]] = {}
+    for rel in files:
+        parts = rel.parts
+        if not parts:
             continue
-        if name in SKIP_DIRS and name != ".claude":
-            continue
-        if entry.is_dir():
-            lines.append(f"{name}/")
-            children = sorted(
-                (child for child in entry.iterdir() if child.name not in SKIP_DIRS),
-                key=lambda p: p.name,
-            )[:8]
-            for child in children:
-                if child.is_dir():
-                    lines.append(f"  {child.name}/")
-                else:
-                    lines.append(f"  {child.name}")
+        top = parts[0]
+        if (ROOT / top).is_dir():
+            top_entries.add(f"{top}/")
+            if len(parts) > 1:
+                child = parts[1]
+                child_path = ROOT / top / child
+                children.setdefault(f"{top}/", set()).add(
+                    f"{child}/" if child_path.is_dir() else child
+                )
         else:
-            lines.append(name)
+            top_entries.add(top)
+
+    lines: list[str] = []
+    for entry in sorted(top_entries):
+        lines.append(entry)
+        if entry.endswith("/"):
+            for child in sorted(children.get(entry, set()))[:8]:
+                lines.append(f"  {child}")
     return "\n".join(lines)
 
 
 def main() -> None:
-    files = iter_files()
-    commit, branch = git_head()
-    generated = datetime.now().strftime("%Y-%m-%d %H:%M")
+    files = git_ls_candidate_files()
     langs = count_languages(files)
     build = existing_build_entries()
     fan_in = import_fan_in(files)
@@ -208,13 +213,11 @@ def main() -> None:
     lines = [
         "# Repository Map (deterministic)",
         "",
-        f"- Generated: {generated}",
-        f"- Commit: `{commit}` (branch `{branch}`)",
-        f"- Root: `.` → `{ROOT.name}`",
-        "",
-        "> FRESHNESS: this map is derived from the commit above. If `git rev-parse HEAD`",
-        "> differs, treat it as STALE and regenerate. The code is the source of truth;",
-        "> this map is a disposable index — never let it override what the code says.",
+        "- Freshness: regenerate with `python3 scripts/generate-repo-map.py`;",
+        "  committed output is current only when that command produces no diff.",
+        "- Source set: Git-tracked files plus non-ignored untracked candidates",
+        "  (`git ls-files -co --exclude-standard`), excluding build caches and",
+        "  virtual environments.",
         "",
         "## Languages",
     ]
@@ -246,12 +249,19 @@ def main() -> None:
     for line_count, rel in largest:
         lines.append(f"- {line_count} lines · `{rel}`")
 
-    lines.extend(["", "## Tests", f"- Test files found: {len(tests)}", "- Coverage signal for top modules:"])
+    lines.extend(
+        [
+            "",
+            "## Tests",
+            f"- Test files found: {len(tests)}",
+            "- Coverage signal for top modules:",
+        ]
+    )
     for _, module in fan_in:
         signal = "test signal" if has_test_signal(module, tests) else "NO test signal"
         lines.append(f"  - `{module}` — {signal}")
 
-    lines.extend(["", "## Top-level structure", "```", top_level_tree(), "```", ""])
+    lines.extend(["", "## Top-level structure", "```", top_level_tree(files), "```", ""])
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {OUT.relative_to(ROOT)}")

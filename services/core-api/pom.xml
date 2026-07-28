@@ -219,6 +219,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <!-- ADR-004 §30: bundle-level 85% line regression floor; not a delivery target -->
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>

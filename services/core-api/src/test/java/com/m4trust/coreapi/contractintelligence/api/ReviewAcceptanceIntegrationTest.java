@@ -35,13 +35,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.*;
 
 /** Acceptance boundary for the sole conversion from advisory extraction to immutable rules. */
-@SpringBootTest(
-    properties = {
-      "app.messaging.topology.enabled=false",
-      "app.messaging.relay.enabled=false",
-      "spring.main.allow-bean-definition-overriding=true"
-    })
-@ActiveProfiles("local")
+@SpringBootTest(properties = {"spring.main.allow-bean-definition-overriding=true"})
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 @AutoConfigureMockMvc
 @Import(ReviewAcceptanceIntegrationTest.Fakes.class)

@@ -1,7 +1,5 @@
 package com.m4trust.coreapi.ratification.api;
 
-import com.m4trust.coreapi.ratification.api.dto.*;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -25,6 +23,7 @@ import com.m4trust.coreapi.idempotency.domain.IdempotencyService;
 import com.m4trust.coreapi.organization.domain.LegalEntityRole;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.ratification.api.dto.*;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.adapter.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;
@@ -86,8 +85,7 @@ class RatificationPackageActionServiceTest {
     when(packages.findApprovalByPackageAndEntity(packageId, BUYER))
         .thenReturn(Optional.of(approval(BUYER)));
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored(current)));
-    when(reads.project(any(), eq(target), any()))
-        .thenReturn(mock(RatificationPackageDetail.class));
+    when(reads.project(any(), eq(target), any())).thenReturn(mock(RatificationPackageDetail.class));
 
     service.approve(
         context(BUYER, LegalEntityRole.ADMIN, true),
@@ -266,8 +264,7 @@ class RatificationPackageActionServiceTest {
     when(packages.listApprovals(packageId)).thenReturn(List.of(approval(BUYER)));
     when(packages.updateStatus(any(), eq(0L))).thenReturn(true);
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored));
-    when(reads.project(context, target, stored))
-        .thenReturn(mock(RatificationPackageDetail.class));
+    when(reads.project(context, target, stored)).thenReturn(mock(RatificationPackageDetail.class));
 
     service.approve(
         context,
@@ -301,8 +298,7 @@ class RatificationPackageActionServiceTest {
     when(packages.listApprovals(packageId)).thenReturn(List.of(approval(SELLER), approval(BUYER)));
     when(packages.updateStatus(any(), eq(1L))).thenReturn(true);
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored));
-    when(reads.project(context, target, stored))
-        .thenReturn(mock(RatificationPackageDetail.class));
+    when(reads.project(context, target, stored)).thenReturn(mock(RatificationPackageDetail.class));
 
     service.approve(
         context,
@@ -345,8 +341,7 @@ class RatificationPackageActionServiceTest {
     stubCurrent(context, target, current);
     when(packages.updateStatus(any(), eq(0L))).thenReturn(true);
     when(packages.findByDealAndId(dealId, packageId)).thenReturn(Optional.of(stored));
-    when(reads.project(context, target, stored))
-        .thenReturn(mock(RatificationPackageDetail.class));
+    when(reads.project(context, target, stored)).thenReturn(mock(RatificationPackageDetail.class));
 
     service.reject(
         context,
@@ -422,8 +417,7 @@ class RatificationPackageActionServiceTest {
     when(idempotency.claim(any())).thenReturn(replay(firstPackage));
     when(packages.findByDealAndId(dealId, firstPackage))
         .thenReturn(Optional.of(stored(firstRecord)));
-    when(reads.project(any(), any(), any()))
-        .thenReturn(mock(RatificationPackageDetail.class));
+    when(reads.project(any(), any(), any())).thenReturn(mock(RatificationPackageDetail.class));
     OperationContext buyerApprove = context(BUYER, LegalEntityRole.ADMIN, true);
     OperationContext buyerReject = context(BUYER, LegalEntityRole.ADMIN, false);
     OperationContext sellerApprove = context(SELLER, LegalEntityRole.ADMIN, true);

@@ -35,9 +35,11 @@ Optional wrapper from repo root: `./scripts/validate-frontend.sh` (fast) or
 | Full module verify (Docker / Testcontainers) | `cd services/core-api && ./mvnw verify` |
 
 `./mvnw verify` runs the full gate chain: unit and integration tests,
-**Spotless** formatting check, and **JaCoCo** line coverage (minimum **85%**
-on the measured bundle). A formatting violation or coverage shortfall fails the
-build the same way a failing test does.
+**Spotless** formatting check, and **JaCoCo** line coverage. The measured bundle must stay
+at or above **85%** — this is an ADR-004 **regression floor**, not a delivery target or
+slice-acceptance evidence. Primary acceptance remains critical invariants, contract checks,
+architecture rules, and browser-visible flows. A formatting violation or coverage shortfall
+fails the build the same way a failing test does.
 
 Before `verify`, install the Python packages from
 [`contracts/requirements.txt`](../contracts/requirements.txt) (for example in
@@ -65,6 +67,19 @@ python contracts/scripts/validate_contracts.py
 Optional wrapper: `./scripts/validate-contracts.sh`
 
 See [contracts/README.md](../contracts/README.md) for Windows notes and validator details.
+
+## Repository hygiene
+
+| Goal | Command |
+| --- | --- |
+| Markdown reference check | `python3 scripts/check-markdown-links.py` |
+| Regenerate repository map | `python3 scripts/generate-repo-map.py` |
+
+The repository-hygiene workflow (`.github/workflows/repository-hygiene.yml`) runs
+both checks for pull requests and pushes to `main`. Map freshness means
+regeneration produces no diff; the map does not embed HEAD, branch, or wall-clock
+time. The checker stays offline and does not validate external URLs or heading
+anchors.
 
 ## Whitespace
 

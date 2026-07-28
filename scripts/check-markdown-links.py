@@ -38,7 +38,7 @@ KNOWN_NON_DEFECTS: frozenset[tuple[str, int, str]] = frozenset(
     {
         (
             "architecture-decisions/ADR-004-Vertical-Slice-Delivery-and-Acceptance-Testing.md",
-            346,
+            360,
             "services/mock-ai-worker/",
         ),
         (

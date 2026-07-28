@@ -1,15 +1,13 @@
 # Repository Map (deterministic)
 
-- Generated: 2026-07-27 17:20
-- Commit: `8a5102f8734d3cae3c7daa2cdb86e6cdbefcf9a8` (branch `chore/repo-cleanup-phase-0`)
-- Root: `.` → `m4trust-spring-front-prod`
-
-> FRESHNESS: this map is derived from the commit above. If `git rev-parse HEAD`
-> differs, treat it as STALE and regenerate. The code is the source of truth;
-> this map is a disposable index — never let it override what the code says.
+- Freshness: regenerate with `python3 scripts/generate-repo-map.py`;
+  committed output is current only when that command produces no diff.
+- Source set: Git-tracked files plus non-ignored untracked candidates
+  (`git ls-files -co --exclude-standard`), excluding build caches and
+  virtual environments.
 
 ## Languages
-- `.java`: 542 files
+- `.java`: 558 files
 - `.ts`: 78 files
 - `.tsx`: 62 files
 - `.py`: 22 files
@@ -42,21 +40,21 @@ prime test candidate (feeds test-driven-development)._
 - 9× `frontend/src/features/deals/dealApi.ts`
 
 ## Largest files (complexity hotspots)
-- 7270 lines · `contracts/openapi/core-api-v1.yaml`
-- 5760 lines · `frontend/src/generated/core-api.d.ts`
-- 4538 lines · `frontend/package-lock.json`
-- 2938 lines · `contracts/scripts/validate_contracts.py`
-- 2139 lines · `services/core-api/src/test/java/com/m4trust/coreapi/casework/DisputeIntegrationTest.java`
-- 1390 lines · `architecture-decisions/ADR-006-Public-API-and-Error-Conventions.md`
-- 1331 lines · `services/core-api/src/main/java/com/m4trust/coreapi/fulfillment/api/FulfillmentService.java`
-- 1281 lines · `services/core-api/src/test/java/com/m4trust/coreapi/deal/api/DealIntegrationTest.java`
-- 1254 lines · `services/core-api/src/test/java/com/m4trust/coreapi/fulfillment/FulfillmentIntegrationTest.java`
-- 1200 lines · `services/core-api/src/test/java/com/m4trust/coreapi/fulfillment/VideoAnalysisHardeningIntegrationTest.java`
-- 1199 lines · `architecture-decisions/ADR-002-Spring-AI-Contract-and-Compatibility-Policy.md`
-- 1177 lines · `architecture-decisions/ADR-003-Core-Domain-Model-and-Deal-Lifecycle.md`
+- 7269 lines · `contracts/openapi/core-api-v1.yaml`
+- 5759 lines · `frontend/src/generated/core-api.d.ts`
+- 4537 lines · `frontend/package-lock.json`
+- 2937 lines · `contracts/scripts/validate_contracts.py`
+- 2138 lines · `services/core-api/src/test/java/com/m4trust/coreapi/casework/DisputeIntegrationTest.java`
+- 1389 lines · `architecture-decisions/ADR-006-Public-API-and-Error-Conventions.md`
+- 1330 lines · `services/core-api/src/main/java/com/m4trust/coreapi/fulfillment/api/FulfillmentService.java`
+- 1280 lines · `services/core-api/src/test/java/com/m4trust/coreapi/deal/api/DealIntegrationTest.java`
+- 1253 lines · `services/core-api/src/test/java/com/m4trust/coreapi/fulfillment/FulfillmentIntegrationTest.java`
+- 1198 lines · `architecture-decisions/ADR-002-Spring-AI-Contract-and-Compatibility-Policy.md`
+- 1194 lines · `services/core-api/src/test/java/com/m4trust/coreapi/fulfillment/VideoAnalysisHardeningIntegrationTest.java`
+- 1176 lines · `architecture-decisions/ADR-003-Core-Domain-Model-and-Deal-Lifecycle.md`
 
 ## Tests
-- Test files found: 105
+- Test files found: 121
 - Coverage signal for top modules:
   - `frontend/src/app/coreApi.ts` — test signal
   - `frontend/src/features/deals/index.ts` — NO test signal
@@ -67,8 +65,9 @@ prime test candidate (feeds test-driven-development)._
 
 ## Top-level structure
 ```
-.DS_Store
-.claude/
+.github/
+  workflows/
+.gitignore
 AGENTS.md
 README.md
 architecture-decisions/
@@ -90,7 +89,6 @@ contracts/
   schemas/
   scripts/
 docs/
-  .DS_Store
   DEVELOPMENT.md
   ROADMAP.md
   VALIDATION.md
@@ -99,7 +97,6 @@ docs/
   plan/
   research/
 frontend/
-  .env
   .env.example
   .gitignore
   .prettierignore
@@ -107,8 +104,8 @@ frontend/
   Caddyfile
   Dockerfile
   Dockerfile.dockerignore
+  README.md
 infra/
-  .env
   .env.example
   .gitignore
   README.md

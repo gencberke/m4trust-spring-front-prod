@@ -41,7 +41,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "app.build-time=2026-07-17T12:00:00Z"
     })
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 class AuthenticationIntegrationTest {
 

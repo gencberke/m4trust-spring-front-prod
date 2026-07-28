@@ -1,5 +1,6 @@
-package com.m4trust.coreapi.ratification.domain;
+package com.m4trust.coreapi.ratification.api.dto;
 
+import com.m4trust.coreapi.ratification.domain.RatificationPackage;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

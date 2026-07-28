@@ -1,11 +1,10 @@
 package com.m4trust.coreapi.ratification.api;
 
-import com.m4trust.coreapi.ratification.api.dto.*;
-
 import com.m4trust.coreapi.api.infra.CorrelationIdFilter;
 import com.m4trust.coreapi.organization.api.ResolvedOperationContext;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.ratification.api.dto.*;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;
 import jakarta.validation.Valid;
