@@ -17,7 +17,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 
 /**
- * Deterministic ADR-016 §2.5 contract-bundle digest over classpath resources under {@code
+ * Deterministic contract-bundle digest over classpath resources under {@code
  * contracts/{asyncapi,openapi,schemas,examples}/...}.
  */
 public final class ContractBundleDigest {

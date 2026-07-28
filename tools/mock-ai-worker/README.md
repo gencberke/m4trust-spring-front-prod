@@ -21,21 +21,14 @@ Without `--profile mock-ai`, RabbitMQ and the core stack can run while the worke
 remains off. The process also refuses to start unless
 `M4TRUST_MOCK_AI_ENABLED=true`, and refuses `APP_ENVIRONMENT=production`.
 
-## Deterministic scenarios
+## Critical local boundary
 
-`M4TRUST_MOCK_AI_SCENARIO` may be set to `auto` (default), `success`,
-`retryable_failure`, or `duplicate`. In `auto`, the downloaded reference's
-request `fileName` selects the scenario without adding event fields:
-
-- `fail-retryable*.pdf` -> a terminal `RETRYABLE_TECHNICAL` failure
-- `duplicate*.pdf` -> the same completed event is published twice
-- every other name -> a completed result containing an advisory `legalBasis`
-
-Download and expected-object checks always run before scenario output. A hash
-mismatch becomes the stable non-retryable `CONTENT_HASH_MISMATCH` failure;
-exhausted transient download errors become
-`OBJECT_STORAGE_TEMPORARILY_UNAVAILABLE`. Logs contain identifiers and stable
-codes only, never URLs, request bodies, credentials, or document bytes.
+The retained local proof is deliberately narrow: an enabled local worker
+downloads one document reference, validates the request and emits one
+contract-valid correlated result. A broker message is acknowledged only after a
+persistent confirmed publish; an invalid request is dead-lettered without a
+result publish. Logs contain identifiers and stable codes only, never URLs,
+request bodies, credentials, or document bytes.
 
 The Compose profile connects to browser-reachable `localhost` presigned URLs
 through Docker's `host.docker.internal` alias while preserving the signed Host
@@ -50,12 +43,4 @@ python -m pytest tools/mock-ai-worker/tests
 python contracts/scripts/validate_contracts.py
 docker compose -f infra/compose.yaml config
 docker build -f tools/mock-ai-worker/Dockerfile -t m4trust-mock-ai-worker .
-```
-
-The optional broker smoke test expects RabbitMQ at the configured local host and
-proves request -> HTTP download -> result publish:
-
-```powershell
-$env:PYTHONPATH='tools/mock-ai-worker/src'
-python tools/mock-ai-worker/tests/smoke_rabbitmq.py
 ```

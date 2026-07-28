@@ -8,18 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.m4trust.coreapi.CoreApiApplication;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(
     classes = CoreApiApplication.class,
@@ -34,14 +31,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
     })
 @AutoConfigureMockMvc
 @ActiveProfiles({"local", "test"})
-@Testcontainers
-class ContractMetadataIntegrationTest {
+class ContractMetadataIntegrationTest extends PostgresIntegrationTestSupport {
 
   private static final String ACTIVE = "active-probe-token-value-32b!!!!!";
   private static final String PREVIOUS = "previous-probe-token-value-32b!";
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired private MockMvc mockMvc;
 

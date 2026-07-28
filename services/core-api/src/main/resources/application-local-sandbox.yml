@@ -1,4 +1,4 @@
-# Slice 11 provider-independent sandbox (ADR-010 §2.6): a deterministic,
+# Provider-independent sandbox: a deterministic,
 # startup-config scenario sequence only. Never wired outside this profile;
 # SandboxPaymentProviderBootstrapGuard fails startup if it ever is.
 app:

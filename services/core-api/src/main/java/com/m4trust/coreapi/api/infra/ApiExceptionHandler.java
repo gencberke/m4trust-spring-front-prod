@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 /**
- * Minimal RFC 9457 Problem Details error handling, per ADR-006 sections 13, 16, 17, 18 and 38.
- * Covers field validation, malformed JSON, and a safe fallback for unexpected failures while
- * leaving framework HTTP errors to Spring's normal resolvers.
+ * Minimal RFC 9457 Problem Details error handling. Covers field validation, malformed JSON, and a
+ * safe fallback for unexpected failures while leaving framework HTTP errors to Spring's normal
+ * resolvers.
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {

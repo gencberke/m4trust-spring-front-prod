@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Consumer-owned contract toward {@code deal}; the {@code deal} module implements this port without
- * fulfillment ever reading DealRepository (ADR-003 §23).
+ * fulfillment ever reading DealRepository.
  */
 public final class FulfillmentSourcePorts {
   private FulfillmentSourcePorts() {}

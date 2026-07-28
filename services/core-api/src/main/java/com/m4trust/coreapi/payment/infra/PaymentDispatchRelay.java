@@ -15,12 +15,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Claims durable payment dispatch records, closes the claiming transaction, and only then calls
- * {@link PaymentProviderPort} outside any database transaction (ADR-010 §2.4). Every dispatch —
- * INITIATE or RECONCILE — is resolved query-first: {@code queryStatus} is tried with the
- * operation's unchanged provider key first; only an explicit {@code NOT_FOUND} triggers a same-key
- * {@code initiate}. This single procedure is what makes crash recovery safe in both the "died
- * before any provider call" and "died after the provider call but before the local result was
- * applied" windows: on retry the same key is queried again rather than blindly re-initiated.
+ * {@link PaymentProviderPort} outside any database transaction. Every dispatch — INITIATE or
+ * RECONCILE — is resolved query-first: {@code queryStatus} is tried with the operation's unchanged
+ * provider key first; only an explicit {@code NOT_FOUND} triggers a same-key {@code initiate}. This
+ * single procedure is what makes crash recovery safe in both the "died before any provider call"
+ * and "died after the provider call but before the local result was applied" windows: on retry the
+ * same key is queried again rather than blindly re-initiated.
  */
 @Component
 @ConditionalOnProperty(

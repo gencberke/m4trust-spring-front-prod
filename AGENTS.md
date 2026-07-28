@@ -17,7 +17,7 @@ Cold-start discovery — read these before role-specific files:
 - Project state: [`docs/plan/CURRENT.md`](docs/plan/CURRENT.md)
 - What's next: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 - Plan workflow: [`docs/plan/README.md`](docs/plan/README.md)
-- ADRs: [`architecture-decisions/ADR-INDEX.md`](architecture-decisions/ADR-INDEX.md) and [`architecture-decisions/FORBIDDEN.md`](architecture-decisions/FORBIDDEN.md)
+- ADR authority: [`architecture-decisions/ADR-INDEX.md`](architecture-decisions/ADR-INDEX.md)
 - Repo map (generated): [`docs/agent/repo-map.md`](docs/agent/repo-map.md)
 
 Hackathon-era plans, gate decisions and review records are archived under
@@ -38,9 +38,10 @@ Implementer:
 
 ## Common rules
 
-- Accepted ADRs are authoritative when a conflict exists.
-- If work hits `architecture-decisions/FORBIDDEN.md`, stop and escalate; do not
-  build a workaround.
+- The ADR index defines the authority order. Accepted ADRs are authoritative
+  when a conflict exists; proposed ADRs remain pending independent acceptance.
+- If work conflicts with an ADR non-negotiable, stop and escalate; do not build
+  a workaround.
 - Work on a feature branch unless the user explicitly requests otherwise.
 - Keep changes focused; avoid unrelated refactors and speculative abstractions.
 - Preserve unrelated working-tree changes.

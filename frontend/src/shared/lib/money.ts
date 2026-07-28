@@ -1,7 +1,7 @@
 /**
  * Shared minor-unit <-> decimal money helpers. Amounts always travel the wire
  * as integer minor units; conversion uses BigInt so no binary float ever
- * touches a monetary value (ADR-006 §28).
+ * touches a monetary value.
  *
  * Consolidated from the former `src/app/money.ts` and the private
  * reimplementations that had drifted inside DealReviewWorkspace and

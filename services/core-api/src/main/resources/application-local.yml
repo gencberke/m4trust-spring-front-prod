@@ -1,6 +1,6 @@
 m4trust:
   release:
-    # Explicit local/test fixture (ADR-020). Override with GIT_COMMIT_SHA when set.
+    # Explicit local/test fixture. Override with GIT_COMMIT_SHA when set.
     git-commit-sha: ${GIT_COMMIT_SHA:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
 
 spring:

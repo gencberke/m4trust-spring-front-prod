@@ -41,7 +41,7 @@ export default tseslint.config(
       // this rule advisory. Keep the regression gate strict from here on.
       "react-hooks/set-state-in-effect": "error",
 
-      // Feature isolation (ADR-004 vertical slices): a feature may only be
+      // Feature isolation: a feature may only be
       // reached through its public barrel.
       "no-restricted-imports": [
         "error",

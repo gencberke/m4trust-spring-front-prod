@@ -8,9 +8,11 @@ HEAD SHA, and absolute machine paths.
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import subprocess
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -193,7 +195,7 @@ def top_level_tree(files: list[Path]) -> str:
     return "\n".join(lines)
 
 
-def main() -> None:
+def render() -> str:
     files = git_ls_candidate_files()
     langs = count_languages(files)
     build = existing_build_entries()
@@ -262,10 +264,35 @@ def main() -> None:
         lines.append(f"  - `{module}` — {signal}")
 
     lines.extend(["", "## Top-level structure", "```", top_level_tree(files), "```", ""])
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="compare the generated map with the committed file without writing it",
+    )
+    args = parser.parse_args()
+    rendered = render()
+    if args.check:
+        committed = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
+        if committed != rendered:
+            print(
+                "Repository map is stale; run "
+                "`python3 scripts/generate-repo-map.py` and commit the result.",
+                file=sys.stderr,
+            )
+            return 1
+        print("Repository map is current")
+        return 0
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines), encoding="utf-8")
+    OUT.write_text(rendered, encoding="utf-8")
     print(f"Wrote {OUT.relative_to(ROOT)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

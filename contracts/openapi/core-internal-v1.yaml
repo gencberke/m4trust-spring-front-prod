@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: >
     Private Core operational metadata only. Exposes the deterministic main
-    contract-bundle digest projection from ADR-016. No business data, filesystem
+    contract-bundle digest projection. No business data, filesystem
     paths, or credentials. Requires Authorization Bearer probe token.
 servers:
   - url: /
@@ -15,7 +15,7 @@ paths:
       operationId: getCoreContractBundle
       summary: Installed main contract bundle metadata
       description: >
-        Returns the ADR-016 contract-bundle digest projection for the packaged
+        Returns the contract-bundle digest projection for the packaged
         Core release. Authenticated with CONTRACT_PROBE_TOKEN (and optional
         previous token during rotation). Tokens must never be logged.
       security:
@@ -57,7 +57,7 @@ components:
         contractBundleDigest:
           type: string
           pattern: '^sha256:[a-f0-9]{64}$'
-          description: Deterministic digest of the ADR-016 inclusion-set manifest.
+          description: Deterministic digest of the committed inclusion-set manifest.
         files:
           type: array
           description: Bundle-relative paths in ordinal ascending order with per-file SHA-256.

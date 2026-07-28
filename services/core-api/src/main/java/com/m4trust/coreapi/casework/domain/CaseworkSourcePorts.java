@@ -8,7 +8,7 @@ import java.util.UUID;
 
 /**
  * Consumer-owned contracts toward {@code deal} and {@code fulfillment}; those modules implement
- * these ports without casework reading foreign repositories (ADR-003 §23, ADR-013 §2.5).
+ * these ports without casework reading foreign repositories.
  */
 public final class CaseworkSourcePorts {
 

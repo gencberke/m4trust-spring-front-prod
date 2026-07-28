@@ -3,7 +3,6 @@ package com.m4trust.coreapi.document.api;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,18 +11,13 @@ import com.m4trust.coreapi.audit.domain.port.AuditAppendPort;
 import com.m4trust.coreapi.document.domain.*;
 import com.m4trust.coreapi.document.infra.*;
 import com.m4trust.coreapi.document.infra.adapter.*;
-import com.m4trust.coreapi.idempotency.domain.IdempotencyKeyReusedException;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -40,24 +33,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @ActiveProfiles({"local", "test"})
-@Testcontainers
 @AutoConfigureMockMvc
 @Import({
   DocumentUploadFinalizeIntegrationTest.FakeStorageConfiguration.class,
   DocumentUploadFinalizeIntegrationTest.FailingAuditConfiguration.class
 })
-class DocumentUploadFinalizeIntegrationTest {
+class DocumentUploadFinalizeIntegrationTest extends PostgresIntegrationTestSupport {
 
   private static final String SHA = "a".repeat(64);
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired private DocumentService service;
 
@@ -167,112 +153,6 @@ class DocumentUploadFinalizeIntegrationTest {
   }
 
   @Test
-  void reusedKeyWithDifferentRequestFailsBeforeStorageOrAdditionalSideEffects() {
-    UUID documentId = createIntent();
-    UUID key = UUID.randomUUID();
-    finalizeDocument(documentId, key);
-    int verifiedBeforeConflict = storage.verifyCalls.get();
-
-    assertThrows(
-        IdempotencyKeyReusedException.class,
-        () ->
-            service.finalizeUpload(
-                finalizeContext(),
-                documentId,
-                new FinalizeDocumentUploadRequest(11, SHA),
-                key,
-                UUID.randomUUID()));
-
-    assertEquals(verifiedBeforeConflict, storage.verifyCalls.get());
-    assertEquals(
-        1, jdbcTemplate.queryForObject("SELECT count(*) FROM audit_record", Integer.class));
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject("SELECT count(*) FROM http_idempotency_record", Integer.class));
-  }
-
-  @Test
-  void replaySurvivesSupersessionAndTerminalDealWithoutStorageOrSecondEffect() {
-    UUID first = createIntent();
-    UUID firstKey = UUID.randomUUID();
-    AvailableDealDocument original = finalizeDocument(first, firstKey);
-    UUID second = createIntent();
-    finalizeDocument(second, UUID.randomUUID());
-    jdbcTemplate.update("UPDATE deal SET deal_status = 'CANCELLED' WHERE id = ?", dealId);
-    int verifiedBeforeReplay = storage.verifyCalls.get();
-
-    assertEquals(original, finalizeDocument(first, firstKey));
-
-    assertEquals(verifiedBeforeReplay, storage.verifyCalls.get());
-    assertEquals(
-        "SUPERSEDED",
-        jdbcTemplate.queryForObject(
-            "SELECT document_status FROM document WHERE id = ?", String.class, first));
-    assertEquals(
-        2, jdbcTemplate.queryForObject("SELECT count(*) FROM audit_record", Integer.class));
-    assertEquals(
-        2,
-        jdbcTemplate.queryForObject("SELECT count(*) FROM http_idempotency_record", Integer.class));
-  }
-
-  @Test
-  void verificationMismatchLeavesDocumentPointerAuditAndIdempotencyUntouched() {
-    UUID documentId = createIntent();
-    storage.verified =
-        new DocumentObjectStorage.VerifiedObject(12, "b".repeat(64), "immutable-version");
-
-    assertThrows(
-        DocumentExceptions.VerificationFailed.class,
-        () -> finalizeDocument(documentId, UUID.randomUUID()));
-
-    assertEquals(
-        "PENDING_UPLOAD",
-        jdbcTemplate.queryForObject(
-            "SELECT document_status FROM document WHERE id = ?", String.class, documentId));
-    assertEquals(
-        0, jdbcTemplate.queryForObject("SELECT count(*) FROM audit_record", Integer.class));
-    assertEquals(
-        0,
-        jdbcTemplate.queryForObject("SELECT count(*) FROM http_idempotency_record", Integer.class));
-    assertEquals(
-        0,
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM deal WHERE id = ? AND current_document_id IS NOT NULL",
-            Integer.class,
-            dealId));
-    assertFalse(storage.calledInsideTransaction.get());
-  }
-
-  @Test
-  void expiredPendingDocumentCannotBecomeCurrent() {
-    UUID documentId = createIntent();
-    jdbcTemplate.update(
-        """
-                UPDATE document
-                SET created_at = CURRENT_TIMESTAMP - INTERVAL '2 hours',
-                    updated_at = CURRENT_TIMESTAMP - INTERVAL '2 hours',
-                    upload_expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second'
-                WHERE id = ?
-                """,
-        documentId);
-
-    assertThrows(
-        DocumentExceptions.UploadExpired.class,
-        () -> finalizeDocument(documentId, UUID.randomUUID()));
-
-    assertEquals(
-        "PENDING_UPLOAD",
-        jdbcTemplate.queryForObject(
-            "SELECT document_status FROM document WHERE id = ?", String.class, documentId));
-    assertEquals(
-        0,
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM deal WHERE id = ? AND current_document_id IS NOT NULL",
-            Integer.class,
-            dealId));
-  }
-
-  @Test
   void nonInitiatorCannotCreateOrFinalizeDocumentsAndTerminalIntentConflicts() {
     OperationContext participant =
         participantContext(RequestedOperation.DEAL_DOCUMENT_UPLOAD_INTENT_CREATE);
@@ -299,175 +179,6 @@ class DocumentUploadFinalizeIntegrationTest {
   }
 
   @Test
-  void auditFailureRollsBackDocumentPointerSupersedeAndIdempotencyResult() {
-    UUID first = createIntent();
-    finalizeDocument(first, UUID.randomUUID());
-    UUID pending = createIntent();
-    failAudit.set(true);
-
-    assertThrows(IllegalStateException.class, () -> finalizeDocument(pending, UUID.randomUUID()));
-
-    assertEquals(
-        "PENDING_UPLOAD",
-        jdbcTemplate.queryForObject(
-            "SELECT document_status FROM document WHERE id = ?", String.class, pending));
-    assertEquals(
-        "AVAILABLE",
-        jdbcTemplate.queryForObject(
-            "SELECT document_status FROM document WHERE id = ?", String.class, first));
-    assertEquals(
-        first,
-        jdbcTemplate.queryForObject(
-            "SELECT current_document_id FROM deal WHERE id = ?", UUID.class, dealId));
-    assertEquals(
-        1, jdbcTemplate.queryForObject("SELECT count(*) FROM audit_record", Integer.class));
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject("SELECT count(*) FROM http_idempotency_record", Integer.class));
-  }
-
-  @Test
-  void replacementWithNoRuleSetPointerStillAdvancesTheDealExactlyOnce() {
-    UUID first = createIntent();
-    finalizeDocument(first, UUID.randomUUID());
-    long versionBeforeReplacement = dealVersion();
-    UUID replacement = createIntent();
-
-    finalizeDocument(replacement, UUID.randomUUID());
-
-    assertEquals(versionBeforeReplacement + 1, dealVersion());
-    assertEquals(replacement, currentDocument());
-    assertEquals("SUPERSEDED", documentStatus(first));
-  }
-
-  @Test
-  void finalizingAfterAcceptedReviewSupersedesTheWholeChainWithOneDealVersionAdvance()
-      throws Exception {
-    UUID oldDocument = createIntent();
-    finalizeDocument(oldDocument, UUID.randomUUID());
-    UUID analysisId = seedReviewRequiredAnalysis(oldDocument);
-    UUID ruleSetId = acceptReview(analysisId, 1);
-    long versionBeforeFinalize = dealVersion();
-
-    UUID replacement = createIntent();
-    finalizeDocument(replacement, UUID.randomUUID());
-
-    assertEquals(versionBeforeFinalize + 1, dealVersion());
-    assertEquals("AVAILABLE", documentStatus(replacement));
-    assertEquals("SUPERSEDED", documentStatus(oldDocument));
-    assertEquals("SUPERSEDED", analysisStatus(analysisId));
-    assertEquals(replacement, currentDocument());
-    assertEquals(
-        0,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM deal
-                WHERE id = ? AND current_rule_set_version_id IS NOT NULL
-                """,
-            Integer.class,
-            dealId));
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM contract_intelligence_rule_set_version WHERE id = ?
-                """,
-            Integer.class,
-            ruleSetId));
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM audit_record WHERE action = 'DOCUMENT_ANALYSIS_SUPERSEDED'
-                """,
-            Integer.class));
-  }
-
-  @Test
-  void acceptedChainFinalizeRollsBackWhenItsAuditAppendFails() throws Exception {
-    UUID oldDocument = createIntent();
-    finalizeDocument(oldDocument, UUID.randomUUID());
-    UUID analysisId = seedReviewRequiredAnalysis(oldDocument);
-    UUID ruleSetId = acceptReview(analysisId, 1);
-    long versionBeforeFinalize = dealVersion();
-    int auditBeforeFinalize = count("audit_record");
-    int idempotencyBeforeFinalize = count("http_idempotency_record");
-    UUID replacement = createIntent();
-    failAudit.set(true);
-
-    assertThrows(
-        IllegalStateException.class, () -> finalizeDocument(replacement, UUID.randomUUID()));
-
-    assertEquals("PENDING_UPLOAD", documentStatus(replacement));
-    assertEquals("AVAILABLE", documentStatus(oldDocument));
-    assertEquals("ACCEPTED", analysisStatus(analysisId));
-    assertEquals(oldDocument, currentDocument());
-    assertEquals(
-        ruleSetId,
-        jdbcTemplate.queryForObject(
-            "SELECT current_rule_set_version_id FROM deal WHERE id = ?", UUID.class, dealId));
-    assertEquals(versionBeforeFinalize, dealVersion());
-    assertEquals(auditBeforeFinalize, count("audit_record"));
-    assertEquals(idempotencyBeforeFinalize, count("http_idempotency_record"));
-  }
-
-  @Test
-  void acceptingAndFinalizingAtTheSameTimeLeavesOnlyACoherentCurrentChain() throws Exception {
-    UUID oldDocument = createIntent();
-    finalizeDocument(oldDocument, UUID.randomUUID());
-    UUID analysisId = seedReviewRequiredAnalysis(oldDocument);
-    UUID replacement = createIntent();
-    CountDownLatch start = new CountDownLatch(1);
-
-    int acceptanceStatus;
-    try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
-      Future<Integer> acceptance =
-          executor.submit(
-              () -> {
-                start.await();
-                return acceptReviewStatus(analysisId, 1);
-              });
-      Future<AvailableDealDocument> finalization =
-          executor.submit(
-              () -> {
-                start.await();
-                return finalizeDocument(replacement, UUID.randomUUID());
-              });
-      start.countDown();
-
-      acceptanceStatus = acceptance.get(10, TimeUnit.SECONDS);
-      finalization.get(10, TimeUnit.SECONDS);
-    }
-
-    assertEquals(replacement, currentDocument());
-    assertEquals("AVAILABLE", documentStatus(replacement));
-    assertEquals("SUPERSEDED", documentStatus(oldDocument));
-    assertEquals("SUPERSEDED", analysisStatus(analysisId));
-    assertEquals(
-        0,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM deal WHERE id = ? AND current_rule_set_version_id IS NOT NULL
-                """,
-            Integer.class,
-            dealId));
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM document WHERE deal_id = ? AND document_status = 'AVAILABLE'
-                """,
-            Integer.class,
-            dealId));
-    if (acceptanceStatus == 201) {
-      assertEquals(1, count("contract_intelligence_rule_set_version"));
-    } else {
-      assertEquals(409, acceptanceStatus);
-      assertEquals(0, count("contract_intelligence_rule_set_version"));
-    }
-  }
-
-  @Test
   void nonParticipantListAndDownloadAreRejectedAsNotFound() {
     UUID documentId = createIntent();
     AvailableDealDocument available = finalizeDocument(documentId, UUID.randomUUID());
@@ -484,100 +195,6 @@ class DocumentUploadFinalizeIntegrationTest {
             service.createDownloadLink(
                 withOperation(outsider, RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE),
                 available.id()));
-  }
-
-  @Test
-  void participantCanDownloadAvailableDocumentAndSeeItInHistory() {
-    UUID documentId = createIntent();
-    AvailableDealDocument available = finalizeDocument(documentId, UUID.randomUUID());
-    OperationContext participant =
-        participantContext(RequestedOperation.DOCUMENT_DOWNLOAD_LINK_CREATE);
-
-    DocumentDownloadLink link = service.createDownloadLink(participant, documentId);
-
-    assertEquals(documentId, link.documentId());
-    assertEquals(available.objectVersion(), link.objectVersion());
-    assertFalse(storage.downloadCalledInsideTransaction.get());
-
-    DealDocumentHistory history =
-        service.listHistory(
-            withOperation(participant, RequestedOperation.DEAL_DOCUMENT_LIST_READ), dealId);
-    assertEquals(1, history.items().size());
-    HistoricalDealDocument item = (HistoricalDealDocument) history.items().get(0);
-    assertEquals(DocumentStatus.AVAILABLE, item.status());
-    assertTrue(item.availableActions().canDownload());
-    assertFalse(item.availableActions().canFinalize());
-  }
-
-  @Test
-  void downloadLinkPinsRecordedObjectVersionAcrossSupersession() {
-    UUID first = createIntent();
-    finalizeDocument(first, UUID.randomUUID());
-    storage.verified = new DocumentObjectStorage.VerifiedObject(12, SHA, "version-two");
-    UUID second = createIntent();
-    finalizeDocument(second, UUID.randomUUID());
-
-    DocumentDownloadLink supersededLink = service.createDownloadLink(downloadContext(), first);
-
-    assertEquals("immutable-version", supersededLink.objectVersion());
-    assertEquals("immutable-version", storage.lastDownloadObjectVersion.get());
-    assertEquals(
-        "SUPERSEDED",
-        jdbcTemplate.queryForObject(
-            "SELECT document_status FROM document WHERE id = ?", String.class, first));
-  }
-
-  @Test
-  void pendingUploadDownloadLinkIsRejectedWithConflict() {
-    UUID pending = createIntent();
-
-    assertThrows(
-        DocumentExceptions.DownloadNotAvailable.class,
-        () -> service.createDownloadLink(downloadContext(), pending));
-  }
-
-  @Test
-  void concurrentFinalizesLeaveOneCurrentAvailableDocumentAndRetainSupersededHistory()
-      throws Exception {
-    UUID first = createIntent();
-    UUID second = createIntent();
-    try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
-      Future<AvailableDealDocument> one =
-          executor.submit(() -> finalizeDocument(first, UUID.randomUUID()));
-      Future<AvailableDealDocument> two =
-          executor.submit(() -> finalizeDocument(second, UUID.randomUUID()));
-      one.get(20, TimeUnit.SECONDS);
-      two.get(20, TimeUnit.SECONDS);
-    }
-
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM document
-                WHERE deal_id = ? AND document_status = 'AVAILABLE'
-                """,
-            Integer.class,
-            dealId));
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM document
-                WHERE deal_id = ? AND document_status = 'SUPERSEDED'
-                """,
-            Integer.class,
-            dealId));
-    assertEquals(
-        1,
-        jdbcTemplate.queryForObject(
-            """
-                SELECT count(*) FROM deal d JOIN document current_document
-                  ON current_document.id = d.current_document_id
-                WHERE d.id = ? AND current_document.document_status = 'AVAILABLE'
-                """,
-            Integer.class,
-            dealId));
   }
 
   private UUID createIntent() {

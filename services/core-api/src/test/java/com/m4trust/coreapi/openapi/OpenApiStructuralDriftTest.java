@@ -8,23 +8,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.m4trust.coreapi.CoreApiApplication;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * ADR-021 live inventory gate: raw {@code /v3/api-docs} vs committed OpenAPI for exact public
- * paths/methods and named path servlet parameters only.
+ * Live inventory gate: raw {@code /v3/api-docs} vs committed OpenAPI for exact public paths/methods
+ * and named path servlet parameters only.
  */
 @SpringBootTest(
     classes = CoreApiApplication.class,
@@ -36,14 +33,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
     })
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles({"local", "contract", "test"})
-@Testcontainers
-class OpenApiStructuralDriftTest {
+class OpenApiStructuralDriftTest extends PostgresIntegrationTestSupport {
 
   private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired private MockMvc mockMvc;
 

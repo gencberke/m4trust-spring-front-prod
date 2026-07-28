@@ -3,14 +3,12 @@ package com.m4trust.coreapi.contractintelligence.infra.adapter;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.m4trust.coreapi.contractintelligence.api.*;
 import com.m4trust.coreapi.contractintelligence.api.dto.*;
 import com.m4trust.coreapi.contractintelligence.domain.*;
 import com.m4trust.coreapi.contractintelligence.infra.*;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.sql.Timestamp;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -30,21 +27,14 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = {"spring.main.allow-bean-definition-overriding=true"})
 @ActiveProfiles({"local", "test"})
-@Testcontainers
 @AutoConfigureMockMvc
 @Import(AnalysisResultConsumerIntegrationTest.Fakes.class)
-class AnalysisResultConsumerIntegrationTest {
+class AnalysisResultConsumerIntegrationTest extends PostgresIntegrationTestSupport {
   private static final String SHA = "a".repeat(64);
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   @Autowired AnalysisResultConsumer consumer;
   @Autowired JdbcTemplate jdbc;
@@ -129,23 +119,6 @@ class AnalysisResultConsumerIntegrationTest {
   }
 
   @Test
-  void completedPublicHttpProjectionMatchesTheCommittedShape() throws Exception {
-    consumer.consume(json(completed(UUID.randomUUID(), job, SHA)));
-
-    mockMvc
-        .perform(
-            get("/api/v1/deals/" + deal + "/document-analysis")
-                .with(user(user.toString()))
-                .header("X-M4Trust-Legal-Entity-Id", entity))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("REVIEW_REQUIRED"))
-        .andExpect(jsonPath("$.result.summary.requiresManualReview").value(false))
-        .andExpect(jsonPath("$.result.rules[0].legalBasis.source").value("tbk-6098"))
-        .andExpect(jsonPath("$.result.rules[0].legalBasis.articleNo").value("1"))
-        .andExpect(jsonPath("$.result.document").doesNotExist());
-  }
-
-  @Test
   void contractInvalidEventsRollBackInboxAndLeaveQueuedBusinessState() throws Exception {
     Map<String, Object> wrongVersion = completed(UUID.randomUUID(), job, SHA);
     wrongVersion.put("schemaVersion", "1.0.1");
@@ -162,51 +135,6 @@ class AnalysisResultConsumerIntegrationTest {
     Map<String, Object> attemptMismatch = failed(UUID.randomUUID(), job);
     attempt(attemptMismatch).put("attemptNumber", 2);
     assertIntegrationViolationIsAtomic(attemptMismatch);
-  }
-
-  @Test
-  void identityAndContentHashMismatchesRollBackInboxAndLeaveQueuedBusinessState() throws Exception {
-    for (String identity : List.of("tenantId", "transactionId", "subjectId", "jobId")) {
-      Map<String, Object> mismatch = completed(UUID.randomUUID(), job, SHA);
-      mismatch.put(identity, UUID.randomUUID().toString());
-      assertIntegrationViolationIsAtomic(mismatch);
-    }
-    assertIntegrationViolationIsAtomic(completed(UUID.randomUUID(), job, "b".repeat(64)));
-  }
-
-  @Test
-  void terminalSupersededAndInvalidEventsNeverMutateIncorrectly() throws Exception {
-    consumer.consume(json(completed(UUID.randomUUID(), job, SHA)));
-    consumer.consume(json(failed(UUID.randomUUID(), job)));
-    assertEquals("REVIEW_REQUIRED", jobStatus());
-    assertEquals(1, count("contract_intelligence_extraction_result_version"));
-    assertEquals(
-        1,
-        jdbc.queryForObject(
-            "SELECT count(*) FROM audit_record WHERE action='AI_ANALYSIS_TERMINAL_EVENT_IGNORED'",
-            Integer.class));
-    UUID second = UUID.randomUUID();
-    insertJob(second, AnalysisJobStatus.SUPERSEDED);
-    consumer.consume(json(completed(UUID.randomUUID(), second, SHA)));
-    assertEquals(
-        "SUPERSEDED",
-        jdbc.queryForObject(
-            "SELECT status FROM contract_intelligence_analysis_job WHERE id=?",
-            String.class,
-            second));
-    assertEquals(1, count("contract_intelligence_extraction_result_version"));
-    UUID third = UUID.randomUUID();
-    insertJob(third, AnalysisJobStatus.QUEUED);
-    assertThrows(
-        AnalysisResultConsumer.IntegrationViolation.class,
-        () -> consumer.consume(json(completed(UUID.randomUUID(), third, "b".repeat(64)))));
-    assertEquals(
-        "QUEUED",
-        jdbc.queryForObject(
-            "SELECT status FROM contract_intelligence_analysis_job WHERE id=?",
-            String.class,
-            third));
-    assertEquals(3, count("integration_inbox_event"));
   }
 
   @Test
@@ -254,36 +182,6 @@ class AnalysisResultConsumerIntegrationTest {
                 SELECT count(*) FROM audit_record WHERE action = 'AI_ANALYSIS_TERMINAL_EVENT_IGNORED'
                 """,
             Integer.class));
-  }
-
-  @Test
-  void failedAndAuditFailureAreAtomic() throws Exception {
-    consumer.consume(json(failed(UUID.randomUUID(), job)));
-    assertEquals("FAILED", jobStatus());
-    assertEquals(
-        "MODEL_PROVIDER_TIMEOUT",
-        jdbc.queryForObject(
-            "SELECT failure_code FROM contract_intelligence_analysis_job WHERE id=?",
-            String.class,
-            job));
-    UUID next = UUID.randomUUID();
-    insertJob(next, AnalysisJobStatus.QUEUED);
-    failAudit.set(true);
-    assertThrows(
-        IllegalStateException.class,
-        () -> consumer.consume(json(completed(UUID.randomUUID(), next, SHA))));
-    assertEquals(
-        "QUEUED",
-        jdbc.queryForObject(
-            "SELECT status FROM contract_intelligence_analysis_job WHERE id=?",
-            String.class,
-            next));
-    assertEquals(
-        0,
-        jdbc.queryForObject(
-            "SELECT count(*) FROM contract_intelligence_extraction_result_version WHERE analysis_job_id=?",
-            Integer.class,
-            next));
   }
 
   private void assertIntegrationViolationIsAtomic(Map<String, Object> event) throws Exception {

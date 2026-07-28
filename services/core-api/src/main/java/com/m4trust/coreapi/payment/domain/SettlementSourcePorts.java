@@ -6,9 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Consumer-owned narrow ports for settlement eligibility and release (ADR-014 §2.6). Payment never
- * reads foreign repositories; deal, fulfillment, ratification, and casework modules implement these
- * adapters.
+ * Consumer-owned narrow ports for settlement eligibility and release. Payment never reads foreign
+ * repositories; deal, fulfillment, ratification, and casework modules implement these adapters.
  */
 public final class SettlementSourcePorts {
 

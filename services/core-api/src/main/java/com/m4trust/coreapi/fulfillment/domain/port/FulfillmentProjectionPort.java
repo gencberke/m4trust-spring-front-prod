@@ -5,8 +5,7 @@ import java.util.UUID;
 
 /**
  * Fulfillment-owned projection port consumed by {@code deal.DealService}. The Deal module reaches
- * fulfillment data only through this narrow port and fulfillment never reads DealRepository
- * (ADR-003 §23).
+ * fulfillment data only through this narrow port and fulfillment never reads DealRepository.
  */
 public interface FulfillmentProjectionPort {
 

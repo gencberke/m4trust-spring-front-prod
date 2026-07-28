@@ -42,7 +42,7 @@ spring:
 
 m4trust:
   release:
-    # ADR-016/020 releaseRevision: exact 40-hex only. Empty/unknown fails closed at
+    # releaseRevision: exact 40-hex only. Empty/unknown fails closed at
     # binding (never forty zeros). Local/test supply an explicit fixture SHA.
     git-commit-sha: ${GIT_COMMIT_SHA:}
   contracts:

@@ -52,7 +52,7 @@ dependent plan becomes ready until its prerequisite gate is explicitly accepted.
 | Simulation/G2/G3 | `docs/history/hackathon-2026-07/planning/gates/simulation-only-payment-decision-2026-07-22.md` plus historical G2/G3 record | G1-S/G3 accepted; G2 provider route superseded |
 | Slice 11B-A | `docs/history/hackathon-2026-07/done/11b-a-moka-provider-foundation.md` | DONE |
 | Slice 11B-B/G1 | `docs/history/hackathon-2026-07/planning/11b-b-moka-staging-and-g1.md` | SUPERSEDED; historical planning only |
-| ADR-014 | Decision plan: 14B R-P1–R-P4; accepted artifact: `architecture-decisions/ADR-014-Settlement-Release-and-Production-Demo-Simulation.md` | next decision work; not accepted yet |
+| ADR-014 | Decision plan: 14B R-P1–R-P4; historical artifact removed (see Git history) | next decision work; not accepted yet |
 | Slice 14B | `docs/history/hackathon-2026-07/planning/14b-settlement-and-release.md` | planning until ADR-014 + explicit ready approval |
 | Gate status | `docs/history/hackathon-2026-07/planning/gates/settlement-release-readiness-charter-2026-07-21.md` | may track proposed/blocked evidence |
 | Accepted state | `docs/plan/CURRENT.md` | update only after material acceptance |

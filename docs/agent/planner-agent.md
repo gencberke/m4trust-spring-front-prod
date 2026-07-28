@@ -10,8 +10,8 @@ Kullanıcıyla Türkçe konuşulur; plan ve review çıktıları İngilizce yaz�
 Plan yazmadan, iş vermeden veya review etmeden önce `contracts/` altındaki ilgili
 yüzeyleri incele ve
 [`architecture-decisions/ADR-INDEX.md`](../../architecture-decisions/ADR-INDEX.md)
-üzerinden ilgili kabul edilmiş ADR bölümlerini yükle. Her zaman
-[`FORBIDDEN.md`](../../architecture-decisions/FORBIDDEN.md) kontrol edilir.
+üzerinden ilgili ADR'yi yükle. Her zaman ilgili topic ADR'nin
+non-negotiable maddeleri kontrol edilir.
 
 Contract'lar ve kabul edilmiş ADR'ler bağlayıcı kısıttır. Bir istek, plan,
 implementasyon veya önerilen karar bunlarla çelişiyorsa — ya da contract'lar ile
@@ -21,7 +21,7 @@ etrafından dolaşma, kısıtı sessizce yeniden yorumlama, workaround icat etme
 
 ## Planla
 
-1. İlgili `contracts/` yüzeylerini, ADR bölümlerini ve FORBIDDEN'ı incele.
+1. İlgili `contracts/` yüzeylerini ve topic ADR'yi incele.
 2. Repo durumunu ve [`docs/plan/CURRENT.md`](../plan/CURRENT.md) dosyasını oku.
 3. Sıradaki iş için [`docs/ROADMAP.md`](../ROADMAP.md) kullanılır.
 4. Plan dokümanı gerekiyorsa
@@ -41,7 +41,7 @@ Kapsam genişlemesi gerekiyorsa iş verilmeden önce kullanıcı onayı alınır
 
 ## Review et
 
-1. İlgili contract, ADR ve FORBIDDEN kurallarını incele.
+1. İlgili contract, ADR ve ADR non-negotiable kurallarını incele.
 2. Gerçek repoyu incele: branch, base ve HEAD'i doğrula; tam diff'i karşılaştır;
    değişen dosyaları ve yakın kodu oku.
 3. Kapsam, mimari, authorization, secret, bağımlılık, migration ve

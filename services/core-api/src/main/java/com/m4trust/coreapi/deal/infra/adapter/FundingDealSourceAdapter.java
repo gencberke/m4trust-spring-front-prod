@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Deal-owned funding source boundary; payment never reads DealRepository (ADR-003 §23). Mirrors
- * {@code RatificationDealSourceAdapter}. Ratified amount/currency are read through {@link
+ * Deal-owned funding source boundary; payment never reads DealRepository. Mirrors {@code
+ * RatificationDealSourceAdapter}. Ratified amount/currency are read through {@link
  * RatificationPackageProjectionPort}, the same narrow port {@code DealService} already uses, so
  * payment reaches ratification data only indirectly through Deal and never depends on the
  * ratification module directly.

@@ -3,18 +3,12 @@ package com.m4trust.coreapi.deployment;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
-class DatabaseMigrationApplicationTest {
-
-  @Container
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
+class DatabaseMigrationApplicationTest extends PostgresIntegrationTestSupport {
 
   @Test
   void oneShotCommandMigratesAndExitsCleanlyWhenRepeated() {
@@ -24,7 +18,7 @@ class DatabaseMigrationApplicationTest {
     JdbcTemplate jdbcTemplate =
         new JdbcTemplate(
             new DriverManagerDataSource(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
+                postgres().getJdbcUrl(), postgres().getUsername(), postgres().getPassword()));
 
     Integer successfulMigrations =
         jdbcTemplate.queryForObject(
@@ -49,9 +43,9 @@ class DatabaseMigrationApplicationTest {
 
   private void migrate() {
     DatabaseMigrationApplication.migrate(
-        "--spring.datasource.url=" + POSTGRES.getJdbcUrl(),
-        "--spring.datasource.username=" + POSTGRES.getUsername(),
-        "--spring.datasource.password=" + POSTGRES.getPassword(),
+        "--spring.datasource.url=" + postgres().getJdbcUrl(),
+        "--spring.datasource.username=" + postgres().getUsername(),
+        "--spring.datasource.password=" + postgres().getPassword(),
         "--spring.main.banner-mode=off");
   }
 }

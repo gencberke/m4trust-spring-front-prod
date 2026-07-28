@@ -1,6 +1,6 @@
 package com.m4trust.coreapi.payment.domain;
 
-/** Closed PaymentOperation state set (ADR-010 §2.3). */
+/** Closed PaymentOperation state set. */
 public enum PaymentOperationStatus {
   CREATED,
   SUCCEEDED,

@@ -72,7 +72,7 @@ EXPECTED_CORE_INTERNAL_OPENAPI_PATHS = {
     "/internal/v1/contracts",
 }
 
-# ADR-016 §2.5 inclusion set relative to contracts/
+# Deployment contract-bundle inclusion set relative to contracts/
 _BUNDLE_INCLUDE_SPECS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("asyncapi", ("*.json", "*.yaml", "*.yml")),
     ("openapi", ("*.json", "*.yaml", "*.yml")),
@@ -835,7 +835,7 @@ REQUIRED_CORE_API_SCHEMAS = {
 
 
 def bundle_relative_paths(contracts_root: Path) -> list[str]:
-    """Return ADR-016 inclusion paths relative to contracts/, POSIX, ordinal-sorted."""
+    """Return inclusion paths relative to contracts/, POSIX, ordinal-sorted."""
     found: set[str] = set()
     for subdir, patterns in _BUNDLE_INCLUDE_SPECS:
         root = contracts_root / subdir
@@ -1027,7 +1027,7 @@ def validate_core_internal_openapi(failures: list[str]) -> None:
 
     failures.extend(local_failures)
     if not local_failures:
-        print("PASS Core internal OpenAPI ADR-016 projection")
+        print("PASS Core internal OpenAPI contract-bundle projection")
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -1767,7 +1767,7 @@ def validate_contract_documents(failures: list[str]) -> None:
             "ReconcilePaymentOperationRequest": {"expectedVersion"},
         }
         # Additive, optional-only fields layered onto the Slice 11 closed sets by the
-        # 2026-07-22 simulation-only decision §2 / ADR-014 §2.1 visible-mode labeling
+        # Visible-mode labeling for the simulation-only settlement contract.
         # requirement. Never required, so older consumers reading the closed Slice 11
         # field set remain unaffected.
         funding_optional_fields = {

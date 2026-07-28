@@ -50,7 +50,8 @@ authority or public contract.
 
 ## 3. Decisions and authoritative references
 
-- Accepted ADRs and `architecture-decisions/FORBIDDEN.md` remain authoritative.
+- Historical accepted ADRs and historical FORBIDDEN policy remain part of this
+  record; the removed file is available through Git history.
 - Backend `lifecycle` and `availableActions` are the only lifecycle and action
   authority. The frontend renders them and never reconstructs their rules.
 - Existing generated API types and React Query hooks remain the contract boundary.

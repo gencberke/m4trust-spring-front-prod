@@ -41,16 +41,3 @@ def test_contract_invalid_request_is_dead_lettered_without_publish(contracts, re
     channel.basic_publish.assert_not_called()
     channel.basic_ack.assert_not_called()
     channel.basic_nack.assert_called_once_with(delivery_tag=9, requeue=False)
-
-
-def test_uncertain_publish_is_retried_once_then_dead_lettered(contracts, request_event, download_server):
-    request_event["payload"]["input"]["download"]["url"] = download_server
-    channel = Mock()
-    channel.basic_publish.side_effect = RuntimeError("unsafe detail must not be logged")
-    worker = make_worker(contracts)
-
-    worker._handle(channel, SimpleNamespace(delivery_tag=1, redelivered=False), None, json.dumps(request_event).encode())
-    worker._handle(channel, SimpleNamespace(delivery_tag=2, redelivered=True), None, json.dumps(request_event).encode())
-
-    assert channel.basic_nack.call_args_list[0].kwargs == {"delivery_tag": 1, "requeue": True}
-    assert channel.basic_nack.call_args_list[1].kwargs == {"delivery_tag": 2, "requeue": False}

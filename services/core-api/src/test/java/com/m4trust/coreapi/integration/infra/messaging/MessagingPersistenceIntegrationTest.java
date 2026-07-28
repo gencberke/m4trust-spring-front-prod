@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.m4trust.coreapi.integration.api.port.TransactionalInbox;
 import com.m4trust.coreapi.integration.api.port.TransactionalOutbox;
+import com.m4trust.coreapi.support.PostgresIntegrationTestSupport;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -14,22 +15,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @ActiveProfiles({"local", "test"})
-@Testcontainers
-class MessagingPersistenceIntegrationTest {
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.5-alpine");
+class MessagingPersistenceIntegrationTest extends PostgresIntegrationTestSupport {
 
   @Autowired private TransactionalOutbox outbox;
 
@@ -43,9 +36,8 @@ class MessagingPersistenceIntegrationTest {
 
   @BeforeEach
   void cleanDatabase() {
-    jdbcTemplate.update("DELETE FROM integration_outbox_event");
-    jdbcTemplate.update("DELETE FROM integration_inbox_event");
-    jdbcTemplate.update("DELETE FROM tenant");
+    jdbcTemplate.execute(
+        "TRUNCATE TABLE integration_outbox_event, integration_inbox_event, tenant CASCADE");
   }
 
   @Test

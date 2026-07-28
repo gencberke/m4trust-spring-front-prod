@@ -3,17 +3,17 @@ package com.m4trust.coreapi.payment.domain;
 import java.util.Objects;
 
 /**
- * Domain-owned narrow provider contract (ADR-010 §2.6). Request/outcome types never carry raw
- * provider payloads, card data, credentials, or other PII; amount/currency are used only to size
- * the simulated transfer, never to pick a sandbox outcome. Implementations live outside {@code
- * payment} (the sandbox adapter lives in {@code integration}); the real Slice 11B adapter is a
- * separate future implementation of this same interface.
+ * Domain-owned narrow provider contract. Request/outcome types never carry raw provider payloads,
+ * card data, credentials, or other PII; amount/currency are used only to size the simulated
+ * transfer, never to pick a sandbox outcome. Implementations live outside {@code payment} (the
+ * sandbox adapter lives in {@code integration}); the real Slice 11B adapter is a separate future
+ * implementation of this same interface.
  */
 public interface PaymentProviderPort {
 
   /**
    * Initiates a new provider-side attempt for the given fixed provider key. Never called from
-   * within a database transaction (ADR-010 §2.4).
+   * within a database transaction.
    */
   ProviderResult initiate(ProviderRequest request);
 
@@ -27,9 +27,9 @@ public interface PaymentProviderPort {
 
   /**
    * Visible simulated-mode label surfaced in participant-facing funding projections (2026-07-22
-   * simulation-only decision §2; ADR-014 §2.1). Returns {@code null} for implementations that are
-   * not a demo simulator (for example the Moka emulator adapter); the label is never fabricated
-   * when no simulator is the active provider (ADR-014 §2.9).
+   * simulation-only decision §2). Returns {@code null} for implementations that are not a demo
+   * simulator (for example the Moka emulator adapter); the label is never fabricated when no
+   * simulator is the active provider.
    */
   default PaymentProviderMode mode() {
     return null;
@@ -37,7 +37,7 @@ public interface PaymentProviderPort {
 
   /**
    * Initiates a simulated release for the given fixed provider key. Never called from within a
-   * database transaction (ADR-014 §2.6).
+   * database transaction.
    */
   default ReleaseProviderResult initiateRelease(ProviderRequest request) {
     return null;

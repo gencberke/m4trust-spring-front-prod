@@ -29,7 +29,7 @@
 	}
 
 	# Internal probe/contract surfaces stay private. Public edge returns 404
-	# before SPA fallback (ADR-016); private network alone is not auth.
+    # before SPA fallback; private network alone is not authentication.
 	@internal path /internal /internal/*
 	handle @internal {
 		respond 404

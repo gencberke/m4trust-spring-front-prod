@@ -38,10 +38,9 @@ does not consume a scenario or create a second record. The timeout scenario
 records identity then closes the response; its first query is `UNCONFIRMED`
 and its later query is `SUCCESS`. This is test-double behavior only.
 
-The documented transport and safety matrix is
-[`fixtures/transport-matrix.json`](fixtures/transport-matrix.json). It marks
-direct-charge duplicate behavior, pool/finality behavior, and other research
-gaps as `UNKNOWN`.
+The retained checks prove only startup refusal outside local use, bounded input,
+and deterministic repeated-identity/query-first late recovery. They are not
+provider certification or evidence of payment finality.
 
 ## Validate
 
