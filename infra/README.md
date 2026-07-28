@@ -51,7 +51,10 @@ Yerel erişim noktaları:
 - MinIO S3 API: `http://127.0.0.1:9000`
 - MinIO konsolu: `http://127.0.0.1:9001`
 
-Port veya yerel credential değiştirmek gerekirse `infra/.env.example` dosyasını `infra/.env` olarak kopyalayıp değerleri düzenleyin. `infra/.env` Git tarafından ignore edilir. Compose dosyası `.env` olmadan da yerel varsayılanlarla çalışır.
+Port veya yerel credential değiştirmek gerekirse `infra/.env.example` dosyasını
+yerel `.env` dosyasına kopyalayıp değerleri düzenleyin. Yerel `.env` Git
+tarafından ignore edilir. Compose dosyası `.env` olmadan da yerel
+varsayılanlarla çalışır.
 
 Başlatma, `m4trust-documents` private bucket'ını da deterministik olarak oluşturur,
 object versioning'i açar. MinIO, `http://localhost:5173` için direct browser

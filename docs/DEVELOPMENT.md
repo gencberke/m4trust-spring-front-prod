@@ -103,7 +103,7 @@ $env:SPRING_PROFILES_ACTIVE = "local,local-sandbox"
 ```
 
 Frontend'i ayrı bir terminalde çalıştırın. Önce `frontend/.env.example`
-dosyasını `frontend/.env` olarak kopyalayın ve [Frontend rehberindeki](../frontend/README.md)
+dosyasını yerel `.env` dosyasına kopyalayın ve [Frontend rehberindeki](../frontend/README.md)
 `CORE_API_PROXY_TARGET` değerini ayarlayın (varsayılan: `http://127.0.0.1:8080`).
 
 ```bash

@@ -50,6 +50,8 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    env:
+      CORE_API_PROXY_TARGET: http://127.0.0.1:8080
     defaults:
       run:
         working-directory: frontend
