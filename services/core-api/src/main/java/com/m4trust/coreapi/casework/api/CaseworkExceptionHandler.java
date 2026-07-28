@@ -101,7 +101,7 @@ public class CaseworkExceptionHandler {
   @ExceptionHandler(CaseworkExceptions.Conflict.class)
   ResponseEntity<ProblemDetail> handleConflict(
       CaseworkExceptions.Conflict exception, HttpServletRequest request) {
-    ApiErrorCode code = exception.code();
+    ApiErrorCode code = toApiErrorCode(exception.reason());
     String slug = code.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
     return response(
         request,
@@ -112,9 +112,9 @@ public class CaseworkExceptionHandler {
         "The dispute operation conflicts with the current resource state.");
   }
 
-  @ExceptionHandler(CaseworkExceptions.Validation.class)
+  @ExceptionHandler(CaseworkApiExceptions.Validation.class)
   ResponseEntity<ProblemDetail> handleValidation(
-      CaseworkExceptions.Validation exception, HttpServletRequest request) {
+      CaseworkApiExceptions.Validation exception, HttpServletRequest request) {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.UNPROCESSABLE_ENTITY, "One or more fields are invalid.");
@@ -127,6 +127,18 @@ public class CaseworkExceptionHandler {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
         .contentType(MediaType.APPLICATION_PROBLEM_JSON)
         .body(problem);
+  }
+
+  private static ApiErrorCode toApiErrorCode(CaseworkConflictReason reason) {
+    return switch (reason) {
+      case DEAL_STATE_CONFLICT -> ApiErrorCode.DEAL_STATE_CONFLICT;
+      case DEAL_STALE_VERSION -> ApiErrorCode.DEAL_STALE_VERSION;
+      case FULFILLMENT_STATE_CONFLICT -> ApiErrorCode.FULFILLMENT_STATE_CONFLICT;
+      case FULFILLMENT_STALE_VERSION -> ApiErrorCode.FULFILLMENT_STALE_VERSION;
+      case DISPUTE_STATE_CONFLICT -> ApiErrorCode.DISPUTE_STATE_CONFLICT;
+      case DISPUTE_STALE_VERSION -> ApiErrorCode.DISPUTE_STALE_VERSION;
+      case DISPUTE_ACTIVE_CASE_EXISTS -> ApiErrorCode.DISPUTE_ACTIVE_CASE_EXISTS;
+    };
   }
 
   private ResponseEntity<ProblemDetail> response(

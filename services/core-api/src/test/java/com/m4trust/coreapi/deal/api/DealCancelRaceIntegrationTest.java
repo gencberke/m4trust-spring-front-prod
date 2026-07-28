@@ -46,7 +46,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * status and reject (a concurrent cancellation-equivalent transition).
  */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 @Import(DealCancelRaceIntegrationTest.CountingDealRepositoryConfiguration.class)
 class DealCancelRaceIntegrationTest {

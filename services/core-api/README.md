@@ -39,8 +39,18 @@ where applicable:
 | `ratification` | Ratification packages and confirmations |
 | `sharedkernel` | Reserved shared primitives scaffold (currently minimal) |
 
-`ModuleArchitectureTest` enforces acyclic module dependencies and the
-`api` / `domain` / `infra` layering rules.
+`ModuleArchitectureTest` enforces:
+
+- acyclic top-level module slices;
+- repository ownership (ADR-003 §23);
+- every `..domain..` package must not depend on any first-party `..api..` or
+  `..infra..` package (same module or foreign);
+- custom `@RequestBody` first-party types must live in an `api` package;
+- the existing fulfillment / payment / casework direction rules.
+
+It does **not** enforce a framework-free domain (Spring, Jackson, and non-wire
+Jakarta annotations may still appear in domain code). That conversion remains
+explicitly deferred.
 
 ## Run locally
 

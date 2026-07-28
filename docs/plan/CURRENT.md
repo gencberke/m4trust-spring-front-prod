@@ -1,6 +1,6 @@
 # Current Project State
 
-Last updated: 2026-07-24
+Last updated: 2026-07-28
 
 ## Phase
 
@@ -153,6 +153,13 @@ PHOTO/JPEG|PNG analysis eligibility merged at `main@47f3d2a`.
 Slice 14B planning draft remains reference-only for capabilities not already
 landed by Plan 17/18.
 
+Repo cleanup phases 0–4, audit remediation A–E, and the closeout (Spotless
+format gate, Docker-backed test lifecycle profile, casework domain/API
+boundary with ArchUnit proofs, ADR-004 coverage-floor reconcile, repository
+hygiene CI for markdown links and repo-map freshness) are accepted on
+2026-07-28. This does not authorize Phase 5 test-scope work or product-direction
+changes.
+
 ## Accepted foundations
 
 - ADR-001 through ADR-022 are accepted and remain authoritative; ADR-019 grants
@@ -181,6 +188,8 @@ landed by Plan 17/18.
   is accepted under `docs/history/hackathon-2026-07/done/`.
 - Plan 18 Fulfillment and Closure Simplification and child plans 18a–18c are
   accepted under `docs/history/hackathon-2026-07/done/`.
+- Repo cleanup phases 0–4, audit remediation A–E, and closeout are accepted
+  (2026-07-28).
 - V15–V27 migrations are frozen accepted history; future database changes use
   new versioned migrations.
 - The Spring–AI contract foundation, schema fixtures, validators, AsyncAPI, and
@@ -339,8 +348,9 @@ landed by Plan 17/18.
 No plan in `docs/plan/ready/` currently authorizes implementation. Plan 17 and
 Plan 18 (including 18a–18c) are accepted on `main@47f3d2a`; simulated
 settlement, `Kapanış` closure, `evidencePolicy`, pending-evidence cancellation
-and PHOTO analysis are on `main`. Slice 15 Railway Demo Reconciliation remains
-accepted under `docs/history/hackathon-2026-07/done/`; the controlled-demo deployment posture
+and PHOTO analysis are on `main`. Repo cleanup through closeout is accepted
+(2026-07-28). Slice 15 Railway Demo Reconciliation remains accepted under
+`docs/history/hackathon-2026-07/done/`; the controlled-demo deployment posture
 (`RAILWAY_DEMO_READY`) is the accepted production-environment label until a new
 deployment plan updates it. That label is not broad-production or AI-readiness
 acceptance. Slice 14B planning draft and the R2–R7 capability roadmap have no

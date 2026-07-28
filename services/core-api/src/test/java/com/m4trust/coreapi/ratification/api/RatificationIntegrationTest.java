@@ -41,7 +41,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 class RatificationIntegrationTest {
 

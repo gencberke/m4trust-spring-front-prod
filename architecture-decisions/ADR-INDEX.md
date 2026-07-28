@@ -144,7 +144,7 @@ Yasakların konsolide görünümü: [FORBIDDEN.md](FORBIDDEN.md).
 | RabbitMQ / schema | ADR-002 §5–6, §15, §25 | Contract süreci |
 | AI result | ADR-002 §11–13; ADR-003 §17–18 | Advisory/technical result business karar değil |
 | deployment / Railway | ADR-007 | Provider-specific business logic yok |
-| test / coverage | ADR-004 §6–10 | Minimum critical tests; browser acceptance |
+| test / coverage | ADR-004 §6–10, §30 | Birincil kanıt: kritik invariant, contract, mimari kural, browser acceptance; %85 bundle regresyon tabanı (hedef/kanıt değil) |
 
 ---
 
@@ -229,7 +229,7 @@ zorunluluklarını erteler; sonuç broad-production readiness değildir.
 | ADR-001 | Sistem sınırları ve veri sahipliği |
 | ADR-002 | Spring–FastAPI contract, messaging ve compatibility |
 | ADR-003 | Core domain, aggregate ve lifecycle state machine'leri |
-| ADR-004 | Vertical slice, minimum test ve browser acceptance |
+| ADR-004 | Vertical slice; minimum test; browser acceptance; %85 bundle regresyon tabanı (hedef değil) |
 | ADR-005 | Session authentication, security ve authorization context |
 | ADR-006 | Public API, errors, concurrency ve idempotency |
 | ADR-007 | Deployment, migration, secrets, health ve rollback |

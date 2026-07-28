@@ -1,7 +1,5 @@
 package com.m4trust.coreapi.ratification.api;
 
-import com.m4trust.coreapi.ratification.api.dto.*;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,6 +23,7 @@ import com.m4trust.coreapi.idempotency.domain.IdempotencyResultReference;
 import com.m4trust.coreapi.idempotency.domain.IdempotencyService;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.ratification.api.dto.*;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.adapter.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;

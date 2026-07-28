@@ -1,10 +1,9 @@
 package com.m4trust.coreapi.ratification.api;
 
-import com.m4trust.coreapi.ratification.api.dto.*;
-
 import com.m4trust.coreapi.organization.domain.LegalEntityRole;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.ratification.api.dto.*;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;
 import java.util.HashMap;
@@ -110,8 +109,7 @@ public class RatificationPackageReadService {
             && storedApprovals.stream()
                 .anyMatch(
                     approval -> approval.legalEntityId().equals(context.activeLegalEntityId()));
-    return new RatificationPackageAvailableActions(
-        baseEligible && !alreadyApproved, baseEligible);
+    return new RatificationPackageAvailableActions(baseEligible && !alreadyApproved, baseEligible);
   }
 
   private RatificationSnapshotAssembler.Snapshot parseAndVerifySnapshot(

@@ -53,7 +53,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * instance.
  */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 @AutoConfigureMockMvc
 @Import(FulfillmentIntegrationTest.FakeStorageConfiguration.class)

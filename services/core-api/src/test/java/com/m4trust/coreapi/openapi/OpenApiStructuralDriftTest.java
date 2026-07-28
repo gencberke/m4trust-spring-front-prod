@@ -32,12 +32,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "springdoc.api-docs.enabled=true",
       "springdoc.swagger-ui.enabled=false",
       "springdoc.paths-to-match=/api/v1/**",
-      "springdoc.show-actuator=false",
-      "app.messaging.topology.enabled=false",
-      "app.messaging.relay.enabled=false"
+      "springdoc.show-actuator=false"
     })
 @AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles({"local", "contract"})
+@ActiveProfiles({"local", "contract", "test"})
 @Testcontainers
 class OpenApiStructuralDriftTest {
 

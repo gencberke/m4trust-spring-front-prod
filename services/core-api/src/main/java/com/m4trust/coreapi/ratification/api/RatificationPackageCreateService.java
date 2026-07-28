@@ -1,7 +1,5 @@
 package com.m4trust.coreapi.ratification.api;
 
-import com.m4trust.coreapi.ratification.api.dto.*;
-
 import com.m4trust.coreapi.audit.domain.AuditRecord;
 import com.m4trust.coreapi.audit.domain.port.AuditAppendPort;
 import com.m4trust.coreapi.idempotency.domain.IdempotencyClaim;
@@ -10,6 +8,7 @@ import com.m4trust.coreapi.idempotency.domain.IdempotencyResultReference;
 import com.m4trust.coreapi.idempotency.domain.IdempotencyService;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.ratification.api.dto.*;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;
 import java.time.Clock;

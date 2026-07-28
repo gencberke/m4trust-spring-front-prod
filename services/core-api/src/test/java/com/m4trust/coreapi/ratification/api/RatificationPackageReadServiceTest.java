@@ -1,7 +1,5 @@
 package com.m4trust.coreapi.ratification.api;
 
-import com.m4trust.coreapi.ratification.api.dto.*;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.m4trust.coreapi.organization.domain.LegalEntityRole;
 import com.m4trust.coreapi.organization.domain.OperationContext;
 import com.m4trust.coreapi.organization.domain.RequestedOperation;
+import com.m4trust.coreapi.ratification.api.dto.*;
 import com.m4trust.coreapi.ratification.domain.*;
 import com.m4trust.coreapi.ratification.infra.adapter.*;
 import com.m4trust.coreapi.ratification.infra.persistence.*;
@@ -52,9 +51,7 @@ class RatificationPackageReadServiceTest {
             fixture.packageRecord.id());
     assertEquals(
         List.of(fixture.buyerId, fixture.sellerId),
-        buyerDetail.approvals().stream()
-            .map(RatificationPackageApproval::legalEntityId)
-            .toList());
+        buyerDetail.approvals().stream().map(RatificationPackageApproval::legalEntityId).toList());
     assertEquals("Buyer", buyerDetail.approvals().get(0).legalName());
     assertEquals("APPROVED", buyerDetail.approvals().get(0).status());
     assertEquals(fixture.buyerUserId, buyerDetail.approvals().get(0).approverUserId());

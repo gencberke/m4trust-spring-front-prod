@@ -1,10 +1,5 @@
 package com.m4trust.coreapi.casework.domain;
 
-import com.m4trust.coreapi.api.api.ApiErrorCode;
-import com.m4trust.coreapi.api.api.FieldErrorCode;
-import com.m4trust.coreapi.api.api.FieldValidationError;
-import java.util.List;
-
 public class CaseworkExceptions {
 
   public static class MalformedRequest extends RuntimeException {
@@ -38,29 +33,15 @@ public class CaseworkExceptions {
   public static class Conflict extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
-    private final ApiErrorCode code;
+    private final CaseworkConflictReason reason;
 
-    public Conflict(ApiErrorCode code) {
-      super("Casework operation conflict: " + code.name());
-      this.code = code;
+    public Conflict(CaseworkConflictReason reason) {
+      super("Casework operation conflict: " + reason.name());
+      this.reason = reason;
     }
 
-    public ApiErrorCode code() {
-      return code;
-    }
-  }
-
-  public static class Validation extends RuntimeException {
-    private static final long serialVersionUID = 1L;
-
-    private final List<FieldValidationError> errors;
-
-    public Validation(String field, FieldErrorCode code, String message) {
-      errors = List.of(new FieldValidationError(field, code, message));
-    }
-
-    public List<FieldValidationError> errors() {
-      return errors;
+    public CaseworkConflictReason reason() {
+      return reason;
     }
   }
 }

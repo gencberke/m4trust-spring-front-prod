@@ -26,7 +26,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 @Import(LegalEntityAuditAtomicityIntegrationTest.FailingAuditConfiguration.class)
 class LegalEntityAuditAtomicityIntegrationTest {

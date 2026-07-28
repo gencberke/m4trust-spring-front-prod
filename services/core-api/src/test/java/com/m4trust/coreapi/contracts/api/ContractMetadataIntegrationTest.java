@@ -33,7 +33,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "m4trust.contracts.probe-token-previous=previous-probe-token-value-32b!"
     })
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles({"local", "test"})
 @Testcontainers
 class ContractMetadataIntegrationTest {
 

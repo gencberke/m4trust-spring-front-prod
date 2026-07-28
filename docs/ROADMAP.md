@@ -5,7 +5,7 @@ Kabul edilmiş mevcut durum için [`docs/plan/CURRENT.md`](plan/CURRENT.md),
 bağlayıcı mimari kurallar için
 [`architecture-decisions/`](../architecture-decisions/ADR-INDEX.md) kullanılır.
 
-Son güncelleme: 2026-07-27
+Son güncelleme: 2026-07-28
 
 ## Nerede duruyoruz
 
@@ -14,23 +14,28 @@ kapsam: deal yaşam döngüsü uçtan uca (oluşturma → davet → ratification
 funding → fulfillment/evidence → dispute/casework → simulated settlement),
 Railway üzerinde `RAILWAY_DEMO_READY` etiketli kontrollü demo runtime'ı.
 
-Ürün ve fikir devam ediyor. Yarış temposunda biriken **yapısal borç** önce
-kapatılıyor; ürün yönü kararları ondan sonra alınacak.
+Ürün ve fikir devam ediyor. Hackathon temposunda biriken **yapısal borç**
+(repo toparlama faz 0–4 + closeout) kabul edilerek kapatıldı; ürün yönü
+kararları ayrı oturumda alınacak.
 
-## Repo toparlama (Faz 0–4 ve audit tamamlandı)
+## Repo toparlama
 
 | Faz | Kapsam | Durum |
 |---|---|---|
 | 0 | Kırık referanslar, gitignore, script platform paritesi, CI'da beyan edilmemiş python bağımlılığı | ✅ |
 | 1 | Hackathon docs arşivi, bu yol haritası, ADR status alanlarının gerçekten kullanılması | ✅ |
-| 2 | Frontend zemini: ESLint/Prettier/Vitest, `src/shared/`, path alias, 54 test | ✅ |
+| 2 | Frontend zemini: ESLint/Prettier/Vitest, `src/shared/`, path alias, Vitest suite | ✅ |
 | 3 | Frontend yapı: `pages`/`features` sınırı, büyük panel/component bölünmesi, CSS Modules, barrel import'lar | ✅ |
-| 4 | Backend modül içi `api/domain/infra` katmanlaması, Spotless + JaCoCo (%85 satır) | ✅ |
+| 4 | Backend modül içi `api/domain/infra` katmanlaması, Spotless + JaCoCo (%85 satır regresyon tabanı) | ✅ |
+| Audit düzeltme (A–E) | CI gate'leri, ESLint/ArchUnit, doküman senkronu | ✅ |
+| Closeout | Spotless, test lifecycle, domain sınırı, coverage ADR, repo-hygiene CI | ✅ ACCEPT |
 | 5 | Test kapsamı ve ADR revizyonu turu | ⏳ (kapsam tanımlanmadı) |
-| Audit düzeltme (A–E) | FIX-PLAN bulguları: CI gate'leri, ESLint/ArchUnit, doküman senkronu, tek commit | ✅ |
 
-Gerekçe ve ayrıntı: bu turun audit bulguları aşağıdaki "Bilinen boşluklar"
-bölümünde özetlenmiştir.
+Faz 0–4, audit remediation ve closeout kabul edildi. Repo toparlama bu
+noktada kapanır; kalan boşluklar Phase 5 ve ürünleşme kararlarına bırakılır.
+
+Gerekçe ve ayrıntı: aşağıdaki "Bilinen boşluklar" bölümü ertelenmiş Phase 5
+işlerini ve üretimleşme boşluklarını tutar.
 
 Faz 4 notu: `sharedkernel` boş iskelet olarak **korunacak**; Money/Ids/Clock
 primitifleri şimdilik `api`, `audit`, `idempotency` ve `organization` modüllerinde.
@@ -52,12 +57,20 @@ Dört paralel audit'ten çıkan, henüz kapatılmamış maddeler:
   akışları tek dosyada kaldı.
 
 **Test ve doğrulama**
-- `audit` modülünün kendi test sınıfı yok; append-only audit trail yalnız başka
-  modüllerin atomicity testlerinden dolaylı geçiyor.
-- `tools/mock-ai-worker` ve `tools/moka-emulator` altındaki 6 test dosyası CI'da
-  hiç koşmuyor (`smoke_rabbitmq.py` pytest varsayılan toplama desenine uymuyor).
-- Hiçbir dilde bağımlılık güvenlik taraması yok
-  (Dependabot, `npm audit`, `pip-audit` — hiçbiri kurulu değil).
+- Core `mvn verify` JaCoCo %85 satır tabanı regresyon bariyeridir; slice kabul kanıtı
+  değildir (ADR-004 §30). Birincil kanıt: kritik invariant, contract, mimari kural ve
+  tarayıcı kabul akışları.
+- `audit` modülünün kendi davranışsal test sınıfı yok; append-only audit trail yalnız
+  başka modüllerin atomicity testlerinden dolaylı geçiyor (Phase 5 adayı).
+- `tools/mock-ai-worker` ve `tools/moka-emulator` altındaki birim suite'leri CI'da
+  koşmuyor (`smoke_rabbitmq.py` pytest varsayılan toplama desenine uymuyor).
+- Secret, bağımlılık, lisans, zafiyet, SBOM ve provenance taraması yok; bu boşluk
+  geniş bir production-readiness iddiasını engeller (ADR-016/022 daraltılmış
+  demo kapsamı dışında sessizce genişletilmez).
+- Frontend feature testleri, browser automation ve coverage eşiği Phase 5 kapsamına
+  bırakılmıştır.
+- Framework-free domain dönüşümü yapılmadı; ArchUnit yalnız first-party
+  `domain ↛ api|infra` ve request-body konumunu zorlar.
 
 **Ürünleşme kararları (açık)**
 - ADR-022 demo carve-out'ları: backup/PITR waiver (§2.7), invite-only kayıt
@@ -77,7 +90,7 @@ Dört paralel audit'ten çıkan, henüz kapatılmamış maddeler:
 
 | Konu | Seçenekler | Ne zaman |
 |---|---|---|
-| Ürün yönü | Repo toparlama bittikten sonra ayrı bir oturumda | Faz 4 sonrası |
+| Ürün yönü | Repo toparlama bittikten sonra ayrı bir oturumda | Closeout sonrası |
 
 ## Güncelleme kuralı
 

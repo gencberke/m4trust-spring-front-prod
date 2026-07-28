@@ -1,0 +1,33 @@
+# Test-only lifecycle overrides layered on top of `local` for @SpringBootTest
+# contexts. Disables background scheduled work and keeps Hikari from holding
+# idle connections against stopped Testcontainers. Does not weaken production
+# or normal local runtime defaults.
+#
+# Focused tests that need messaging topology, relay, or payment dispatch must
+# re-enable those capabilities via @SpringBootTest(properties=...) or
+# @TestPropertySource.
+
+app:
+  messaging:
+    topology:
+      enabled: false
+    relay:
+      enabled: false
+  payment:
+    dispatch:
+      relay:
+        enabled: false
+
+spring:
+  session:
+    jdbc:
+      # Disable Spring Session's expired-session cleanup schedule in tests.
+      cleanup-cron: "-"
+  datasource:
+    hikari:
+      # Allow the pool to empty so shutdown does not keep retrying a stopped container.
+      # Hikari rejects idle-timeout values below 10000ms (resets to 600000ms).
+      minimum-idle: 0
+      idle-timeout: 10000
+      max-lifetime: 30000
+      keepalive-time: 0

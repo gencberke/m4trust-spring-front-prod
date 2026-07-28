@@ -54,7 +54,8 @@ class DisputeController {
       @RequestParam(defaultValue = "0") String page,
       @RequestParam(defaultValue = "20") String size,
       @RequestParam(defaultValue = "openedAt,desc") String sort) {
-    return service.listDisputes(context, uuid(dealId), DisputeQuery.parse(page, size, sort));
+    return service.listDisputes(
+        context, uuid(dealId), DisputeQueryParser.parseDisputeQuery(page, size, sort));
   }
 
   @GetMapping("/deals/{dealId}/disputes/{disputeId}")
@@ -75,7 +76,10 @@ class DisputeController {
       @RequestParam(defaultValue = "20") String size,
       @RequestParam(defaultValue = "createdAt,asc") String sort) {
     return service.listComments(
-        context, uuid(dealId), uuid(disputeId), DisputeCommentQuery.parse(page, size, sort));
+        context,
+        uuid(dealId),
+        uuid(disputeId),
+        DisputeQueryParser.parseCommentQuery(page, size, sort));
   }
 
   @PostMapping("/deals/{dealId}/disputes/{disputeId}/comments")
