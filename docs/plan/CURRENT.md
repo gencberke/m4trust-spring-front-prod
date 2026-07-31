@@ -157,8 +157,23 @@ Repo cleanup phases 0–4, audit remediation A–E, and the closeout (Spotless
 format gate, Docker-backed test lifecycle profile, casework domain/API
 boundary with ArchUnit proofs, ADR-004 coverage-floor reconcile, repository
 hygiene CI for markdown links and repo-map freshness) are accepted on
-2026-07-28. This does not authorize Phase 5 test-scope work or product-direction
-changes.
+2026-07-28.
+
+Phase 5 Compact ADR Authority and Critical Validation Spine is accepted on
+2026-07-28 (`main@13d8f0a`, PR #53). The 22 numbered ADRs and `FORBIDDEN.md`
+are replaced by five topic ADRs — `ADR-ENGINEERING.md`, `ADR-FRONTEND.md`,
+`ADR-BACKEND.md`, `ADR-DEPLOYMENT.md`, `ADR-AI-INTEGRATION.md` — all now
+Accepted; `ADR-INDEX.md` is the authority order. The backend test suite is
+reduced from 110 to 42 files, retaining one proof per critical-risk category
+(tenant isolation, concurrency/optimistic-locking, atomicity/append-only
+audit, idempotency, migration, architecture boundaries); JaCoCo's line-coverage
+gate is removed from the default Maven lifecycle in favor of an optional
+diagnostic profile; mock-ai-worker and moka-emulator tests now run in a
+dedicated CI job. No runtime, public API, persistence, or user-visible
+behavior changed. Evidence: all six PR #53 checks (core-api, frontend,
+local-tools, validate-contracts, container-images, hygiene) passed. The plan
+is archived at
+`docs/plan/done/phase-5-compact-adr-and-critical-validation.md`.
 
 ## Accepted foundations
 

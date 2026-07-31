@@ -1,8 +1,10 @@
 # Phase 5 — Compact ADR Authority and Critical Validation Spine
 
-Status: Approved for implementation; independent acceptance pending
+Status: Accepted (2026-07-28)
 Base: `main@06d304ce6220da8959e69896e8a7926dd5bed029`
 Implementation branch: `codex/phase-5-compact-governance-tests`
+Merged: `main@13d8f0a` (PR #53); all six CI checks (core-api, frontend,
+local-tools, validate-contracts, container-images, hygiene) passed.
 
 ## 1. Purpose and observable outcome
 

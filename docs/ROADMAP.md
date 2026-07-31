@@ -29,14 +29,15 @@ kararları ayrı oturumda alınacak.
 | 4 | Backend modül içi `api/domain/infra` katmanlaması, Spotless + JaCoCo (%85 satır regresyon tabanı) | ✅ |
 | Audit düzeltme (A–E) | CI gate'leri, ESLint/ArchUnit, doküman senkronu | ✅ |
 | Closeout | Spotless, test lifecycle, domain sınırı, coverage ADR, repo-hygiene CI | ✅ ACCEPT |
-| 5 | Compact ADR authority and critical validation spine | 🟡 implementation/review pending |
+| 5 | Compact ADR authority and critical validation spine | ✅ ACCEPT |
 
-Faz 0–4, audit remediation ve closeout kabul edildi. Phase 5 implementasyonu
-başladı; bağımsız review kabulü gelmeden mevcut durum veya accepted authority
-değişmiş sayılmaz.
+Faz 0–4, audit remediation, closeout ve Phase 5 (compact ADR authority ve
+critical validation spine) kabul edildi (`main@13d8f0a`, PR #53). Repo
+toparlama bu noktada tamamen kapanır; kalan boşluklar Phase 5'in bilinçli
+kapsam dışı bıraktığı maddelere ve ürünleşme kararlarına bırakılır.
 
-Gerekçe ve ayrıntı: aşağıdaki "Bilinen boşluklar" bölümü ertelenmiş Phase 5
-işlerini ve üretimleşme boşluklarını tutar.
+Gerekçe ve ayrıntı: aşağıdaki "Bilinen boşluklar" bölümü kalan
+üretimleşme boşluklarını tutar.
 
 Faz 4 notu: `sharedkernel` boş iskelet olarak **korunacak**; Money/Ids/Clock
 primitifleri şimdilik `api`, `audit`, `idempotency` ve `organization` modüllerinde.
@@ -58,11 +59,12 @@ Dört paralel audit'ten çıkan, henüz kapatılmamış maddeler:
   akışları tek dosyada kaldı.
 
 **Test ve doğrulama**
-- Phase 5 test/ADR konsolidasyonu implementation/review pending durumunda:
-  JaCoCo yüzde tabanı ve test sayısı gate değildir; kritik invariant, contract,
-  migration, architecture ve public-boundary kanıtları tutulur.
-- Audit transaction/append-only kanıtı ve pruned local-tool suite'lerinin CI
-  entegrasyonu Phase 5 branch'inde uygulanmıştır; bağımsız kabul bekler.
+- Phase 5 test/ADR konsolidasyonu kabul edildi: JaCoCo yüzde tabanı ve test
+  sayısı artık gate değildir; kritik invariant, contract, migration,
+  architecture ve public-boundary kanıtları tutulur.
+- Audit transaction/append-only kanıtı (`AuditInvariantIntegrationTest`) ve
+  pruned local-tool suite'lerinin CI entegrasyonu (`local-tools` job) kabul
+  edildi ve `main`'dedir.
 - Secret, bağımlılık, lisans, zafiyet, SBOM ve provenance taraması yok; bu boşluk
   geniş bir production-readiness iddiasını engeller ve sonraki ürünleşme turunda
   ele alınır.

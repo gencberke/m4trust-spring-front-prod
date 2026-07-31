@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — pending independent acceptance.
+Accepted (2026-07-28). Merged `main@13d8f0a` (PR #53).
 
 ## Context
 

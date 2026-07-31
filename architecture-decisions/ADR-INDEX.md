@@ -2,8 +2,7 @@
 
 ## Status
 
-The topic ADRs below are **Proposed — pending independent acceptance**.
-Until acceptance, the base branch's accepted decisions remain the review baseline.
+The topic ADRs below are **Accepted** (2026-07-28, `main@13d8f0a`, PR #53).
 
 ## Authority order
 

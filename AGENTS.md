@@ -39,7 +39,7 @@ Implementer:
 ## Common rules
 
 - The ADR index defines the authority order. Accepted ADRs are authoritative
-  when a conflict exists; proposed ADRs remain pending independent acceptance.
+  when a conflict exists.
 - If work conflicts with an ADR non-negotiable, stop and escalate; do not build
   a workaround.
 - Work on a feature branch unless the user explicitly requests otherwise.
